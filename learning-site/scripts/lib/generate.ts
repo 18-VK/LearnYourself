@@ -2,9 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { countMarkers } from '../../src/markdown/html-policy';
-import { SORT_CODE, SORT_SOURCE_HEADING } from '../../src/viz/sorting/csharp';
+import { VERBATIM_CHECKS } from '../../src/viz/verbatim';
 import { processAssets, type AssetOut } from './assets';
 import { writeCoverage, type CoverageData, type LessonCoverage, type NoteCoverage } from './coverage';
+import { checkData, type LessonRecord } from './data-check';
 import { countMarkdown, readingMinutes, type MdCounts } from './mdcount';
 import {
   clearNoteCache,
@@ -39,6 +40,8 @@ export const COURSE_FILES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa
 export interface BuildOptions {
   mode: 'build' | 'dev' | 'check';
   log?: (msg: string) => void;
+  /** false = validate only: no files are written and binary assets are not processed (safe to run concurrently). */
+  write?: boolean;
 }
 export interface BuildResult {
   ok: boolean;
@@ -109,6 +112,10 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
   const log = opts.log ?? ((m: string) => console.log(m));
+  const write = opts.write !== false;
+  const emit = (file: string, content: string) => {
+    if (write) writeIfChanged(file, content);
+  };
   clearNoteCache();
 
   // ── 1. Manifests ───────────────────────────────────────────────────────────────────────
@@ -364,19 +371,18 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   }
 
   // ── 5. Visualizer code must still match the notes verbatim ─────────────────────────────
-  {
-    const rel = 'Competitive Programming/sorting-algorithms-notes.md';
-    if (exactCaseExists(rel)) {
-      const note = loadNote(rel);
-      const blocks = note.fences.map((f) => note.lines.slice(f.start + 1, f.end).join('\n'));
-      for (const [alg, code] of Object.entries(SORT_CODE)) {
-        if (!blocks.some((b) => b.includes(code))) {
-          errors.push(
-            `The C# for the ${alg} visualizer no longer matches ${rel} (section "${SORT_SOURCE_HEADING[alg as keyof typeof SORT_SOURCE_HEADING]}").\n` +
-              '  Update src/viz/sorting/csharp.ts and the matching trace generator so the code panel stays truthful.',
-          );
-        }
-      }
+  for (const check of VERBATIM_CHECKS) {
+    if (!exactCaseExists(check.file)) {
+      errors.push(`The ${check.label} copies code from ${check.file}, which no longer exists. Update ${check.fix}.`);
+      continue;
+    }
+    const note = loadNote(check.file);
+    const blocks = note.fences.map((f) => note.lines.slice(f.start + 1, f.end).join('\n'));
+    if (!blocks.some((b) => b.includes(check.code))) {
+      errors.push(
+        `The code in the ${check.label} no longer matches ${check.file} (section "${check.heading}").\n` +
+          `  Update ${check.fix} so the code panel stays truthful.`,
+      );
     }
   }
 
@@ -387,7 +393,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   }
   let assetsOut: AssetOut[] = [];
   try {
-    assetsOut = await processAssets(assetsManifest.assets.filter((a) => a.publish && exactCaseExists(a.file)), repo);
+    if (write) assetsOut = await processAssets(assetsManifest.assets.filter((a) => a.publish && exactCaseExists(a.file)), repo);
   } catch (e) {
     errors.push(`assets: ${(e as Error).message}`);
   }
@@ -413,6 +419,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   const titleOf = new Map(plans.map((p) => [p.id, p.lesson.title]));
   const courseTitle = new Map(courses.map((c) => [c.id, c.title]));
   const lessonCoverage: LessonCoverage[] = [];
+  const lessonRecords: LessonRecord[] = [];
   const written = new Set<string>();
   const siteCourses = [];
 
@@ -516,7 +523,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
           counts: { source: pickCounts(src), generated: pickCounts(gen), recovered: recoveredCount, markers: countMarkers(source) },
         };
         const file = path.resolve(OUT_LESSONS, course.id, mod.id, `${lesson.id}.md`);
-        writeIfChanged(file, `---\n${YAML.stringify(frontmatter, { lineWidth: 0 })}---\n\n${body}\n`);
+        emit(file, `---\n${YAML.stringify(frontmatter, { lineWidth: 0 })}---\n\n${body}\n`);
         written.add(file);
         lessonCoverage.push({
           id: plan.id,
@@ -527,6 +534,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
           minutes,
         });
         lessons.push({ id: plan.id, slug: lesson.id, title: lesson.title, kind: lesson.kind, minutes, viz: vizCount });
+        lessonRecords.push({ id: plan.id, title: lesson.title, course: course.id, courseTitle: course.title, module: mod.id, kind: lesson.kind, body, slices: plan.slices });
       }
       modules.push({ id: mod.id, title: mod.title, status: mod.status ?? 'ready', noteFolder: mod.noteFolder ?? null, covers: mod.covers ?? [], lessons });
     }
@@ -535,7 +543,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     if (landing) {
       const body = landing.map((r) => renderSlice(r, loadNote(r.rel), omitted.get(r.rel), recovered.get(r.rel), undefined).body).join('\n\n');
       const file = path.resolve(OUT_LANDING, `${course.id}.md`);
-      writeIfChanged(file, `---\n${YAML.stringify({ course: course.id, sources: landing.map((r) => ({ file: r.rel, url: githubBlobUrl(repo, r.rel, r.start, r.end) })) })}---\n\n${body}\n`);
+      emit(file, `---\n${YAML.stringify({ course: course.id, sources: landing.map((r) => ({ file: r.rel, url: githubBlobUrl(repo, r.rel, r.start, r.end) })) })}---\n\n${body}\n`);
       written.add(file);
     }
     for (const p of course.prerequisites) if (!COURSE_FILES.includes(p as (typeof COURSE_FILES)[number])) errors.push(`${course.id}: unknown prerequisite course ${p}`);
@@ -571,13 +579,13 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     interviewTopics: interviewManifest.topics.map((t) => ({ id: t.id, title: t.title })),
   };
   const siteFile = path.resolve(OUT_DATA, 'site.json');
-  writeIfChanged(siteFile, JSON.stringify(siteData, null, 2));
+  emit(siteFile, JSON.stringify(siteData, null, 2));
   written.add(siteFile);
   const assetsFile = path.resolve(OUT_DATA, 'assets.json');
-  writeIfChanged(assetsFile, JSON.stringify(assetsOut, null, 2));
+  emit(assetsFile, JSON.stringify(assetsOut, null, 2));
   written.add(assetsFile);
   const interviewFile = path.resolve(OUT_DATA, 'interview-sources.json');
-  writeIfChanged(
+  emit(
     interviewFile,
     JSON.stringify(
       interviewSlices.map((r) => ({ file: r.rel, lines: `${r.start + 1}-${r.end}`, url: githubBlobUrl(repo, r.rel, r.start, r.end) })),
@@ -587,7 +595,24 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   );
   written.add(interviewFile);
 
-  // ── 8. Coverage report (output counts are added by verify-output after the build) ──────
+  // ── 8. Quizzes, cheat sheets and interview questions (src/data/*, see src/data/schema.ts) ──
+  const data = checkData({
+    lessons: lessonRecords,
+    sheetIds: cheatsheets.sheets.map((x) => ({ id: x.id, title: x.title })),
+    topics: interviewManifest.topics as { id: string; title: string; subtopics?: string[]; notCoveredYet?: boolean }[],
+    interviewSlices,
+    omitted,
+    falsePositives,
+    errors,
+    warnings,
+  });
+  for (const [name, value] of Object.entries(data.outputs)) {
+    const f = path.resolve(OUT_DATA, name);
+    emit(f, JSON.stringify(value, null, 1));
+    written.add(f);
+  }
+
+  // ── 9. Coverage report (output counts are added by verify-output after the build) ──────
   const coverageData: CoverageData = {
     notes: noteCoverage,
     lessons: lessonCoverage,
@@ -600,20 +625,27 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     planned: courses.flatMap((c) => c.modules.filter((m) => m.status === 'planned').map((m) => ({ id: `${c.id}/${m.id}`, title: m.title, noteFolder: m.noteFolder ?? '' }))),
     assets: assetsManifest.assets.map((a) => ({ file: a.file, publish: a.publish, mode: a.mode ?? null, credit: a.credit ?? null })),
     errors,
+    warnings,
+    data: data.summary,
     output: null,
   };
   const covFile = path.resolve(OUT_DATA, 'coverage.json');
-  writeIfChanged(covFile, JSON.stringify(coverageData, null, 2));
+  emit(covFile, JSON.stringify(coverageData, null, 2));
   written.add(covFile);
-  writeCoverage(coverageData);
+  if (write) writeCoverage(coverageData);
 
-  // ── 9. Remove stale generated files ────────────────────────────────────────────────────
-  if (errors.length === 0) {
+  // ── 10. Remove stale generated files ────────────────────────────────────────────────────
+  if (write && errors.length === 0) {
     prune(OUT_LESSONS, written);
     prune(OUT_LANDING, written);
   }
 
-  log(`content: ${plans.length} lessons from ${notes.length} notes, ${recoveredReport.length} recovered code blocks, ${errors.length} error(s)`);
+  const q = data.summary;
+  log(
+    `content: ${plans.length} lessons from ${notes.length} notes, ${recoveredReport.length} recovered code blocks; ` +
+      `quizzes ${q.quizzes.lessons}/${q.quizzes.lessons + q.quizzes.missing.length} lessons, cheat sheets ${q.cheatsheets.sheets}, ` +
+      `interview ${q.interview.reduce((n, t) => n + t.notes + t.web, 0)} questions; ${errors.length} error(s), ${warnings.length} warning(s)`,
+  );
   return { ok: errors.length === 0, errors, warnings, lessons: plans.length };
 }
 

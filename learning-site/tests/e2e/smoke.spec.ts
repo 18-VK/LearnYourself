@@ -7,7 +7,12 @@ interface SiteData {
 const site = JSON.parse(fs.readFileSync('src/data/generated/site.json', 'utf8')) as SiteData;
 const lessons = site.courses.flatMap((c) => c.modules.flatMap((m) => m.lessons));
 /** Visualizers that exist in the engine; any other placement shows the note's text plus a "planned" note. */
-const BUILT = new Set([...fs.readFileSync('src/viz/registry.ts', 'utf8').matchAll(/^\s+(\w+): \(\) => import/gm)].map((m) => m[1]!));
+const BUILT = new Set(
+  fs
+    .readdirSync('src/viz', { withFileTypes: true })
+    .filter((d) => d.isDirectory() && fs.existsSync(`src/viz/${d.name}/registry.ts`))
+    .flatMap((d) => [...fs.readFileSync(`src/viz/${d.name}/registry.ts`, 'utf8').matchAll(/^\s+(\w+): \(\) => import/gm)].map((m) => m[1]!)),
+);
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];

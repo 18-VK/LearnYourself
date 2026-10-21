@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const BASE_PATH = (process.env.BASE_PATH ?? '/LearnYourself/').replace(/\/?$/, '/');
-const ORIGIN = 'http://localhost:4321';
+/** LY_PORT lets several checkouts run their own preview server side by side. */
+const PORT = Number(process.env.LY_PORT ?? 4321);
+const ORIGIN = `http://localhost:${PORT}`;
 
 /** Smoke tests run against `astro preview`, i.e. the real production build under the base path. */
 export default defineConfig({
@@ -13,7 +15,7 @@ export default defineConfig({
   timeout: 45_000,
   use: { baseURL: ORIGIN + BASE_PATH, trace: 'retain-on-failure' },
   webServer: {
-    command: 'npx astro preview --port 4321',
+    command: `npx astro preview --port ${PORT}`,
     url: ORIGIN + BASE_PATH,
     reuseExistingServer: !process.env.CI,
     timeout: 90_000,

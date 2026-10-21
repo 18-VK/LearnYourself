@@ -9,9 +9,11 @@
   },
   "scripts": {
     "content": "tsx scripts/build-content.ts",
+    "content:dry": "tsx scripts/build-content.ts --dry",
     "dev": "astro dev",
     "build": "astro build && pagefind --site dist && tsx scripts/verify-output.ts",
     "preview": "astro preview",
+    "playground": "vite --config playground/vite.config.ts",
     "check": "astro check && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

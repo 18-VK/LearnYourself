@@ -8,11 +8,13 @@
  */
 import { buildContent } from './lib/generate';
 
-const result = await buildContent({ mode: 'check' });
+// --dry: validate only, write nothing (several checkouts or agents can run it at once)
+const dry = process.argv.includes('--dry');
+const result = await buildContent({ mode: 'check', write: !dry });
 if (!result.ok) {
   console.error(`\n${result.errors.length} problem(s) found:\n`);
   for (const e of result.errors) console.error(`• ${e}\n`);
   console.error('See coverage-report.md for the full picture.');
   process.exit(1);
 }
-console.log('content OK. See coverage-report.md.');
+console.log(dry ? 'content OK (dry run: nothing written).' : 'content OK. See coverage-report.md.');

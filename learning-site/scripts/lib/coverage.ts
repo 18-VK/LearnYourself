@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import type { DataSummary } from './data-check';
 import { COVERAGE_REPORT } from './paths';
 
 export interface NoteCoverage {
@@ -34,6 +35,9 @@ export interface CoverageData {
   planned: { id: string; title: string; noteFolder: string }[];
   assets: { file: string; publish: boolean; mode: string | null; credit: string | null }[];
   errors: string[];
+  warnings?: string[];
+  /** Quizzes, cheat sheets and interview questions (src/data/*). */
+  data?: DataSummary;
   /** Filled in by verify-output after the build: lesson id → counts found in the rendered HTML. */
   output: Record<string, OutputCounts> | null;
 }
@@ -61,6 +65,22 @@ export function writeCoverage(d: CoverageData): void {
   if (d.errors.length) {
     L.push('## Errors', '');
     for (const e of d.errors) L.push('```text', e, '```', '');
+  }
+  if (d.warnings?.length) {
+    L.push('## Warnings', '', 'Not build failures, but work left to do.', '');
+    for (const w of d.warnings) L.push(`- ${esc(w)}`);
+    L.push('');
+  }
+  if (d.data) {
+    const q = d.data;
+    L.push('## Quizzes, cheat sheets and interview questions', '');
+    L.push('| Data | Count |', '|---|---|');
+    L.push(`| Lessons with a quiz | ${q.quizzes.lessons} (${q.quizzes.questions} questions)${q.quizzes.missing.length ? `; ${q.quizzes.missing.length} teaching lesson(s) without one` : ' ✅'} |`);
+    L.push(`| Cheat sheets | ${q.cheatsheets.sheets} (${q.cheatsheets.items} items, ${q.cheatsheets.fromDocs} from docs)${q.cheatsheets.missing.length ? `; missing: ${q.cheatsheets.missing.join(', ')}` : ' ✅'} |`, '');
+    L.push('| Interview topic | From notes | Web-researched | Reviewed |', '|---|---|---|---|');
+    for (const t of q.interview) L.push(`| ${t.topic} | ${t.notes} | ${t.web} | ${t.reviewed} |`);
+    L.push('');
+    if (q.quizzes.missing.length) L.push(`Lessons without a quiz: ${q.quizzes.missing.join(', ')}`, '');
   }
 
   L.push('## Every note', '', '| Note | Goes to |', '|---|---|');
