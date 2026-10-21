@@ -1,0 +1,256 @@
+# DSA in C#
+# Source: Competitive Programming/ (dsa-roadmap.md is the course map; then collections, sorting, searching).
+# Practice/SortingAlgo is a console project, linked as "try it locally" rather than rendered.
+
+id: dsa
+title: "DSA in C#"
+shortTitle: "DSA"
+kind: course
+accent: amber
+icon: algorithm
+prerequisites: [phase-1]
+summary: >-
+  Data structures and algorithms for LeetCode-style problems in C#: a level-by-level roadmap, the C#
+  collections you reach for, and every sorting and searching algorithm in the notes, each with a
+  step-through visualizer driven by the notes' own C# code.
+
+modules:
+  - id: roadmap
+    title: "Course map"
+    lessons:
+      - id: dsa-roadmap
+        title: "DSA roadmap (C# / LeetCode focused)"
+        kind: roadmap
+        reason: "The prompt names dsa-roadmap.md as the course map; its levels become an interactive roadmap with persistent checkboxes."
+        sources:
+          - file: "Competitive Programming/dsa-roadmap.md"
+        place:
+          - viz: BigOGrowthVisualizer
+            props: { classes: ["O(1)", "O(log n)", "O(n)", "O(n log n)", "O(n²)", "O(2ⁿ)"] }
+            tier: 2
+            at: { section: "## Level 0 — Foundations (1–2 weeks)" }
+        related: [math/level-3/intermediate]
+
+  - id: csharp-toolbox
+    title: "The C# toolbox"
+    lessons:
+      - id: collections-cheatsheet
+        title: "C# data types & collections for DSA"
+        reason: "Also published as the 'C# collections & Big-O' cheat sheet (see _cheatsheets.yaml)."
+        sources:
+          - file: "Competitive Programming/csharp-dsa-collections-cheatsheet.md"
+        place:
+          - viz: CollectionVisualizer
+            props: { structures: [list-capacity, linked-list] }
+            tier: 2
+            at: { section: "## 2. Lists & Dynamic Arrays" }
+          - viz: CollectionVisualizer
+            props: { structures: [dictionary-buckets, hash-set] }
+            tier: 2
+            at: { section: "## 3. Hashing — Fast Lookup" }
+          - viz: CollectionVisualizer
+            props: { structures: [sorted-dictionary] }
+            tier: 2
+            at: { section: "## 4. Ordered / Sorted Structures" }
+          - viz: CollectionVisualizer
+            props: { structures: [stack, queue] }
+            tier: 2
+            at: { section: "## 5. Stack, Queue, Deque" }
+          - viz: CollectionVisualizer
+            props: { structures: [priority-queue-heap] }
+            tier: 2
+            at: { section: "## 6. Heaps / Priority Queues" }
+        related: [phase-1/collections-errors-async-io/collections]
+        cheatsheets: [collections-big-o]
+
+  - id: sorting
+    title: "Sorting"
+    lessons:
+      - id: stability-and-simple-sorts
+        title: "Stability, bubble, selection & insertion sort"
+        reason: "sorting-algorithms-notes.md (~24 min) is split into five lessons by algorithm family."
+        sources:
+          - file: "Competitive Programming/sorting-algorithms-notes.md"
+            until: "## 4. Merge Sort"
+        place:
+          - viz: StabilityDemo
+            props: { input: "equal keys coloured by original position" }
+            tier: 1
+            at: { section: '### Quick concept: What does "stable" mean?' }
+          - viz: SortVisualizer
+            props: { algorithm: bubble }
+            tier: 1
+            at: { section: "## 1. Bubble Sort" }
+          - viz: SortVisualizer
+            props: { algorithm: selection }
+            tier: 1
+            at: { section: "## 2. Selection Sort" }
+          - viz: SortVisualizer
+            props: { algorithm: insertion, preset: [2, 5, 7, 3] }
+            tier: 1
+            at: { section: "## 3. Insertion Sort" }
+        resources:
+          - tryLocally: "Competitive Programming/Practice/SortingAlgo"
+        cheatsheets: [sorting-searching]
+
+      - id: merge-and-quick-sort
+        title: "Merge sort & quick sort"
+        sources:
+          - file: "Competitive Programming/sorting-algorithms-notes.md"
+            from: "## 4. Merge Sort"
+            until: "## 6. Heap Sort"
+        place:
+          - viz: SortVisualizer
+            props: { algorithm: merge }
+            tier: 1
+            at: { section: "## 4. Merge Sort" }
+          - viz: SortVisualizer
+            props: { algorithm: quick }
+            tier: 1
+            at: { section: "## 5. Quick Sort" }
+          - viz: SortVisualizer
+            props: { algorithm: quick, preset: sorted, note: "worst case: last-element pivot on sorted input" }
+            tier: 1
+            at: { section: "## The mechanism", codeBlock: 1 }
+        cheatsheets: [sorting-searching]
+
+      - id: heap-sort
+        title: "Heap sort"
+        reason: "The note hotlinks an external heap-sort image; the heap visualizer (array and tree views in sync) replaces it, and the image stays as an 'original image' link."
+        sources:
+          - file: "Competitive Programming/sorting-algorithms-notes.md"
+            from: "## 6. Heap Sort"
+            until: "## 7. Counting Sort"
+        place:
+          - viz: SortVisualizer
+            props: { algorithm: heap, views: [array, tree] }
+            tier: 1
+            at: { section: "## 6. Heap Sort" }
+        cheatsheets: [sorting-searching]
+
+      - id: counting-radix-bucket
+        title: "Counting, radix & bucket sort"
+        sources:
+          - file: "Competitive Programming/sorting-algorithms-notes.md"
+            from: "## 7. Counting Sort"
+            until: "## Summary Table"
+        place:
+          - viz: SortVisualizer
+            props: { algorithm: counting-stable }
+            tier: 1
+            at: { section: "##### 1. Stable version (cumulative count)" }
+          - viz: SortVisualizer
+            props: { algorithm: counting-simple }
+            tier: 1
+            at: { section: "##### 2. Simple/unstable version" }
+          - viz: StabilityDemo
+            props: { algorithm: counting-by-age, input: notes-employees }
+            tier: 1
+            at: { section: "#### Worked example: sorting objects by a key" }
+          - viz: SortVisualizer
+            props: { algorithm: radix }
+            tier: 1
+            at: { section: "## 8. Radix Sort" }
+          - viz: SortVisualizer
+            props: { algorithm: bucket }
+            tier: 1
+            at: { section: "## 9. Bucket Sort" }
+        cheatsheets: [sorting-searching]
+
+      - id: sorting-summary
+        title: "Sorting summary & when to use what"
+        sources:
+          - file: "Competitive Programming/sorting-algorithms-notes.md"
+            from: "## Summary Table"
+        place:
+          - viz: SortSummaryTable
+            props: { linksToCompare: true, keepsStaticTable: true }
+            tier: 1
+            at: { section: "## Summary Table" }
+          - viz: SortCompare
+            props: { default: [quick, merge] }
+            tier: 1
+            at: { section: "## When to Use What (LeetCode Context)" }
+        cheatsheets: [sorting-searching]
+
+  - id: searching
+    title: "Searching"
+    lessons:
+      - id: linear-and-binary-search
+        title: "Linear search, binary search & lower/upper bound"
+        reason: "searching-algorithms-notes.md (~15 min, 15 code blocks) is split into four lessons."
+        sources:
+          - file: "Competitive Programming/searching-algorithms-notes.md"
+            until: "## 4. Binary Search on Answer (Very Common in LeetCode)"
+        place:
+          - viz: SearchVisualizer
+            props: { algorithm: linear }
+            tier: 1
+            at: { section: "## 1. Linear Search" }
+          - viz: SearchVisualizer
+            props: { algorithm: binary, variants: [iterative, recursive], predictMode: true }
+            tier: 1
+            at: { section: "## 2. Binary Search" }
+          - viz: SearchVisualizer
+            props: { algorithm: bounds, preset: [1, 2, 2, 2, 3], target: 2 }
+            tier: 1
+            at: { section: "## 3. Lower Bound / Upper Bound (Binary Search Variants)" }
+        cheatsheets: [sorting-searching]
+
+      - id: more-array-searches
+        title: "Binary search on answer, jump, interpolation, exponential & ternary"
+        sources:
+          - file: "Competitive Programming/searching-algorithms-notes.md"
+            from: "## 4. Binary Search on Answer (Very Common in LeetCode)"
+            until: "## 9. Hash-Based Search"
+        place:
+          - viz: SearchVisualizer
+            props: { algorithm: sqrt-answer }
+            tier: 1
+            at: { section: "## 4. Binary Search on Answer (Very Common in LeetCode)" }
+          - viz: SearchVisualizer
+            props: { algorithm: jump }
+            tier: 1
+            at: { section: "## 5. Jump Search" }
+          - viz: SearchVisualizer
+            props: { algorithm: interpolation }
+            tier: 1
+            at: { section: "## 6. Interpolation Search" }
+          - viz: SearchVisualizer
+            props: { algorithm: exponential }
+            tier: 1
+            at: { section: "## 7. Exponential Search" }
+          - viz: SearchVisualizer
+            props: { algorithm: ternary, view: function-plot }
+            tier: 1
+            at: { section: "## 8. Ternary Search" }
+        cheatsheets: [sorting-searching]
+
+      - id: hash-bfs-dfs
+        title: "Hash-based search, BFS & DFS"
+        sources:
+          - file: "Competitive Programming/searching-algorithms-notes.md"
+            from: "## 9. Hash-Based Search"
+            until: "## Built-in C# Search Methods"
+        place:
+          - viz: SearchVisualizer
+            props: { algorithm: hash, showCollisions: true }
+            tier: 1
+            at: { section: "## 9. Hash-Based Search" }
+          - viz: GraphSearchVisualizer
+            props: { algorithm: bfs, editable: true, presets: [graph, grid-as-graph] }
+            tier: 1
+            at: { section: "### Breadth-First Search (BFS)" }
+          - viz: GraphSearchVisualizer
+            props: { algorithm: dfs, editable: true, presets: [graph, grid-as-graph] }
+            tier: 1
+            at: { section: "### Depth-First Search (DFS)" }
+        related: [dsa/csharp-toolbox/collections-cheatsheet]
+        cheatsheets: [sorting-searching]
+
+      - id: search-built-ins-and-summary
+        title: "Built-in search methods & when to use what"
+        sources:
+          - file: "Competitive Programming/searching-algorithms-notes.md"
+            from: "## Built-in C# Search Methods"
+        cheatsheets: [sorting-searching]

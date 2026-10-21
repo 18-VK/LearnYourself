@@ -1,0 +1,105 @@
+# Site-level curriculum: catalogue, suggested path, and every note that does not map to a course lesson.
+
+site:
+  name: "LearnYourself"
+  repo: "https://github.com/18-VK/LearnYourself"
+  # The public URL is https://18-vk.github.io/LearnYourself/; site and base are set in astro.config.mjs.
+
+catalogue:
+  # Order of the course cards on the home page.
+  order: [phase-1, sql-server, phase-2, backend-roadmap, dsa, math, desktop]
+
+suggestedPath:
+  main: [phase-1, sql-server, phase-2, backend-roadmap]
+  parallel:
+    - course: dsa
+      alongside: [phase-1, sql-server, phase-2]
+      note: "Runs in parallel with the main path once Phase 1's language basics are done."
+    - course: math
+      alongside: [dsa]
+      note: "Pick topics from each level as DSA problems need them."
+  branches:
+    - course: desktop
+      after: phase-1
+      note: "Optional branch for WinForms and WPF."
+
+topNav: [courses, cheat-sheets, interview-prep]
+
+# Notes (or slices of notes) routed to Interview Prep instead of a course lesson.
+# Interview-headed sections inside lessons stay in their lessons and are ALSO collected (see _interview.yaml).
+interview:
+  - file: "InterviewQuestion.md"
+    reason: "Repo-root interview Q&A note (3 questions); feeds Interview Prep with origin: notes."
+  - file: "Phase2-ASP.NetAndBackend/SQLTutorial/11.Question.md"
+    reason: "Interview Q&A on stored procedures and the N+1 problem; feeds Interview Prep with origin: notes."
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+    from: "## C++ questions for interview"
+    until: "# using keyword in C#"
+    reason: "C++ interview questions inside a C# grab-bag note. No course covers C++, so these become Interview Prep items tagged notCoveredYet: true."
+
+# Notes whose content is fully contained in another mapped note. The build re-verifies equivalence on every
+# run (ignoring Markdown formatting: fences, emphasis, heading levels, list markers, quote markers, punctuation
+# style) and fails with a diff if the copies ever diverge, so edits to either copy are never silently lost.
+duplicates:
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/Dot Net_CLI.md"
+    duplicateOf: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Dot Net_CLI.md"
+    check: formatting-insensitive
+    reason: >-
+      Same commands and text; the 15.C#_AdvanceTopics/ copy adds code fences and Markdown formatting. A
+      normalised line-by-line comparison found no content in the root copy that is missing from the other.
+
+# Notes rendered only as a link resource on a lesson (see `linkFrom` in the course manifests).
+linkOnly:
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Tutoriallink.md"
+    usedBy: phase-1/ef-core/ef-core-basics
+    reason: "Near-empty: a heading and one external tutorial URL; shown as 'Further reading' on the EF Core basics lesson."
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/16.C#_JSON_XML/XSDForValidation.md"
+    usedBy: phase-1/json-and-xml/xml-serialization
+    reason: "Near-empty: a heading and a ChatGPT share link (kept as a link, per your decision); shown as 'Further reading' on the XML lesson."
+
+# Notes kept out of the site. Each needs a reason; the coverage report lists them.
+excluded:
+  - file: "InterviewPrep/InterviewPrep/Intro/IntroForInterview.txt"
+    reason: "Personal: a self-introduction with name, employer and experience. Excluded by default per the prompt; ask before including."
+  - file: "InterviewPrep/Things, I'll focus on.md"
+    reason: "Personal interview-preparation plan. Excluded by default per the prompt; ask before including."
+
+# Never part of the inventory.
+ignore:
+  - "CLAUDE.md"
+  - "WEBSITE_BUILD_PROMPT.md"
+  - "learning-site/**"
+  - "**/bin/**"
+  - "**/obj/**"
+  - "**/.vs/**"
+  - "**/node_modules/**"
+
+# Notes whose C#, XAML, SQL or shell code is written as plain text instead of fenced code blocks.
+# The pipeline detects those runs and renders them as code (the notes are not changed). Every recovered
+# block is listed in the coverage report so a wrong guess is easy to spot.
+recoverUnfencedCode:
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WFA_Notes.md"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/2.WPFNotes.md"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.AdvanceTopics.md"
+  - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_StoredProcedure.md"
+
+# Lines dropped from rendered lessons (decided 2026-10-21: drop chatbot follow-up offers and filler,
+# keep chat-style lines that carry content). Matched by the start of the line, or a whole section by its
+# heading. Each entry must match exactly once or the build fails, and every omission is listed in the
+# coverage report, so omissions are explicit and never silent. The notes themselves keep these lines.
+omitLines:
+  - file: "BackendRoadmap/ProductionGrade_WebAPI_Checklist.md"
+    startsWith: "Want me to go deep on any one of these"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+    startsWith: "Would you like me to show you a step-by-step example of loading an embedded DLL"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+    startsWith: "Would you like me to show you a full example of using this loop"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+    startsWith: "Great question! Let's unpack this clearly:"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+    startsWith: "Would you like me to show you a practical example where `ResolveEventArgs.Name`"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+    startsWith: "Would you like me to create a mini practice test with C++ coding questions"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/ProjectExampleWithCommand.md"
+    section: "# If you want next, I can:"

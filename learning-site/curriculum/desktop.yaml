@@ -1,0 +1,243 @@
+# Desktop — WinForms & WPF
+# Source: Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/ and 21.TaskFlow Studio/.
+# Split out of Phase 1 because it is large (~30 lessons) and is an optional branch after Phase 1.
+
+id: desktop
+title: "Desktop — WinForms & WPF"
+shortTitle: "Desktop"
+kind: course
+accent: teal
+icon: window
+prerequisites: [phase-1]
+summary: >-
+  WinForms controls and dialogs, then WPF: XAML, layout, styles and templates, MVVM, data binding,
+  commands, dialog services and a real-app setup with the Generic Host, ending with the TaskFlow
+  Studio capstone notes.
+
+modules:
+  - id: winforms
+    title: "WinForms"
+    lessons:
+      - id: winforms-intro-and-controls
+        title: "WinForms intro & common controls (Label to DataGridView)"
+        reason: "WFA_Notes.md (~22 min) has no sub-headings inside its control list, so it is split at the control '9) DateTimePicker'."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WFA_Notes.md"
+            untilLine: "9) DateTimePicker"
+
+      - id: winforms-more-controls-and-layout
+        title: "More controls (DateTimePicker to Panel) & layout panels"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WFA_Notes.md"
+            fromLine: "9) DateTimePicker"
+
+      - id: winforms-layout-tutorial
+        title: "WinForms layout tutorial"
+        reason: "Unnumbered; a hands-on layout exercise that follows the layout-panel notes."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/winforms_full_layout.md"
+
+      - id: winforms-dialogs
+        title: "Dialogs & ErrorProvider"
+        reason: "WFA_2.md is the dialogs note. The OpenFileDialog/SaveFileDialog section of 19. OtherTopics/Notes.md covers the same controls; placed here by topic."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WFA_2.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+            from: "# OpenFileDialog and SaveFileDialog"
+            until: "# Using keyword"
+
+      - id: personal-finance-tracker-notes
+        title: "Practice: Personal Finance Tracker (row numbers, binding & keyset paging)"
+        reason: "Notes from the WFA_Practice project; closes the WinForms module."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WFA_Practice/Personal Finance Tracker/Notes.md"
+        related: [sql-server/data-types-and-commands/crud-filtering-sorting]
+
+  - id: wpf-foundations
+    title: "WPF foundations"
+    lessons:
+      - id: wpf-intro
+        title: "Introduction to WPF & WinForms vs WPF"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/1.WPFIntro.md"
+
+      - id: xaml-and-controls
+        title: "XAML & WPF controls"
+        reason: "2.WPFNotes.md (~18 min, 15 tables) is split into three lessons at its top-level headings."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/2.WPFNotes.md"
+            until: "# Layout system — quick overview"
+        cheatsheets: [wpf-mvvm]
+
+      - id: layout-system
+        title: "The layout system"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/2.WPFNotes.md"
+            from: "# Layout system — quick overview"
+            until: "# ItemsControl"
+
+      - id: itemscontrol-and-virtualization
+        title: "ItemsControl, virtualization & ContentControl"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/2.WPFNotes.md"
+            from: "# ItemsControl"
+
+      - id: dependency-properties
+        title: "Dependency properties"
+        reason: "3.OtherUsefulThings.md (~21 min) is split into four lessons at its top-level headings."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md"
+            until: "# Style Tag(XAML)"
+
+      - id: styles-and-resources
+        title: "Styles, triggers & resources"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md"
+            from: "# Style Tag(XAML)"
+            until: "# ContentTemplate and ContentPresenter"
+        cheatsheets: [wpf-mvvm]
+
+      - id: control-and-data-templates
+        title: "ControlTemplate, ContentPresenter & DataTemplate"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md"
+            from: "# ContentTemplate and ContentPresenter"
+            until: "# Resource Directory"
+
+      - id: resource-dictionaries-and-sizing
+        title: "ResourceDictionary & sizing"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md"
+            from: "# Resource Directory"
+
+  - id: mvvm
+    title: "MVVM, binding & commands"
+    lessons:
+      - id: mvvm
+        title: "MVVM in WPF"
+        reason: "4.MVVMandDataBindings.md (~16 min, 37 code blocks) is split into three lessons."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/4.MVVMandDataBindings.md"
+            until: "# What is Data Binding?"
+        place:
+          - diagram: mvvm-layers
+            tier: 2
+            at: { section: "# MVVM in WPF", codeBlock: 1 }
+        cheatsheets: [wpf-mvvm]
+
+      - id: data-binding
+        title: "Data binding, DataContext & binding sources"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/4.MVVMandDataBindings.md"
+            from: "# What is Data Binding?"
+            until: "## Converter (IValueConverter)"
+        place:
+          - viz: DataBindingVisualizer
+            props: { modes: [OneWay, TwoWay, OneTime], showPropertyChanged: true }
+            tier: 2
+            at: { section: "## Binding modes in WPF" }
+        cheatsheets: [wpf-mvvm]
+
+      - id: converters-and-code-behind
+        title: "Value converters & the 'no logic in code-behind' rule"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/4.MVVMandDataBindings.md"
+            from: "## Converter (IValueConverter)"
+
+      - id: commands
+        title: "ICommand, RelayCommand & CommandManager"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/5.RelayCommandNOther.md"
+            until: "# CommandParameter"
+        place:
+          - viz: CommandCanExecuteVisualizer
+            props: { scenario: can-execute-toggle }
+            tier: 2
+            at: { section: "## RelayCommand / DelegateCommand" }
+
+      - id: command-parameter-and-async-commands
+        title: "CommandParameter & AsyncRelayCommand"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/5.RelayCommandNOther.md"
+            from: "# CommandParameter"
+
+      - id: real-mvvm-example
+        title: "A real MVVM example"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/6.RealExampleofMVVM.md"
+
+      - id: project-example-with-commands
+        title: "Project example with commands"
+        reason: "Unnumbered worked project for notes 5–6; placed right after them."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/ProjectExampleWithCommand.md"
+
+      - id: observablecollection-and-validation
+        title: "ObservableCollection & validation"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/7.MoreOnThis.md"
+
+      - id: dialog-service-and-message-bus
+        title: "IDialogService, IMessageBus & the Dispatcher"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/8.IDialogService.md"
+
+      - id: wpf-summary
+        title: "WPF summary"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/9.Summary.md"
+
+  - id: real-app-architecture
+    title: "Real-app architecture"
+    lessons:
+      - id: real-app-setup
+        title: "Real app setup: DI, appsettings & the Generic Host"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/10.RealAppSetup_mustcheck.md"
+        related: [phase-1/advanced-csharp/dependency-injection, phase-1/advanced-csharp/configuration]
+
+      - id: window-shell-pattern
+        title: "The window shell pattern"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/11.WindowShellPattern.md"
+
+      - id: templatebinding-and-custom-controls
+        title: "TemplateBinding, UserControl vs CustomControl"
+        reason: "Two notes are numbered 12; ties are ordered alphabetically (12.AdvanceTopics before 12.Tips)."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.AdvanceTopics.md"
+
+      - id: app-state-and-communication
+        title: "Communicating across the app: AppState"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.Tips.md"
+
+      - id: debounce-search
+        title: "Debounced search in WPF & WinForms"
+        reason: "20.WFA_and_WPF root note covering both frameworks; placed with the real-app techniques."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/DebounceSearch.md"
+        place:
+          - viz: DebounceTimelineVisualizer
+            props: { delayMs: 300 }
+            tier: 2
+            at: { section: "# What debouncing actually means" }
+
+      - id: wpf-job-ready-checklist
+        title: "WPF job-ready checklist"
+        kind: checklist
+        reason: "Unnumbered checklist; a persistent checklist at the end of the WPF material."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/WPF_Job_Ready_Roadmap_Checklist.md"
+
+  - id: capstone-taskflow-studio
+    title: "Capstone: TaskFlow Studio"
+    lessons:
+      - id: taskflow-studio
+        title: "TaskFlow Studio: autosave, scopes & failing fast"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio/TaskFlowStudio/Notes.md"
+        resources:
+          - asset: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio/TaskFlowStudio/Modern Wpf Practice Project — Design.pdf"
+          - tryLocally: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio"
+        related: [phase-1/advanced-csharp/hosted-services]

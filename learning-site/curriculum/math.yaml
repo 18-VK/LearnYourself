@@ -1,0 +1,103 @@
+# Math for Programming
+# Source: Competitive Programming/math-for-programming-roadmap.md (roadmap only; no lesson content).
+#
+# Why a separate course and not a DSA track: the roadmap is large (6 levels, ~196 checkboxes), has its
+# own learning paths and resources, and levels 5–6 (calculus, ML math, cryptography, research topics)
+# go well beyond DSA. Keeping it separate keeps the DSA course about implemented algorithms. The two
+# cross-link: DSA's roadmap links to the math levels, and math topics link to DSA lessons where they exist.
+
+id: math
+title: "Math for Programming"
+shortTitle: "Math"
+kind: roadmap
+accent: emerald
+icon: sigma
+prerequisites: []
+summary: >-
+  A roadmap of the math a programmer uses, from number systems and logic to probability, linear
+  algebra and specialisation topics. Each level is a checklist that saves your progress.
+
+landing:
+  sources:
+    - file: "Competitive Programming/math-for-programming-roadmap.md"
+      until: "## Level 1: Foundations (Beginner)"
+      reason: "Title and 'how to use this' guidance; shown on the course landing page."
+
+modules:
+  - id: level-1
+    title: "Level 1: Foundations"
+    lessons:
+      - id: foundations
+        title: "Level 1: Foundations (Beginner)"
+        kind: checklist
+        sources:
+          - file: "Competitive Programming/math-for-programming-roadmap.md"
+            from: "## Level 1: Foundations (Beginner)"
+            until: "## Level 2: Core Programming Math (Easy to Intermediate)"
+        related: [phase-1/language-basics/operators]
+
+  - id: level-2
+    title: "Level 2: Core programming math"
+    lessons:
+      - id: core-programming-math
+        title: "Level 2: Core Programming Math (Easy to Intermediate)"
+        kind: checklist
+        sources:
+          - file: "Competitive Programming/math-for-programming-roadmap.md"
+            from: "## Level 2: Core Programming Math (Easy to Intermediate)"
+            until: "## Level 3: Intermediate (Algorithms & Real Systems)"
+
+  - id: level-3
+    title: "Level 3: Intermediate"
+    lessons:
+      - id: intermediate
+        title: "Level 3: Intermediate (Algorithms & Real Systems)"
+        kind: checklist
+        sources:
+          - file: "Competitive Programming/math-for-programming-roadmap.md"
+            from: "## Level 3: Intermediate (Algorithms & Real Systems)"
+            until: "## Level 4: Upper-Intermediate (Interview & Engineering Depth)"
+        related: [dsa/roadmap/dsa-roadmap, dsa/sorting/sorting-summary]
+
+  - id: level-4
+    title: "Level 4: Upper-intermediate"
+    lessons:
+      - id: upper-intermediate
+        title: "Level 4: Upper-Intermediate (Interview & Engineering Depth)"
+        kind: checklist
+        sources:
+          - file: "Competitive Programming/math-for-programming-roadmap.md"
+            from: "## Level 4: Upper-Intermediate (Interview & Engineering Depth)"
+            until: "## Level 5: Advanced (Specialization Math)"
+
+  - id: level-5
+    title: "Level 5: Advanced"
+    lessons:
+      - id: advanced
+        title: "Level 5: Advanced (Specialization Math)"
+        kind: checklist
+        sources:
+          - file: "Competitive Programming/math-for-programming-roadmap.md"
+            from: "## Level 5: Advanced (Specialization Math)"
+            until: "## Level 6: Expert / Research-Level"
+
+  - id: level-6
+    title: "Level 6: Expert"
+    lessons:
+      - id: expert
+        title: "Level 6: Expert / Research-Level"
+        kind: checklist
+        sources:
+          - file: "Competitive Programming/math-for-programming-roadmap.md"
+            from: "## Level 6: Expert / Research-Level"
+            until: "## Suggested Learning Paths"
+
+  - id: paths-and-resources
+    title: "Paths, order & resources"
+    lessons:
+      - id: learning-paths-and-resources
+        title: "Suggested learning paths, order & free resources"
+        reason: "The note's static 'Progress Tracker' table is shown alongside live progress computed from the level checklists."
+        sources:
+          - file: "Competitive Programming/math-for-programming-roadmap.md"
+            from: "## Suggested Learning Paths"

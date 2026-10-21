@@ -1,0 +1,561 @@
+# Phase 1 — C# & .NET Fundamentals
+# Source: Phase1-CSharp_And_DotNet_core_fundamental/ folders 1–19, Phase 1 root notes, and repo-root intro notes.
+# Folders 20–21 (WinForms/WPF, TaskFlow Studio) are the separate Desktop course.
+
+id: phase-1
+title: "Phase 1 — C# & .NET Fundamentals"
+shortTitle: "Phase 1"
+kind: course
+accent: violet
+icon: csharp
+prerequisites: []
+summary: >-
+  The C# language and the .NET base libraries, in the order the notes were studied: syntax and types,
+  OOP, collections, exceptions, async and threads, JSON/XML, LINQ, EF Core, Dapper and logging.
+
+landing:
+  sources:
+    - file: "Phase1-CSharp_And_DotNet_core_fundamental/Musthave.md"
+      reason: "A list of must-have topic headings with no body text; shown as the course's 'must-have topics' panel."
+
+modules:
+  - id: getting-started
+    title: "Getting started with .NET"
+    lessons:
+      - id: what-is-dotnet
+        title: "What is .NET? Framework, .NET Core, CLR & JIT"
+        reason: "Repo-root intro note; read before folder 1."
+        sources:
+          - file: "Intro.txt"
+        related: [phase-2/foundations/aspnet-core-overview]
+
+      - id: project-types
+        title: "C# and .NET project types"
+        reason: "Two repo-root notes on the same topic: Visual Studio templates (.md) and CLI commands per template (.txt). Merged; both kept in full."
+        sources:
+          - file: "Type of CSharp projects.md"
+          - file: "DotNet_ProjectTypes.txt"
+
+      - id: dotnet-cli
+        title: "The .NET CLI"
+        reason: >-
+          Tooling used from the first lesson, so placed here rather than in folder 15. Uses the fenced copy in
+          15.C#_AdvanceTopics/; the Phase 1 root copy is the same content without code fences (see duplicates in
+          _site.yaml). Note.md (running a .cs file without a project) is appended because it is the same topic.
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Dot Net_CLI.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/Note.md"
+        cheatsheets: [dotnet-cli]
+
+  - id: language-basics
+    title: "Language basics"
+    lessons:
+      - id: csharp-fundamentals
+        title: "Identifiers & data types"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/1.C#_Basics/C#_Fundamentals.md"
+        place:
+          - viz: StackHeapVisualizer
+            props: { scenario: value-vs-reference }
+            tier: 1
+            at: { section: "## 2. Reference Types" }
+        cheatsheets: [csharp-keywords-operators-patterns]
+
+      - id: console-class
+        title: "The Console class"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/1.C#_Basics/ConsoleClass.md"
+
+      - id: operators
+        title: "Operators"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/2.C#_operators/Notes.md"
+        cheatsheets: [csharp-keywords-operators-patterns]
+
+      - id: keywords
+        title: "C# keywords"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/3.C#_Keywords/CSharp Keywords - Definitions and Examples.md"
+        cheatsheets: [csharp-keywords-operators-patterns]
+
+      - id: var-and-dynamic
+        title: "var and dynamic"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/3.C#_Keywords/Var_and_Dynamic.md"
+
+      - id: control-flow-and-loops
+        title: "Control statements & loops"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/4.C#_control_stmt_N_Loops/Note.md"
+
+      - id: delegates-and-lambdas
+        title: "Delegates & lambda expressions"
+        reason: "LamdaExpression.md is a 30-line companion to the delegates note in the same folder; merged."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/5.C#_delegates/Note.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/5.C#_delegates/LamdaExpression.md"
+        place:
+          - viz: InvocationListVisualizer
+            props: { scenario: multicast-delegate }
+            tier: 2
+            at: { section: "## Multicast behavior (`+=` / `-=`)" }
+
+  - id: oop-and-types
+    title: "OOP & types"
+    lessons:
+      - id: oop
+        title: "OOP in C#"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Note.md"
+        place:
+          - viz: StackHeapVisualizer
+            props: { scenario: boxing }
+            tier: 1
+            at: { section: "## Boxing and unboxing" }
+
+      - id: abstract-class-vs-interface
+        title: "Abstract class vs interface"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md"
+
+      - id: struct-vs-class
+        title: "Struct vs class"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md"
+        place:
+          - viz: StackHeapVisualizer
+            props: { scenario: struct-vs-class-copy }
+            tier: 1
+            at: { section: "## Memory Behavior" }
+
+      - id: generics
+        title: "Generics"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Generics.md"
+
+      - id: arrays-and-arraylist
+        title: "Arrays & ArrayList"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/7.C#_Array N_Arraylist/Note.md"
+        cheatsheets: [collections-big-o]
+
+      - id: strings-and-stringbuilder
+        title: "Strings & StringBuilder"
+        reason: >-
+          StringBuilder.md is the companion note in the same folder; merged. The 'String Interpolation' section of
+          19. OtherTopics/Notes.md (a grab-bag note) is placed here by topic.
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/8.C#_String/Note.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/8.C#_String/StringBuilder.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+            from: "# String Interpolation"
+            until: "# Environment Variables in C#"
+        place:
+          - viz: StringBuilderVisualizer
+            props: { scenario: immutability-vs-buffer }
+            tier: 3
+            at: { section: "## Performance Difference" }
+
+      - id: tuples
+        title: "Tuples"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/9.C#_Tuple/Note.md"
+
+      - id: indexers-and-properties
+        title: "Indexers & properties"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/10.C#_Indexer_and_properties/Note.md"
+
+  - id: collections-errors-async-io
+    title: "Collections, errors, async & files"
+    lessons:
+      - id: collections
+        title: "Collections"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/11.C#_Collections/Note.md"
+        related: [dsa/csharp-toolbox/collections-cheatsheet]
+        cheatsheets: [collections-big-o]
+
+      - id: exception-handling
+        title: "Exception handling"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/12.C#_ExceptionHandling/Note.md"
+        place:
+          - viz: CallStackVisualizer
+            props: { scenario: exception-through-finally }
+            tier: 2
+            at: { section: "## Re-Throwing exceptions" }
+        related: [phase-2/pipeline/global-exception-handling]
+
+      - id: async-await
+        title: "Asynchronous programming"
+        reason: "The Dispose/using sections in the middle of this note move to the 'IDisposable & using' lesson."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/13.C#_AsynchronousProgramming/Note.md"
+            until: "## Dispose in C#"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/13.C#_AsynchronousProgramming/Note.md"
+            from: "## Raise flag to stop async call"
+        place:
+          - viz: AsyncTimelineVisualizer
+            props: { scenarios: [sync-vs-async, await-releases-thread, when-all] }
+            tier: 1
+            at: { section: "## `async` and `await`" }
+        related: [phase-1/threads-and-concurrency/threadpool-and-task]
+        cheatsheets: [async-multithreading]
+
+      - id: dispose-and-using
+        title: "IDisposable & the using statement"
+        reason: >-
+          Groups the Dispose/using sections of the async note with the 'using keyword in C#' section of
+          19. OtherTopics/Notes.md, so resource cleanup is taught in one place.
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/13.C#_AsynchronousProgramming/Note.md"
+            from: "## Dispose in C#"
+            until: "## Raise flag to stop async call"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+            from: "# using keyword in C#"
+
+      - id: file-handling
+        title: "File handling: streams, Path, Directory & File"
+        reason: "Note_2.md (Path/Directory/File) is the companion note in the same folder; merged."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/14.C#_FileHandling/Note.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/14.C#_FileHandling/Note_2.md"
+
+  - id: advanced-csharp
+    title: "Advanced C# & the Generic Host"
+    lessons:
+      - id: modern-csharp-syntax
+        title: "Modern C# syntax: target-typed new to default interface methods"
+        reason: "Notes_3.md (~13 min) covers two distinct groups of features; split at '# Records'."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Notes_3.md"
+            until: "# Records"
+
+      - id: records-equality-partial
+        title: "Records, Equals/GetHashCode & partial classes"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Notes_3.md"
+            from: "# Records"
+
+      - id: pattern-matching
+        title: "Pattern matching"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/CSharp_Pattern_Matching_Notes.md"
+        cheatsheets: [csharp-keywords-operators-patterns]
+
+      - id: extension-methods
+        title: "Extension methods"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/ExtensionMethod.md"
+
+      - id: events
+        title: "Events & event handling"
+        reason: "Unnumbered; follows delegates by topic."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/EventsNEventHandling.md"
+        place:
+          - viz: InvocationListVisualizer
+            props: { scenario: event-subscribers }
+            tier: 2
+            at: { section: "# Multicast and ordering" }
+
+      - id: dependency-injection
+        title: "Dependency injection"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Dependency_Injection.md"
+        place:
+          - viz: DiLifetimesVisualizer
+            props: { scenario: lifetimes }
+            tier: 2
+            at: { section: "## Deep dive" }
+          - viz: DiLifetimesVisualizer
+            props: { scenario: captive-dependency }
+            tier: 2
+            at: { section: "## The Captive Dependency trap" }
+        related: [phase-2/pipeline/middleware, phase-2/controllers-and-routing/project-setup]
+        cheatsheets: [aspnet-core]
+
+      - id: configuration
+        title: "IConfiguration & appsettings.json"
+        reason: >-
+          AppSettingExample.md is a step-by-step companion on the same topic; merged. The 'Background service'
+          section at the end of IConfigurationNAppsetting.md moves to the hosted-services lesson.
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/IConfigurationNAppsetting.md"
+            until: "# Background service"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/AppSettingExample.md"
+
+      - id: environment-and-launchsettings
+        title: "Environment variables & launchSettings.json"
+        reason: "Sections of the 19. OtherTopics/Notes.md grab-bag note, placed next to configuration by topic."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+            from: "# Environment Variables in C#"
+            until: "# OpenFileDialog and SaveFileDialog"
+
+      - id: hosted-services
+        title: "Hosted services & BackgroundService"
+        reason: "Joins the dedicated hosted-services note with the 'Background service' section of IConfigurationNAppsetting.md."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/DotNet_HostedService_N_BGService.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/IConfigurationNAppsetting.md"
+            from: "# Background service"
+
+      - id: resources-and-assembly-loading
+        title: "ResourceManager & assembly resolution"
+        reason: >-
+          The '# Using keyword' section of 19. OtherTopics/Notes.md is about AppDomain.AssemblyResolve (loading
+          embedded DLLs), which is what the ResourceManager note's second half covers; merged by topic.
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/ResourceManager_DotNet .md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+            from: "# Using keyword"
+            until: "## C++ questions for interview"
+
+  - id: json-and-xml
+    title: "JSON & XML"
+    lessons:
+      - id: json
+        title: "JSON in C#"
+        reason: "MemoryStream.md is a 37-line reference; merged into the JSON lesson as the prompt suggests."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/16.C#_JSON_XML/JSON_Notes.md"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/16.C#_JSON_XML/MemoryStream.md"
+
+      - id: xml-serialization
+        title: "XML serialization"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/16.C#_JSON_XML/XML_Notes.md"
+        resources:
+          - linkFrom: "Phase1-CSharp_And_DotNet_core_fundamental/16.C#_JSON_XML/XSDForValidation.md"
+
+      - id: xpath
+        title: "XPath"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/16.C#_JSON_XML/XPathExample.md"
+
+  - id: threads-and-concurrency
+    title: "Threads & concurrency"
+    lessons:
+      - id: threads
+        title: "Threads & the Thread class"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/Notes.md"
+        cheatsheets: [async-multithreading]
+
+      - id: exceptions-in-threads
+        title: "Exceptions in threads"
+        reason: "MultithreadingPractice/Mustread.md; placed right after the Thread class."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/MultithreadingPractice/Mustread.md"
+
+      - id: threadpool-and-task
+        title: "ThreadPool & Task"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/ThreadpoolAndTask.md"
+        place:
+          - viz: ThreadPoolVisualizer
+            props: { scenario: work-queue }
+            tier: 3
+            at: { section: "## ThreadPool methods" }
+        related: [phase-1/collections-errors-async-io/async-await]
+
+      - id: continuations-configureawait-valuetask
+        title: "Continuations, ConfigureAwait & ValueTask"
+        reason: "OtherTopics.md mixes three topics; its continuation and ValueTask sections are grouped here, locking primitives get their own lesson."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/OtherTopics.md"
+            until: "## `lock` (keyword) – Syntactic sugar for Monitor"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/OtherTopics.md"
+            from: "## What is ValueTask?"
+
+      - id: race-conditions-and-deadlocks
+        title: "Race conditions & deadlocks"
+        reason: "Unnumbered; placed before the locking primitives that fix these problems."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/DeadlockNRaceCondition.md"
+        place:
+          - viz: ThreadInterleavingVisualizer
+            props: { scenario: deadlock-lock-order }
+            tier: 1
+            at: { section: "## Deadlocks" }
+          - viz: ThreadInterleavingVisualizer
+            props: { scenario: race-count-increment, showLockFix: true }
+            tier: 1
+            at: { section: "## Race Conditions" }
+
+      - id: locking-primitives
+        title: "lock, Monitor, Mutex, Semaphore & SemaphoreSlim"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/OtherTopics.md"
+            from: "## `lock` (keyword) – Syntactic sugar for Monitor"
+            until: "## What is ValueTask?"
+
+      - id: concurrent-collections
+        title: "Concurrent collections"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/Concurrent collections in multithreading.md"
+
+  - id: linq
+    title: "LINQ"
+    lessons:
+      - id: linq-basics
+        title: "LINQ basics & query syntax"
+        reason: "18.LINQ/Notes.md (~19 min, 63 code blocks) is split at its operator catalogue."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Notes.md"
+            until: "## Standard query operators (method/fluent syntax)"
+        cheatsheets: [linq]
+
+      - id: query-operators-filtering-to-aggregation
+        title: "Query operators: Where to Aggregate"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Notes.md"
+            from: "## Standard query operators (method/fluent syntax)"
+            until: "### 11) `First()` / `FirstOrDefault()` / `Single()` / `SingleOrDefault()` / `ElementAt()` / `ElementAtOrDefault()`"
+        cheatsheets: [linq]
+
+      - id: query-operators-element-to-zip
+        title: "Query operators: First to Zip"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Notes.md"
+            from: "### 11) `First()` / `FirstOrDefault()` / `Single()` / `SingleOrDefault()` / `ElementAt()` / `ElementAtOrDefault()`"
+        cheatsheets: [linq]
+
+      - id: deferred-vs-immediate
+        title: "Deferred vs immediate execution"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/DeferredVsImmediate.md"
+        place:
+          - viz: LinqPipelineVisualizer
+            props: { scenario: where-select-pull, compareToList: true }
+            tier: 1
+            at: { section: "## 🧪 2️⃣ Examples" }
+        cheatsheets: [linq]
+
+      - id: linq-joins
+        title: "LINQ joins & set operators"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Joins.md"
+        resources:
+          - asset: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Join.jpg"
+        related: [sql-server/querying/joins]
+        cheatsheets: [linq]
+
+  - id: ef-core
+    title: "Data access with EF Core"
+    lessons:
+      - id: ways-to-access-a-database
+        title: "Ways to use a relational database from C#"
+        reason: "Opening section of the 19. OtherTopics/Notes.md grab-bag; an overview of ADO.NET, Dapper and EF Core, so it starts the data-access modules."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+            until: "# String Interpolation"
+
+      - id: ef-core-basics
+        title: "EF Core basics: ORM, DbContext, DbSet & migrations"
+        reason: "EFCore/Notes.md (~24 min) is split into three lessons at its top-level headings."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes.md"
+            until: "# CRUD Operations"
+        resources:
+          - linkFrom: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Tutoriallink.md"
+        cheatsheets: [ef-core-migrations]
+
+      - id: ef-core-crud-and-relationships
+        title: "CRUD, keys & relationships"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes.md"
+            from: "# CRUD Operations"
+            until: "# Indexes"
+
+      - id: ef-core-indexes-tracking-bulk-concurrency
+        title: "Indexes, AsNoTracking, bulk operations & concurrency"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes.md"
+            from: "# Indexes"
+        related: [sql-server/indexes-and-performance/indexes-and-keys]
+
+      - id: ef-core-model-config-and-loading
+        title: "Configuring the model & loading related data"
+        reason: "EFCore/Notes2.md (~23 min) is split into four lessons at its top-level headings."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes2.md"
+            until: "# Change tracking in EF Core"
+        place:
+          - viz: EfCoreVisualizer
+            props: { scenario: n-plus-one }
+            tier: 2
+            at: { section: "## Types" }
+        resources:
+          - asset: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Validation And Data Modeling Attributes.pdf"
+          - asset: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Efcore Fluent Api And Attributes.docx"
+
+      - id: ef-core-change-tracking-and-cascade
+        title: "Change tracking & cascade delete"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes2.md"
+            from: "# Change tracking in EF Core"
+            until: "# EF Core Migrations"
+        place:
+          - viz: EfCoreVisualizer
+            props: { scenario: change-tracker-states }
+            tier: 2
+            at: { section: "## EntityEntry" }
+
+      - id: ef-core-migrations-and-scaffolding
+        title: "Migrations, deployment & database-first scaffolding"
+        reason: "EFCore_Migration_Deployment_Summary.md (18.LINQ root) is the deployment companion to this section; merged."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes2.md"
+            from: "# EF Core Migrations"
+            until: "# SQL Raw Query"
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore_Migration_Deployment_Summary.md"
+        cheatsheets: [ef-core-migrations]
+
+      - id: ef-core-raw-sql-iqueryable-concurrency
+        title: "Raw SQL, IQueryable vs IEnumerable & concurrency tokens"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes2.md"
+            from: "# SQL Raw Query"
+
+  - id: dapper-patterns-logging
+    title: "Dapper, repository pattern & logging"
+    lessons:
+      - id: dapper
+        title: "Dapper"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Dapper.md"
+
+      - id: calling-stored-procedures
+        title: "Calling stored procedures from .NET"
+        reason: "18.LINQ root note; placed with the other data-access techniques (ADO.NET, Dapper, EF Core)."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/StoredProceduresUsingC#.md"
+        related: [sql-server/advanced-queries-and-programmability/views-and-stored-procedures]
+
+      - id: ef-core-plus-dapper
+        title: "EF Core for writes, Dapper for reads"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/DapperAndEFCoreForRealApps.md"
+
+      - id: repository-pattern
+        title: "The repository pattern with EF Core"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/IRepositoryWithEFCore.md"
+
+      - id: logging
+        title: "Logging: ILogger & Serilog"
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/LoggingInApps.md"
+
+  - id: self-check
+    title: "Self-check"
+    lessons:
+      - id: csharp-developer-checklist
+        title: "C# developer knowledge checklist"
+        kind: checklist
+        reason: "Phase 1 root checklist; becomes a persistent interactive checklist at the end of the course."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/CSharp_Developer_Checklist.md"

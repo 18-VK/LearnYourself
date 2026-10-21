@@ -1,0 +1,101 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { courseById, courses, courseUrl, GLYPH, lessonsOf, lessonUrl, readingTime, site, url, type CourseData } from '../../lib/site';
+
+export function getStaticPaths() {
+  return courses.map((c) => ({ params: { course: c.id }, props: { course: c } }));
+}
+interface Props {
+  course: CourseData;
+}
+const { course } = Astro.props;
+const landing = (await getCollection('landing')).find((e) => e.data.course === course.id);
+const Landing = landing ? (await render(landing)).Content : null;
+const lessons = (await getCollection('lessons')).filter((e) => e.data.course === course.id);
+const sheetIds = new Map<string, string>();
+for (const l of lessons) for (const s of l.data.cheatsheets) sheetIds.set(s.id, s.title);
+const ids = lessonsOf(course).map((l) => l.id);
+const kindLabel = course.kind === 'roadmap' ? 'Roadmap' : 'Course';
+let n = 0;
+/** "file › ### heading" → "heading · title of the roadmap lesson that renders that file" */
+const coverLabel = (cover: string) => {
+  const [file, heading = ''] = cover.split(' › ');
+  const owner = lessons.find((l) => l.data.sources.some((s) => s.file === file));
+  return `${heading.replace(/^#+\s*/, '')}${owner ? ` · ${owner.data.title}` : ''}`;
+};
+---
+
+<BaseLayout title={course.title} description={course.summary} course={course.id} searchable>
+  <section class="course-hero">
+    <div>
+      <p class="eyebrow">{kindLabel}</p>
+      <h1 data-pagefind-meta="title">{course.title}</h1>
+      <p class="summary">{course.summary}</p>
+      {course.prerequisites.length > 0 && (
+        <p class="muted" style="margin-top:12px;font-size:15px">
+          Before this: {course.prerequisites.map((p, i) => <>{i > 0 && ', '}<a href={courseUrl(p)}>{courseById(p).title}</a></>)}
+        </p>
+      )}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center" data-pagefind-ignore>
+        {course.firstLesson && <a class="btn btn-primary" href={lessonUrl(course.firstLesson)}>Start the {kindLabel.toLowerCase()}</a>}
+        <div style="min-width:220px;flex:1;max-width:320px">
+          <div class="bar-mini" data-progress-ids={JSON.stringify(ids)}><span></span></div>
+          <p class="muted" style="font-size:12.5px;margin-top:4px" data-progress-text>Not started</p>
+        </div>
+      </div>
+    </div>
+    <div class="facts" data-pagefind-ignore>
+      <div><b>{course.modules.filter((m) => m.status !== 'planned').length}</b><span>modules</span></div>
+      <div><b>{course.lessonCount}</b><span>{course.kind === 'roadmap' ? 'checklists' : 'lessons'}</span></div>
+      <div><b>{readingTime(course.minutes)}</b><span>reading time</span></div>
+      <div><b>{course.vizCount}</b><span>visualizers and diagrams</span></div>
+    </div>
+  </section>
+
+  {Landing && (
+    <section class="landing-notes prose">
+      <Landing />
+    </section>
+  )}
+
+  {sheetIds.size > 0 && (
+    <p class="muted" style="margin-bottom:20px" data-pagefind-ignore>
+      Cheat sheets for this course: {[...sheetIds].map(([id, title], i) => <>{i > 0 && ' · '}<a href={url(`cheat-sheets/#${id}`)}>{title}</a></>)}
+    </p>
+  )}
+
+  <div class="section-head"><h2>Modules</h2></div>
+  <div class="module-list" data-course={course.id}>
+    {course.modules.map((m) =>
+      m.status === 'planned' ? (
+        <section class={`module planned`}>
+          <h3>{m.title} <span class="badge badge-soon">Coming soon</span></h3>
+          <p class="muted" style="font-size:14.5px;margin-top:6px">No notes yet. This module will cover:</p>
+          <ul style="margin:6px 0 0;padding-left:1.2em;list-style:disc;font-size:14.5px;color:var(--ink-2)">
+            {m.covers.map((c) => <li>{coverLabel(c)}</li>)}
+          </ul>
+          {m.noteFolder && <p class="muted" style="font-size:13px;margin-top:8px">Notes go in <code>{m.noteFolder}/</code></p>}
+        </section>
+      ) : (
+        <section class="module">
+          <h3><span class="eyebrow">Module {++n}</span> {m.title}</h3>
+          <ol>
+            {m.lessons.map((l) => (
+              <li data-lesson-id={l.id}>
+                <a href={lessonUrl(l.id)}>
+                  <span class="dot" aria-hidden="true"></span>
+                  <span>{l.title}</span>
+                  <span class="lmeta">{l.kind !== 'lesson' ? `${l.kind} · ` : ''}{l.minutes} min{l.viz ? ` · ${l.viz} viz` : ''}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ),
+    )}
+  </div>
+  <script>
+    import '../../scripts/catalogue';
+  </script>
+</BaseLayout>

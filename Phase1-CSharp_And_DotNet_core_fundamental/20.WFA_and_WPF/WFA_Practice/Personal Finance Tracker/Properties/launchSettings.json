@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Personal Finance Tracker": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { lessonUrl } from '../../lib/site';
+
+interface Doc {
+  slug: string;
+  title: string;
+  file: string;
+  credit: string | null;
+  authorship: string;
+  usedBy: string | null;
+  html: string;
+}
+export function getStaticPaths() {
+  const dir = path.resolve('src/data/generated/documents');
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => {
+      const doc = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) as Doc;
+      return { params: { slug: doc.slug }, props: { doc } };
+    });
+}
+const { doc } = Astro.props as { doc: Doc };
+---
+
+<BaseLayout title={doc.title} nav="none" searchable>
+  <article style="max-width:80ch">
+    <p class="eyebrow">Word document · read-only</p>
+    <h1 style="font-size:2rem;margin-top:8px" data-pagefind-meta="title">{doc.title}</h1>
+    <p class="muted" style="margin-top:8px">
+      Converted from <code>{doc.file.split('/').pop()}</code> for reading on this site.
+      {doc.usedBy && <> Part of <a href={lessonUrl(doc.usedBy)}>this lesson</a>.</>}
+    </p>
+    <div class="document-body" style="margin-top:24px" set:html={doc.html} />
+  </article>
+</BaseLayout>

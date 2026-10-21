@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { site } from '../../lib/site';
+---
+
+<BaseLayout title="Interview Prep" nav="interview">
+  <section style="max-width:80ch">
+    <p class="eyebrow">Interview Prep</p>
+    <h1 style="font-size:2rem;margin-top:8px">Question bank, flashcards and mock interviews</h1>
+    <p style="margin-top:10px;color:var(--ink-2)">
+      Questions from the notes come first; web-researched questions follow, each with sources and an origin badge. Each question links to the
+      lessons that teach it. The bank is being built; these are its topics.
+    </p>
+    <ul style="margin-top:20px;display:grid;gap:8px;list-style:none;padding:0">
+      {site.interviewTopics.map((t) => (
+        <li class="course-card" style="flex:none;padding:12px 16px">
+          <strong>{t.title}</strong> <span class="badge badge-soon">Coming soon</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+</BaseLayout>

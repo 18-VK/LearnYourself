@@ -1,0 +1,108 @@
+# Interview Prep (§10): topics, what the notes already provide, and web-research targets.
+# Data lands in src/data/interview/<topic>.json (schema-validated) from Checkpoint 5.
+# Order of work: notes first (origin: notes), then a ~20-question web pilot for aspnet-core, then review,
+# then the remaining topics (origin: web, reviewed: false, with sources).
+
+topics:
+  - id: csharp
+    title: "C# language"
+    subtopics: [types-and-memory, oop, generics, delegates-and-events, records-and-pattern-matching, modern-features, exceptions, strings]
+    notes:
+      - "6.C#_OOP/AbstractClass_vs_Interface.md › ## Common Interview Questions"
+      - "6.C#_OOP/Struct_vs_Class.md › ## Interview Questions"
+    webTarget: 40
+
+  - id: dotnet-runtime
+    title: ".NET runtime & BCL"
+    subtopics: [clr-jit-il, deployment, gc-and-memory, idisposable, threads-and-threadpool, async-await-internals, collections-internals, configuration-and-hosting]
+    notes:
+      - "InterviewQuestion.md › # Is it mandatory to have .NET installed to run a .NET application (.dll/.exe)?"
+      - "15.C#_AdvanceTopics/AppSettingExample.md › # Interview-Ready Answer"
+    webTarget: 40
+
+  - id: linq-ef-core
+    title: "LINQ & EF Core (and Dapper)"
+    subtopics: [deferred-execution, iqueryable-vs-ienumerable, change-tracking, loading-strategies, migrations, concurrency, performance, dapper]
+    notes:
+      - "InterviewQuestion.md › # Here's a clear, practical breakdown of IQueryable, IEnumerable, and List in C# …"
+      - "SQLTutorial/11.Question.md › # The N+1 Problem"
+    webTarget: 40
+
+  - id: aspnet-core
+    title: "ASP.NET Core & Web API"
+    subtopics: [pipeline-and-middleware, dependency-injection, routing, model-binding-and-validation, filters, error-handling, httpclient, rate-limiting, versioning, openapi, rest-and-http]
+    notes:
+      - "InterviewQuestion.md › # IActionResult"
+      - "ASP.Net Core/2.RestAPI_N_HTTPBasics.md › # Common REST API Interview Questions"
+      - "ASP.Net Core/3.ASP_ReturnTypesNMore_2.md › # How to remember this in interviews"
+    webTarget: 40
+    pilot: true   # the ~20-question pilot batch is researched here first, then paused for your review
+
+  - id: auth
+    title: "Authentication & authorization"
+    subtopics: [jwt, oauth2, openid-connect, pkce, refresh-tokens, aspnet-core-identity, policies-and-claims, auth-servers]
+    notes: []
+    webTarget: 40
+
+  - id: sql-server
+    title: "SQL Server"
+    subtopics: [joins, subqueries-and-ctes, window-functions, indexes, execution-plans, transactions-and-isolation, locking-and-deadlocks, stored-procedures-and-functions, security]
+    notes:
+      - "SQLTutorial/11.Question.md › # Why use Stored Procedure instead of inline query?"
+      - "SQLTutorial/1.Notes_SQL.md › ## Common interview traps ❌ / ### Common Interview Traps"
+      - "SQLTutorial/3.SQL_commands.md › ### WHERE vs HAVING (Interview Question)"
+      - "SQLTutorial/4.SQL_JoinsNMore.md › ## Real Interview Question"
+      - "SQLTutorial/5.SQL_Subqueries.md › ## 🧠 Interview-Level Explanation (Short Version)"
+      - "SQLTutorial/7.SQL_ExecutionPlanNMore.md › ### 🎯 Interview-Ready Answer, ## Interview-Ready Definition"
+      - "SQLTutorial/9.SQL_CTE.md › # Interview Answer (Short Version)"
+      - "SQLTutorial/10.SQL_Transactions&Concurrency.md › ## Quick interview answer"
+      - "SQLTutorial/DB_User_Privilege_Check.md › ## 11. Interview-friendly explanation"
+      - "SQLTutorial/SQL_ClauseNmore.md › ## Real Interview-Level Use Case"
+      - "SQLTutorial/SQL_Server_ALTER_Command_Guide.md › # 🎯 Interview Summary"
+      - "SQLTutorial/SQL_Server_Functions.md › ## Final Interview Tip"
+    webTarget: 40
+
+  - id: dsa
+    title: "DSA in C#"
+    subtopics: [complexity, arrays-and-strings, hashing, sorting, searching, stacks-queues-heaps, trees-and-graphs, recursion-and-dp]
+    notes: []
+    webTarget: 40
+
+  - id: wpf-mvvm
+    title: "WPF, MVVM & WinForms"
+    subtopics: [xaml-and-layout, dependency-properties, binding, commands, templates-and-styles, mvvm-architecture, threading-and-dispatcher, winforms]
+    notes:
+      - "WPF_Tutorial/3.OtherUsefulThings.md › ## Note : Very Important Warning (Interview Favorite)"
+      - "WPF_Tutorial/4.MVVMandDataBindings.md › ## ViewModel vs Model (interview favorite), ## Interview-ready summary ⭐"
+      - "WPF_Tutorial/5.RelayCommandNOther.md › ### SelectedItem vs CommandParameter (INTERVIEW FAVORITE)"
+      - "WPF_Tutorial/12.Tips.md › ## 🧪 Interview answer (very strong)"
+      - "WPF_Tutorial/12.AdvanceTopics.md › # But let's cover what TemplateBinding actually does … (classic interview topic)"
+      - "WPF_Tutorial/WPF_Job_Ready_Roadmap_Checklist.md › ## 🎯 Interview Readiness"
+    webTarget: 40
+
+  - id: backend-design
+    title: "Backend design & troubleshooting"
+    subtopics: [performance, caching, resilience, observability, scalability, api-design, security, deployment]
+    notes: []
+    webTarget: 40
+
+  - id: cpp
+    title: "C++ (from notes; no course)"
+    notes:
+      - "19. OtherTopics/Notes.md › ## C++ questions for interview"
+    notCoveredYet: true
+    webTarget: 0   # notes only; no web research unless you ask
+
+# Headings the "Interview" heuristic matches that are NOT interview material (excluded from collection):
+falsePositives:
+  - "Competitive Programming/dsa-roadmap.md › ## Level 3 — Advanced Interview Level (6–8 weeks)"
+  - "Competitive Programming/math-for-programming-roadmap.md › ## Level 4: Upper-Intermediate (Interview & Engineering Depth)"
+
+sourcing:
+  preferred: ["learn.microsoft.com (C#, .NET, ASP.NET Core, EF Core, SQL Server)", "RFCs / IETF for HTTP, OAuth 2.0, JWT", "OWASP for security items"]
+  rules:
+    - "Answers in my own words; any quotation short and attributed."
+    - "Each web question records sources: URL, title, date accessed."
+    - "Version-dependent answers say so (.NET Framework vs .NET 8+, EF Core version, SQL Server version)."
+    - "Conflicts with the notes are logged in CONTENT_ISSUES.md; the notes are not overridden."
+    - "No paywalled or login-only sources."

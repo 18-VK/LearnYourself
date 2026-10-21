@@ -1,0 +1,250 @@
+# SQL Server
+# Source: Phase2-ASP.NetAndBackend/SQLTutorial/ (numbered 1–10, plus unnumbered notes).
+# 11.Question.md is interview material and feeds Interview Prep (see _site.yaml), not this course.
+
+id: sql-server
+title: "SQL Server"
+shortTitle: "SQL Server"
+kind: course
+accent: rose
+icon: database
+prerequisites: [phase-1]
+summary: >-
+  SQL Server from the instance down: setup, logins and schemas, data types and core commands, joins
+  and subqueries, indexes and execution plans, window functions and CTEs, views and stored procedures,
+  and transactions, isolation levels, blocking and deadlocks.
+
+modules:
+  - id: setup-and-security
+    title: "Setup, schemas & security"
+    lessons:
+      - id: server-database-schema
+        title: "Server → database → schema"
+        reason: "1.Notes_SQL.md (~13 min) is split at '# Basics: databases vs schemas'."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/1.Notes_SQL.md"
+            until: "# Basics: databases vs schemas"
+        place:
+          - diagram: sql-server-hierarchy
+            tier: 2
+            at: { section: "## High-level logical tree (big picture)", codeBlock: 1 }
+
+      - id: databases-schemas-and-logins
+        title: "Databases vs schemas, dbo & logins vs users"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/1.Notes_SQL.md"
+            from: "# Basics: databases vs schemas"
+
+      - id: sql-server-setup
+        title: "Setting up a SQL Server instance"
+        reason: "1.1 follows note 1."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/1.1 SQLServerSetup.md"
+
+      - id: user-privileges-and-roles
+        title: "User privileges, permissions & roles"
+        reason: "Unnumbered; continues the logins/users material from notes 1 and 1.1."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/DB_User_Privilege_Check.md"
+
+  - id: data-types-and-commands
+    title: "Data types & core commands"
+    lessons:
+      - id: data-types
+        title: "Data types"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/2.SQL_DataTypesNMore.md"
+        cheatsheets: [sql-server]
+
+      - id: crud-filtering-sorting
+        title: "CRUD, filtering, sorting & pagination"
+        reason: "3.SQL_commands.md (~13 min, 76 code blocks) is split into three lessons at its top-level headings."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/3.SQL_commands.md"
+            until: "# Aggregate Functions"
+        cheatsheets: [sql-server]
+
+      - id: aggregates-and-grouping
+        title: "Aggregates, GROUP BY & HAVING"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/3.SQL_commands.md"
+            from: "# Aggregate Functions"
+            until: "# ALTER"
+        related: [sql-server/querying/joins]
+
+      - id: alter
+        title: "ALTER"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/3.SQL_commands.md"
+            from: "# ALTER"
+        related: [sql-server/reference/alter-command-guide]
+
+  - id: querying
+    title: "Joins, subqueries & conditional logic"
+    lessons:
+      - id: joins
+        title: "Joins"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/4.SQL_JoinsNMore.md"
+        place:
+          - viz: JoinVisualizer
+            props: { join: inner }
+            tier: 1
+            at: { section: "## INNER JOIN (most common)" }
+          - viz: JoinVisualizer
+            props: { join: left }
+            tier: 1
+            at: { section: "## LEFT (LEFT OUTER) JOIN" }
+          - viz: JoinVisualizer
+            props: { join: right }
+            tier: 1
+            at: { section: "## RIGHT JOIN" }
+          - viz: JoinVisualizer
+            props: { join: full }
+            tier: 1
+            at: { section: "## FULL OUTER JOIN" }
+          - viz: JoinVisualizer
+            props: { join: cross }
+            tier: 1
+            at: { section: "## CROSS JOIN (Cartesian product)" }
+          - viz: JoinVisualizer
+            props: { join: self }
+            tier: 1
+            at: { section: "## SELF JOIN (join a table to itself)" }
+          - viz: JoinVisualizer
+            props: { join: outer-apply }
+            tier: 1
+            at: { section: "## APPLY (SQL Server-specific)" }
+          - viz: JoinVisualizer
+            props: { join: anti }
+            tier: 1
+            at: { section: "## Anti-join (find unmatched rows)" }
+          - viz: QueryOrderVisualizer
+            props: { stages: ["FROM", "ON", "JOIN", "WHERE", "GROUP BY", "WITH CUBE or WITH ROLLUP", "HAVING", "SELECT", "DISTINCT", "ORDER BY", "TOP"] }
+            tier: 1
+            at: { section: "## Why This Happens (Logical Order)" }
+        related: [phase-1/linq/linq-joins]
+        cheatsheets: [sql-server]
+
+      - id: subqueries
+        title: "Subqueries, EXISTS & set operators"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/5.SQL_Subqueries.md"
+        place:
+          - viz: CorrelatedSubqueryVisualizer
+            tier: 2
+            at: { section: "## Correlated Subquery" }
+
+      - id: case-coalesce-and-union
+        title: "CASE, IIF, COALESCE, NULLIF & UNION"
+        reason: "Unnumbered (SQL_ClauseNmore.md); conditional expressions and set operators, placed after subqueries."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_ClauseNmore.md"
+        cheatsheets: [sql-server]
+
+  - id: indexes-and-performance
+    title: "Indexes & performance"
+    lessons:
+      - id: indexes-and-keys
+        title: "Indexes, keys & constraints"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/6.SQL_IndexNKeys.md"
+        place:
+          - viz: IndexVisualizer
+            props: { scenario: clustered-vs-nonclustered-covering }
+            tier: 2
+            at: { section: "## Covering Index" }
+          - viz: IndexVisualizer
+            props: { scenario: write-cost }
+            tier: 2
+            at: { section: "# WRITE Performance Comparison" }
+        related: [phase-1/ef-core/ef-core-indexes-tracking-bulk-concurrency]
+        cheatsheets: [sql-server]
+
+      - id: execution-plans-and-sargability
+        title: "Execution plans, seeks vs scans & SARGable queries"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/7.SQL_ExecutionPlanNMore.md"
+        place:
+          - viz: IndexVisualizer
+            props: { scenario: seek-scan-lookup }
+            tier: 2
+            at: { section: "## Index Scan" }
+
+  - id: advanced-queries-and-programmability
+    title: "Window functions, CTEs & programmability"
+    lessons:
+      - id: window-functions
+        title: "Window functions"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/8.SQL_WindowsfunctionsNMore.md"
+        place:
+          - viz: WindowFunctionVisualizer
+            props: { functions: [ROW_NUMBER, RANK, DENSE_RANK] }
+            tier: 2
+            at: { section: "## DENSE_RANK()" }
+          - viz: WindowFunctionVisualizer
+            props: { functions: [SUM], frame: running-total }
+            tier: 2
+            at: { section: "## What Is a Window Frame?" }
+        cheatsheets: [sql-server]
+
+      - id: ctes
+        title: "Common table expressions"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/9.SQL_CTE.md"
+        place:
+          - viz: RecursiveCteVisualizer
+            tier: 2
+            at: { section: "# Recursive CTE (Very Important)" }
+
+      - id: sql-server-functions
+        title: "SQL Server functions"
+        reason: "Unnumbered; scalar, aggregate, table-valued and window functions, placed after notes 8–9."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_Functions.md"
+        cheatsheets: [sql-server]
+
+      - id: views-and-stored-procedures
+        title: "Views & stored procedures"
+        reason: "Unnumbered (SQL_StoredProcedure.md); programmability, placed with functions."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_StoredProcedure.md"
+        related: [phase-1/dapper-patterns-logging/calling-stored-procedures]
+
+  - id: transactions
+    title: "Transactions & concurrency"
+    lessons:
+      - id: transactions-and-concurrency
+        title: "ACID, isolation levels, blocking & deadlocks"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/10.SQL_Transactions&Concurrency.md"
+        place:
+          - viz: IsolationSimulator
+            props: { scenario: anomalies }
+            tier: 1
+            at: { section: "# Concrete examples: anomalies & how ACID prevents them" }
+          - viz: IsolationSimulator
+            props: { scenario: isolation-levels, levels: [READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE, SNAPSHOT] }
+            tier: 1
+            at: { section: "# Isolation Levels" }
+          - viz: IsolationSimulator
+            props: { scenario: blocking }
+            tier: 1
+            at: { section: "# Blocking" }
+          - viz: IsolationSimulator
+            props: { scenario: deadlock }
+            tier: 1
+            at: { section: "# Deadlock" }
+        related: [phase-1/threads-and-concurrency/race-conditions-and-deadlocks]
+        cheatsheets: [sql-server]
+
+  - id: reference
+    title: "Reference"
+    lessons:
+      - id: alter-command-guide
+        title: "ALTER command guide"
+        reason: "Unnumbered. Overlaps the ALTER section of note 3 but has its own intro, interview summary and real-world usage, so it is kept whole as a reference page."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_ALTER_Command_Guide.md"
+        cheatsheets: [sql-server]

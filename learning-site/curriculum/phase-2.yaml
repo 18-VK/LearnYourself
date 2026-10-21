@@ -1,0 +1,423 @@
+# Phase 2 — ASP.NET Core Web API
+# Source: Phase2-ASP.NetAndBackend/ASP.Net Core/ (numbered 1–16 plus unnumbered notes) and Examples/.
+
+id: phase-2
+title: "Phase 2 — ASP.NET Core Web API"
+shortTitle: "Phase 2"
+kind: course
+accent: indigo
+icon: server
+prerequisites: [phase-1, sql-server]
+summary: >-
+  Building Web APIs with ASP.NET Core: REST and HTTP, controllers and routing, model binding and
+  validation, HttpClient, middleware and error handling, authentication and auth servers, rate
+  limiting, versioning and Clean Architecture, ending with the Task Management API capstone.
+
+modules:
+  - id: foundations
+    title: "Foundations: ASP.NET Core, REST & HTTP"
+    lessons:
+      - id: aspnet-core-overview
+        title: "ASP.NET Core overview, Web API vs MVC & minimal APIs"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/1.ASP_overview.md"
+        place:
+          - diagram: aspnet-architecture
+            tier: 1
+            at: { section: "## ASP .Net Architecture", codeBlock: 1 }
+
+      - id: rest-and-http-basics
+        title: "REST, HTTP methods & status codes"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/2.RestAPI_N_HTTPBasics.md"
+        cheatsheets: [http]
+
+      - id: http-headers
+        title: "HTTP headers in REST APIs"
+        reason: "Unnumbered HTTP reference; follows HTTP basics by topic."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/http-headers-rest-api.md"
+        cheatsheets: [http]
+
+  - id: controllers-and-routing
+    title: "Controllers, routing, binding & validation"
+    lessons:
+      - id: controllers
+        title: "Controllers"
+        reason: "3.ASP_ControllerNRouting.md (~13 min, 57 code blocks) is split into controllers and routing."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/3.ASP_ControllerNRouting.md"
+            until: "# ASP - Routing"
+        cheatsheets: [aspnet-core]
+
+      - id: routing
+        title: "Routing: conventional, attribute & endpoint routing"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/3.ASP_ControllerNRouting.md"
+            from: "# ASP - Routing"
+        place:
+          - viz: RouteMatcherVisualizer
+            props: { scenario: attribute-routes }
+            tier: 2
+            at: { section: "## Attribute Routing" }
+        cheatsheets: [aspnet-core]
+
+      - id: return-types
+        title: "Action return types & helper results"
+        reason: "3.ASP_ReturnTypesNMore_2.md is the second part of note 3; follows it."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/3.ASP_ReturnTypesNMore_2.md"
+        cheatsheets: [aspnet-core]
+
+      - id: model-binding
+        title: "Model binding"
+        reason: "4.ASP_ModelBindingNMore.md (~18 min, 67 code blocks) is split into binding, validation and FluentValidation."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/4.ASP_ModelBindingNMore.md"
+            until: "# ASP - Model validation"
+        place:
+          - viz: ModelBindingVisualizer
+            props: { sources: [route, query, body, header] }
+            tier: 2
+            at: { section: "## How Model Binding Works" }
+        cheatsheets: [aspnet-core]
+
+      - id: model-validation
+        title: "Model validation with data annotations"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/4.ASP_ModelBindingNMore.md"
+            from: "# ASP - Model validation"
+            until: "# ASP - Fluent Validation"
+
+      - id: fluent-validation
+        title: "FluentValidation"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/4.ASP_ModelBindingNMore.md"
+            from: "# ASP - Fluent Validation"
+        related: [phase-2/capstone/validation-filter-and-extensions]
+
+      - id: project-setup
+        title: "Web API project setup & folder structure"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/5.ASP_WebAPI_ConfigurationNprojectSetup.md"
+        related: [phase-1/advanced-csharp/dependency-injection]
+
+      - id: openapi-and-swagger
+        title: "OpenAPI & Swagger"
+        reason: "Unnumbered; API documentation tooling, placed after project setup."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/OpenAPIandSwagger.md"
+
+  - id: calling-apis
+    title: "Calling APIs"
+    lessons:
+      - id: client-calling-web-api
+        title: "Calling a Web API & IHttpClientFactory"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/6.ASP_ClientCallingWebAPI.md"
+        place:
+          - viz: HttpClientPoolingVisualizer
+            props: { compare: [new-httpclient-per-call, ihttpclientfactory] }
+            tier: 2
+            at: { section: "## Problems Solved by IHttpClientFactory" }
+
+      - id: httpclient
+        title: "HttpClient methods & properties"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/7.ASP_HttpClientClassNMore.md"
+
+  - id: pipeline
+    title: "The request pipeline"
+    lessons:
+      - id: middleware
+        title: "Middleware & the request pipeline"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/8.ASP_MiddlewareNMore.md"
+        place:
+          - viz: MiddlewarePipelineVisualizer
+            props: { scenario: in-and-out, middleware: [A, B, C] }
+            tier: 1
+            at: { section: "## How middleware works internally", codeBlock: 1 }
+          - viz: MiddlewarePipelineVisualizer
+            props: { scenario: production-order, reorderable: true }
+            tier: 1
+            at: { section: "# Final Production Order (VERY IMPORTANT)" }
+          - viz: CorsPreflightVisualizer
+            tier: 2
+            at: { section: "## UseCors()" }
+        related: [phase-1/advanced-csharp/dependency-injection]
+        cheatsheets: [aspnet-core]
+
+      - id: global-exception-handling
+        title: "Global exception handling"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/9.ASP_GlobalExceptionHandling.md"
+        place:
+          - viz: ProblemDetailsVisualizer
+            props: { scenario: exception-to-problem-details }
+            tier: 2
+            at: { section: "## Full Execution Flow", codeBlock: 1 }
+        related: [phase-1/collections-errors-async-io/exception-handling]
+
+      - id: https-and-hsts
+        title: "HTTPS redirection & HSTS"
+        reason: "Unnumbered; UseHttpsRedirection and UseHsts are pipeline middleware, so placed after error handling."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/HttpsImplementation.md"
+        place:
+          - viz: HttpsHstsVisualizer
+            tier: 2
+            at: { section: "## UseHsts — browser-side instruction, cached ahead of time" }
+
+  - id: auth-fundamentals
+    title: "Authentication, authorization & JWT"
+    lessons:
+      - id: authn-and-authz-basics
+        title: "Authentication methods & authorization models"
+        reason: "10.ASP_AuthenticationNAuthorisation.md (~29 min) is split into five lessons at its top-level headings."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
+            until: "# JWT (JSON Web Token)"
+        cheatsheets: [auth-jwt]
+
+      - id: jwt
+        title: "JWT structure & the authentication flow"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
+            from: "# JWT (JSON Web Token)"
+            until: "# Basic API side setup of JWT : Authentication and Authorization Implementation using JWT in Web APIs"
+        place:
+          - viz: JwtDecoderVisualizer
+            props: { editablePayload: true }
+            tier: 1
+            at: { section: "## JWT Structure" }
+          - viz: JwtSequenceVisualizer
+            props: { steps: [login, token, api-call, validation] }
+            tier: 1
+            at: { section: "## 3. API Validation (The Gatekeeper)" }
+        cheatsheets: [auth-jwt]
+
+      - id: jwt-authentication-setup
+        title: "JWT authentication setup in a Web API"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
+            from: "# Basic API side setup of JWT : Authentication and Authorization Implementation using JWT in Web APIs"
+            until: "## Authorization"
+
+      - id: authorization-policies
+        title: "Authorization: roles, claims, policies & resources"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
+            from: "## Authorization"
+            until: "# ClaimsIdentity and ClaimsPrincipal"
+        cheatsheets: [auth-jwt]
+
+      - id: claims-identity-and-principal
+        title: "ClaimsIdentity & ClaimsPrincipal"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
+            from: "# ClaimsIdentity and ClaimsPrincipal"
+
+      - id: auth-server-concepts
+        title: "Auth servers: the three parties"
+        reason: "11.ASP_MoreOnAuth.md (~22 min) is split into three lessons at its top-level headings."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/11.ASP_MoreOnAuth.md"
+            until: "# Identity Provider"
+        place:
+          - diagram: auth-three-parties
+            tier: 2
+            at: { section: "## Before any code, understand the shape of the system. There are always **3 parties**:", codeBlock: 1 }
+
+      - id: identity-providers-and-oidc
+        title: "Identity providers, OAuth 2.0 & OpenID Connect"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/11.ASP_MoreOnAuth.md"
+            from: "# Identity Provider"
+            until: "# How to create a JWT Token : Add claim and all"
+
+      - id: creating-and-signing-jwts
+        title: "Creating JWTs & managing RSA signing keys"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/11.ASP_MoreOnAuth.md"
+            from: "# How to create a JWT Token : Add claim and all"
+        place:
+          - viz: Rs256Visualizer
+            props: { scenario: sign-with-private-verify-with-public }
+            tier: 1
+            at: { section: "## Signing key and its type" }
+        cheatsheets: [auth-jwt]
+
+  - id: auth-server
+    title: "Building an auth server"
+    lessons:
+      - id: auth-server-approaches-and-oauth2
+        title: "Auth server approaches & OAuth 2.0"
+        reason: "12.ASP_AuthServer.md (~30 min) is split into four lessons."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/12.ASP_AuthServer.md"
+            until: "## OpenID Connect (OIDC)"
+
+      - id: openid-connect
+        title: "OpenID Connect"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/12.ASP_AuthServer.md"
+            from: "## OpenID Connect (OIDC)"
+            until: "## What is a JWK (JSON Web Key)?"
+
+      - id: jwk-jwks-and-pkce
+        title: "JWK, JWKS & PKCE"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/12.ASP_AuthServer.md"
+            from: "## What is a JWK (JSON Web Key)?"
+            until: "## Refresh Token"
+
+      - id: refresh-tokens
+        title: "Refresh tokens & rotation"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/12.ASP_AuthServer.md"
+            from: "## Refresh Token"
+        place:
+          - viz: RefreshRotationVisualizer
+            props: { showReuseDetection: true }
+            tier: 2
+            at: { section: "## Refresh Token" }
+        cheatsheets: [auth-jwt]
+
+      - id: identity-and-its-tables
+        title: "ASP.NET Core Identity & its tables"
+        reason: "13.ASP_Custom_authServer.md (~56 min) is split into five lessons; the UserManager section alone is ~1,000 lines, so it is split at its ### headings."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/13.ASP_Custom_authServer.md"
+            until: "## UserManager&lt;TUser&gt;"
+
+      - id: usermanager-users-and-passwords
+        title: "UserManager: creating, finding & password management"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/13.ASP_Custom_authServer.md"
+            from: "## UserManager&lt;TUser&gt;"
+            until: "### Email & phone confirmation"
+
+      - id: usermanager-confirmation-roles-claims-lockout
+        title: "UserManager: confirmation, roles, claims, lockout & tokens"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/13.ASP_Custom_authServer.md"
+            from: "### Email & phone confirmation"
+            until: "### External logins"
+
+      - id: usermanager-external-logins-and-2fa
+        title: "UserManager: external logins & two-factor authentication"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/13.ASP_Custom_authServer.md"
+            from: "### External logins"
+            until: "## Cookie"
+
+      - id: signin-and-identity-registration
+        title: "Cookies, SignInManager & registering Identity"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/13.ASP_Custom_authServer.md"
+            from: "## Cookie"
+
+      - id: signing-keys-and-discovery
+        title: "Signing keys, key rotation & the discovery document"
+        reason: "File13_content.md is supplementary material for note 13; placed after it."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/File13_content.md"
+
+      - id: openiddict
+        title: "OpenIddict & when you need a separate auth server"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/14.ASP_OpenIddict_Auth.md"
+
+  - id: production-concerns
+    title: "Rate limiting & versioning"
+    lessons:
+      - id: rate-limiting
+        title: "Rate limiting algorithms & implementation"
+        reason: "15.ASP_RateLimitingNmore.md (~18 min) is split into implementation and parameters/throttling."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/15.ASP_RateLimitingNmore.md"
+            until: "# Rate Limiter Parameters Explained"
+        place:
+          - viz: RateLimiterVisualizer
+            props: { algorithms: [fixed-window, sliding-window, token-bucket, concurrency, leaky-bucket] }
+            tier: 1
+            at: { section: "## Common Algorithms" }
+        cheatsheets: [aspnet-core]
+
+      - id: rate-limiter-parameters-and-throttling
+        title: "Rate limiter parameters & throttling"
+        reason: "ASP.Net Core/Question.md is a one-paragraph note on throttling vs rate limiting; appended to the throttling material."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/15.ASP_RateLimitingNmore.md"
+            from: "# Rate Limiter Parameters Explained"
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Question.md"
+
+      - id: api-versioning
+        title: "API versioning"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/16.ASP_APIversioning.md"
+
+  - id: architecture
+    title: "Design principles & architecture"
+    lessons:
+      - id: solid
+        title: "SOLID principles"
+        reason: "Unnumbered; DotNet_DesignPatterns.md is split into SOLID and Clean Architecture."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/DotNet_DesignPatterns.md"
+            until: "# Clean Architecture"
+
+      - id: clean-architecture
+        title: "Clean Architecture"
+        reason: "CleanArchitectureNMore.md (70 lines) covers the same topic; merged after the main section."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/DotNet_DesignPatterns.md"
+            from: "# Clean Architecture"
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/CleanArchitectureNMore.md"
+        related: [phase-2/capstone/validation-filter-and-extensions]
+
+  - id: capstone
+    title: "Capstone: Task Management API"
+    lessons:
+      - id: validation-filter-and-extensions
+        title: "ValidationFilter & composition-root extensions"
+        reason: "Examples/Task_Management_System_API/ProjectRelatedStuff.md (~16 min) is split into three lessons."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API/ProjectRelatedStuff.md"
+            until: "# Fluent API configurations with separate configuration class"
+        place:
+          - viz: CapstoneTraceVisualizer
+            props: { path: [controller, validation-filter, service, result, repository, ef-core, response-mapping] }
+            tier: 2
+            at: { section: "## Recommendation for production grade - Web API" }
+        resources:
+          - asset: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API/Requirements.docx"
+          - tryLocally: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API"
+
+      - id: ef-configuration-and-automapper
+        title: "Entity configuration classes & AutoMapper"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API/ProjectRelatedStuff.md"
+            from: "# Fluent API configurations with separate configuration class"
+            until: "# Why choose AddDbContext vs AddDbContextPool"
+
+      - id: dbcontext-options-and-concurrency
+        title: "DbContext pooling, SQL options & concurrency"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API/ProjectRelatedStuff.md"
+            from: "# Why choose AddDbContext vs AddDbContextPool"
+        related: [phase-1/ef-core/ef-core-raw-sql-iqueryable-concurrency]
+
+      - id: auth-module-readme
+        title: "The auth server module"
+        reason: "README of the framework-free auth module in Examples/."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/CustomAuthServerWithNoFramework_TaskManagementApi.Auth/TaskManagementApi.Auth/README.md"
+        resources:
+          - tryLocally: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/CustomAuthServerWithNoFramework_TaskManagementApi.Auth"
+
+      - id: identityuser-tutorial
+        title: "Understanding IdentityUser<T>"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/CustomAuthServerWithNoFramework_TaskManagementApi.Auth/TaskManagementApi.Auth/docs/IdentityUser_Tutorial.md"

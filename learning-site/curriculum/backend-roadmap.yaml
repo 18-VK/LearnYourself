@@ -1,0 +1,212 @@
+# Backend Developer Roadmap: a growing course
+# Source today: BackendRoadmap/ (three roadmaps and one production checklist).
+#
+# This course is also the home for backend topic notes you add later. It has two parts:
+#   1. `roadmaps`: the roadmap and checklist notes. Each roadmap renders as an interactive graph: headings
+#      become nodes, the bullets under them become persistent checkboxes, and nodes link to lessons or to
+#      the planned topic modules below.
+#   2. Planned topic modules (`status: planned`), one per area your roadmaps name but no note covers yet.
+#      They show as "coming soon" on the landing page and on roadmap nodes until they have lessons.
+#      Their order follows "Suggested order given where you are" in backend-developer-roadmap.md, then
+#      the remaining Part 2 areas in the note's order.
+#
+# Adding notes later:
+#   - Put them in the module's `noteFolder` (create it), named N.Topic.md so they keep their order.
+#   - Add a lesson entry under that module (id, title, sources) and drop `status: planned` once it has one.
+#     Until a new note is mapped, the coverage check fails, names the file and prints a ready-to-paste
+#     lesson entry, so a new note can never be silently left out.
+#   - Notes outside these folders work too; they just need a lesson entry like any other note.
+
+id: backend-roadmap
+title: "Backend Developer Roadmap"
+shortTitle: "Backend"
+kind: course
+accent: orange
+icon: route
+prerequisites: [phase-2]
+summary: >-
+  Three roadmaps (beginner to job-ready, request to response, database design) and a production-grade
+  Web API checklist, with progress saved in your browser. Topic modules for caching, queues,
+  observability, system design and more fill in as notes are added.
+
+modules:
+  - id: roadmaps
+    title: "Roadmaps & checklist"
+    lessons:
+      - id: beginner-to-job-ready
+        title: "Backend developer roadmap: beginner to job-ready"
+        kind: roadmap
+        sources:
+          - file: "BackendRoadmap/backend-developer-roadmap-beginner.md"
+        nodeLinks:
+          "## Stage 0 — Programming Foundations": [phase-1/language-basics/csharp-fundamentals, dsa/roadmap/dsa-roadmap]
+          "## Stage 1 — How the Internet Actually Works": [phase-2/foundations/rest-and-http-basics, phase-2/foundations/http-headers, backend-roadmap/how-requests-travel]
+          "## Stage 2 — Building Your First Backend": [phase-2/foundations/aspnet-core-overview, phase-2/controllers-and-routing/controllers]
+          "## Stage 3 — Databases": [sql-server/setup-and-security/server-database-schema, phase-1/ef-core/ef-core-basics]
+          "## Stage 4 — The Request Lifecycle (your diagram)": [phase-2/pipeline/middleware, backend-roadmap/roadmaps/request-to-response]
+          "## Stage 5 — Authentication & Security": [phase-2/auth-fundamentals/authn-and-authz-basics, phase-2/pipeline/https-and-hsts, backend-roadmap/security-beyond-basics]
+          "## Stage 6 — APIs Beyond Basic REST": [phase-2/production-concerns/api-versioning, backend-roadmap/apis-and-protocols]
+          "## Stage 7 — Testing": [backend-roadmap/testing]
+          "## Stage 8 — Architecture & Design": [phase-2/architecture/solid, phase-2/architecture/clean-architecture, backend-roadmap/architecture-at-scale]
+          "## Stage 9 — DevOps & Deployment": [backend-roadmap/devops-and-infrastructure]
+          "## Stage 10 — System Design (once comfortable with everything above)": [backend-roadmap/system-design]
+
+      - id: request-to-response
+        title: "Backend developer roadmap: from request to response"
+        kind: roadmap
+        sources:
+          - file: "BackendRoadmap/backend-developer-roadmap.md"
+        nodeLinks:
+          "### 1. Browser & Client": [phase-2/foundations/rest-and-http-basics]
+          "### 2. DNS Resolution": [backend-roadmap/how-requests-travel]
+          "### 3. Internet / ISP": [backend-roadmap/how-requests-travel]
+          "### 4. Firewall / Security at the edge": [backend-roadmap/how-requests-travel]
+          "### 5. CDN": [backend-roadmap/how-requests-travel]
+          "### 6. Load Balancer": [backend-roadmap/load-balancing-and-proxies]
+          "### 7. API Gateway": [backend-roadmap/load-balancing-and-proxies]
+          "### 8. Reverse Proxy (Nginx)": [backend-roadmap/load-balancing-and-proxies, phase-2/pipeline/https-and-hsts]
+          "### 9. Application Server (your home turf — go deeper, not wider)": [phase-2/pipeline/middleware, phase-2/controllers-and-routing/model-binding, phase-2/pipeline/global-exception-handling]
+          "### 10. Cache (Redis)": [backend-roadmap/caching]
+          "### 11. Database (PostgreSQL / your SQL Server experience)": [sql-server/indexes-and-performance/execution-plans-and-sargability, sql-server/transactions/transactions-and-concurrency]
+          "### 12. Message Queue (Kafka / RabbitMQ)": [backend-roadmap/message-queues]
+          "### 13. Response path back to client": [phase-2/controllers-and-routing/return-types]
+          "### Foundations (you have these — keep sharp)": [dsa/roadmap/dsa-roadmap, phase-2/architecture/solid]
+          "### APIs & Protocols": [backend-roadmap/apis-and-protocols]
+          "### Security (you have a strong base — extend it)": [phase-2/auth-server/refresh-tokens, backend-roadmap/security-beyond-basics]
+          "### System Design": [backend-roadmap/system-design]
+          "### Testing": [backend-roadmap/testing]
+          "### Observability": [phase-1/dapper-patterns-logging/logging, backend-roadmap/observability]
+          "### DevOps / Infra (partial overlap with what you know)": [backend-roadmap/devops-and-infrastructure]
+          "### Architecture & Patterns at Scale": [phase-2/architecture/clean-architecture, backend-roadmap/architecture-at-scale]
+
+      - id: database-design-roadmap
+        title: "Database design roadmap"
+        kind: roadmap
+        sources:
+          - file: "BackendRoadmap/database-design-roadmap.md"
+        nodeLinks:
+          "## Stage 5 — Choosing Data Types & Constraints": [sql-server/data-types-and-commands/data-types, sql-server/indexes-and-performance/indexes-and-keys]
+          "## Stage 6 — Keys & Relationships in Depth": [sql-server/indexes-and-performance/indexes-and-keys, phase-1/ef-core/ef-core-crud-and-relationships]
+          "## Stage 7 — Indexing Strategy": [sql-server/indexes-and-performance/indexes-and-keys, sql-server/indexes-and-performance/execution-plans-and-sargability]
+          "## Stage 8 — Query Patterns Drive Design": [sql-server/querying/joins]
+          "## Stage 9 — Transactions & Consistency": [sql-server/transactions/transactions-and-concurrency]
+          "## Stage 10 — Scaling Considerations": [backend-roadmap/system-design]
+          "## Stage 12 — Migrations & Evolution": [phase-1/ef-core/ef-core-migrations-and-scaffolding]
+
+      - id: production-grade-web-api-checklist
+        title: "Production-grade Web API checklist"
+        kind: checklist
+        sources:
+          - file: "BackendRoadmap/ProductionGrade_WebAPI_Checklist.md"
+        nodeLinks:
+          "## Reliability & Resilience": [backend-roadmap/system-design]
+          "## Observability": [phase-1/dapper-patterns-logging/logging, backend-roadmap/observability]
+          "## Data & Performance": [backend-roadmap/caching, sql-server/indexes-and-performance/execution-plans-and-sargability]
+          "## API Design & Versioning": [phase-2/production-concerns/api-versioning]
+          "## Testing & CI/CD": [backend-roadmap/testing, backend-roadmap/devops-and-infrastructure]
+        related: [phase-2/production-concerns/rate-limiting, phase-2/pipeline/global-exception-handling]
+
+  # ── Planned topic modules (no notes yet) ─────────────────────────────────────────────────
+  # `covers` names the roadmap headings each module will fill; the build checks they exist.
+
+  - id: caching
+    title: "Caching (Redis)"
+    status: planned
+    noteFolder: "BackendRoadmap/1.Caching"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### 10. Cache (Redis)"
+      - "BackendRoadmap/ProductionGrade_WebAPI_Checklist.md › ## Data & Performance"
+    lessons: []
+
+  - id: message-queues
+    title: "Message queues"
+    status: planned
+    noteFolder: "BackendRoadmap/2.MessageQueues"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### 12. Message Queue (Kafka / RabbitMQ)"
+    lessons: []
+
+  - id: load-balancing-and-proxies
+    title: "Load balancers, API gateways & reverse proxies"
+    status: planned
+    noteFolder: "BackendRoadmap/3.LoadBalancingAndProxies"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### 6. Load Balancer"
+      - "BackendRoadmap/backend-developer-roadmap.md › ### 7. API Gateway"
+      - "BackendRoadmap/backend-developer-roadmap.md › ### 8. Reverse Proxy (Nginx)"
+    lessons: []
+
+  - id: observability
+    title: "Observability: logs, metrics & tracing"
+    status: planned
+    noteFolder: "BackendRoadmap/4.Observability"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### Observability"
+      - "BackendRoadmap/ProductionGrade_WebAPI_Checklist.md › ## Observability"
+    lessons: []
+
+  - id: system-design
+    title: "System design & resilience"
+    status: planned
+    noteFolder: "BackendRoadmap/5.SystemDesign"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### System Design"
+      - "BackendRoadmap/backend-developer-roadmap-beginner.md › ## Stage 10 — System Design (once comfortable with everything above)"
+      - "BackendRoadmap/ProductionGrade_WebAPI_Checklist.md › ## Reliability & Resilience"
+    lessons: []
+
+  - id: how-requests-travel
+    title: "How requests travel: DNS, ISP, firewalls & CDNs"
+    status: planned
+    noteFolder: "BackendRoadmap/6.HowRequestsTravel"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### 2. DNS Resolution"
+      - "BackendRoadmap/backend-developer-roadmap.md › ### 5. CDN"
+      - "BackendRoadmap/backend-developer-roadmap-beginner.md › ## Stage 1 — How the Internet Actually Works"
+    lessons: []
+
+  - id: apis-and-protocols
+    title: "APIs & protocols beyond REST"
+    status: planned
+    noteFolder: "BackendRoadmap/7.ApisAndProtocols"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### APIs & Protocols"
+      - "BackendRoadmap/backend-developer-roadmap-beginner.md › ## Stage 6 — APIs Beyond Basic REST"
+    lessons: []
+
+  - id: security-beyond-basics
+    title: "Security beyond the basics"
+    status: planned
+    noteFolder: "BackendRoadmap/8.Security"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### Security (you have a strong base — extend it)"
+      - "BackendRoadmap/ProductionGrade_WebAPI_Checklist.md › ## Security"
+    lessons: []
+
+  - id: testing
+    title: "Testing"
+    status: planned
+    noteFolder: "BackendRoadmap/9.Testing"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### Testing"
+      - "BackendRoadmap/backend-developer-roadmap-beginner.md › ## Stage 7 — Testing"
+      - "BackendRoadmap/ProductionGrade_WebAPI_Checklist.md › ## Testing & CI/CD"
+    lessons: []
+
+  - id: devops-and-infrastructure
+    title: "DevOps & infrastructure"
+    status: planned
+    noteFolder: "BackendRoadmap/10.DevOps"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### DevOps / Infra (partial overlap with what you know)"
+      - "BackendRoadmap/backend-developer-roadmap-beginner.md › ## Stage 9 — DevOps & Deployment"
+    lessons: []
+
+  - id: architecture-at-scale
+    title: "Architecture & patterns at scale"
+    status: planned
+    noteFolder: "BackendRoadmap/11.ArchitectureAtScale"
+    covers:
+      - "BackendRoadmap/backend-developer-roadmap.md › ### Architecture & Patterns at Scale"
+      - "BackendRoadmap/backend-developer-roadmap-beginner.md › ## Stage 8 — Architecture & Design"
+    lessons: []

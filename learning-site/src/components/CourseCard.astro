@@ -1,0 +1,28 @@
+---
+import { courseMeta, courseUrl, GLYPH, lessonsOf, type CourseData } from '../lib/site';
+
+interface Props {
+  course: CourseData;
+  /** Text in the top-right corner (step number or badge). */
+  tag?: string;
+  badge?: boolean;
+}
+const { course, tag, badge = false } = Astro.props;
+const ids = lessonsOf(course).map((l) => l.id);
+---
+
+<article class="course-card" data-course={course.id}>
+  <div class="top">
+    <span class="glyph" aria-hidden="true">{GLYPH[course.id] ?? '•'}</span>
+    {tag && (badge ? <span class="badge">{tag}</span> : <span class="step-no">{tag}</span>)}
+  </div>
+  <h3><a href={courseUrl(course.id)}>{course.title}</a></h3>
+  <p class="summary">{course.summary}</p>
+  <p class="meta">{courseMeta(course)}</p>
+  {ids.length > 0 && (
+    <div>
+      <div class="bar-mini" data-progress-ids={JSON.stringify(ids)}><span></span></div>
+      <p class="muted" style="font-size:12.5px;margin-top:4px" data-progress-text>Not started</p>
+    </div>
+  )}
+</article>

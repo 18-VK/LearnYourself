@@ -1,0 +1,109 @@
+# Proposed cheat sheets (§9). Each becomes src/data/cheatsheets/<id>.yaml at Checkpoint 5,
+# condensed from these sources, with every row linking back to the lesson section it came from.
+# Items added from official docs (to fill an obvious gap) are marked "from docs" and link to the source.
+
+sheets:
+  - id: csharp-keywords-operators-patterns
+    title: "C# keywords, operators & pattern matching"
+    sources:
+      - "Phase1-CSharp_And_DotNet_core_fundamental/3.C#_Keywords/CSharp Keywords - Definitions and Examples.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/3.C#_Keywords/Var_and_Dynamic.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/2.C#_operators/Notes.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/CSharp_Pattern_Matching_Notes.md"
+
+  - id: collections-big-o
+    title: "C# collections & Big-O"
+    sources:
+      - "Competitive Programming/csharp-dsa-collections-cheatsheet.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/11.C#_Collections/Note.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/7.C#_Array N_Arraylist/Note.md"
+
+  - id: linq
+    title: "LINQ operators, deferred vs immediate"
+    sources:
+      - "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Notes.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/DeferredVsImmediate.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Joins.md"
+
+  - id: async-multithreading
+    title: "Async & multithreading"
+    sources:
+      - "Phase1-CSharp_And_DotNet_core_fundamental/13.C#_AsynchronousProgramming/Note.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/Notes.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/ThreadpoolAndTask.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/OtherTopics.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/17..C#_ThreadsAndMultithreading/Concurrent collections in multithreading.md"
+
+  - id: ef-core-migrations
+    title: "EF Core & migrations"
+    sources:
+      - "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes2.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore_Migration_Deployment_Summary.md"
+
+  - id: dotnet-cli
+    title: ".NET CLI"
+    sources:
+      - "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Dot Net_CLI.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/Dot Net_CLI.md (verified duplicate)"
+      - "DotNet_ProjectTypes.txt (dotnet new per project type)"
+
+  - id: aspnet-core
+    title: "ASP.NET Core: middleware order, routing & binding attributes, return types, DI lifetimes"
+    sources:
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/3.ASP_ControllerNRouting.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/3.ASP_ReturnTypesNMore_2.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/4.ASP_ModelBindingNMore.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/5.ASP_WebAPI_ConfigurationNprojectSetup.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/8.ASP_MiddlewareNMore.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/9.ASP_GlobalExceptionHandling.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/15.ASP_RateLimitingNmore.md"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Dependency_Injection.md"
+
+  - id: http
+    title: "HTTP methods, status codes & headers"
+    sources:
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/2.RestAPI_N_HTTPBasics.md (incl. 'Quick cheat sheet')"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/http-headers-rest-api.md (incl. 'Quick Reference Table')"
+
+  - id: auth-jwt
+    title: "Auth & JWT"
+    sources:
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/11.ASP_MoreOnAuth.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/12.ASP_AuthServer.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/13.ASP_Custom_authServer.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/14.ASP_OpenIddict_Auth.md"
+
+  - id: sql-server
+    title: "SQL Server: syntax, joins, window functions, indexes, isolation levels"
+    sources:
+      - "Phase2-ASP.NetAndBackend/SQLTutorial/ (notes 2–10)"
+      - "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_Functions.md"
+      - "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_ClauseNmore.md"
+      - "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_ALTER_Command_Guide.md"
+
+  - id: sorting-searching
+    title: "Sorting & searching complexity"
+    sources:
+      - "Competitive Programming/sorting-algorithms-notes.md (Summary Table, When to Use What)"
+      - "Competitive Programming/searching-algorithms-notes.md (Summary Table, When to Use What, Built-in C# Search Methods)"
+
+  - id: wpf-mvvm
+    title: "WPF & MVVM bindings"
+    sources:
+      - "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/ (notes 2–9, esp. 'Binding modes quick cheat' and 9.Summary.md)"
+
+  # Added 2026-10-21 at your request (were optional at Checkpoint 1).
+  - id: solid-clean-architecture
+    title: "SOLID & Clean Architecture"
+    sources:
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/DotNet_DesignPatterns.md"
+      - "Phase2-ASP.NetAndBackend/ASP.Net Core/CleanArchitectureNMore.md"
+
+  - id: config-logging-hosting
+    title: "Configuration, logging & hosting"
+    sources:
+      - "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/IConfigurationNAppsetting.md (configuration precedence)"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/LoggingInApps.md (log levels, Serilog sinks)"
+      - "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/DotNet_HostedService_N_BGService.md"

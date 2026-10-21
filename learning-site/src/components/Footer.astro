@@ -1,0 +1,12 @@
+---
+import { site, url } from '../lib/site';
+---
+
+<footer class="site-footer" data-pagefind-ignore>
+  <div class="wrap">
+    <span class="grow">
+      {site.name} is built from study notes in <a href={site.repo}>a public repository</a>. Non-commercial; your progress stays in this browser.
+    </span>
+    <a class="btn" href={url('progress/')}>Your progress</a>
+  </div>
+</footer>

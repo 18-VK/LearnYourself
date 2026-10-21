@@ -1,0 +1,14 @@
+# Ignore the bin directory at the root level
+/bin/
+
+# Ignore all bin directories regardless of their location
+**/bin/
+
+# Optional: Also commonly ignored is the obj folder
+/obj/
+**/obj/
+
+**/.vs
+
+#ignore logs
+**/logs

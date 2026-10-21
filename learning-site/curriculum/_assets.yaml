@@ -1,0 +1,156 @@
+# Every binary file in the repo, with authorship and how the public site may use it.
+# Decided 2026-10-21:
+#   - Your own files: view on the website only. PDFs in an embedded viewer, DOCX converted at build time
+#     into read-only pages, no download links.
+#   - Third-party files: shown view-only and credited to their visible author or source.
+# `publish: true` + `mode: view` means "show it, never offer a download link". A public static site cannot
+# stop a determined visitor from saving what they can view; this only removes the download affordance.
+# Only publish: true files are copied (with URL-safe names); CI fails if any other binary reaches the output.
+
+assets:
+  # ── Your own files ─────────────────────────────────────────────────────────────────────
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Validation And Data Modeling Attributes.pdf"
+    usedBy: phase-1/ef-core/ef-core-model-config-and-loading
+    authorship: yours
+    publish: true
+    mode: view            # embedded PDF viewer, no download link
+
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Efcore Fluent Api And Attributes.docx"
+    usedBy: phase-1/ef-core/ef-core-model-config-and-loading
+    authorship: yours
+    publish: true
+    mode: view            # converted to a read-only page at build time
+
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio/TaskFlowStudio/Modern Wpf Practice Project — Design.pdf"
+    usedBy: desktop/capstone-taskflow-studio/taskflow-studio
+    authorship: yours
+    publish: true
+    mode: view
+
+  - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API/Requirements.docx"
+    usedBy: phase-2/capstone/validation-filter-and-extensions
+    authorship: yours
+    publish: true
+    mode: view
+
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio/TaskFlowStudio/Resources/Icons/TaskflowStudioIcon.ico"
+    usedBy: null
+    authorship: yours
+    publish: false        # application icon inside the WPF project; not a note asset
+
+  # ── Third-party files: view-only, credited ─────────────────────────────────────────────
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Join.jpg"
+    usedBy: phase-1/linq/linq-joins
+    authorship: third-party
+    credit: "www.dotnetmob.com (watermark)"
+    alt: "Venn diagram of inner, left outer, right outer and full outer joins in SQL Server"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/1.jpg"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Pankaj Ikhar"
+    alt: "Interviewing for a .NET role: 20 questions you should be able to answer"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/2.jpg"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Unknown author (shared on social media)"
+    alt: "15 must-know .NET interview questions"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/Auth.gif"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Rocky Bhatia"
+    alt: "JWT vs Session vs OAuth 2.0 vs API Keys: how each works, state, best use, strengths and limits"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/LoggingCorelationId.jpg"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Unknown author (shared on social media)"
+    alt: "Correlation IDs in ASP.NET Core: why they matter, how they flow, middleware and example log output"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/MusthaveStrategy.PNG"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Kanaiya Katarmal"
+    alt: "10 production features every .NET developer should pay attention to (part 1)"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/MusthaveStrategy2.PNG"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Kanaiya Katarmal"
+    alt: "10 production features every .NET developer should pay attention to (part 2)"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/SlowAPIfix.jpg"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Unknown author (branded infographic)"
+    alt: "Why your .NET API is slow and how to fix it: six causes"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/SlowAPIfix2.jpg"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Unknown author (shared on social media)"
+    alt: "From 12 seconds to under 500 ms: how a slow API endpoint was optimized"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/InterviewQuestions/100InterviewQuestion.jpg"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Unknown author (shared on social media)"
+    alt: "Top .NET interview questions for 3 to 6 years of experience, grouped by topic"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/InterviewQuestions/InterviewQuestionsLevelWise.PNG"
+    usedBy: interview-prep/gallery
+    authorship: third-party
+    credit: "Unknown author (social media post)"
+    alt: "Common .NET interview topics by experience level: beginner, intermediate and senior"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/InterviewQuestions/50InterviewQuestions.pdf"
+    usedBy: interview-prep/documents
+    authorship: unknown
+    credit: "Unknown author"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/InterviewQuestions/InterviewQues1.pdf"
+    usedBy: interview-prep/documents
+    authorship: third-party
+    credit: "kommula Harikareddy (from the PDF's metadata)"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/InterviewQuestions/InterviewQues2.pdf"
+    usedBy: interview-prep/documents
+    authorship: third-party
+    credit: "Unknown author (slide carousel)"
+    publish: true
+    mode: view
+
+  - file: "InterviewPrep/InterviewPrep/InterviewQuestions/InterviewQues3.pdf"
+    usedBy: interview-prep/documents
+    authorship: third-party
+    credit: "Unknown author"
+    publish: true
+    mode: view

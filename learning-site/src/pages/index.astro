@@ -1,0 +1,72 @@
+---
+import CourseCard from '../components/CourseCard.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { courseById, lessonUrl, site, url } from '../lib/site';
+
+const main = site.suggestedPath.main.map(courseById);
+const parallel = site.suggestedPath.parallel.map((p) => courseById(p.course));
+const branches = site.suggestedPath.branches.map((b) => ({ ...b, course: courseById(b.course) }));
+const first = main[0]!;
+const tags: Record<string, string> = {};
+main.forEach((c, i) => (tags[c.id] = i === 0 ? 'Step 1 · Start here' : `Step ${i + 1}`));
+---
+
+<BaseLayout title={site.name} nav="courses">
+  <section class="home-intro">
+    <div>
+      <p class="eyebrow">{site.courses.length} courses · built from one developer's study notes</p>
+      <h1>C#, .NET, ASP.NET Core and SQL Server, one lesson at a time</h1>
+      <p class="lede">
+        Every lesson is a study note, split into readable pieces. Algorithms and request flows come with step-through visualizers that run the notes' own C# code.
+      </p>
+    </div>
+    <div class="continue" id="continue-card" data-course={first.id}>
+      <p class="eyebrow" data-continue-label>Start here</p>
+      <p class="crumb"><span class="course-name" data-continue-course>{first.title}</span></p>
+      <h2 data-continue-title>{first.modules[0]?.lessons[0]?.title}</h2>
+      <div class="row">
+        <span data-continue-note>First lesson of the suggested path</span>
+        <a class="btn btn-primary" data-continue-link href={first.firstLesson ? lessonUrl(first.firstLesson) : url()}>Start lesson</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <h2>Suggested path</h2>
+    <span class="muted" style="font-size:14px">Follow the main path in order. DSA and Math run alongside it.</span>
+  </div>
+  <ol class="path-main" aria-label="Main path, in order">
+    {main.map((c) => <li><CourseCard course={c} tag={tags[c.id]} /></li>)}
+  </ol>
+
+  <div class="path-side">
+    <div class="lane">
+      <p class="lane-label eyebrow">In parallel with the main path</p>
+      <div class="lane-cards">
+        {parallel.map((c) => <CourseCard course={c} tag={c.kind === 'roadmap' ? 'Roadmap' : `${c.vizCount} visualizers`} badge />)}
+      </div>
+    </div>
+    {branches.map((b) => (
+      <div class="lane">
+        <p class="lane-label eyebrow">Optional branch after {courseById(b.after).shortTitle}</p>
+        <CourseCard course={b.course} tag="Optional" badge />
+      </div>
+    ))}
+  </div>
+
+  <div class="beyond">
+    <a class="course-card" href={url('cheat-sheets/')} style="text-decoration:none;color:inherit">
+      <span class="eyebrow">Cheat Sheets</span>
+      <h3>{site.cheatsheets.length} one-page references for revision</h3>
+      <p class="summary">Condensed from the notes: tables, one-line definitions and snippets, each linking back to its lesson.</p>
+    </a>
+    <a class="course-card" href={url('interview-prep/')} style="text-decoration:none;color:inherit">
+      <span class="eyebrow">Interview Prep</span>
+      <h3>Question bank, flashcards and mock interviews</h3>
+      <p class="summary">Questions from the notes first, then web-researched ones with sources, each linked to the lessons that teach it.</p>
+    </a>
+  </div>
+  <script>
+    import '../scripts/catalogue';
+  </script>
+</BaseLayout>

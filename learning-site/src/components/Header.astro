@@ -1,0 +1,32 @@
+---
+import { site, url } from '../lib/site';
+
+interface Props {
+  nav: 'courses' | 'cheatsheets' | 'interview' | 'none';
+}
+const { nav } = Astro.props;
+const links = [
+  { key: 'courses', href: url(), label: 'Courses' },
+  { key: 'cheatsheets', href: url('cheat-sheets/'), label: 'Cheat Sheets' },
+  { key: 'interview', href: url('interview-prep/'), label: 'Interview Prep' },
+];
+---
+
+<header class="topbar" data-pagefind-ignore>
+  <div class="wrap">
+    <a class="brand" href={url()}><span class="brand-mark" aria-hidden="true">LY</span>{site.name}</a>
+    <nav class="topnav" aria-label="Main">
+      {links.map((l) => <a href={l.href} aria-current={nav === l.key ? 'page' : undefined}>{l.label}</a>)}
+    </nav>
+    <div class="top-tools">
+      <button type="button" class="search-open" id="search-open" aria-haspopup="dialog" aria-controls="search-dialog">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <span class="label">Search</span><kbd>/</kbd>
+      </button>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Theme: system. Select to change.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"></path></svg>
+        <span id="theme-label">System</span>
+      </button>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,52 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { courses, courseUrl, lessonsOf } from '../lib/site';
+---
+
+<BaseLayout title="Your progress" nav="none">
+  <section style="max-width:70ch">
+    <p class="eyebrow">Progress</p>
+    <h1 style="font-size:2rem;margin-top:8px">Your progress</h1>
+    <p style="margin-top:10px;color:var(--ink-2)">
+      Progress lives only in this browser. There are no accounts. Export it to keep a copy or move it to another browser, then import it there.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+      <button type="button" class="btn btn-primary" id="export-progress">Export progress (JSON)</button>
+      <label class="btn" for="import-progress" style="cursor:pointer">Import progress…</label>
+      <input type="file" id="import-progress" accept="application/json,.json" class="sr-only" />
+    </div>
+    <div style="display:grid;gap:12px;margin-top:28px">
+      {courses.map((c) => (
+        <div class="course-card" data-course={c.id} style="flex:none">
+          <h3><a href={courseUrl(c.id)}>{c.title}</a></h3>
+          <div class="bar-mini" data-progress-ids={JSON.stringify(lessonsOf(c).map((l) => l.id))}><span></span></div>
+          <p class="muted" style="font-size:12.5px" data-progress-text>Not started</p>
+        </div>
+      ))}
+    </div>
+  </section>
+  <script>
+    import '../scripts/catalogue';
+    import { toast } from '../scripts/global';
+    import { exportProgress, importProgress } from '../scripts/progress';
+
+    document.getElementById('export-progress')?.addEventListener('click', () => {
+      const blob = new Blob([exportProgress()], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `learnyourself-progress-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    document.getElementById('import-progress')?.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const n = importProgress(await file.text());
+        toast(`Imported progress for ${n} lesson${n === 1 ? '' : 's'}.`);
+      } catch {
+        toast('That file is not a progress export from this site.');
+      }
+    });
+  </script>
+</BaseLayout>

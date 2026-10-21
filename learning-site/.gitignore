@@ -1,0 +1,20 @@
+# dependencies and local toolchain
+node_modules/
+.tools/
+.cache/
+
+# build output
+dist/
+.astro/
+
+# generated from the notes by scripts/build-content.ts
+src/content/lessons/
+src/content/landing/
+src/data/generated/
+public/generated/
+coverage-report.md
+
+# test output
+test-results/
+playwright-report/
+coverage/

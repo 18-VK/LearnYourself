@@ -1,0 +1,14 @@
+
+Hi, I’m Aman Kumar, and I have around 3+ years of experience in backend development using C#, .NET Core, and ASP.NET Core.
+
+Currently, I’m working as a Senior Software Developer at Extrieve Technologies, where I work on enterprise-level banking workflow systems. 
+My role involves developing and maintaining workflow-based applications that handle complex business logic and integrate with various banking systems. 
+I also work on REST API development and maintenance, handling high-volume data processing.
+
+Previously, I’ve worked on multi-threaded and queue-based systems to improve performance and scalability. 
+I also have strong experience with SQL Server, focusing on query optimization and performance tuning.
+
+Additionally, I was involved in migrating legacy VB6 applications to C#.
+Apart from development, I also contribute to CI/CD pipelines using GitHub Actions and Docker.
+
+Overall, I enjoy working on backend systems and I’m looking to grow further by contributing to large-scale enterprise applications.

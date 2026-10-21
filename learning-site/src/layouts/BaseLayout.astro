@@ -1,0 +1,63 @@
+---
+import '@fontsource-variable/literata';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/global.css';
+import '../styles/viz.css';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { site, url } from '../lib/site';
+
+interface Props {
+  title: string;
+  description?: string;
+  course?: string;
+  nav?: 'courses' | 'cheatsheets' | 'interview' | 'none';
+  /** Pagefind indexes only pages that set this. */
+  searchable?: boolean;
+}
+const { title, description, course, nav = 'courses', searchable = false } = Astro.props;
+const fullTitle = title === site.name ? site.name : `${title} · ${site.name}`;
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
+const desc = description ?? 'Courses on C#, .NET, ASP.NET Core, SQL Server and DSA, built from study notes, with step-through visualizers.';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={desc} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="icon" href={url('favicon.svg')} type="image/svg+xml" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="generator" content={Astro.generator} />
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('ly-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch {}
+    </script>
+  </head>
+  <body data-course={course} data-base={url()}>
+    <a class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 btn" href="#main">Skip to content</a>
+    <Header nav={nav} />
+    <slot name="above" />
+    <main id="main" class="page wrap" {...searchable ? { 'data-pagefind-body': '' } : {}}>
+      <slot />
+    </main>
+    <Footer />
+    <dialog class="search-dialog" id="search-dialog" aria-label="Search">
+      <form method="dialog" role="search">
+        <label class="sr-only" for="search-input">Search lessons</label>
+        <input id="search-input" type="search" placeholder="Search lessons and notes" autocomplete="off" />
+        <button class="btn" value="close">Close</button>
+      </form>
+      <ul class="search-results" id="search-results" aria-live="polite"></ul>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <script>
+      import '../scripts/global';
+    </script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+Framework : A framework is a pre-written, reusable set of code and guidelines that simplifies the development of 
+            software applications. It acts as a template, allowing developers to add their unique code and functionality
+            without starting from scratch. 
+
+Dot net Core
+-------------
+.NET Core is the latest version of Microsoft’s .NET Framework which is a free, open-source, general-purpose programming
+platform. It’s a cross-platform framework that works with Windows, Mac OS X, and Linux.The.NET Core Framework may be
+used to create a variety of apps, including mobile, desktop, online, cloud, IoT, machine learning, microservices,
+games, and more. 
+
+Dot net framework
+------------------
+The Dot Net Framework was designed to let developers construct programs that would operate on Microsoft’s Windows 
+platform .Net Framework is a software development platform for building and running Windows applications.
+
+link : https://dotnettutorials.net/course/csharp-dot-net-tutorials/
+
+.Net Framework Architecture
+---------------------------
+The two major components of the .NET Framework are the Common Language Runtime and the .NET Framework Class Library.
+
+CLR: The Common Language Runtime (CLR) is the execution engine that handles running applications. It provides services
+     like thread management, garbage collection, type safety, exception handling, and more.
+BCL: The Base Class Library provides a set of APIs and types for common functionality. It provides types for strings, 
+    dates, numbers, etc. The Class Library includes APIs for reading and writing files, connecting to databases, 
+    drawing, and more.
+
+The .NET applications are written in C#, F#, or VB programming languages. The Source Code is compiled into an 
+intermediate language code called IL or MSIL(Microsoft Intermediate Language) or CIL (Common Intermediate Language).
+And the Compiled code is stored in assemblies with .DLL or .EXE file extension.
+
+When an application runs, the CLR takes the Assembly (IL Code or MSIL Code, or CIL) and uses the Just-in-Time 
+compiler (JIT) to convert the MSIL or IL code into machine code that can execute on the specific architecture of the
+computer it is running on.

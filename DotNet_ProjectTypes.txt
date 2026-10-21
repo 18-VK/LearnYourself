@@ -1,0 +1,88 @@
+
+.NET Project Types with Details and Usage
+==========================================
+
+1. Console Application
+----------------------
+- Template: Console App
+- Usage: CLI tools, background services
+- Example: File parsers, schedulers
+- Command: dotnet new console -n MyConsoleApp
+
+2. Class Library
+----------------
+- Template: Class Library
+- Usage: Reusable code (e.g., utilities, business logic)
+- Example: Authentication library
+- Command: dotnet new classlib -n MyLibrary
+
+3. ASP.NET Core Web Application
+-------------------------------
+- Template: ASP.NET Core Web App (MVC or Razor)
+- Usage: Web applications
+- Example: E-commerce site
+- Commands:
+  - dotnet new mvc -n MyWebApp
+  - dotnet new razor -n MyRazorApp
+
+4. ASP.NET Core Web API
+------------------------
+- Template: ASP.NET Core Web API
+- Usage: RESTful services for frontend/mobile apps
+- Example: JSON API for Angular/React
+- Command: dotnet new webapi -n MyApi
+
+5. Blazor Application
+---------------------
+- Templates:
+  - Blazor WebAssembly (client-side)
+  - Blazor Server (server-side)
+- Usage: C# in web UI
+- Example: Admin panel
+- Commands:
+  - dotnet new blazorwasm -n MyBlazorApp
+  - dotnet new blazorserver -n MyBlazorServerApp
+
+6. Windows Forms App
+---------------------
+- Template: Windows Forms App
+- Usage: Traditional Windows desktop apps
+- Example: POS system
+- Command: dotnet new winforms -n MyWinFormsApp
+
+7. WPF (Windows Presentation Foundation)
+----------------------------------------
+- Template: WPF App
+- Usage: Complex desktop UI apps
+- Example: Design tools
+- Command: dotnet new wpf -n MyWpfApp
+
+8. Worker Service
+------------------
+- Template: Worker
+- Usage: Background services
+- Example: Kafka consumer, email processing
+- Command: dotnet new worker -n MyWorkerService
+
+9. Azure Functions
+-------------------
+- Template: Azure Functions
+- Usage: Serverless computing
+- Example: File trigger processing
+- Command: func init MyFunctionApp --worker-runtime dotnet
+
+10. MAUI (Multi-platform App UI)
+---------------------------------
+- Template: .NET MAUI App
+- Usage: Cross-platform desktop + mobile
+- Example: Mobile banking app
+- Command: dotnet new maui -n MyMauiApp
+
+11. Unit Test Project
+----------------------
+- Template: xUnit / NUnit / MSTest
+- Usage: Unit/integration tests
+- Example: Testing business logic
+- Command: dotnet new xunit -n MyTestProject
+
+Generated on: 2025-07-13 12:55:06

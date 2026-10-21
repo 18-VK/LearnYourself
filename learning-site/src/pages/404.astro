@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { courses, courseUrl, url } from '../lib/site';
+---
+
+<BaseLayout title="Page not found" nav="none">
+  <section style="max-width:60ch">
+    <p class="eyebrow">404</p>
+    <h1 style="font-size:2.2rem;margin-top:8px">This page doesn't exist</h1>
+    <p style="margin-top:12px;color:var(--ink-2)">The link may be out of date, or a lesson may have moved when the notes were reorganised. Try search (press <kbd>/</kbd>), or start from one of these:</p>
+    <p style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+      <a class="btn btn-primary" href={url()}>Home</a>
+      <a class="btn" href={url('cheat-sheets/')}>Cheat Sheets</a>
+      <a class="btn" href={url('interview-prep/')}>Interview Prep</a>
+    </p>
+    <h2 style="font-size:1.2rem;margin-top:32px">Course catalogue</h2>
+    <ul style="margin-top:8px;display:grid;gap:4px">
+      {courses.map((c) => <li><a href={courseUrl(c.id)}>{c.title}</a></li>)}
+    </ul>
+  </section>
+</BaseLayout>

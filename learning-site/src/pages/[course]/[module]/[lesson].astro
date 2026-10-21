@@ -1,0 +1,159 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { courseById, courseUrl, GLYPH, lessonsOf, lessonUrl, url } from '../../../lib/site';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('lessons');
+  return entries.map((entry) => ({
+    params: { course: entry.data.course, module: entry.data.module, lesson: entry.data.lesson },
+    props: { entry },
+  }));
+}
+interface Props {
+  entry: CollectionEntry<'lessons'>;
+}
+const { entry } = Astro.props;
+const d = entry.data;
+const { Content, remarkPluginFrontmatter } = await render(entry);
+const toc = ((remarkPluginFrontmatter.toc ?? []) as { depth: number; id: string; text: string }[]).filter((h) => h.depth <= 3);
+const course = courseById(d.course);
+const all = lessonsOf(course);
+const index = all.findIndex((l) => l.id === entry.id);
+const prev = all[index - 1];
+const next = all[index + 1];
+const lessonData = { id: entry.id, title: d.title, course: d.course, courseTitle: d.courseTitle, kind: d.kind, courseLessons: all.map((l) => l.id) };
+const moduleNumber = course.modules.filter((m) => m.status !== 'planned').findIndex((m) => m.id === d.module) + 1;
+const assets = d.resources.filter((r) => r.type === 'asset');
+const links = d.resources.filter((r) => r.type !== 'asset');
+---
+
+<BaseLayout title={d.title} description={`${d.courseTitle} › ${d.moduleTitle}: ${d.title}`} course={d.course} searchable>
+  <div class="read-progress" id="read-progress" slot="above" aria-hidden="true"></div>
+  <div class="lesson-shell">
+    <button type="button" class="btn course-nav-toggle" id="course-nav-toggle" aria-expanded="false" aria-controls="course-nav" data-pagefind-ignore>
+      Course menu · {course.shortTitle}
+    </button>
+    <aside class="course-nav" id="course-nav" aria-label={`${course.title} lessons`} data-pagefind-ignore>
+      <a class="cn-title" href={courseUrl(course.id)}><span class="glyph" aria-hidden="true">{GLYPH[course.id]}</span>{course.title}</a>
+      <div class="cn-progress">
+        <div class="bar-mini" id="course-progress"><span></span></div>
+        <span id="course-progress-text">{all.length} lessons</span>
+      </div>
+      {course.modules.filter((m) => m.status !== 'planned').map((m) => (
+        <>
+          <p class="cn-module eyebrow">{m.title}</p>
+          <ul class="cn-list">
+            {m.lessons.map((l) => (
+              <li data-lesson-id={l.id}>
+                <a href={lessonUrl(l.id)} aria-current={l.id === entry.id ? 'page' : undefined}>
+                  <span class={`dot${l.id === entry.id ? ' here' : ''}`} aria-hidden="true"></span>
+                  {l.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      ))}
+    </aside>
+
+    <article class="lesson" id="lesson-article">
+      <header class="lesson-head">
+        <nav class="crumb" aria-label="Breadcrumb" data-pagefind-ignore>
+          <a class="course-name" href={courseUrl(course.id)}>{course.title}</a> › Module {moduleNumber}: {d.moduleTitle}
+        </nav>
+        <h1 data-pagefind-meta="title">{d.title}</h1>
+        <div class="lesson-meta" data-pagefind-ignore>
+          <span>≈ {d.minutes} min read{d.vizCount ? ` + ${d.vizCount} interactive` : ''}</span>
+          {d.sources.map((s, i) => (
+            <a href={s.url} rel="noopener">{d.sources.length > 1 ? `Original note ${i + 1} ↗` : 'View original note ↗'}</a>
+          ))}
+          {d.cheatsheets.map((s) => <a href={url(`cheat-sheets/#${s.id}`)}>Cheat sheet: {s.title}</a>)}
+        </div>
+      </header>
+
+      {d.objectives.length > 0 && (
+        <section class="objectives" data-pagefind-ignore>
+          <p class="eyebrow">{d.objectivesDerived ? 'What this lesson covers' : 'Learning objectives'}</p>
+          <ul>{d.objectives.map((o) => <li>{o}</li>)}</ul>
+        </section>
+      )}
+
+      <div class="prose" id="lesson-body" data-kind={d.kind}>
+        <Content />
+      </div>
+
+      {(assets.length > 0 || links.length > 0) && (
+        <section class="prose" style="margin-top:2.4em" data-pagefind-ignore>
+          <h2 id="resources">Resources</h2>
+          <div class="resource-list" style="max-width:none">
+            {assets.map((a) => (
+              <div class="resource">
+                {a.kind === 'image' && (
+                  <figure>
+                    <img src={url(a.src)} srcset={a.srcset?.split(', ').map((s) => url(s)).join(', ')} sizes="(min-width: 900px) 680px, 100vw" width={a.width} height={a.height} alt={a.alt ?? a.title} loading="lazy" decoding="async" />
+                    <figcaption>{a.title}{a.credit && <> · Credit: {a.credit}</>}</figcaption>
+                  </figure>
+                )}
+                {a.kind === 'pdf' && (
+                  <>
+                    <p><strong>{a.title}</strong> <span class="muted">(PDF{a.credit ? ` · Credit: ${a.credit}` : ''})</span></p>
+                    <iframe src={`${url(a.src)}#toolbar=0&navpanes=0`} title={a.title} loading="lazy"></iframe>
+                  </>
+                )}
+                {a.kind === 'document' && (
+                  <p><strong>{a.title}</strong> <span class="muted">(Word document)</span> · <a href={url(a.page)}>Read it on this site</a></p>
+                )}
+              </div>
+            ))}
+            {links.map((l) =>
+              l.type === 'link' ? (
+                <p>Further reading: <a href={l.url} class="external" target="_blank" rel="noopener noreferrer">{l.title}</a></p>
+              ) : (
+                <p>Try it locally: <a href={l.url} class="external" target="_blank" rel="noopener noreferrer"><code>{l.path}</code></a></p>
+              ),
+            )}
+          </div>
+        </section>
+      )}
+
+      {(d.related.length > 0 || d.interviewHeadings.length > 0) && (
+        <section class="side-cards" style="margin-top:2.4em;max-width:70ch" data-pagefind-ignore>
+          {d.related.length > 0 && (
+            <div class="side-card">
+              <p class="eyebrow">Related in other courses</p>
+              <ul>{d.related.map((r) => <li><a href={lessonUrl(r.id)}>{r.title}</a> <span class="muted">· {r.courseTitle}</span></li>)}</ul>
+            </div>
+          )}
+          {d.interviewHeadings.length > 0 && (
+            <div class="side-card">
+              <p class="eyebrow">Interview material in this lesson</p>
+              <p class="muted" style="font-size:14.5px;margin-top:4px">Marked with an “Interview” label above, and collected in <a href={url('interview-prep/')}>Interview Prep</a>.</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      <div class="lesson-end" data-pagefind-ignore>
+        <button type="button" class="btn btn-mark" id="mark-complete" aria-pressed="false">Mark lesson complete</button>
+        <nav class="pager" aria-label="Previous and next lesson">
+          {prev && <a href={lessonUrl(prev.id)}><span class="eyebrow">Previous</span>{prev.title}</a>}
+          {next && <a class="next" href={lessonUrl(next.id)}><span class="eyebrow">Next</span>{next.title}</a>}
+        </nav>
+      </div>
+    </article>
+
+    <nav class="toc" aria-label="On this page" data-pagefind-ignore>
+      {toc.length > 1 && (
+        <>
+          <p class="eyebrow">On this page</p>
+          <ol>{toc.map((h) => <li><a class={`depth-${h.depth}`} href={`#${h.id}`}>{h.text}</a></li>)}</ol>
+        </>
+      )}
+    </nav>
+  </div>
+  <script type="application/json" id="lesson-data" set:html={JSON.stringify(lessonData)} />
+  <script>
+    import '../../../scripts/lesson';
+  </script>
+</BaseLayout>

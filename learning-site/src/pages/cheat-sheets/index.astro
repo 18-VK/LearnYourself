@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { site } from '../../lib/site';
+---
+
+<BaseLayout title="Cheat Sheets" nav="cheatsheets">
+  <section style="max-width:80ch">
+    <p class="eyebrow">Cheat Sheets</p>
+    <h1 style="font-size:2rem;margin-top:8px">One-page references for revision</h1>
+    <p style="margin-top:10px;color:var(--ink-2)">
+      Each sheet is condensed from the notes, with every row linking back to the lesson it came from, and prints cleanly on one A4 or Letter page.
+      The sheets are being written; the list below is the plan.
+    </p>
+    <ul style="margin-top:20px;display:grid;gap:8px;list-style:none;padding:0">
+      {site.cheatsheets.map((s) => (
+        <li id={s.id} class="course-card" style="flex:none;padding:12px 16px">
+          <strong>{s.title}</strong> <span class="badge badge-soon">Coming soon</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+</BaseLayout>
