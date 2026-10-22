@@ -371,6 +371,9 @@ export function tracePipeline(order: readonly MwId[], sampleId: SampleId, opts: 
         push(i, 'in', 'call', 'UseExceptionHandler wraps everything after it: it calls next inside a try/catch, so it can catch exceptions thrown by the middleware and endpoint that follow it.');
         return 'next';
       case 'static': {
+        // Static file middleware "returns static files and short-circuits further request processing"; placed before
+        // UseAuthorization "no authorization checks are performed on the static files", placed after it a fallback
+        // policy applies to them: https://learn.microsoft.com/aspnet/core/fundamentals/static-files#static-file-authorization
         const isFile = WWWROOT.has(sample.path);
         const predict: Prediction = { question: `Does UseStaticFiles handle ${sample.path}?`, options: ['No, it calls next', 'Yes: it serves the file and short-circuits'], answer: isFile ? 1 : 0 };
         if (isFile) {
