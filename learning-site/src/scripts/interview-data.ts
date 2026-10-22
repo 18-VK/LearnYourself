@@ -99,7 +99,7 @@ export function badges(q: QMeta, pile?: 'know' | 'review'): string {
   const diff = q.difficulty[0]!.toUpperCase() + q.difficulty.slice(1);
   return (
     `<div class="iq-badges"><span class="badge iq-origin iq-origin-${q.origin}${q.reviewed ? ' is-reviewed' : ''}">${esc(q.originLabel)}</span>` +
-    `<span class="badge iq-diff iq-diff-${q.difficulty}">${diff}</span><span class="badge iq-topic">${esc(q.topicTitle)}</span>` +
+    `<span class="badge iq-diff iq-diff-${q.difficulty}">${diff}</span><span class="badge iq-topic-badge">${esc(q.topicTitle)}</span>` +
     `<span class="badge iq-sub">${esc(q.subtopicLabel)}</span>` +
     (pile ? `<span class="badge iq-pile iq-pile-${pile}">${pile === 'know' ? 'In “Know it”' : 'In “Review again”'}</span>` : '') +
     '</div>'

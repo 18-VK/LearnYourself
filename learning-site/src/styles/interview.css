@@ -83,7 +83,7 @@
 .iq-permalink:hover, .iq-permalink:focus-visible { color: var(--link); text-decoration: underline; }
 .iq-short { border-left: 3px solid var(--int); padding: 2px 0 2px 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .iq-short p { line-height: 1.55; }
-.iq-card :not(pre) > code, .fc-card :not(pre) > code, .mk-results :not(pre) > code { font-size: 0.86em; background: var(--surface-2); padding: 0.06em 0.32em; border-radius: 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+.iq-card :not(pre) > code, .fc-card :not(pre) > code, .mk-card :not(pre) > code, .mk-results :not(pre) > code, .mk-weak :not(pre) > code { font-size: 0.86em; background: var(--surface-2); padding: 0.06em 0.32em; border-radius: 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
 .iq-more > summary { cursor: pointer; font-size: 14.5px; color: var(--link); padding: 2px 0; width: fit-content; }
 .iq-more > summary:hover { text-decoration: underline; }
 .iq-more[open] > summary { margin-bottom: 10px; }
