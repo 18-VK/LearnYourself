@@ -156,7 +156,8 @@ interface StageOut {
 function runQuery(q: QueryDef, data: QoData): Record<Stage, StageOut> {
   const out = {} as Record<Stage, StageOut>;
   const pass = (stage: Stage, rel: Rel, caption: string) => {
-    out[stage] = { tables: [view('work', caption, rel)], narration: `No ${stage} in this query: the ${plural(rel.rows.length, 'row')} pass through unchanged.`, rowsAfter: rel.rows.length };
+    const what = rel.groups ? `${plural(rel.groups.length, 'group')} (${plural(rel.rows.length, 'row')})` : plural(rel.rows.length, 'row');
+    out[stage] = { tables: [view('work', caption, rel)], narration: `No ${stage} in this query: the ${what} pass through unchanged.`, rowsAfter: rel.groups ? rel.groups.length : rel.rows.length };
   };
 
   if (q.id === 'apply-inner') {
