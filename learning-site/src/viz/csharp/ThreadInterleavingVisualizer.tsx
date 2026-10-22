@@ -110,6 +110,7 @@ export default function ThreadInterleavingVisualizer(props: ThreadInterleavingPr
     const pr = TI_PRESETS[v].find((x) => x.id === id) ?? TI_PRESETS[v][0]!;
     setSchedule(pr.schedule(count));
     setPreset(pr.id);
+    p.reset();
   };
   const changeVariant = (v: TiVariant) => {
     setVariant(v);
