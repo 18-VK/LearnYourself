@@ -7,4 +7,5 @@ import type { VizLoader, VizModule } from '../engine/loader';
  */
 export const REGISTRY: Record<string, VizLoader> = {
   BigOGrowthVisualizer: () => import('./BigOGrowthVisualizer') as Promise<VizModule>,
+  CollectionVisualizer: () => import('./CollectionVisualizer') as Promise<VizModule>,
 };

@@ -1,4 +1,5 @@
 import { chains, sizeOf, type HashHighlight, type HashTableState } from './model';
+import './hash.css';
 
 /**
  * Buckets and their chains. Simplified: .NET keeps all entries in one array and links a bucket's chain
