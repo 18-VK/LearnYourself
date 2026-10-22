@@ -608,6 +608,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     topics: interviewManifest.topics as { id: string; title: string; subtopics?: string[]; notCoveredYet?: boolean }[],
     interviewSlices,
     omitted,
+    recovered,
     falsePositives,
   };
   const data = checkData({ ...dataInput, errors, warnings });
@@ -618,6 +619,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     JSON.stringify({
       ...dataInput,
       omitted: Object.fromEntries([...omitted].map(([k, v]) => [k, [...v]])),
+      recovered: Object.fromEntries(recovered),
       falsePositives: [...falsePositives],
     }),
   );

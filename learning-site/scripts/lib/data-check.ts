@@ -58,6 +58,8 @@ interface Ctx {
   /** Note ranges routed to Interview Prep in _site.yaml; every non-blank line must be used by a notes question. */
   interviewSlices: { rel: string; start: number; end: number }[];
   omitted: Map<string, Set<number>>;
+  /** Unfenced code found in notes listed under recoverUnfencedCode; fenced in answers the same way lessons do. */
+  recovered: Map<string, { start: number; end: number; lang: string; labelLine?: number }[]>;
   /** normText of headings that say "interview" but aren't interview material (_interview.yaml falsePositives). */
   falsePositives: Set<string>;
   errors: string[];
@@ -266,14 +268,27 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
       }
       const om = ctx.omitted.get(src.file);
       const kept: string[] = [];
+      const blocks = ctx.recovered.get(src.file) ?? [];
+      let inRecovered = false;
       for (let i = h.line + 1; i < end; i++) {
         if (om?.has(i)) continue;
+        if (blocks.some((b) => b.labelLine === i)) continue;
+        const b = blocks.find((x) => x.start === i);
+        if (b) {
+          kept.push('```' + b.lang);
+          inRecovered = true;
+        }
         let line = note.lines[i]!;
-        const inner = !note.inFence[i] ? parseHeadingLine(line) : null;
+        const inner = !note.inFence[i] && !inRecovered ? parseHeadingLine(line) : null;
         // headings inside an answer sit below the question: shallowest inner level becomes h4
         if (inner) line = '#'.repeat(Math.min(6, Math.max(4, inner.depth - h.depth + 3))) + ' ' + inner.text;
         kept.push(line);
+        if (inRecovered && blocks.some((x) => x.end === i)) {
+          kept.push('```');
+          inRecovered = false;
+        }
       }
+      if (inRecovered) kept.push('```');
       const md = kept.join('\n').trim();
       return { md, start: h.line, end, plain: note.lines.slice(h.line, end).join('\n') };
     } catch (e) {
