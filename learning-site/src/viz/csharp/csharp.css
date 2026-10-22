@@ -1,0 +1,183 @@
+/* C# & .NET visualizers. Colours come only from the shared tokens in global.css, with the same meanings as
+   every other visualizer: --v-swap = written/changed now, --v-compare = read/waiting now, --v-active = the
+   current item, --v-sorted = done, --v-pointer = references and the current-time cursor. */
+
+/* ── shared frame ─────────────────────────────────────────────────────────────────────── */
+.cs-hint { padding-bottom: 2px; line-height: 1.45; }
+.cs-stage { gap: 14px; }
+.cs-parts { align-items: center; }
+.cs-parts-label { font-size: 12.5px; color: var(--ink-3); margin-right: 2px; }
+.cs-doc .cs-doc-part + .cs-doc-part { border-top: 1px dashed var(--line); }
+.cs-doc-src { padding: 6px 12px 0; font-family: var(--mono); font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-doc-src.is-composed { color: var(--warn); }
+.cs-doc ol { padding-top: 4px; padding-bottom: 8px; }
+.viz-code li.is-also { background: color-mix(in srgb, var(--code-cur) 55%, transparent); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--v-pointer) 45%, transparent); }
+.cs-tally { margin: 0; }
+.cs-legend .sw-ptr-line { width: 18px; height: 0; border-top: 2px solid var(--v-pointer); border-radius: 0; }
+.cs-legend .sw-orphan { background: transparent; border: 1.5px dashed var(--v-idle); }
+.cs-legend .sw-blocked { background: repeating-linear-gradient(135deg, var(--v-swap) 0 3px, transparent 3px 6px); border: 1px solid var(--v-swap); }
+.cs-legend .sw-free { background: transparent; border: 1.5px solid var(--v-sorted); }
+.cs-legend .sw-wait { background: transparent; border: 1.5px dashed var(--v-compare); }
+.cs-legend .sw-lost { background: var(--bad); }
+.cs-empty { font-size: 13px; color: var(--ink-3); margin: 0; }
+.cs-note { font-size: 13px; color: var(--ink-3); line-height: 1.45; margin: 0; }
+.cs-note b { color: var(--ink-2); font-weight: 600; }
+.cs-badge { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--ink-2); background: var(--bg); white-space: nowrap; }
+.cs-type { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+
+/* console output */
+.cs-console { border: 1px solid var(--line); border-radius: 10px; background: var(--code-bg); overflow: hidden; }
+.cs-console-head { font-size: 12px; color: var(--ink-3); padding: 5px 10px; border-bottom: 1px solid var(--line); }
+.cs-console pre { margin: 0; padding: 8px 10px; font-family: var(--mono); font-size: 12.6px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--code-ink); max-height: 170px; overflow: auto; }
+.cs-console pre .is-new { font-weight: 700; }
+.cs-console-empty { margin: 0; padding: 8px 10px; font-size: 13px; color: var(--ink-3); }
+
+/* ── stack & heap ─────────────────────────────────────────────────────────────────────── */
+.cs-mem { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 56px; align-items: start; }
+.cs-col { display: grid; gap: 8px; align-content: start; min-width: 0; position: relative; z-index: 1; }
+.cs-col-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.cs-frame, .cs-heap-objs { display: grid; gap: 8px; }
+.cs-var, .cs-obj { border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 9px; background: var(--bg); display: grid; gap: 5px; min-width: 0; transition: border-color 0.2s, background-color 0.2s; }
+.cs-var-head, .cs-obj-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 13px; }
+.cs-kind { margin-left: auto; font-size: 11px; color: var(--ink-3); }
+.cs-obj { background: var(--surface); }
+.cs-obj-id { font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--v-pointer); }
+.cs-obj.is-orphan { border-style: dashed; opacity: 0.7; }
+.cs-obj-note { font-size: 11.5px; color: var(--ink-3); }
+.cs-val { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+.cs-ref { justify-self: start; font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--v-pointer); border: 1.5px solid var(--v-pointer); border-radius: 6px; padding: 1px 7px; background: color-mix(in srgb, var(--v-pointer) 8%, var(--surface)); }
+.cs-ref.is-null { color: var(--ink-3); border-color: var(--line); background: transparent; }
+.cs-fields { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+.cs-field { display: inline-flex; gap: 5px; align-items: baseline; border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-family: var(--mono); font-size: 12.5px; background: var(--surface); transition: border-color 0.2s, background-color 0.2s; }
+.cs-field dt { color: var(--ink-3); }
+.cs-field dd { margin: 0; font-weight: 650; }
+.cs-field dd.is-unassigned { font-weight: 400; font-style: italic; color: var(--ink-3); }
+:is(.cs-var, .cs-obj, .cs-field).is-swap { border-color: var(--v-swap); background: color-mix(in srgb, var(--v-swap) 12%, var(--surface)); }
+:is(.cs-var, .cs-obj, .cs-field).is-compare { border-color: var(--v-compare); background: color-mix(in srgb, var(--v-compare) 14%, var(--surface)); }
+.cs-arrows { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 2; }
+.cs-arrow { fill: none; stroke: var(--v-pointer); stroke-width: 2; }
+.cs-arrowhead { fill: var(--v-pointer); }
+
+/* ── timelines (async/await, thread pool) ─────────────────────────────────────────────── */
+.cs-tl { --label-w: 128px; --gap: 10px; position: relative; display: grid; gap: 4px; padding-top: 2px; }
+.cs-tl-axis, .cs-tl-row { display: grid; grid-template-columns: var(--label-w) minmax(0, 1fr); column-gap: var(--gap); align-items: center; }
+.cs-tl-label { display: grid; line-height: 1.2; font-size: 12.5px; min-width: 0; }
+.cs-tl-label b { font-weight: 600; overflow-wrap: anywhere; }
+.cs-tl-sub { font-size: 11px; color: var(--ink-3); }
+.cs-tl-track { position: relative; height: 26px; border-radius: 6px; background: var(--surface-2); min-width: 0; }
+.cs-tl-ticks { height: 16px; background: none; }
+.cs-tl-ticks span { position: absolute; top: 0; transform: translateX(-50%); font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+.cs-tl-ticks span:first-child { transform: none; }
+.cs-tl-ticks span:last-child { transform: translateX(-100%); }
+.cs-tl-group { display: grid; gap: 4px; }
+.cs-tl-group + .cs-tl-group { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.cs-tl-group-name { font-size: 12px; font-weight: 600; color: var(--ink-2); font-family: var(--mono); }
+.cs-tl-row.is-focus .cs-tl-track { box-shadow: 0 0 0 2px var(--v-active); }
+.cs-tl-status { grid-column: 2; font-size: 11.5px; color: var(--ink-2); line-height: 1.3; padding-top: 1px; }
+.cs-seg { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; padding: 0 5px; min-width: 2px; }
+.cs-seg em { font-style: normal; font-family: var(--mono); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-seg.is-instant { width: 8px; margin-left: -4px; padding: 0; }
+.cs-seg-run { background: var(--v-active); color: #fff; }
+.cs-seg-blocked { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--v-swap) 75%, transparent) 0 4px, color-mix(in srgb, var(--v-swap) 25%, transparent) 4px 8px); border: 1.5px solid var(--v-swap); color: var(--ink); }
+.cs-seg-blocked em { background: var(--surface); border-radius: 3px; padding: 0 3px; }
+.cs-seg-free { border: 1.5px solid var(--v-sorted); background: color-mix(in srgb, var(--v-sorted) 10%, transparent); color: var(--ink); }
+.cs-seg-wait { border: 1.5px dashed var(--v-compare); background: color-mix(in srgb, var(--v-compare) 8%, transparent); color: var(--ink); }
+.cs-seg-inside { border: 1.5px solid var(--v-active); background: color-mix(in srgb, var(--v-active) 14%, transparent); color: var(--ink); }
+.cs-seg-done { background: var(--v-sorted); min-width: 6px; width: 6px !important; padding: 0; }
+.cs-seg-forever { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--bad); background: var(--surface); padding: 0 4px; border-radius: 3px; }
+.cs-tl-cursor { position: absolute; top: 0; bottom: 0; left: calc(var(--label-w) + var(--gap) + (100% - var(--label-w) - var(--gap)) * var(--f)); width: 0; border-left: 2px solid var(--v-pointer); pointer-events: none; transition: left 0.3s; }
+.cs-tl-cursor i { position: absolute; bottom: -18px; left: 0; transform: translateX(-50%); font-style: normal; font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--v-pointer); background: var(--surface); padding: 0 3px; white-space: nowrap; }
+.cs-tl-cursor.is-end i { transform: translateX(-100%); }
+.cs-tl-cursor.is-start i { transform: none; }
+.cs-tl { margin-bottom: 18px; }
+.cs-legend .sw-inside { background: color-mix(in srgb, var(--v-active) 14%, transparent); border: 1.5px solid var(--v-active); }
+
+/* ── thread interleaving ──────────────────────────────────────────────────────────────── */
+.cs-sched { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.cs-sched-label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); width: 100%; }
+.cs-run { font-size: 13.5px; gap: 6px; }
+.cs-run b { font-family: var(--mono); }
+.cs-run span { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.cs-run:disabled { opacity: 0.5; cursor: default; }
+.cs-sched .presets { margin-left: auto; }
+.cs-ti { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 1.2fr); gap: 10px; align-items: stretch; }
+.cs-thread { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; align-content: start; background: var(--bg); transition: border-color 0.2s, background-color 0.2s; }
+.cs-thread.is-ran { border-color: var(--v-active); background: color-mix(in srgb, var(--v-active) 10%, var(--surface)); }
+.cs-thread.is-blocked { border-color: var(--v-swap); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--v-swap) 12%, var(--surface)) 0 6px, var(--surface) 6px 12px); }
+.cs-thread.is-done { border-color: var(--v-sorted); }
+.cs-thread-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px; font-family: var(--mono); }
+.cs-badge.is-blocked { border-color: var(--v-swap); color: var(--bad); }
+.cs-badge.is-done { border-color: var(--v-sorted); color: var(--good); }
+.cs-reg { font-size: 12.5px; color: var(--ink-3); }
+.cs-reg .mono { font-size: 15px; font-weight: 700; color: var(--ink); }
+.cs-thread-next { font-size: 12px; color: var(--ink-3); font-family: var(--mono); overflow-wrap: anywhere; }
+.cs-shared { border: 2px solid var(--v-pointer); border-radius: 12px; display: grid; place-items: center; align-content: center; padding: 8px; background: var(--surface); transition: border-color 0.2s, background-color 0.2s; }
+.cs-shared.is-lost { border-color: var(--bad); background: var(--bad-bg); }
+.cs-shared-name { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
+.cs-shared-val { font-family: var(--mono); font-size: 34px; font-weight: 700; line-height: 1.1; }
+.cs-shared-sub { font-size: 11px; color: var(--ink-3); }
+.cs-lockcard { grid-column: 1 / -1; font-size: 13px; border: 1.5px dashed var(--line); border-radius: 8px; padding: 5px 10px; color: var(--ink-2); }
+.cs-lockcard.is-held { border-style: solid; border-color: var(--v-active); }
+.cs-hist-wrap { max-height: 210px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+.cs-hist { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cs-hist caption { text-align: left; font-size: 12px; color: var(--ink-3); padding: 5px 10px; border-bottom: 1px solid var(--line); }
+.cs-hist th { position: sticky; top: 0; background: var(--surface-2); font-weight: 600; text-align: left; padding: 3px 8px; font-size: 12px; }
+.cs-hist td { padding: 3px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+.cs-hist td:first-child, .cs-hist th:first-child { width: 2.5em; color: var(--ink-3); }
+.cs-hist tr.is-lost td { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+.cs-hist tr.is-now td { background: color-mix(in srgb, var(--v-active) 10%, transparent); }
+.cs-wfg { margin: 0; border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: var(--surface); display: grid; gap: 2px; }
+.cs-wfg svg { width: 100%; height: auto; max-height: 150px; }
+.cs-wfg figcaption { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--ink-3); }
+.cs-wfg-key::before { content: ""; display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; border-top: 2px solid var(--v-pointer); }
+.cs-wfg-key.is-waits::before { border-top: 2px dashed var(--v-compare); }
+.cs-wfg-edge { stroke-width: 2.2; }
+.cs-wfg-edge.is-holds { stroke: var(--v-pointer); }
+.cs-wfg-edge.is-waits { stroke: var(--v-compare); stroke-dasharray: 5 3; }
+.cs-wfg-edge.is-cycle { stroke: var(--v-swap); }
+.cs-wfg-head { fill: var(--v-pointer); }
+.cs-wfg-head-wait { fill: var(--v-compare); }
+.cs-wfg-node circle, .cs-wfg-node rect { fill: var(--bg); stroke: var(--v-idle); stroke-width: 2; }
+.cs-wfg-node text { fill: var(--ink); font-family: var(--mono); font-size: 13px; text-anchor: middle; font-weight: 600; }
+.cs-wfg-node.is-ran circle { stroke: var(--v-active); fill: color-mix(in srgb, var(--v-active) 16%, var(--surface)); }
+.cs-wfg-node.is-blocked circle { stroke: var(--v-swap); }
+.cs-wfg-node.is-done circle { stroke: var(--v-sorted); }
+.cs-wfg-node.is-held rect { stroke: var(--v-pointer); }
+
+/* ── LINQ pipeline ────────────────────────────────────────────────────────────────────── */
+.cs-lq { display: flex; align-items: stretch; gap: 22px; }
+.cs-lq > * { flex: 1 1 0; min-width: 0; position: relative; }
+.cs-lq > * + *::before { content: "→"; position: absolute; left: -17px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 15px; }
+.cs-lq-src, .cs-lq-stage { border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 9px; display: grid; gap: 6px; align-content: start; background: var(--bg); transition: border-color 0.2s, background-color 0.2s; }
+.cs-lq-src.is-active, .cs-lq-stage.is-active { border-color: var(--v-active); background: color-mix(in srgb, var(--v-active) 9%, var(--surface)); }
+.cs-lq-stage.is-pass.is-active { border-color: var(--v-sorted); background: color-mix(in srgb, var(--v-sorted) 9%, var(--surface)); }
+.cs-lq-stage-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; font-size: 12.5px; font-weight: 600; }
+.cs-lq-cells { display: flex; flex-wrap: wrap; gap: 4px; }
+.cs-lq-cell { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--surface); font-family: var(--mono); font-size: 13.5px; font-weight: 600; transition: border-color 0.2s, background-color 0.2s, opacity 0.2s; }
+.cs-lq-cell.is-compare { border-color: var(--v-compare); background: color-mix(in srgb, var(--v-compare) 18%, var(--surface)); }
+.cs-lq-cell.is-swap { border-color: var(--v-swap); background: color-mix(in srgb, var(--v-swap) 14%, var(--surface)); }
+.cs-lq-cell.is-read { color: var(--ink-3); border-style: dashed; }
+.cs-lq-cell.is-fail { border-color: var(--v-compare); color: var(--ink-3); text-decoration: line-through; }
+.cs-lq-val { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 30px; }
+.cs-lq-verdict { font-size: 12px; font-weight: 600; }
+.cs-lq-verdict.is-pass { color: var(--good); }
+.cs-lq-verdict.is-fail { color: var(--ink-3); }
+.cs-lq-idle { font-size: 12.5px; color: var(--ink-3); font-style: italic; }
+.cs-lq-calls { font-size: 11.5px; color: var(--ink-3); font-family: var(--mono); }
+
+@container (max-width: 560px) {
+  .cs-mem { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .cs-mem .cs-col { padding-right: 30px; }
+  .cs-tl { --label-w: 84px; --gap: 6px; }
+  .cs-tl-label { font-size: 11.5px; }
+  .cs-seg em { display: none; }
+  .cs-ti { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cs-ti > :is(.cs-shared, .cs-wfg) { grid-column: 1 / -1; }
+  .cs-sched .presets { margin-left: 0; }
+  .cs-lq { flex-direction: column; gap: 20px; }
+  .cs-lq > * + *::before { content: "↓"; left: 50%; top: -18px; transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-viz *, .cs-viz *::before, .cs-viz *::after { transition: none !important; animation: none !important; }
+}
