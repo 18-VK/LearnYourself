@@ -37,6 +37,10 @@ Run these from `learning-site/`:
 | `npm ci` | Install the exact dependency versions from `package-lock.json` |
 | `npm run dev` | Generate content, start the dev server at `http://localhost:4321/LearnYourself/`, and regenerate whenever a note or manifest changes |
 | `npm run content` | Run only the content pipeline and its checks; writes `coverage-report.md` |
+| `npm run content:dry` | The same checks without writing anything (safe to run alongside a dev server) |
+| `npm run data:check` | Re-check only the quiz, cheat sheet and interview data in seconds, against the last content run (`-- --only quizzes/` to narrow it) |
+| `npm run playground` | Render one visualizer on its own page with the site's CSS: `http://localhost:5199/?viz=SortVisualizer&props={"algorithm":"heap"}` (add `&theme=dark`, `&width=360`) |
+| `npm run scan:personal` | After a build: scan `dist/` for personal data (emails, names from your git config or `LY_SCAN_NAMES`, machine names, local paths, connection strings, keys, PDF/image metadata); writes `personal-data-report.md` |
 | `npm run build` | Content pipeline → Astro build → Pagefind search index → output verification (see below) |
 | `npm run preview` | Serve `dist/` exactly as GitHub Pages will, under the base path |
 | `npm test` | Unit tests (trace generators) |
