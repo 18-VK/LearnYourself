@@ -185,6 +185,8 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   const lessonSlugs = new Map<string, string>();
   const moduleIds = new Set<string>();
   const plans: LessonPlan[] = [];
+  /** "<note>:<fence line>" → the placement that wraps that code block */
+  const wrappedBlocks = new Map<string, string>();
   const vizFence = (p: Placement, id: string, wraps: boolean) =>
     '```viz\n' + JSON.stringify({ name: p.viz ?? 'FlowDiagram', props: p.diagram ? { diagram: p.diagram, ...(p.props ?? {}) } : (p.props ?? {}), tier: p.tier ?? 1, wraps, id }) + '\n```';
 
@@ -247,6 +249,11 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
               }
               line = f.start;
               wraps = true;
+              // two placements wrapping one block would nest the second placeholder inside the first
+              const key = `${r.rel}:${f.start}`;
+              const other = wrappedBlocks.get(key);
+              if (other) errors.push(`${id}: placement ${pi + 1} (${p.viz ?? p.diagram}) wraps the same code block as ${other}; use one placement per block`);
+              wrappedBlocks.set(key, `${id} placement ${pi + 1} (${p.viz ?? p.diagram})`);
             }
             const list = inserts.get(r.rel) ?? [];
             list.push({ line, text: vizFence(p, `${id}#${pi + 1}`, wraps) });
