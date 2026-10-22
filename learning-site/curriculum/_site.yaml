@@ -29,7 +29,6 @@ topNav: [courses, cheat-sheets, interview-prep]
 # Interview-headed sections inside lessons stay in their lessons and are ALSO collected (see _interview.yaml).
 interview:
   - file: "InterviewQuestion.md"
-  - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/DotNet_HostedService_N_BGService.md"
     reason: "Repo-root interview Q&A note (3 questions); feeds Interview Prep with origin: notes."
   - file: "Phase2-ASP.NetAndBackend/SQLTutorial/11.Question.md"
     reason: "Interview Q&A on stored procedures and the N+1 problem; feeds Interview Prep with origin: notes."
@@ -87,6 +86,7 @@ recoverUnfencedCode:
   # added at Checkpoint 5: no code in these notes is fenced (InterviewQuestion.md feeds Interview Prep)
   - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_ClauseNmore.md"
   - file: "InterviewQuestion.md"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/DotNet_HostedService_N_BGService.md"
 
 # Lines dropped from rendered lessons (decided 2026-10-21: drop chatbot follow-up offers and filler,
 # keep chat-style lines that carry content). Matched by the start of the line, or a whole section by its
