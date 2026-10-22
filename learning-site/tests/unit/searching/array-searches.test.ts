@@ -229,6 +229,10 @@ describe('binary search on answer (MySqrt)', () => {
   it('returns floor(sqrt(x)) for 0..99', () => {
     for (let x = 0; x <= 99; x++) expect(resultOf(traceSqrt(x))).toBe(String(Math.floor(Math.sqrt(x))));
   });
+  it('follows the C# line by line for x = 1', () => {
+    const L = SQRT_LINES;
+    expect(traceSqrt(1).map((s) => s.codeLine)).toEqual([L.sig, L.init, L.loop, L.mid, L.check, L.check, L.loop, L.mid, L.check, L.check, L.loop, L.ret]);
+  });
   it('counts by hand: MySqrt(30) checks mid = 15, 7, 3, 5, 6 and returns 5', () => {
     const t = traceSqrt(30);
     expect(t.filter((s) => s.codeLine === SQRT_LINES.mid).map((s) => s.variables.mid)).toEqual([15, 7, 3, 5, 6]);
@@ -293,6 +297,11 @@ describe('exponential search', () => {
     expect(resultOf(t)).toBe('3');
     expect(t.filter((s) => s.codeLine === EXPONENTIAL_LINES.loop).map((s) => s.variables.bound)).toEqual([1, 2, 4]);
     expect(t.at(-1)!.state.probes).toBe(5);
+  });
+  it('follows the C# line by line, with Array.BinarySearch expanded on its own line', () => {
+    const L = EXPONENTIAL_LINES;
+    expect(traceExponential([5], 5).map((s) => s.codeLine)).toEqual([L.sig, L.empty, L.first, L.first]);
+    expect(traceExponential([5], 7).map((s) => s.codeLine)).toEqual([L.sig, L.empty, L.first, L.boundInit, L.loop, L.left, L.right, L.bs, L.bs, L.bs, L.bs, L.bsRet]);
   });
   it('reports the negative Array.BinarySearch result before returning -1', () => {
     const t = traceExponential([1, 3, 5], 4);

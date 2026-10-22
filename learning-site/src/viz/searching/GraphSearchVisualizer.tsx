@@ -331,9 +331,9 @@ export default function GraphSearchVisualizer(props: GraphSearchVisualizerProps)
                   <>
                     [
                     {curList.map((n, k) => (
-                      <span key={n} className={st.next === n ? 'gs-next' : undefined}>
+                      <span key={n}>
                         {k > 0 ? ', ' : ''}
-                        {n}
+                        <span className={st.next === n ? 'gs-next' : undefined}>{n}</span>
                       </span>
                     ))}
                     ]

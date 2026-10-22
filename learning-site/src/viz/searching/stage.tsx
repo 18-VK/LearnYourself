@@ -33,7 +33,7 @@ function PointerRows({ pointers, columns, offset, rows }: { pointers: Record<str
         return (
           <div className="sv-ptr-row" key={r} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 56px))` }}>
             {p && (
-              <span className="sv-ptr" style={{ gridColumn: p[1] + offset + 1 }}>
+              <span className="sv-ptr" style={{ gridColumn: p[1] + offset + 1, justifySelf: p[1] + offset === 0 ? 'start' : p[1] + offset === columns - 1 ? 'end' : 'center' }}>
                 <span className="sv-caret">▲</span>
                 {p[0]}
               </span>
@@ -146,7 +146,7 @@ export function FunctionPlot({ state, highlights, rows }: { state: SearchState; 
         </g>
       ))}
       {ptrs.map(([name, i], r) => (
-        <text key={name} className="sv-plot-ptr" x={x(i)} y={plotH + 18 + (r + 1) * rowH - 2} textAnchor="middle">▲ {name}</text>
+        <text key={name} className="sv-plot-ptr" x={x(i) + (i === 0 && n > 1 ? -5 : i === n - 1 && n > 1 ? 5 : 0)} y={plotH + 18 + (r + 1) * rowH - 2} textAnchor={i === 0 && n > 1 ? "start" : i === n - 1 && n > 1 ? "end" : "middle"}>▲ {name}</text>
       ))}
     </svg>
   );

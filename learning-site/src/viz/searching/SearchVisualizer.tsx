@@ -155,7 +155,7 @@ export default function SearchVisualizer(props: SearchVisualizerProps) {
   };
   const regenerate = (preset: string, n: number) => {
     const next = makeValues(info, preset, n);
-    const keepTarget = info.needsTarget && !next.includes(target) && values.includes(target) ? pickPresent(next) : undefined;
+    const keepTarget = !info.needsTarget ? undefined : preset === 'skewed' && next.length > 3 ? next[next.length - 4] : !next.includes(target) && values.includes(target) ? pickPresent(next) : undefined;
     apply(next, preset, keepTarget);
   };
   const switchAlg = (next: SearchAlgorithm) => {
