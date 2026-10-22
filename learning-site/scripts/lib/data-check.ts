@@ -27,7 +27,10 @@ import { SITE_ROOT } from './paths';
 export const DATA_DIR = path.join(SITE_ROOT, 'src', 'data');
 
 export interface LessonRecord {
+  /** Full id "course/module/lesson" (the URL path). */
   id: string;
+  /** The manifest's lesson id, unique across courses. Data files refer to lessons by this. */
+  slug: string;
   title: string;
   course: string;
   courseTitle: string;
@@ -94,11 +97,12 @@ function issues(file: string, error: { issues: { path: PropertyKey[]; message: s
 
 export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary: DataSummary } {
   const { errors, warnings } = ctx;
-  const lessonById = new Map(ctx.lessons.map((l) => [l.id, l]));
-  const headingsOf = new Map(ctx.lessons.map((l) => [l.id, lessonHeadings(l.body)]));
-  const lessonRef = (id: string) => {
-    const l = lessonById.get(id)!;
-    return { id, title: l.title, course: l.course, courseTitle: l.courseTitle };
+  // data files refer to lessons by their short id (slug); outputs carry `path` (the full id) for URLs
+  const lessonById = new Map(ctx.lessons.map((l) => [l.slug, l]));
+  const headingsOf = new Map(ctx.lessons.map((l) => [l.slug, lessonHeadings(l.body)]));
+  const lessonRef = (slug: string) => {
+    const l = lessonById.get(slug)!;
+    return { id: slug, path: l.id, title: l.title, course: l.course, courseTitle: l.courseTitle };
   };
 
   /** Resolves a section heading inside a lesson to its anchor, or records an error. */
@@ -124,7 +128,7 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
 
   // ── lesson index ───────────────────────────────────────────────────────────────────────────
   const lessonIndex = Object.fromEntries(
-    ctx.lessons.map((l) => [l.id, { title: l.title, course: l.course, courseTitle: l.courseTitle, module: l.module, kind: l.kind, headings: headingsOf.get(l.id) }]),
+    ctx.lessons.map((l) => [l.slug, { path: l.id, title: l.title, course: l.course, courseTitle: l.courseTitle, module: l.module, kind: l.kind, headings: headingsOf.get(l.slug) }]),
   );
 
   // ── quizzes ────────────────────────────────────────────────────────────────────────────────
@@ -171,7 +175,7 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
     quizzes[quiz.lesson] = out;
     quizQuestions += out.length;
   }
-  const quizMissing = ctx.lessons.filter((l) => l.kind === 'lesson' && !quizzes[l.id]).map((l) => l.id);
+  const quizMissing = ctx.lessons.filter((l) => l.kind === 'lesson' && !quizzes[l.slug]).map((l) => l.slug);
 
   // ── cheat sheets ───────────────────────────────────────────────────────────────────────────
   const sheets: unknown[] = [];
@@ -318,7 +322,7 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
           used.set(q.answerFrom.file, ranges);
           const home = lessonOfLine(q.answerFrom.file, s.start);
           if (home) {
-            related.add(home.id);
+            related.add(home.slug);
             usedHeadings.add(`${q.answerFrom.file}#${s.start}`);
           }
           const hay = loose(s.plain);
@@ -363,7 +367,7 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
         if (h.line < s.start || h.line >= s.end || !/interview/i.test(h.text) || ctx.falsePositives.has(normText(h.text))) continue;
         if (ctx.omitted.get(s.rel)?.has(h.line)) continue;
         if (!usedHeadings.has(`${s.rel}#${h.line}`) && ![...used.get(s.rel) ?? []].some(([a, b]) => h.line >= a && h.line < b)) {
-          warnings.push(`interview: lesson ${l.id} has the interview section "${h.text}" (${s.rel}:${h.line + 1}) that no notes question uses yet`);
+          warnings.push(`interview: lesson ${l.slug} has the interview section "${h.text}" (${s.rel}:${h.line + 1}) that no notes question uses yet`);
         }
       }
     }
