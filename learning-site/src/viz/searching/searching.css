@@ -1,0 +1,119 @@
+/* Searching visualizers. Colours come from the shared --v-* tokens, so is-compare / is-active / is-settled mean
+   the same here as in every other visualizer; bars reuse the shared .bar classes from viz.css. */
+
+.sv-facts { padding: 8px 16px 0; font-size: 13.5px; color: var(--ink-2); }
+.sv-facts b { font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.sv-notice { color: var(--ink-2); }
+.sv-target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.viz-input input[type="number"] { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 4px 6px; width: 5.5em; font-family: var(--mono); font-size: 13px; }
+
+/* bars, index row, band and pointer rows share one column grid so labels line up with their bar */
+.sv .sv-bars,
+.sv .sv-band,
+.sv .sv-ptr-row { display: grid; justify-content: center; gap: 6px; }
+.sv .sv-bars { height: 180px; }
+.sv .sv-bars .bar { max-width: none; }
+.sv-idx { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.sv-ghost .bar-col { border: 1.5px dashed var(--line); border-radius: 5px 5px 2px 2px; }
+.sv-ghost .bar-val { color: var(--ink-3); font-size: 10.5px; }
+.sv .sv-band { height: 20px; margin-top: 2px; }
+.sv .sv-band span { grid-row: 1; height: 14px; border: 1.5px solid var(--ink-3); border-top: 0; border-radius: 0 0 6px 6px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); text-align: center; line-height: 22px; white-space: nowrap; }
+.sv-ptrs { display: grid; gap: 1px; margin-top: 2px; }
+.sv .sv-ptr-row { height: 15px; }
+.sv-ptr { grid-row: 1; justify-self: center; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; line-height: 15px; font-weight: 700; color: var(--v-pointer); }
+.sv-caret { font-size: 8px; margin-right: 2px; vertical-align: 1px; }
+
+/* binary search on the answer: one cell per candidate */
+.sv-grid { display: grid; justify-content: center; gap: 4px; }
+.sv-cell { display: grid; grid-template-rows: auto 15px 30px; justify-items: center; min-width: 0; padding: 3px 0 1px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--bg); font-family: var(--mono); transition: background-color 0.2s, border-color 0.2s, opacity 0.2s; }
+.sv-cell-v { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.sv-mark { font-size: 11px; line-height: 15px; color: var(--ink-3); }
+.sv-mark.ok { color: var(--good); font-weight: 700; }
+.sv-cell-ptr { display: flex; flex-direction: column; align-items: center; font-size: 9.5px; line-height: 10px; font-weight: 700; color: var(--v-pointer); white-space: pre-line; }
+.sv-cell.is-compare { border-color: var(--v-compare); background: color-mix(in srgb, var(--v-compare) 18%, var(--bg)); }
+.sv-cell.is-active { border-color: var(--v-active); background: color-mix(in srgb, var(--v-active) 16%, var(--bg)); }
+.sv-cell.is-settled { border-color: var(--v-sorted); background: color-mix(in srgb, var(--v-sorted) 18%, var(--bg)); }
+.sv-cell.is-out { opacity: 0.38; }
+
+/* ternary search: the array as a unimodal function */
+.sv-plot { width: 100%; max-height: 330px; overflow: visible; }
+.sv-plot-out { fill: var(--surface-2); }
+.sv-plot-axis { stroke: var(--line); stroke-width: 1.5; }
+.sv-plot-line { fill: none; stroke: var(--ink-3); stroke-width: 1.5; }
+.sv-plot-marker { stroke: var(--v-pointer); stroke-width: 1.2; stroke-dasharray: 3 3; opacity: 0.75; }
+.sv-plot-pt circle { fill: var(--surface); stroke: var(--v-idle); stroke-width: 2.5; transition: fill 0.2s, stroke 0.2s; }
+.sv-plot-pt text { fill: var(--ink); font-family: var(--mono); font-size: 10px; }
+.sv-plot-pt .sv-plot-idx { fill: var(--ink-3); font-size: 9px; }
+.sv-plot-pt.is-compare circle { stroke: var(--v-compare); fill: color-mix(in srgb, var(--v-compare) 35%, var(--surface)); }
+.sv-plot-pt.is-active circle { stroke: var(--v-active); fill: color-mix(in srgb, var(--v-active) 30%, var(--surface)); }
+.sv-plot-pt.is-settled circle { stroke: var(--v-sorted); fill: color-mix(in srgb, var(--v-sorted) 35%, var(--surface)); }
+.sv-plot-pt:is(.is-compare, .is-active, .is-settled) text:not(.sv-plot-idx) { font-weight: 700; }
+.sv-plot-pt.is-out { opacity: 0.3; }
+.sv-plot-ptr { fill: var(--v-pointer); font-family: var(--mono); font-size: 10px; font-weight: 700; }
+
+/* hash-based search */
+.sv-hash { display: grid; gap: 8px; }
+.sv-other, .sv-simplified { font-size: 12.5px; padding: 0; }
+
+/* recursion stack */
+.sv-stack { display: grid; gap: 4px; }
+.sv-stack ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-family: var(--mono); font-size: 12px; }
+.sv-stack li { padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); overflow-wrap: anywhere; }
+.sv-stack li.is-top { border-color: var(--v-active); box-shadow: inset 3px 0 0 var(--v-active); }
+.sv-empty { font-size: 12.5px; }
+
+.sv-counters b { font-size: 16px; }
+.sv .sw-out { background: var(--v-idle); opacity: 0.3; }
+.sv .sw-bucket { background: transparent; border: 2px solid var(--v-pointer); }
+
+@container (max-width: 460px) {
+  .sv .sv-bars,
+  .sv .sv-band,
+  .sv .sv-ptr-row { gap: 3px; }
+  .sv .sv-bars { height: 150px; }
+  .sv .sv-bars .bar-val { font-size: 10.5px; }
+  .sv-ptr { font-size: 10.5px; }
+  .sv-idx { font-size: 9.5px; }
+}
+
+/* BFS / DFS on an editable graph or grid */
+.gs-hint { width: 100%; margin: 0; font-size: 12.5px; }
+.viz-input input.gs-edges { width: 22em; }
+.gs-graph { display: block; width: 100%; max-width: 640px; margin-inline: auto; touch-action: manipulation; }
+.gs-graph.is-adding { cursor: crosshair; }
+.gs-edge { stroke: var(--ink-3); stroke-width: 0.6; transition: stroke 0.2s; }
+.gs-edge.is-compare { stroke: var(--v-compare); stroke-width: 1.4; }
+.gs-node { cursor: pointer; outline: none; }
+.gs-node circle { fill: var(--surface); stroke: var(--v-idle); stroke-width: 0.9; transition: fill 0.2s, stroke 0.2s; }
+.gs-node text { fill: var(--ink); font-family: var(--mono); font-size: 3.6px; font-weight: 600; }
+.gs-node .gs-tag { fill: var(--ink-2); font-size: 2.6px; font-weight: 500; }
+.gs-node .gs-dist { fill: var(--ink-2); font-size: 2.6px; font-weight: 500; }
+.gs-node .gs-ring { fill: none; stroke: var(--ink); stroke-width: 0.45; stroke-dasharray: 1 0.8; }
+.gs-node.is-visited circle:not(.gs-ring) { fill: var(--surface-2); stroke: var(--ink-2); stroke-dasharray: 1.4 0.9; }
+.gs-node.is-active circle:not(.gs-ring) { stroke: var(--v-active); fill: color-mix(in srgb, var(--v-active) 24%, var(--surface)); stroke-width: 1.2; }
+.gs-node.is-compare circle:not(.gs-ring) { stroke: var(--v-compare); fill: color-mix(in srgb, var(--v-compare) 28%, var(--surface)); stroke-width: 1.2; }
+.gs-node.is-settled circle:not(.gs-ring) { stroke: var(--v-sorted); fill: color-mix(in srgb, var(--v-sorted) 22%, var(--surface)); }
+.gs-node.is-found .gs-ring { stroke: var(--v-sorted); stroke-dasharray: none; stroke-width: 0.8; }
+.gs-node.is-pending circle:not(.gs-ring) { stroke: var(--v-pointer); stroke-width: 1.4; }
+.gs-node:focus-visible circle:not(.gs-ring) { stroke: var(--focus); stroke-width: 1.4; }
+.gs-grid { display: grid; justify-content: center; gap: 4px; }
+.gs-cell { position: relative; display: grid; place-items: center; align-content: center; aspect-ratio: 1; min-width: 0; padding: 0; border: 1.5px solid var(--v-idle); border-radius: 6px; background: var(--surface); color: var(--ink); font-family: var(--mono); line-height: 1.05; transition: background-color 0.2s, border-color 0.2s; }
+.gs-cell:disabled { cursor: default; }
+.gs-cell.is-wall { background: repeating-linear-gradient(45deg, var(--ink-3) 0 3px, transparent 3px 8px); border-color: var(--ink-3); }
+.gs-cell-id { font-size: 11.5px; font-weight: 600; }
+.gs-cell-tag, .gs-cell-dist { font-size: 8.5px; color: var(--ink-2); }
+.gs-cell.is-visited { background: var(--surface-2); border-color: var(--ink-2); border-style: dashed; }
+.gs-cell.is-active { border-color: var(--v-active); background: color-mix(in srgb, var(--v-active) 22%, var(--surface)); }
+.gs-cell.is-compare { border-color: var(--v-compare); background: color-mix(in srgb, var(--v-compare) 26%, var(--surface)); }
+.gs-cell.is-settled { border-color: var(--v-sorted); background: color-mix(in srgb, var(--v-sorted) 20%, var(--surface)); }
+.gs-cell.is-target { box-shadow: inset 0 0 0 2px var(--ink); }
+.gs-cell.is-found { box-shadow: inset 0 0 0 3px var(--v-sorted); }
+.gs-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.gs-box { display: grid; gap: 4px; align-content: start; min-width: 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.gs-chips { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12.5px; overflow-wrap: anywhere; }
+.gs-chip { padding: 0 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-family: var(--mono); }
+.gs-chip.is-front { border-color: var(--v-active); box-shadow: inset 3px 0 0 var(--v-active); }
+.gs-next { font-weight: 700; color: var(--ink); background: color-mix(in srgb, var(--v-compare) 28%, transparent); border-radius: 3px; }
+.gs .sw-visited { background: var(--surface-2); border: 1.5px dashed var(--ink-2); }
+.gs .sw-target { background: transparent; border: 1.5px dashed var(--ink); border-radius: 50%; }
+.gs-list { font-size: 12.5px; overflow-wrap: anywhere; }
