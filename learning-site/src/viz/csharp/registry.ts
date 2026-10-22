@@ -14,4 +14,6 @@ export const REGISTRY: Record<string, VizLoader> = {
   EfCoreVisualizer: () => import('./EfCoreVisualizer') as Promise<VizModule>,
   InvocationListVisualizer: () => import('./InvocationListVisualizer') as Promise<VizModule>,
   CallStackVisualizer: () => import('./CallStackVisualizer') as Promise<VizModule>,
+  StringBuilderVisualizer: () => import('./StringBuilderVisualizer') as Promise<VizModule>,
+  ThreadPoolVisualizer: () => import('./ThreadPoolVisualizer') as Promise<VizModule>,
 };
