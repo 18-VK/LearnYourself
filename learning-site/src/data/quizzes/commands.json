@@ -1,0 +1,106 @@
+{
+  "lesson": "commands",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the job of `ICommand.CanExecuteChanged`?",
+      "options": [
+        "It runs the command's action whenever the bound button is clicked",
+        "It notifies the UI to re-evaluate whether the command is enabled",
+        "It returns `true` or `false` to enable or disable the button",
+        "It passes the `CommandParameter` to `Execute`"
+      ],
+      "answer": 1,
+      "explanation": "`CanExecute` controls whether the command is enabled, `Execute` runs when it is invoked, and the `CanExecuteChanged` event notifies the UI to re-evaluate the enabled state.",
+      "source": {
+        "section": "ICommand — the interface (what matters)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "The ViewModel creates `IncrementCommand = new RelayCommand(Increment);` with no `canExecute` delegate. Using the classic RelayCommand, what does `CanExecute` return?",
+      "options": [
+        "It throws an `ArgumentNullException`",
+        "`false`, so the button starts disabled",
+        "`true`, through the `?? true` fallback",
+        "Whatever value `Increment()` returns"
+      ],
+      "answer": 2,
+      "explanation": "`canExecute` defaults to `null`, and `CanExecute` is `_canExecute?.Invoke() ?? true`, so a command without a predicate is always executable. Only a null `execute` throws.",
+      "source": {
+        "section": "1. Simple RelayCommand (non-generic) — classic implementation"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "`DeleteSelectedCommand` can execute only when `SelectedTransaction != null`. Why does the property setter call `CommandManager.InvalidateRequerySuggested()`?",
+      "options": [
+        "No input event occurs, so WPF would not re-check `CanExecute`",
+        "It deletes the selected transaction from the list right away",
+        "It is required for `OnPropertyChanged()` to notify the UI",
+        "It stops WPF from calling `CanExecute` more often than needed"
+      ],
+      "answer": 0,
+      "explanation": "CommandManager re-evaluates commands after events like focus changes and mouse clicks. When only the selection changes, WPF does not know something changed, so `InvalidateRequerySuggested()` forces it to re-check all commands now.",
+      "source": {
+        "section": "Why do we call InvalidateRequerySuggested()?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put what happens after a ViewModel calls `CommandManager.InvalidateRequerySuggested()` in order.",
+      "steps": [
+        "`InvalidateRequerySuggested()` is called",
+        "CommandManager raises `RequerySuggested`",
+        "The button asks its command: `CanExecute`?",
+        "The button enables or disables itself"
+      ],
+      "explanation": "RelayCommand's `CanExecuteChanged` is wired to `CommandManager.RequerySuggested`, so raising it makes each bound button call `CanExecute()` and update its enabled state.",
+      "source": {
+        "section": "7️⃣ What happens internally (important)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which of these does **not** make CommandManager re-check `CanExecute()` automatically?",
+      "options": [
+        "Keyboard focus changing",
+        "A mouse click",
+        "The window activating or deactivating",
+        "A ViewModel property being set from code"
+      ],
+      "answer": 3,
+      "explanation": "WPF re-checks commands on keyboard focus changes, mouse clicks, window activation/deactivation and menus opening. A property set in code produces none of these, which is why you invalidate or raise `CanExecuteChanged` yourself.",
+      "source": {
+        "section": "3️⃣ What triggers CommandManager automatically?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why does the lesson recommend a RelayCommand that raises `CanExecuteChanged` manually (`DeleteCommand.RaiseCanExecuteChanged()`) over relying on CommandManager?",
+      "options": [
+        "Manual raising refreshes every command in the whole app at once",
+        "It is a local, explicit refresh that is async-friendly and testable",
+        "CommandManager cannot be used together with `ObservableCollection`",
+        "Manual raising lets the button skip calling `CanExecute` entirely"
+      ],
+      "answer": 1,
+      "explanation": "CommandManager does a global, implicit refresh that is not async-friendly and is hard to test. The manual approach is explicit and local, async-friendly, easy to test and highly predictable.",
+      "source": {
+        "section": "Comparison: CommandManager vs Manual (IMPORTANT)"
+      },
+      "reviewed": false
+    }
+  ]
+}

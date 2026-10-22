@@ -1,0 +1,94 @@
+{
+  "lesson": "linear-and-binary-search",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "With `arr = [1, 2, 2, 2, 3]` and `target = 2`, what do `LowerBound(arr, 2)` and `UpperBound(arr, 2)` return?",
+      "code": {
+        "lang": "csharp",
+        "source": "int LowerBound(int[] arr, int target)\n{\n    int left = 0, right = arr.Length;      // right = Length (exclusive)\n    while (left < right)\n    {\n        int mid = left + (right - left) / 2;\n        if (arr[mid] < target) left = mid + 1;\n        else right = mid;\n    }\n    return left;\n}\n\nint UpperBound(int[] arr, int target)\n{\n    int left = 0, right = arr.Length;\n    while (left < right)\n    {\n        int mid = left + (right - left) / 2;\n        if (arr[mid] <= target) left = mid + 1;\n        else right = mid;\n    }\n    return left;\n}"
+      },
+      "options": [
+        "1 and 3",
+        "1 and 4",
+        "2 and 4",
+        "0 and 4"
+      ],
+      "answer": 1,
+      "explanation": "Lower bound is the first index with `arr[i] >= 2` (index 1); upper bound is the first index with `arr[i] > 2` (index 4).",
+      "source": {
+        "section": "3. Lower Bound / Upper Bound (Binary Search Variants)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Using the two bound functions, how do you get the **count** of `target` and its **last** index in a sorted array with duplicates?",
+      "options": [
+        "Count = `UpperBound`; last index = `LowerBound - 1`",
+        "Count = `UpperBound + LowerBound`; last index = `UpperBound`",
+        "Count = `LowerBound - UpperBound`; last index = `LowerBound + 1`",
+        "Count = `UpperBound - LowerBound`; last index = `UpperBound - 1`"
+      ],
+      "answer": 3,
+      "explanation": "Upper bound is one past the last match and lower bound is the first match, so their difference is the count and `UpperBound(target) - 1` is the last occurrence.",
+      "source": {
+        "section": "3. Lower Bound / Upper Bound (Binary Search Variants)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why does the binary search compute `mid` as `left + (right - left) / 2` instead of `(left + right) / 2`?",
+      "options": [
+        "It rounds up instead of down, so the loop always ends",
+        "For huge indices `left + right` can overflow `int` and go negative",
+        "It is required for the recursive version only",
+        "It makes the search O(1) in the best case"
+      ],
+      "answer": 1,
+      "explanation": "Both give the same middle for small values, but `left + right` can overflow for very large indices; `left + (right - left) / 2` never exceeds `right`.",
+      "source": {
+        "section": "2. Binary Search"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why is binary search a poor fit for a linked list, even a sorted one?",
+      "options": [
+        "Linked lists cannot hold duplicate values",
+        "It only works on arrays of `int`",
+        "It needs random access to jump to the middle element",
+        "Linked lists are always unsorted"
+      ],
+      "answer": 2,
+      "explanation": "Binary search needs to reach the middle element directly; a linked list can only be walked node by node.",
+      "source": {
+        "section": "2. Binary Search"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "When is linear search the right choice?",
+      "options": [
+        "When the data is unsorted, `n` is very small, or you only search once",
+        "When you will run many repeated queries over a large array",
+        "Only when the array is sorted",
+        "Never; binary search is always faster"
+      ],
+      "answer": 0,
+      "explanation": "Linear search works on any collection without sorting and is the fastest option for very small `n` or a one-time search; it is too slow for large data or repeated queries.",
+      "source": {
+        "section": "1. Linear Search"
+      },
+      "reviewed": false
+    }
+  ]
+}

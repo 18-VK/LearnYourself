@@ -1,0 +1,94 @@
+{
+  "lesson": "heap-sort",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the phases of heap sort in order.",
+      "steps": [
+        "Build a max-heap from the array, starting at the last non-leaf node and moving up",
+        "Swap the root (the current maximum) with the last element of the heap",
+        "Shrink the heap by one so the moved maximum stays in its sorted place",
+        "Heapify from the root to restore the max-heap on the remaining elements",
+        "Repeat the swap, shrink and heapify until one element is left"
+      ],
+      "explanation": "Heap sort first builds a max-heap, then repeatedly moves the root to the end of the unsorted part, shrinks the heap and re-heapifies.",
+      "source": {
+        "section": "6. Heap Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does the build-heap loop start at index `n / 2 - 1` and go backwards?",
+      "options": [
+        "Because nodes after `n / 2 - 1` are leaves, which already satisfy the heap property, and going backward fixes child heaps before their parents",
+        "Because the second half of the array is already sorted",
+        "Because index `n / 2 - 1` always holds the largest value",
+        "Because `Heapify` can only move values towards the end of the array"
+      ],
+      "answer": 0,
+      "explanation": "Leaves have no children, so they are already valid heaps. Working backward from the last non-leaf node ensures each subtree is a heap before its parent is processed.",
+      "source": {
+        "section": "6. Heap Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "`arr` is `{ 1, 5, 3 }`. What does `arr` hold after `Heapify(arr, 3, 0)`?",
+      "code": {
+        "lang": "csharp",
+        "source": "void Heapify(int[] arr, int n, int i)\n{\n    int largest = i;         // Assume current node is the largest\n    int left = 2 * i + 1;     // Left child index\n    int right = 2 * i + 2;    // Right child index\n\n    // If left child exists and is larger than current node,\n    // update the largest index.\n    if (left < n && arr[left] > arr[largest]) largest = left;\n\n    // If right child exists and is larger than the current largest,\n    // update the largest index.\n    if (right < n && arr[right] > arr[largest]) largest = right;\n\n    // If a child is larger than the parent, swap them\n    // and continue heapifying the affected subtree.\n    if (largest != i)\n    {\n        (arr[i], arr[largest]) = (arr[largest], arr[i]);\n        Heapify(arr, n, largest);\n    }\n}"
+      },
+      "options": [
+        "{ 1, 3, 5 }",
+        "{ 3, 5, 1 }",
+        "{ 5, 1, 3 }",
+        "{ 5, 3, 1 }"
+      ],
+      "answer": 2,
+      "explanation": "The children of index 0 are at 1 (`5`) and 2 (`3`). `5` is the largest, so it swaps with the root; the recursive call on index 1 has no children within `n = 3`, so it stops.",
+      "source": {
+        "section": "6. Heap Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Heap sort and quicksort are both O(n log n) on average. Why is heap sort usually slower in practice?",
+      "options": [
+        "It needs an O(n) auxiliary array",
+        "It has poor cache locality, because it jumps around the array via heap indices",
+        "It degrades to O(n²) on sorted input",
+        "It has to sort the array once before building the heap"
+      ],
+      "answer": 1,
+      "explanation": "Heap sort has no bad worst case and uses O(1) extra space, but its jumps between parent and child indices give poor cache locality.",
+      "source": {
+        "section": "6. Heap Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "When does the lesson recommend heap sort?",
+      "options": [
+        "When equal elements must keep their original order",
+        "When the input is nearly sorted",
+        "When the values are small integers in a known range",
+        "When memory is tight but you still need guaranteed O(n log n) performance"
+      ],
+      "answer": 3,
+      "explanation": "Heap sort's strength is guaranteed O(n log n) with O(1) extra space. It is not stable, so it is a poor fit when ties must keep their order.",
+      "source": {
+        "section": "6. Heap Sort"
+      },
+      "reviewed": false
+    }
+  ]
+}

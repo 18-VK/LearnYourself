@@ -1,0 +1,80 @@
+{
+  "lesson": "rate-limiter-parameters-and-throttling",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A fixed window limiter has `PermitLimit = 10` and `QueueLimit = 2`. Thirteen requests arrive within one window. What happens?",
+      "options": [
+        "All 13 are processed, because the queue absorbs the rest",
+        "10 are rejected and 3 are processed",
+        "10 proceed, 2 wait in the queue, and the 13th gets `429` immediately",
+        "10 proceed and the other 3 wait until the next window"
+      ],
+      "answer": 2,
+      "explanation": "`QueueLimit` is how many excess requests may wait instead of being rejected. With `2`, two can queue and the third excess request is rejected right away.",
+      "source": { "section": "Fixed Window Limiter" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A sliding window limiter has `PermitLimit = 10`, and its four live segments hold counts `[3, 2, 4, 0]`. Two requests arrive back to back. What happens?",
+      "options": [
+        "Both are accepted, because the current segment is empty",
+        "The first is accepted (total 10) and the second is rejected or queued (total would be 11)",
+        "Both are rejected, because one segment already holds 4",
+        "Both are accepted, because each segment has its own limit of 10"
+      ],
+      "answer": 1,
+      "explanation": "There is no per-segment limit. The rule compares the grand total across all live segments with `PermitLimit` at the moment `AcquireAsync` runs: 9 + 1 = 10 is allowed, 10 + 1 = 11 is not.",
+      "source": { "section": "AddSlidingWindowLimiter does it use slidingwindow log or sliding window counter?" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "With `AddConcurrencyLimiter` and `PermitLimit = 5`, when is a permit given back?",
+      "options": [
+        "When the request finishes",
+        "Every 5 seconds, on a timer",
+        "When the window resets",
+        "When `TryReplenish()` is called"
+      ],
+      "answer": 0,
+      "explanation": "The concurrency limiter isn't rate over time: it caps simultaneous in-flight requests, and a permit is released when the request finishes, not on a timer.",
+      "source": { "section": "Concurrency Limiter" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What turns a token bucket rate limiter into throttling behaviour?",
+      "options": [
+        "Setting `AutoReplenishment = false`",
+        "Setting `QueueLimit` above 0, so excess requests wait for a token instead of failing",
+        "Setting `RejectionStatusCode` to 503",
+        "Using `PartitionedRateLimiter` instead of a named policy"
+      ],
+      "answer": 1,
+      "explanation": "With `QueueLimit = 0` excess requests are rejected, which is pure rate limiting. With a queue they are delayed, which is throttling using the rate limiter as the mechanism.",
+      "source": { "section": "2. System.Threading.RateLimiting with QueueLimit > 0 — delay instead of reject" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A nightly batch job calls a third-party API that has its own limits. Should you reject or throttle?",
+      "options": [
+        "Reject with 429, so the batch job learns to retry",
+        "Reject, because throttling only works for public APIs",
+        "Throttle, to smooth your own outgoing traffic; there is no client to reject",
+        "Neither; the third-party API will handle it"
+      ],
+      "answer": 2,
+      "explanation": "Throttling fits calls to your own downstream dependencies and background work that just needs a sustainable pace. Rejecting fits a public API with a client-visible contract.",
+      "source": { "section": "When to use which" },
+      "reviewed": false
+    }
+  ]
+}

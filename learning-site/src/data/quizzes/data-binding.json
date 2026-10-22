@@ -1,0 +1,106 @@
+{
+  "lesson": "data-binding",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A search box is bound with `Text=\"{Binding SearchText, Mode=TwoWay}\"`, but the ViewModel only receives the text after the user tabs out of the box. What change gives live updates on every keystroke?",
+      "options": [
+        "Change the mode to `Mode=OneWay`",
+        "Add `UpdateSourceTrigger=PropertyChanged`",
+        "Add `UpdateSourceTrigger=Explicit` to the binding",
+        "Change the mode to `Mode=OneTime`"
+      ],
+      "answer": 1,
+      "explanation": "For `TextBox.Text` the default `UpdateSourceTrigger` is `LostFocus`, so the source updates on focus loss. `PropertyChanged` updates the source as soon as the text changes, for example for live search.",
+      "source": {
+        "section": "UpdateSourceTrigger — important companion to Mode"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In the demo window, a TextBox is bound TwoWay to `Name` (initially \"Aman\") and a Label shows `{Binding Name, Mode=OneTime}`. The user types \"Rahul\" into the TextBox. What does the Label show?",
+      "options": [
+        "\"Rahul\", because `Name` raised `PropertyChanged` when it changed",
+        "Nothing, because OneTime bindings clear after the first read",
+        "\"Aman\", because a OneTime binding never updates after it is created",
+        "\"AmanRahul\", because OneTime bindings append each new value"
+      ],
+      "answer": 2,
+      "explanation": "`OneTime` goes source → target once, when the binding is created; after that there are no updates, so the Label keeps the initial value even though `Name` changed.",
+      "source": {
+        "section": "Type of Bindings"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A ViewModel property changes in code, but a TextBlock bound to it with `Mode=OneWay` keeps showing the old value. What is the most likely cause?",
+      "options": [
+        "The ViewModel does not raise `INotifyPropertyChanged` for that property",
+        "OneWay bindings only update when the window is resized or reloaded",
+        "The TextBlock needs `UpdateSourceTrigger=LostFocus` added to its binding",
+        "OneWay bindings never read the source again after startup"
+      ],
+      "answer": 0,
+      "explanation": "Without `INotifyPropertyChanged`, the UI will not reflect changes from the ViewModel for OneWay or TwoWay bindings, so source properties must raise it.",
+      "source": {
+        "section": "Common pitfalls"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `[CallerMemberName]` do on the parameter of `OnPropertyChanged([CallerMemberName] string propName = null)`?",
+      "options": [
+        "It makes `PropertyChanged` fire for every property on the class",
+        "It looks up the property name with reflection at runtime",
+        "It forces every caller to pass the property name as a string",
+        "The compiler fills in the calling property's name for you"
+      ],
+      "answer": 3,
+      "explanation": "`[CallerMemberName]` automatically supplies the calling member's name to the parameter at compile time, which saves you from writing property names as strings like `\"Name\"`.",
+      "source": {
+        "section": "What is [CallerMemberName]?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Inside a ControlTemplate for Button, a Border needs the Background of the button using the template. Which binding does the lesson say is correct here?",
+      "options": [
+        "`{Binding Background, ElementName=MyButton}`",
+        "`{Binding Background, RelativeSource={RelativeSource TemplatedParent}}`",
+        "`{Binding Background, RelativeSource={RelativeSource Self}}` on the Border",
+        "`{Binding Background}` with no source, using the DataContext"
+      ],
+      "answer": 1,
+      "explanation": "`ElementName` only works within the same namescope and does not work well inside templates. Inside a ControlTemplate, `RelativeSource TemplatedParent` is the correct choice.",
+      "source": {
+        "section": "2. What is RelativeSource?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "order-steps",
+      "prompt": "A Delete button in a ListBox item template uses `Command=\"{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=ListBox}}\"` and `CommandParameter=\"{Binding}\"`. Put what happens in order.",
+      "steps": [
+        "The binding walks up the tree from the button",
+        "It finds the nearest `ListBox`",
+        "It reads that ListBox's `DataContext`, which is `MainViewModel`",
+        "Clicking the button executes `DeleteUserCommand`, receiving the current `User` as the parameter"
+      ],
+      "explanation": "The item's own DataContext is a `User`, so the binding goes up to the ListBox, uses its `MainViewModel` DataContext to find `DeleteUserCommand`, and `CommandParameter=\"{Binding}\"` passes the current `User`.",
+      "source": {
+        "section": "Explanation for both"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,233 @@
+id: http
+title: 'HTTP methods, status codes & headers'
+summary: 'REST basics, what each HTTP method means and returns, the status codes worth knowing by family, and the headers that matter for auth, content negotiation, caching, concurrency, CORS, rate limiting, tracing and security.'
+groups:
+  - title: REST in one screen
+    items:
+      - term: 'REST API'
+        desc: 'Representational State Transfer: an architectural style that uses standard HTTP methods for communication between systems; lightweight and scalable.'
+        from: { lesson: rest-and-http-basics, section: 'REST API / RESTful API' }
+      - term: 'Resources & URIs'
+        desc: 'Data is managed as resources, each uniquely identified by a URL.'
+        from: { lesson: rest-and-http-basics, section: 'Key Concepts' }
+      - term: 'Representations'
+        desc: 'Clients work with resource *states*, commonly formatted as JSON or XML.'
+        from: { lesson: rest-and-http-basics, section: 'Key Concepts' }
+      - term: 'Statelessness'
+        desc: 'Every request carries all the information needed; the server keeps no client context between calls, which helps scalability.'
+        from: { lesson: rest-and-http-basics, section: 'Key Concepts' }
+      - term: 'Idempotent'
+        desc: 'Calling the operation many times has the same effect as calling it once (e.g. `DELETE /resource` twice = resource removed).'
+        from: { lesson: rest-and-http-basics, section: 'HTTP Basics - Methods and status codes' }
+      - term: 'Verbs for intent, nouns for routes'
+        desc: '`POST /api/tasks`, `GET /api/tasks/{id}`, `PATCH /api/tasks/{id}/status`, not `POST /create-task`.'
+        from: { lesson: routing, section: 'Action method naming rules for production grade API' }
+
+  - title: HTTP methods
+    table:
+      columns: [Method, Meaning, Safe / idempotent]
+      from: { lesson: rest-and-http-basics, section: 'Http Methods' }
+      rows:
+        - cells: ['`GET`', 'Read a resource; must not change server state', 'Safe: yes · Idempotent: yes']
+          from: { lesson: rest-and-http-basics, section: 'GET' }
+        - cells: ['`POST`', 'Create a resource or trigger a non-idempotent action', 'Safe: no · Idempotent: no (unless the server implements idempotency keys)']
+          from: { lesson: rest-and-http-basics, section: 'POST' }
+        - cells: ['`PUT`', 'Replace a resource entirely (send the full representation)', 'Safe: no · Idempotent: yes']
+          from: { lesson: rest-and-http-basics, section: 'PUT' }
+        - cells: ['`PATCH`', 'Partial update (only the changed fields)', 'Safe: no · Idempotent: usually not guaranteed, often implemented to be']
+          from: { lesson: rest-and-http-basics, section: 'PATCH' }
+        - cells: ['`DELETE`', 'Remove a resource', 'Safe: no · Idempotent: yes (deleting twice has the same result)']
+          from: { lesson: rest-and-http-basics, section: 'DELETE' }
+        - cells: ['`HEAD`', 'Same as GET but returns headers only, to check existence or metadata', 'Idempotent: yes']
+          from: { lesson: rest-and-http-basics, section: 'HEAD' }
+        - cells: ['`OPTIONS`', 'Discover the methods a resource supports (CORS preflight uses it)', 'Responds `204` + `Allow: GET, POST, PUT, DELETE, OPTIONS`']
+          from: { lesson: rest-and-http-basics, section: 'OPTIONS' }
+
+  - title: Method → expected response
+    note: 'The one-liner cheat from the notes.'
+    table:
+      columns: [Method, Success, Typical failure]
+      from: { lesson: rest-and-http-basics, section: 'Quick cheat sheet (one-liners)' }
+      rows:
+        - ['`GET`', '`200` or `304`', '—']
+        - ['`POST`', '`201` + `Location`', '`400` / `422`']
+        - ['`PUT`', '`200` / `204`', '`404`']
+        - ['`PATCH`', '`200` / `204`', '`404`']
+        - ['`DELETE`', '`204`', '`404`']
+        - ['`HEAD`', 'headers only (`200`)', '—']
+        - ['`OPTIONS`', '`204` + `Allow`', '—']
+
+  - title: Status codes
+    table:
+      columns: [Code, Meaning, When / header]
+      from: { lesson: rest-and-http-basics, section: 'Common status codes (grouped) — meaning + example usage' }
+      rows:
+        - cells: ['**200 OK**', 'Successful GET/PUT/PATCH returning a body', '`GET /products/5` returns the product']
+          from: { lesson: rest-and-http-basics, section: '2xx — Success' }
+        - cells: ['**201 Created**', 'POST created a resource', 'Include `Location: /orders/834`']
+          from: { lesson: rest-and-http-basics, section: '2xx — Success' }
+        - cells: ['**202 Accepted**', 'Accepted for processing, not finished; not a guarantee of success', 'Background job / queue; body usually says how to monitor progress']
+          from: { lesson: return-types, section: 'Accepted() / AcceptedAtAction() / AcceptedAtRoute() → 202 Accepted' }
+        - cells: ['**204 No Content**', 'Success, no body', 'DELETE, or PUT when the server returns nothing']
+          from: { lesson: rest-and-http-basics, section: '2xx — Success' }
+        - cells: ['**301 / 302**', 'Moved Permanently / Found: redirection', 'Web pages']
+          from: { lesson: rest-and-http-basics, section: '3xx — Redirection / caching' }
+        - cells: ['**304 Not Modified**', 'Cached copy is still valid (conditional GET)', 'Reply to `If-None-Match` / `If-Modified-Since`; no body']
+          from: { lesson: rest-and-http-basics, section: '3xx — Redirection / caching' }
+        - cells: ['**308 Permanent Redirect**', 'Redirect that `UseHttpsRedirection` can send', '`Location: https://…`']
+          from: { lesson: https-and-hsts, section: 'UseHttpsRedirection — server-side redirect, per request' }
+        - cells: ['**400 Bad Request**', 'Malformed JSON, invalid params', 'ProblemDetails body']
+          from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+        - cells: ['**401 Unauthorized**', 'Missing / invalid authentication', '`WWW-Authenticate: Bearer`']
+          from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+        - cells: ['**403 Forbidden**', 'Authenticated but not permitted', '—']
+          from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+        - cells: ['**404 Not Found**', 'Resource does not exist', '—']
+          from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+        - cells: ['**405 Method Not Allowed**', 'Method is known but not supported by the target resource', 'Server must send an `Allow` header listing the supported methods']
+          docs: { url: 'https://www.rfc-editor.org/rfc/rfc9110.html#name-405-method-not-allowed', title: 'RFC 9110: HTTP Semantics, 15.5.6 405 Method Not Allowed', accessed: '2026-10-22' }
+        - cells: ['**406 Not Acceptable**', 'None of the types in `Accept` can be produced', 'Content negotiation']
+          from: { lesson: http-headers, section: 'Accept' }
+        - cells: ['**409 Conflict**', 'Conflicting state, e.g. a duplicate unique value', 'Create user with an existing email']
+          from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+        - cells: ['**412 Precondition Failed**', 'Resource changed since the client read it', 'Reply to a stale `If-Match`']
+          from: { lesson: http-headers, section: 'If-Match' }
+        - cells: ['**415 Unsupported Media Type**', 'Request content is in a format the method does not support on that resource', 'Usually the request''s `Content-Type` or `Content-Encoding`']
+          docs: { url: 'https://www.rfc-editor.org/rfc/rfc9110.html#name-415-unsupported-media-type', title: 'RFC 9110: HTTP Semantics, 15.5.16 415 Unsupported Media Type', accessed: '2026-10-22' }
+        - cells: ['**422 Unprocessable Entity**', 'Semantic validation failed', '`{"status":422,"errors":{"email":["Invalid email format"]}}`']
+          from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+        - cells: ['**429 Too Many Requests**', 'Rate limited', 'Include `Retry-After`']
+          from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+        - cells: ['**500 Internal Server Error**', 'Unexpected server failure', 'Log details server-side; don''t leak stack traces']
+          from: { lesson: rest-and-http-basics, section: '5xx — Server errors' }
+        - cells: ['**503 Service Unavailable**', 'Maintenance or overloaded', '`Retry-After` says when to retry']
+          from: { lesson: rest-and-http-basics, section: '5xx — Server errors' }
+    items:
+      - term: '401 vs 403'
+        desc: '401 = not authenticated (no or invalid token); 403 = authenticated, but lacks the role/claim/permission.'
+        from: { lesson: authorization-policies, section: 'Important difference: 401 vs 403' }
+      - term: '400 vs 422'
+        desc: '400 for malformed / invalid request data, 422 for valid data that breaks a business rule: a design choice you make for your API.'
+        from: { lesson: return-types, section: 'UnprocessableEntity() → 422 Unprocessable Entity' }
+      - term: 'Error body (problem details)'
+        code: |
+          {"type":"https://example.com/probs/invalid-request","title":"Bad Request","status":400,"detail":"Invalid JSON"}
+        lang: json
+        from: { lesson: rest-and-http-basics, section: '4xx — Client errors' }
+
+  - title: Header quick reference
+    table:
+      columns: [Scenario, Header(s) to use]
+      from: { lesson: http-headers, section: 'Quick Reference Table' }
+      rows:
+        - ['Sending a JWT', '`Authorization: Bearer <token>`']
+        - ['Server rejects an expired/invalid token', '`WWW-Authenticate`']
+        - ['Client wants JSON specifically', '`Accept: application/json`']
+        - ['Uploading a file', '`Content-Type: multipart/form-data`']
+        - ['Avoid re-fetching unchanged data', '`ETag` + `If-None-Match`']
+        - ['Prevent overwriting concurrent edits', '`ETag` + `If-Match`']
+        - ['Browser calling API from a different origin', '`Origin`, `Access-Control-Allow-Origin`']
+        - ['Preventing duplicate POSTs on retry', '`Idempotency-Key`']
+        - ['Tracing a request across services', '`X-Correlation-Id`']
+        - ['Exposing rate limit status', '`X-RateLimit-*`']
+        - ['Client should back off and retry later', '`Retry-After`']
+        - ['Enforcing HTTPS-only', '`Strict-Transport-Security`']
+        - ['Exposing pagination total', '`X-Total-Count`']
+
+  - title: Auth, content negotiation & caching headers
+    items:
+      - term: '`Authorization`'
+        desc: 'Client credentials on every request: `Bearer` (JWT: SPAs, mobile, microservices), `Basic` (internal tools), custom schemes like `ApiKey` (machine-to-machine).'
+        from: { lesson: http-headers, section: 'Authorization' }
+      - term: '`WWW-Authenticate`'
+        desc: 'Sent with a `401` to say which scheme to use and why it failed, so a client can tell "no token" from "token expired" and trigger a refresh.'
+        code: |
+          HTTP/1.1 401 Unauthorized
+          WWW-Authenticate: Bearer realm="api", error="invalid_token", error_description="The token expired"
+        lang: http
+        from: { lesson: http-headers, section: 'WWW-Authenticate' }
+      - term: '`Content-Type`'
+        desc: 'Media type of the body being sent or returned: `application/json` (REST default), `multipart/form-data` (file uploads), `application/x-www-form-urlencoded` (legacy forms).'
+        from: { lesson: http-headers, section: 'Content-Type' }
+      - term: '`Accept`'
+        desc: 'Formats the client can handle, optionally weighted: `application/json, application/xml;q=0.8, */*;q=0.1`. `[Produces("application/json", "application/xml")]` in ASP.NET Core.'
+        from: { lesson: http-headers, section: 'Accept' }
+      - term: '`Accept-Language` / `Content-Language`'
+        desc: 'Negotiate localization, e.g. error messages in the user''s language.'
+        from: { lesson: http-headers, section: 'Accept-Language / Content-Language' }
+      - term: '`Cache-Control`'
+        desc: 'Primary caching directive. Rarely-changing public data: `public, max-age=3600`; per-user sensitive data: `private, no-store`.'
+        code: |
+          Cache-Control: no-store                  # never cache (sensitive data)
+          Cache-Control: no-cache                  # cache, but revalidate every time
+          Cache-Control: private, max-age=3600     # cache per-user for 1 hour
+          Cache-Control: public, max-age=86400     # cache and share across users for 1 day
+        lang: http
+        from: { lesson: http-headers, section: 'Cache-Control' }
+      - term: '`ETag` + `If-None-Match`'
+        desc: 'Fingerprint of the resource state; the client echoes it back and gets `304 Not Modified` with no body if nothing changed.'
+        code: |
+          # First request
+          GET /api/tasks/42
+          → 200 OK
+            ETag: "a1b2c3d4"
+
+          # Later request
+          GET /api/tasks/42
+          If-None-Match: "a1b2c3d4"
+          → 304 Not Modified   (no body sent)
+        lang: http
+        from: { lesson: http-headers, section: 'ETag + If-None-Match' }
+      - term: '`Last-Modified` + `If-Modified-Since`'
+        desc: 'Same idea with a timestamp: coarser (second precision) but cheaper than hashing.'
+        from: { lesson: http-headers, section: 'Last-Modified + If-Modified-Since' }
+
+  - title: Concurrency, CORS, limits, tracing & security headers
+    items:
+      - term: '`If-Match`'
+        desc: 'Client sends the ETag it last read; the server answers `412 Precondition Failed` if the resource changed, preventing a lost update on `PUT`/`PATCH`.'
+        from: { lesson: http-headers, section: 'If-Match' }
+      - term: '`Origin` → `Access-Control-Allow-Origin`'
+        desc: 'Browser names where the request came from; the server names which origins may read the response.'
+        from: { lesson: http-headers, section: 'Access-Control-Allow-Origin' }
+      - term: 'CORS preflight'
+        desc: '`OPTIONS` request answered with the methods and headers allowed for the real request.'
+        code: |
+          OPTIONS /api/tasks
+          Origin: https://app.yourdomain.com
+          Access-Control-Request-Method: PUT
+          Access-Control-Request-Headers: Content-Type, Authorization
+
+          → 204 No Content
+            Access-Control-Allow-Origin: https://app.yourdomain.com
+            Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+            Access-Control-Allow-Headers: Content-Type, Authorization
+        lang: http
+        from: { lesson: http-headers, section: 'Access-Control-Allow-Methods / Access-Control-Allow-Headers' }
+      - term: '`Retry-After`'
+        desc: 'How long to wait before retrying, alongside `429` or `503`.'
+        from: { lesson: http-headers, section: 'Retry-After' }
+      - term: '`X-RateLimit-Limit` / `-Remaining` / `-Reset`'
+        desc: 'Not standardized but widely used (GitHub, Stripe): lets consumers self-throttle before hitting `429`.'
+        from: { lesson: http-headers, section: 'X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset' }
+      - term: '`Idempotency-Key`'
+        desc: 'Client-generated unique key on a `POST`; the server returns the original result for a retried key instead of creating a duplicate.'
+        from: { lesson: http-headers, section: 'Idempotency-Key' }
+      - term: '`X-Request-Id` / `X-Correlation-Id`'
+        desc: 'De facto convention for tracing one logical request across services and logs: set it at the edge, log it everywhere.'
+        from: { lesson: http-headers, section: 'X-Request-Id / X-Correlation-Id' }
+      - term: '`Strict-Transport-Security` (HSTS)'
+        desc: 'Browser must only use HTTPS for the domain, even if the user types `http://`: `max-age=31536000; includeSubDomains`.'
+        from: { lesson: http-headers, section: 'Strict-Transport-Security (HSTS)' }
+      - term: '`X-Content-Type-Options: nosniff`'
+        desc: 'Stops the browser guessing a response''s content type (which can be abused to run disguised scripts).'
+        from: { lesson: http-headers, section: 'X-Content-Type-Options: nosniff' }
+      - term: '`X-Frame-Options` / `Content-Security-Policy`'
+        desc: 'Mitigate clickjacking and XSS: `X-Frame-Options: DENY`, `Content-Security-Policy: default-src ''self''`.'
+        from: { lesson: http-headers, section: 'X-Frame-Options / Content-Security-Policy' }
+      - term: '`X-Total-Count`'
+        desc: 'Total record count of a paginated collection as a header, so clients can compute pages without parsing the body.'
+        from: { lesson: http-headers, section: 'X-Total-Count' }
+      - term: '`Link`'
+        desc: 'Pagination links as a header (`rel="next"`, `rel="prev"`) instead of `nextPageUrl` fields in the body.'
+        from: { lesson: http-headers, section: 'Link' }

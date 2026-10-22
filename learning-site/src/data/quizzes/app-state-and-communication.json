@@ -1,0 +1,108 @@
+{
+  "lesson": "app-state-and-communication",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Selecting a project in the left pane must update the task list in the right pane. Which rule do almost all serious apps follow here?",
+      "options": [
+        "The left ViewModel keeps a reference to the right ViewModel and calls `LoadTasks()` on it",
+        "ViewModels do not talk directly; communication goes through orchestration or shared state",
+        "The left pane's code-behind finds the right pane's ListBox and refreshes it",
+        "Both panes share a single ViewModel class"
+      ],
+      "answer": 1,
+      "explanation": "The lesson's rule is that ViewModels do not talk directly; communication goes through a parent orchestrator or shared state (and messaging for large modular systems).",
+      "source": {
+        "section": "How to communicate between different parts of an application?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why are `SelectionState`, `FilterState`, `NavigationState` and `AppState` registered with `AddSingleton`?",
+      "options": [
+        "So every ViewModel shares the same instances: one shared truth",
+        "Because `ObservableObject` classes cannot be transient",
+        "So each window gets a fresh copy of the state",
+        "Because singletons are disposed automatically when a window closes"
+      ],
+      "answer": 0,
+      "explanation": "Singleton means shared truth across the app: the left pane writes to the same `SelectionState` instance that the right pane listens to.",
+      "source": {
+        "section": "✅ DI registration (important)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Under the core rule for async work and AppState, which of these belongs in `TaskListState`?",
+      "options": [
+        "An `async Task LoadAsync()` method that calls the repository",
+        "A reference to `TaskService` used to fetch tasks",
+        "Observable `IsLoading`, `Error` and `Tasks` properties",
+        "A `CancellationTokenSource` that it awaits"
+      ],
+      "answer": 2,
+      "explanation": "Async work happens in ViewModels or Services; AppState only stores results and flags. It does not await or call repositories; it exposes loading flags, error info and data.",
+      "source": {
+        "section": "🧠 Core rule for async + AppState"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`LoadTasksAsync()` begins with `_cts?.Cancel(); _cts = new CancellationTokenSource();`. What does that achieve when the user clicks several projects quickly?",
+      "options": [
+        "It stops the right pane from ever loading tasks for the project",
+        "It makes `GetTasksAsync` run on a separate background thread",
+        "It clears the `Error` message left over from the previous load",
+        "It cancels the still-running previous load first"
+      ],
+      "answer": 3,
+      "explanation": "Each call cancels the token of the earlier load and passes a fresh token to `GetTasksAsync`; the cancelled load throws `OperationCanceledException`, which the pattern catches as expected.",
+      "source": {
+        "section": "3️⃣ Correct async loading pattern (important)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How does the left pane's ListBox selection reach `AppState` in the lesson's design?",
+      "options": [
+        "The ListBox binds `SelectedItem` directly to `AppState.Selection`",
+        "Via the ViewModel's `SelectedProject`, a thin proxy over AppState",
+        "Code-behind copies the selection into AppState on `SelectionChanged`",
+        "The ViewModel keeps its own copy and syncs it to AppState on a timer"
+      ],
+      "answer": 1,
+      "explanation": "The View never binds to AppState directly: it binds to a ViewModel property that is a thin proxy to AppState, with no extra backing field, so there is one source of truth.",
+      "source": {
+        "section": "How does selection actually flow from the View to AppState?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "order-steps",
+      "prompt": "Put the runtime flow after the user clicks a project in order.",
+      "steps": [
+        "`ListBox.SelectedItem` changes",
+        "The `ProjectListViewModel.SelectedProject` setter runs",
+        "`AppState.Selection.SelectedProject` is updated",
+        "`PropertyChanged` is fired",
+        "The right ViewModel sees the change",
+        "The async task reloads the tasks"
+      ],
+      "explanation": "The TwoWay binding calls the proxy setter, which updates the shared SelectionState; its `PropertyChanged` event is what the right ViewModel listens to before reloading tasks. No direct calls or references.",
+      "source": {
+        "section": "4️⃣ What actually happens at runtime"
+      },
+      "reviewed": false
+    }
+  ]
+}

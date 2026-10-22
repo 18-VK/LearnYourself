@@ -1,0 +1,91 @@
+{
+  "lesson": "aspnet-core-overview",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the journey of a request through an ASP.NET Core application in order.",
+      "steps": [
+        "The client sends an HTTP request",
+        "Kestrel accepts the request and forwards it to the ASP.NET Core pipeline",
+        "Middleware processes the request and routing picks the controller action",
+        "The controller calls the business logic in the services",
+        "The data access layer (repository / EF Core) reads or updates the database",
+        "The response passes back through the middleware to the client"
+      ],
+      "explanation": "Kestrel receives the request, the middleware pipeline and routing hand it to a controller, the controller works through services and data access, and the response returns through the pipeline.",
+      "source": {
+        "section": "ASP .Net Architecture"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What is Kestrel's role in an ASP.NET Core app?",
+      "options": [
+        "It is a reverse proxy that only runs on Windows in front of IIS",
+        "It is the ORM that maps controllers to database tables",
+        "It is the default cross-platform web server: it accepts HTTP requests and forwards them into the ASP.NET Core pipeline",
+        "It is the middleware that decides which controller handles a request"
+      ],
+      "answer": 2,
+      "explanation": "Kestrel is ASP.NET Core's default web server. It handles the network communication and can run on its own or behind a reverse proxy such as IIS, Nginx or Apache.",
+      "source": {
+        "section": "2. Kestrel Web Server"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What can each middleware component in the pipeline do with a request?",
+      "options": [
+        "Modify it, pass it to the next middleware, or stop the pipeline",
+        "Only read it; changes are made by the controller",
+        "Only pass it on; middleware cannot end a request early",
+        "Only run after the controller has produced a response"
+      ],
+      "answer": 0,
+      "explanation": "Each middleware can process the request, decide to pass it to the next component, or terminate the pipeline, for example when a request is unauthorized.",
+      "source": {
+        "section": "3. Middleware"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does a Web API controller derive from `ControllerBase` while an MVC controller derives from `Controller`?",
+      "options": [
+        "`ControllerBase` is faster because it skips routing",
+        "`Controller` cannot return JSON at all",
+        "`ControllerBase` is only for Minimal APIs",
+        "`Controller` adds view (HTML) support, which an API that returns JSON does not need"
+      ],
+      "answer": 3,
+      "explanation": "Web API returns data such as JSON with no view support, so it uses `ControllerBase`; MVC renders HTML views and uses `Controller`.",
+      "source": {
+        "section": "Key Differences"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which project is the best fit for a Minimal API, according to the lesson?",
+      "options": [
+        "A large enterprise ERP with dozens of controllers",
+        "A small weather-notification microservice with three endpoints",
+        "A server-rendered website built with Razor views",
+        "A real-time chat app that needs SignalR"
+      ],
+      "answer": 1,
+      "explanation": "Minimal APIs are best for lightweight microservices and prototypes, such as a service with a few endpoints or a proof of concept where speed matters more than structure.",
+      "source": {
+        "section": "Minimal API"
+      },
+      "reviewed": false
+    }
+  ]
+}

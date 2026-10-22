@@ -1,0 +1,89 @@
+{
+  "lesson": "wpf-intro",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A new WPF project gives you a Window defined in XAML plus a C# code-behind file. Why does the lesson call this split fundamental?",
+      "options": [
+        "XAML compiles faster than C#, so the window appears sooner at startup",
+        "The XAML file is only used by the designer and is thrown away when the app runs",
+        "The split is required so the same app can also run on .NET Framework 4.x",
+        "It splits layout from behavior, so designers and developers work in parallel"
+      ],
+      "answer": 3,
+      "explanation": "XAML defines the UI layout and C# defines the behavior; the lesson says this split reduces coupling and lets designers and developers work in parallel.",
+      "source": {
+        "section": "Introduction to WPF"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How do WinForms and WPF differ in how they render the UI?",
+      "options": [
+        "WinForms uses DirectX (vector-based); WPF uses GDI+ (pixel-based)",
+        "WinForms uses GDI+ (pixel-based); WPF uses DirectX (vector-based)",
+        "Both use GDI+, but WPF adds a DPI-scaling layer on top",
+        "Both use DirectX; WPF just has more built-in controls"
+      ],
+      "answer": 1,
+      "explanation": "The comparison table lists WinForms rendering as GDI+ (pixel-based, on the CPU) and WPF as DirectX (vector-based, on the GPU), which is why WPF scales well on high-DPI screens.",
+      "source": {
+        "section": "Winform vs WPF"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In WPF, the Save button is written as `<Button Content=\"Save\" Command=\"{Binding SaveCommand}\" />`. Where does its behavior come from?",
+      "options": [
+        "From a `Click` event handler the designer generates in code-behind",
+        "From the `Content` property, which WPF maps to a method name",
+        "From the binding to `SaveCommand`, not from an event handler",
+        "From `this.Controls.Add(btn)` in the window constructor"
+      ],
+      "answer": 2,
+      "explanation": "In WPF the UI is written in XAML and behavior comes from binding (here to `SaveCommand`), not from events, which keeps UI and logic cleanly separated.",
+      "source": {
+        "section": "1. UI Creation Style"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "WinForms code sets `textBox1.Text = user.Name;`. What does WPF's `<TextBox Text=\"{Binding UserName}\" />` give you instead?",
+      "options": [
+        "Automatic two-way updates with minimal glue code",
+        "A one-time copy of `UserName` when the window loads",
+        "Faster rendering, but you still update `Text` manually",
+        "Validation of `UserName`, but no automatic updates"
+      ],
+      "answer": 0,
+      "explanation": "WinForms needs manual updates everywhere, while WPF data binding gives automatic updates, two-way binding and minimal glue code.",
+      "source": {
+        "section": "3. Data Binding (Game Changer)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You must keep maintaining a small legacy CRUD tool used internally, and time is extremely limited. Which framework does the lesson suggest?",
+      "options": [
+        "WPF, because it is always the better choice for new work",
+        "WinForms",
+        "WPF, because it has built-in animations"
+      ],
+      "answer": 1,
+      "explanation": "The lesson recommends WinForms for very small apps, legacy maintenance, simple CRUD internal tools and extremely limited time; WPF is for new, medium/large, long-lived or rich-UI apps.",
+      "source": {
+        "section": "7. When to Choose What?"
+      },
+      "reviewed": false
+    }
+  ]
+}

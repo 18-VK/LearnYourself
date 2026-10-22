@@ -1,0 +1,94 @@
+{
+  "lesson": "ef-core-indexes-tracking-bulk-concurrency",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which Fluent API call makes `EmployeeCode` a **unique** index?",
+      "options": [
+        "`modelBuilder.Entity<Employee>().HasIndex(e => e.EmployeeCode);`",
+        "`modelBuilder.Entity<Employee>().HasIndex(e => new { e.EmployeeCode, e.Email });`",
+        "`modelBuilder.Entity<Employee>().HasKey(e => e.EmployeeCode);`",
+        "`modelBuilder.Entity<Employee>().HasIndex(e => e.EmployeeCode).IsUnique();`"
+      ],
+      "answer": 3,
+      "explanation": "`HasIndex(...)` alone creates a regular index and `HasIndex(e => new { ... })` a composite one; adding `.IsUnique()` makes it a unique index.",
+      "source": { "section": "### 1) Using Fluent API (Recommended Way)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A customer is loaded with `context.Customers.AsNoTracking().FirstOrDefault(c => c.Id == 2)`. You change its `Name` and call `context.SaveChanges()`. What happens?",
+      "options": [
+        "The new name is saved, like any other query",
+        "Nothing is saved, because the entity isn't tracked",
+        "`SaveChanges()` throws because the entity is read-only",
+        "EF Core starts tracking it automatically and saves it"
+      ],
+      "answer": 1,
+      "explanation": "`AsNoTracking()` bypasses the Change Tracker: the data is retrieved without monitoring changes, so `SaveChanges()` has no effect on it.",
+      "source": { "section": "## What is AsNoTracking()?" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "On EF Core 7+, what does `db.Transactions.Where(t => t.Type == \"INCOME\").ExecuteDeleteAsync()` do differently from loading the rows and calling `RemoveRange`?",
+      "options": [
+        "It sends a single SQL `DELETE` without loading or tracking the entities",
+        "It loads the entities first, but deletes them in one transaction",
+        "It only marks the entities as deleted until `SaveChangesAsync()` is called",
+        "It deletes the rows from memory but not from the database"
+      ],
+      "answer": 0,
+      "explanation": "`ExecuteDelete` deletes directly in SQL without loading entities: no tracking, a single `DELETE`, best for large data. On EF Core 6 or below you must load the entities, then remove them.",
+      "source": { "section": "#### 2. EF Core 7+ — Best Method (ExecuteDelete)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Two users edit the same `Project`, which has a `RowVersion` concurrency token. Put the events in order.",
+      "steps": [
+        "Users A and B both load the project with `RowVersion = 0x001`",
+        "User A saves, and the database changes `RowVersion` to `0x002`",
+        "User B saves, and EF sends `UPDATE ... WHERE Id=@Id AND RowVersion=0x001`",
+        "No row matches, so EF throws `DbUpdateConcurrencyException`"
+      ],
+      "explanation": "The concurrency check puts the token in the `WHERE` clause; because A's save changed the row version, B's update affects no row and EF raises `DbUpdateConcurrencyException`.",
+      "source": { "section": "### What is RowVersion?" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "The same two users save conflicting changes, but the entity has **no** concurrency token. What happens?",
+      "options": [
+        "EF throws `DbUpdateConcurrencyException` on the second save",
+        "EF merges both users' changes automatically",
+        "Last write wins: user A's changes are silently overwritten",
+        "The second save is skipped and returns 409"
+      ],
+      "answer": 2,
+      "explanation": "Without a `RowVersion` (or another concurrency token), EF cannot detect that another user modified the row, so the last write wins and A's changes are silently overwritten.",
+      "source": { "section": "### What is RowVersion?" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Users A and B both changed the **same** field of a project. How does the lesson's recommended pattern handle the resulting `DbUpdateConcurrencyException`?",
+      "options": [
+        "Retry the save in a loop until it succeeds",
+        "Return `409 Conflict` and let the client decide",
+        "Keep whichever value is longer",
+        "Delete the row and insert the latest version"
+      ],
+      "answer": 1,
+      "explanation": "Pattern 1 detects the conflict and returns `409 Conflict` without auto-retrying; when both users changed the same field the server usually shouldn't choose, and Microsoft recommends detect → return conflict → client decides.",
+      "source": { "section": "#### Pattern 1 (Recommended): Detect Conflict, Don't Auto-Retry" },
+      "reviewed": false
+    }
+  ]
+}

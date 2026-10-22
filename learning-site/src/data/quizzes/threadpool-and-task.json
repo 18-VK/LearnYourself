@@ -1,0 +1,99 @@
+{
+  "lesson": "threadpool-and-task",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which statement about `ThreadPool` threads matches the lesson's advice?",
+      "options": [
+        "They are foreground threads, so it is fine to block them for long periods",
+        "They are created fresh for each work item and discarded afterwards",
+        "They are background threads that get reused, so you shouldn't block them for long",
+        "They can only run I/O work, never CPU-bound code"
+      ],
+      "answer": 2,
+      "explanation": "ThreadPool threads are background threads and reused; for long-blocking work use async I/O or dedicated threads instead of tying up a pool thread.",
+      "source": { "section": "### ThreadPool methods" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You queue work with `ThreadPool.QueueUserWorkItem` and now need the value it computes. What does the lesson suggest?",
+      "options": [
+        "Use `Task.Run`, because `QueueUserWorkItem` is fire-and-forget with no return value",
+        "Read the value from the `state` argument after the call returns",
+        "Call `ThreadPool.GetAvailableThreads` to collect the result",
+        "Pass `executeOnlyOnce: true` so the callback returns its value"
+      ],
+      "answer": 0,
+      "explanation": "`QueueUserWorkItem` is fire-and-forget and has no return value; use `Task.Run` if you need a result.",
+      "source": { "section": "#### 2) Example with main thread activity" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "What does this program print?",
+      "code": {
+        "lang": "csharp",
+        "source": "Task<int> t = Task.Run(() => {\n            int sum = 0;\n            for (int i = 1; i <= 1000; i++) sum += i;\n            return sum;\n        });\n\n        int result = await t; // asynchronously wait\n        Console.WriteLine($\"Sum = {result}\");"
+      },
+      "options": [
+        "`Sum = 0`, because `Main` doesn't wait for the task",
+        "`Sum = 500500`",
+        "`Sum = 1000`",
+        "The task's type name, because `t` is a `Task<int>`"
+      ],
+      "answer": 1,
+      "explanation": "`await t` asynchronously waits for the pool work to finish and unwraps the `int` it returned, so it prints the sum of 1 to 1000, which is 500500.",
+      "source": { "section": "#### 1) `Task.Run` + async/await (recommended)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "A `Task<int>` faults with an `InvalidOperationException`. What happens when you read `t.Result`?",
+      "options": [
+        "It returns `0`, the default for `int`",
+        "It throws the `InvalidOperationException` directly, just like `await`",
+        "It returns immediately without blocking and sets `t.Status` to `Canceled`",
+        "It throws an `AggregateException` that wraps the `InvalidOperationException`"
+      ],
+      "answer": 3,
+      "explanation": "`.Result` blocks until the task finishes and, if it faulted, throws an `AggregateException` wrapping the original exception; `await` unwraps exceptions automatically.",
+      "source": { "section": "#### 2️⃣ Using the `.Result` property" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You have heavy blocking work that will run for a long time. Why might you use `Task.Factory.StartNew` instead of `Task.Run`?",
+      "options": [
+        "`StartNew` is the newer API and always faster",
+        "`StartNew` lets you pass `TaskCreationOptions.LongRunning`, hinting the scheduler to use a dedicated thread",
+        "`StartNew` runs the work on the calling thread, avoiding the pool",
+        "`Task.Run` cannot run work that calls `Thread.Sleep`"
+      ],
+      "answer": 1,
+      "explanation": "`Task.Factory.StartNew` is the older API; use it when you need `TaskCreationOptions` such as `LongRunning`, which hints that a dedicated thread may be created. Otherwise prefer `Task.Run`.",
+      "source": { "section": "#### 4) `Task.Factory.StartNew` vs `Task.Run` (and `LongRunning`)" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Which option waits for several tasks without blocking the current thread?",
+      "options": [
+        "`Task.WaitAll(t1, t2)`",
+        "`t1.Wait(); t2.Wait();`",
+        "`await Task.WhenAll(t1, t2)`",
+        "Reading `t1.Result` and `t2.Result`"
+      ],
+      "answer": 2,
+      "explanation": "`Task.Wait()` and `Task.WaitAll(...)` are blocking waits, while `Task.WhenAll(...)` is non-blocking composition that returns a `Task` you can await.",
+      "source": { "section": "#### 2) Waiting / composition" },
+      "reviewed": false
+    }
+  ]
+}

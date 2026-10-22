@@ -1,0 +1,80 @@
+{
+  "lesson": "environment-and-launchsettings",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How do you read the `PATH` environment variable in C#?",
+      "options": [
+        "`Environment.GetEnvironmentVariable(\"PATH\")`",
+        "`Console.ReadLine(\"PATH\")`",
+        "`AppContext.GetData(\"PATH\")`",
+        "`File.ReadAllText(\"PATH\")`"
+      ],
+      "answer": 0,
+      "explanation": "Environment variables are accessed through the `System.Environment` class; `GetEnvironmentVariable(\"PATH\")` returns its value.",
+      "source": { "section": "Reading Environment Variables" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Is `Properties/launchSettings.json` used when the app runs in production?",
+      "options": [
+        "Yes; it is the main runtime configuration file",
+        "Yes, but only for web projects",
+        "No; it is a developer-only file for launching the project locally (debugging or `dotnet run --launch-profile`)",
+        "Only when `launchBrowser` is `true`"
+      ],
+      "answer": 2,
+      "explanation": "`launchSettings.json` configures how the project is launched during local development. It is not part of the app's runtime config in production; treat it as a dev convenience.",
+      "source": { "section": "What launchSettings.json is — short" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A profile's `environmentVariables` sets `App__MaxItemsPerRun`. Which configuration key does it map to?",
+      "options": [
+        "`App__MaxItemsPerRun` exactly, with the underscores",
+        "`App.MaxItemsPerRun`",
+        "`App_MaxItemsPerRun`",
+        "`App:MaxItemsPerRun`, because a double underscore maps to a colon"
+      ],
+      "answer": 3,
+      "explanation": "In environment variables, a double underscore maps to the colon used in configuration keys, so `App__MaxItemsPerRun` becomes `App:MaxItemsPerRun`.",
+      "source": { "section": "Key fields you'll encounter" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `\"commandName\": \"Project\"` mean in a launch profile?",
+      "options": [
+        "Launch Visual Studio's IIS Express",
+        "Run the project itself, like `dotnet run`",
+        "Run an external executable with arguments",
+        "Launch the app in a Docker container"
+      ],
+      "answer": 1,
+      "explanation": "`commandName` sets the type of launch: `Project` runs the project (`dotnet run` behavior), `IISExpress` uses IIS Express, `Executable` runs an external executable and `Docker` launches a container.",
+      "source": { "section": "Key fields you'll encounter" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "In the `MyWebApp` profile, what does `\"applicationUrl\": \"https://localhost:5001;http://localhost:5000\"` control?",
+      "options": [
+        "The page opened in the browser after launch",
+        "The URLs Kestrel binds to for the web project",
+        "The address of the database server",
+        "The IIS Express SSL port"
+      ],
+      "answer": 1,
+      "explanation": "For web projects, `applicationUrl` is the URL(s) Kestrel will bind to. The page opened in the browser is `launchUrl`, and IIS Express ports live in `iisSettings`.",
+      "source": { "section": "Key fields you'll encounter" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "lesson": "generics",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What does the call at the end print?",
+      "code": {
+        "lang": "csharp",
+        "source": "public static void Print<T>(T value)\n{\n    Console.WriteLine($\"Generic: {value}\");\n}\n\npublic static void Print(string value)\n{\n    Console.WriteLine($\"String overload: {value}\");\n}\n\npublic static void Print(int value)\n{\n    Console.WriteLine($\"Int overload: {value}\");\n}\n\n// Calls\nPrint(10);"
+      },
+      "options": [
+        "Generic: 10",
+        "Int overload: 10",
+        "It does not compile, because the call is ambiguous",
+        "Int overload: 10, then Generic: 10"
+      ],
+      "answer": 1,
+      "explanation": "The compiler prefers the more specific non-generic overload when it matches exactly, so `Print(10)` uses `Print(int)`. The generic version is used only when no specific overload fits, as with `3.14`.",
+      "source": { "section": "Overloading with generics" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Given `public class Cache<T> where T : struct, IComparable`, which type argument is rejected?",
+      "options": [
+        "`int`",
+        "`DateTime`",
+        "`string`",
+        "None; the constraints only affect method calls"
+      ],
+      "answer": 2,
+      "explanation": "`T` must be a value type that implements `IComparable`. `int` and `DateTime` work, but `string` is a class, not a struct.",
+      "source": { "section": "📌 Example 2: Mixing struct/class constraint" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does the `where T : new()` constraint require, and what does it allow?",
+      "options": [
+        "`T` must be a new type declared in the same file; it allows `T` to be private",
+        "`T` must be a value type; it allows comparisons with `default(T)`",
+        "`T` must inherit from `Entity`; it allows access to `Id`",
+        "`T` must have a public parameterless constructor; it allows `new T()` inside the generic code"
+      ],
+      "answer": 3,
+      "explanation": "The constructor constraint `new()` means `T` must have a public parameterless constructor, which is why `CreateInstance<T>()` and `Mapper` can call `new T()` / `new TDestination()`.",
+      "source": { "section": "Kinds of constraints you can combine" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "In `InMemoryRepository<T> : IRepository<T> where T : Entity, new()`, why can `GetById` use `x.Id`?",
+      "options": [
+        "Because `T` must be `Entity` or a class that inherits from `Entity`, so it has `Id`",
+        "Because every generic type parameter has an `Id` property",
+        "Because `new()` adds an `Id` property to `T`",
+        "Because `List<T>` provides `Id` for its items"
+      ],
+      "answer": 0,
+      "explanation": "The base class constraint `where T : Entity` means `T` must be `Entity` or inherit from it, so the compiler knows `T` has `Id`; `new()` separately requires a parameterless constructor.",
+      "source": { "section": "Example 1: Multiple constraints" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does `Console.WriteLine(intBox)` print `Box holding: 42` for `new Box<int>(42)`?",
+      "options": [
+        "Because generic classes print their type argument automatically",
+        "Because `Console.WriteLine` calls `ToString()`, which `Box<T>` overrides to return `$\"Box holding: {Value}\"`",
+        "Because `Value` is public, so `Console.WriteLine` reads it directly",
+        "Because `Box<int>` is boxed to `object` before printing"
+      ],
+      "answer": 1,
+      "explanation": "`Console.WriteLine` calls `.ToString()` on the object, and `Box<T>` overrides it to return `Box holding: {Value}`, so the output uses `Value = 42`.",
+      "source": { "section": "Why `Console.WriteLine(intBox)` prints nicely" },
+      "reviewed": false
+    }
+  ]
+}

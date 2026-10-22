@@ -1,0 +1,107 @@
+{
+  "lesson": "control-and-data-templates",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A button ControlTemplate contains only `<Border Background=\"Red\"><TextBlock Text=\"Fixed Text\"/></Border>`. What happens to `<Button Content=\"Save\"/>` and `<Button Content=\"Delete\"/>`?",
+      "options": [
+        "Each button shows its own Content inside the red border",
+        "Both show \"Fixed Text\", because `Button.Content` is ignored",
+        "WPF notices the problem and falls back to the default template",
+        "They show both their Content and \"Fixed Text\" side by side"
+      ],
+      "answer": 1,
+      "explanation": "`ContentPresenter` is the placeholder that displays the control's content. Without it the content is lost, so every button shows the same fixed text and the template is not reusable.",
+      "source": {
+        "section": "What if ContentPresenter is Missing?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Inside a ControlTemplate, the Border has `Background=\"{TemplateBinding Background}\"`. What does that mean?",
+      "options": [
+        "Use the `Background` value of the control that is using this template",
+        "Bind to a `Background` property on the ViewModel in `DataContext`",
+        "Use the `Background` of the parent Window",
+        "Copy the `Background` once when the template loads and never update it"
+      ],
+      "answer": 0,
+      "explanation": "TemplateBinding is a lightweight binding, used only inside a ControlTemplate, that connects the control's public properties to the template visuals: use the value from the control that is using this template.",
+      "source": {
+        "section": "TemplateBinding Explained (IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A ListBox is bound to a collection of `Person` objects and has no DataTemplate or `DisplayMemberPath`. What does each row show?",
+      "options": [
+        "The `Name` property, because it is the first property",
+        "An empty row for every item in the list",
+        "A grid with one column per property",
+        "The object's full type name (from `ToString()`)"
+      ],
+      "answer": 3,
+      "explanation": "Without a DataTemplate, controls bound to custom objects display the fully qualified name of each object, or the result of its `ToString()` method.",
+      "source": {
+        "section": "DataTemplate"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You declare `<DataTemplate DataType=\"{x:Type local:Person}\">` in resources with no `x:Key`. What do you need on `<ListBox ItemsSource=\"{Binding People}\" />` for it to be used?",
+      "options": [
+        "`ItemTemplate=\"{StaticResource Person}\"` on the ListBox",
+        "`DisplayMemberPath=\"Person\"` so WPF knows which template",
+        "Nothing; WPF applies it to `Person` items automatically",
+        "A `ContentPresenter` placed inside the ListBox element"
+      ],
+      "answer": 2,
+      "explanation": "When you omit `x:Key` and set `DataType`, WPF applies the DataTemplate automatically by data type, so the plain `<ListBox ItemsSource=\"{Binding People}\" />` uses it.",
+      "source": {
+        "section": "Auto-applied DataTemplate (by data type)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does the lesson warn against putting a Button ControlTemplate without an `x:Key` in `App.xaml`?",
+      "options": [
+        "It replaces the default template app-wide, which can break other controls",
+        "Templates in `App.xaml` are ignored entirely unless they have an `x:Key`",
+        "Every Button in the app would lose its `Click` and `Command` behavior",
+        "WPF only allows keyed ControlTemplates inside `Application.Resources`"
+      ],
+      "answer": 0,
+      "explanation": "A keyless ControlTemplate in `App.xaml` replaces the default control template everywhere, which can break third-party controls, remove accessibility features and break focus visuals.",
+      "source": {
+        "section": "Note : Very Important Warning (Interview Favorite)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "You only need to change the background color, font and padding of your app's buttons. What should you reach for first?",
+      "options": [
+        "A ControlTemplate, because it is the only way to change colors",
+        "A DataTemplate set as the button's `ItemTemplate`",
+        "A new custom control class",
+        "A Style with Setters"
+      ],
+      "answer": 3,
+      "explanation": "A Style sets and reuses properties without changing the control's structure; a ControlTemplate rebuilds the visual tree. The lesson's rule is to always try Style first and use ControlTemplate only if Style is not enough.",
+      "source": {
+        "section": "Style VS ContentTemplate"
+      },
+      "reviewed": false
+    }
+  ]
+}

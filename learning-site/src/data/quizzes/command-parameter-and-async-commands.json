@@ -1,0 +1,89 @@
+{
+  "lesson": "command-parameter-and-async-commands",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Each DataGrid row has a Delete button with `CommandParameter=\"{Binding}\"`. What is passed to `DeleteItemCommand`?",
+      "options": [
+        "Whatever row is the DataGrid's `SelectedItem`",
+        "The whole `Transactions` collection of rows",
+        "The `Transaction` object of the clicked row",
+        "The `MainViewModel` that owns the command"
+      ],
+      "answer": 2,
+      "explanation": "Inside the cell template the DataContext is the row item, so `CommandParameter=\"{Binding}\"` passes the current row object (`Transaction`) to the command.",
+      "source": {
+        "section": "XAML (row-level delete)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why do the notes prefer `DeleteItem(Transaction item)` with `CommandParameter` over `DeleteSelected()` for row actions?",
+      "options": [
+        "It acts on the exact row, independent of the selection",
+        "It deletes every selected row at once in a single call",
+        "It avoids the need for any `RelativeSource` binding",
+        "It works without needing an `ICommand` implementation"
+      ],
+      "answer": 0,
+      "explanation": "`DeleteSelected()` depends on the selection and is one global delete, while `DeleteItem(Transaction item)` acts on the exact row, has no dependency on selection and is cleaner MVVM.",
+      "source": {
+        "section": "SelectedItem vs CommandParameter (INTERVIEW FAVORITE)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How does the lesson's `AsyncRelayCommand` stop a double-click from starting the load twice?",
+      "options": [
+        "It runs `_executeAsync` on `Task.Run`, so a second click is queued",
+        "It relies on `CommandManager` to notice the click and disable the button",
+        "It ignores every click after the first for the life of the window",
+        "`CanExecute` is `false` while `_isExecuting` is set, so the button disables"
+      ],
+      "answer": 3,
+      "explanation": "`CanExecute` is `!_isExecuting && ...`. `Execute` sets `_isExecuting = true` and raises `CanExecuteChanged` before awaiting, so the button is disabled while the async work runs, with no CommandManager involved.",
+      "source": {
+        "section": "1️⃣ Classic AsyncRelayCommand (manual, pure MVVM)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the steps of `AsyncRelayCommand.Execute` in order.",
+      "steps": [
+        "Return early if `CanExecute(parameter)` is false",
+        "Set `_isExecuting = true` and raise `CanExecuteChanged` (the button disables)",
+        "`await _executeAsync()`",
+        "In `finally`, set `_isExecuting = false` and raise `CanExecuteChanged` again (the button re-enables)"
+      ],
+      "explanation": "`Execute` guards with `CanExecute`, marks itself busy and notifies the UI, awaits the work, and in `finally` clears the flag and notifies again so the button is re-enabled even if the work fails.",
+      "source": {
+        "section": "1️⃣ Classic AsyncRelayCommand (manual, pure MVVM)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which of these is listed as a common mistake when writing async commands?",
+      "options": [
+        "Disabling the button while the async work runs",
+        "Using `CommandManager` with async commands",
+        "Raising `CanExecuteChanged` manually from the command",
+        "Exposing an `IsBusy` property for a ProgressBar"
+      ],
+      "answer": 1,
+      "explanation": "The common-mistakes list includes using `CommandManager` with async commands, not disabling the button during async work, `async void` ViewModel methods, `Task.Run` for I/O and `MessageBox` in the ViewModel.",
+      "source": {
+        "section": "6️⃣ Common mistakes ❌"
+      },
+      "reviewed": false
+    }
+  ]
+}

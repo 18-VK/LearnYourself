@@ -1,0 +1,112 @@
+{
+  "lesson": "model-binding",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the stages a request goes through around model binding in order.",
+      "steps": [
+        "Client request arrives",
+        "Routing finds the action",
+        "Model binding maps request data to the action's parameters",
+        "Model validation checks the rules",
+        "The controller action executes",
+        "The response is returned"
+      ],
+      "explanation": "Routing must pick the action before its parameters can be bound, and binding has to produce values before validation can check them; only then does the action run.",
+      "source": {
+        "section": "How Model Binding Works"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "The client sends the request in the comment. What JSON does the action return?",
+      "code": {
+        "lang": "csharp",
+        "source": "// GET /api/products/5?name=pen\n[HttpGet(\"{id}\")]\npublic IActionResult Get(int id, string name)\n{\n    return Ok(new { id, name });\n}"
+      },
+      "options": [
+        "`{ \"id\": 5, \"name\": null }`",
+        "`{ \"id\": 0, \"name\": \"pen\" }`",
+        "`{ \"id\": 5, \"name\": \"pen\" }`",
+        "`400 Bad Request`, because `name` is not in the route"
+      ],
+      "answer": 2,
+      "explanation": "`id` matches the `{id}` route token, so it comes from `/5`; `name` is not in the route, so it is bound from the query string `?name=pen`.",
+      "source": {
+        "section": "How Model Binding Works"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "An action binds straight to a `Product` entity that has an `IsAdminOnly` property. What is the **overposting** risk?",
+      "options": [
+        "The request body becomes too large to parse",
+        "A client can include `\"isAdminOnly\": true` and model binding sets that sensitive property automatically",
+        "The action is called twice for the same request",
+        "`IsAdminOnly` is always reset to `true`"
+      ],
+      "answer": 1,
+      "explanation": "Overposting (mass assignment) happens because the binder fills every matching property, including ones a normal user should never be able to set.",
+      "source": {
+        "section": "Why do we need [Bind] and [BindNever]?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does the lesson recommend as the real-world protection against overposting?",
+      "options": [
+        "List the allowed fields with `[Bind(\"Name,Price\")]` on every action",
+        "Validate the entity with `[Required]` on every property",
+        "Bind the entity from the query string instead of the body",
+        "Accept a DTO with only the client-settable fields and set sensitive values like `IsAdminOnly` on the server"
+      ],
+      "answer": 3,
+      "explanation": "Rather than relying on `[Bind]` (hard to maintain) or exposing the entity, use a DTO such as `CreateProductDto`; the server builds the entity and controls `IsAdminOnly` itself.",
+      "source": {
+        "section": "3. Real-World Best Practice (VERY IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How many parameters of one action method can have `[FromBody]`?",
+      "options": [
+        "Exactly two",
+        "At most one",
+        "As many as you like",
+        "None; `[FromBody]` only goes on properties"
+      ],
+      "answer": 1,
+      "explanation": "`[FromBody]` binds from the request body using an input formatter, and an action method can have at most one parameter with this attribute.",
+      "source": {
+        "section": "Key Attributes for Model Binding"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "The custom `CommaSeparatedModelBinderProvider` is registered with `options.ModelBinderProviders.Insert(0, ...)`. Why index `0`?",
+      "options": [
+        "Index `0` means the provider is disabled until it is enabled explicitly",
+        "Providers must always be added at index `0` or registration throws",
+        "It gives the provider the highest priority, so it is checked before the built-in providers",
+        "It makes the binder apply only to the first parameter of each action"
+      ],
+      "answer": 2,
+      "explanation": "Inserting at the front of the provider list gives the custom provider the highest priority, so it gets the first chance to bind `List<int>` from `ids=1,2,3`.",
+      "source": {
+        "section": "Custom Model Binding"
+      },
+      "reviewed": false
+    }
+  ]
+}

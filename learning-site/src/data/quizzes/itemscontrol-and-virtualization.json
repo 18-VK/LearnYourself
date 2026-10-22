@@ -1,0 +1,106 @@
+{
+  "lesson": "itemscontrol-and-virtualization",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "An `ItemsControl` bound to `Names` shows its items stacked top to bottom. You want them to flow left to right and wrap onto new rows instead. What do you change?",
+      "options": [
+        "Set `ItemTemplate` to a `DataTemplate` whose root element is a `WrapPanel`",
+        "Set `ItemsPanel` to an `ItemsPanelTemplate` containing a `WrapPanel`",
+        "Set `ItemContainerStyle` with `Margin=\"8\"`",
+        "Set `DisplayMemberPath` to the property to wrap"
+      ],
+      "answer": 1,
+      "explanation": "`ItemsPanelTemplate` decides how items are arranged. By default ItemsControl uses a StackPanel; replacing it with a `WrapPanel` in `ItemsPanel` makes items flow left to right and wrap.",
+      "source": {
+        "section": "ItemsPanelTemplate – how items are arranged"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Your list of projects must let the user select one item. According to the lesson, which control should you use instead of a plain `ItemsControl`?",
+      "options": [
+        "`ListBox`",
+        "`StackPanel`",
+        "`ContentControl`",
+        "`UniformGrid`"
+      ],
+      "answer": 0,
+      "explanation": "ItemsControl is for displaying data without selection. If you need selection, use a ListBox; if you need columns, use a ListView or DataGrid.",
+      "source": {
+        "section": "When NOT to use ItemsControl"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A teammate writes `<ScrollViewer><ListBox ItemsSource=\"{Binding Items}\" /></ScrollViewer>` for a 50,000-item list, and the UI freezes. Why?",
+      "options": [
+        "ListBox does not support `ItemsSource` bindings when placed inside a ScrollViewer",
+        "The ScrollViewer switches the ListBox to `VirtualizationMode=\"Standard\"`",
+        "The outer ScrollViewer disables virtualization, so every item gets a container",
+        "The ScrollViewer forces `IsVirtualizing` to `True`, which is slower"
+      ],
+      "answer": 2,
+      "explanation": "Wrapping a ListBox in a ScrollViewer disables virtualization: when the parent measures with infinite size, the VirtualizingStackPanel assumes everything is visible and creates all containers.",
+      "source": {
+        "section": "Correct usage (this must be exact)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does the lesson recommend `VirtualizationMode=\"Recycling\"` over the default `Standard` mode?",
+      "options": [
+        "Recycling creates containers for every item up front, so scrolling never waits",
+        "Recycling is the only virtualization mode that works with `ItemsControl`",
+        "Recycling turns virtualization off for lists with fixed-height items",
+        "It reuses existing containers instead of destroying and recreating them"
+      ],
+      "answer": 3,
+      "explanation": "Standard mode destroys and recreates containers, while Recycling reuses existing ones, giving minimal GC pressure and the best performance.",
+      "source": {
+        "section": "Two virtualization modes"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "Put the steps a `VirtualizingStackPanel` performs to keep a large list fast in order.",
+      "steps": [
+        "Measure the viewport size",
+        "Calculate which items are visible",
+        "Create containers only for those visible items",
+        "Reuse the containers while the user scrolls (when recycling is on)"
+      ],
+      "explanation": "The panel measures the viewport, works out which items fit, creates containers only for them, and reuses those containers while scrolling if recycling is enabled.",
+      "source": {
+        "section": "VirtualizingStackPanel"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "A shell window contains `<ContentControl Content=\"{Binding CurrentView}\" />`. How does the app navigate to the dashboard?",
+      "options": [
+        "By opening a new Window for each view",
+        "By assigning `CurrentView = new DashboardView();` in the ViewModel",
+        "By adding the dashboard to the ContentControl's `Items` collection",
+        "By setting `Visibility=\"Collapsed\"` on every other view in code-behind"
+      ],
+      "answer": 1,
+      "explanation": "A ContentControl holds exactly one piece of content, so the shell swaps views by assigning a new value to the bound `CurrentView`, giving navigation with no code-behind.",
+      "source": {
+        "section": "Where ContentControl is used (REAL scenarios)"
+      },
+      "reviewed": false
+    }
+  ]
+}

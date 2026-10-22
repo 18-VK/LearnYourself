@@ -1,0 +1,103 @@
+{
+  "lesson": "collections",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What does this `LinkedList<string>` code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "LinkedList<string> list = new LinkedList<string>();\nlist.AddLast(\"apple\");\nlist.AddFirst(\"banana\");\nlist.AddAfter(list.First, \"cherry\");\n\nforeach (var item in list)\n{\n    Console.WriteLine(item);\n}"
+      },
+      "options": [
+        "apple, banana, cherry",
+        "banana, apple, cherry",
+        "cherry, banana, apple",
+        "banana, cherry, apple"
+      ],
+      "answer": 3,
+      "explanation": "`AddLast` adds apple, `AddFirst` puts banana before it, and `AddAfter(list.First, ...)` inserts cherry right after the first node (banana), giving banana, cherry, apple.",
+      "source": { "section": "LinkedList in C#" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`ages` already contains `\"Alice\"` with the value 30. What does `ages.TryAdd(\"Alice\", 35)` do?",
+      "options": [
+        "It overwrites Alice's age with 35 and returns `true`",
+        "It returns `false` and leaves Alice's age at 30",
+        "It throws, because the key already exists",
+        "It adds a second `\"Alice\"` entry"
+      ],
+      "answer": 1,
+      "explanation": "`TryAdd` adds only if the key doesn't exist, so it won't overwrite an existing key and returns `false`. By contrast, `Add` with an existing key throws, and `ages[key] = value` adds or updates.",
+      "source": { "section": "Dictionary in C#" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What happens when you add an item to a `HashSet<T>` that already contains it?",
+      "options": [
+        "The duplicate is stored as a second copy",
+        "It throws an exception",
+        "Nothing changes; `Add` returns `false` because each value can appear only once",
+        "The existing item is moved to the end of the set"
+      ],
+      "answer": 2,
+      "explanation": "A `HashSet<T>` holds unique items, so adding a duplicate has no effect, and `Add` returns `false` if the element already exists.",
+      "source": { "section": "`HashSet<T>`" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You are building an undo feature: the most recent action must be undone first. Which collection fits?",
+      "options": [
+        "`Stack<T>`, because it is last-in, first-out",
+        "`Queue<T>`, because it is first-in, first-out",
+        "`HashSet<T>`, because it removes duplicates",
+        "`Dictionary<TKey,TValue>`, because lookups are fast"
+      ],
+      "answer": 0,
+      "explanation": "`Stack<T>` is LIFO: the last item pushed is the first popped, and the note lists undo mechanisms as a use case. `Queue<T>` processes items in the order they arrive.",
+      "source": { "section": "`Stack<T>`" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "predict-output",
+      "prompt": "What does this non-generic `Queue` code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "Queue oldQueue = new Queue();\noldQueue.Enqueue(\"first\");\noldQueue.Enqueue(\"second\");\nstring s = (string)oldQueue.Dequeue();\nConsole.WriteLine(s);"
+      },
+      "options": [
+        "first",
+        "second",
+        "first second",
+        "It throws an `InvalidCastException`"
+      ],
+      "answer": 0,
+      "explanation": "A queue is FIFO, so `Dequeue()` removes and returns the oldest item, `first`. The cast is needed because the non-generic `Queue` holds `object` elements.",
+      "source": { "section": "Queue (`System.Collections`)" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why does Microsoft recommend generic collections over the non-generic ones in `System.Collections`?",
+      "options": [
+        "Non-generic collections cannot grow after they are created",
+        "Non-generic collections reject null and duplicate values",
+        "Non-generic collections only work with strings",
+        "Non-generic collections store items as `object`, so they are not type-safe and box value types"
+      ],
+      "answer": 3,
+      "explanation": "The non-generic collections predate generics and store items as `object`, so they are not type-safe and incur boxing/unboxing for value types; they are mainly kept for compatibility with older APIs.",
+      "source": { "section": "2) Non-Generic Collections (`System.Collections`)" },
+      "reviewed": false
+    }
+  ]
+}

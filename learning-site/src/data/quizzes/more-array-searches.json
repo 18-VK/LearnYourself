@@ -1,0 +1,94 @@
+{
+  "lesson": "more-array-searches",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What does `MySqrt(8)` return?",
+      "code": {
+        "lang": "csharp",
+        "source": "int MySqrt(int x)\n{\n    int lo = 0, hi = x, ans = 0;\n    while (lo <= hi)\n    {\n        int mid = lo + (hi - lo) / 2;\n        if ((long)mid * mid <= x) { ans = mid; lo = mid + 1; }\n        else hi = mid - 1;\n    }\n    return ans;\n}"
+      },
+      "options": [
+        "3",
+        "4",
+        "0",
+        "2"
+      ],
+      "answer": 3,
+      "explanation": "The search keeps the largest `mid` with `mid * mid <= x`. `2 * 2 = 4 <= 8` but `3 * 3 = 9 > 8`, so the answer is 2.",
+      "source": {
+        "section": "4. Binary Search on Answer (Very Common in LeetCode)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What property must a problem have for \"binary search on answer\" to work?",
+      "options": [
+        "The input array must be sorted in ascending order",
+        "The input values must be uniformly distributed",
+        "The answer lies in a numeric range and the feasibility condition is monotonic (false…false, true…true)",
+        "The function must rise and then fall (unimodal)"
+      ],
+      "answer": 2,
+      "explanation": "You binary search the answer space instead of an array, which only works if once `IsFeasible(mid)` becomes true it stays true for larger values.",
+      "source": {
+        "section": "4. Binary Search on Answer (Very Common in LeetCode)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Interpolation search can reach O(log log n). When does it degrade to O(n)?",
+      "options": [
+        "When the data is skewed or clustered rather than uniformly distributed",
+        "When the target is near the start of the array",
+        "When the array has an even number of elements",
+        "When the array contains negative numbers"
+      ],
+      "answer": 0,
+      "explanation": "It estimates the target's position from its value, which only works well on uniformly distributed numeric data; skewed data makes the estimates poor and the worst case O(n).",
+      "source": {
+        "section": "6. Interpolation Search"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which situation is exponential search especially good for?",
+      "options": [
+        "Data where moving backward is expensive",
+        "An unsorted array searched only once",
+        "Finding the peak of a mountain-shaped function",
+        "A sorted sequence whose size is unknown or unbounded"
+      ],
+      "answer": 3,
+      "explanation": "Exponential search doubles an index (1, 2, 4, 8, …) to find a range and then binary searches it, so it does not need the size up front and is fast when the target is near the start.",
+      "source": {
+        "section": "7. Exponential Search"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is ternary search mainly used for?",
+      "options": [
+        "Looking up a value in a sorted array faster than binary search",
+        "Finding the maximum or minimum of a unimodal function",
+        "Searching unsorted data in O(log n)",
+        "Counting duplicates in a sorted array"
+      ],
+      "answer": 1,
+      "explanation": "Ternary search finds the peak or valley of a function that goes up then down (or down then up). For plain sorted-array lookup, binary search is faster in practice.",
+      "source": {
+        "section": "8. Ternary Search"
+      },
+      "reviewed": false
+    }
+  ]
+}

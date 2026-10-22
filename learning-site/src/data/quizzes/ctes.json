@@ -1,0 +1,86 @@
+{
+  "lesson": "ctes",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is a Common Table Expression (CTE)?",
+      "options": [
+        "A permanent view stored in the database",
+        "A temporary table that lasts until the session ends",
+        "A temporary named result set, defined with `WITH`, that exists only for the duration of that query",
+        "A stored procedure that returns a table"
+      ],
+      "answer": 2,
+      "explanation": "A CTE is defined with `WITH`, used immediately by the following query, and improves readability compared with nested subqueries.",
+      "source": { "section": "Common Table Expressions (CTEs)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "Using the lesson's sample data (IT: Aman 60000, Rahul 50000, Priya 45000; HR: Neha 40000, Riya 42000; Finance: Karan 70000), which names does this return?",
+      "code": {
+        "lang": "sql",
+        "source": "WITH RankedEmployees AS\n(\n    SELECT *,\n           ROW_NUMBER() OVER\n           (\n               PARTITION BY Department\n               ORDER BY Salary DESC\n           ) AS RankNum\n    FROM Employees\n)\nSELECT *\nFROM RankedEmployees\nWHERE RankNum = 1;"
+      },
+      "options": [
+        "Karan only",
+        "Aman, Riya and Karan",
+        "Aman, Neha and Karan",
+        "Aman and Karan"
+      ],
+      "answer": 1,
+      "explanation": "Numbering restarts per department, ordered by salary descending, so `RankNum = 1` keeps the top earner of each: Aman (IT), Riya (HR) and Karan (Finance).",
+      "source": { "section": "CTE with Window Functions" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "With the same data (ManagerId is NULL for Aman, Neha and Karan; Rahul and Priya report to Aman; Riya reports to Neha), which employees get `Level = 0`?",
+      "code": {
+        "lang": "sql",
+        "source": "WITH EmployeeHierarchy AS\n(\n    -- Anchor member\n    SELECT Id, Name, ManagerId, 0 AS Level\n    FROM Employees\n    WHERE ManagerId IS NULL\n\n    UNION ALL\n\n    -- Recursive member\n    SELECT e.Id, e.Name, e.ManagerId, Level + 1\n    FROM Employees e\n    JOIN EmployeeHierarchy h\n        ON e.ManagerId = h.Id\n)\nSELECT *\nFROM EmployeeHierarchy;"
+      },
+      "options": [
+        "Aman only",
+        "Rahul, Priya and Riya",
+        "Everyone, because the recursion never runs",
+        "Aman, Neha and Karan"
+      ],
+      "answer": 3,
+      "explanation": "The anchor member selects the employees with no manager at Level 0. The recursive member then adds their direct reports at Level 1 (Rahul, Priya and Riya).",
+      "source": { "section": "Recursive CTE (Very Important)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which rows does the deduplication CTE delete?",
+      "options": [
+        "Every row whose `Name` appears more than once, including the first",
+        "Every row except the one with the highest `Id`",
+        "All rows where `rn > 1`, keeping the lowest `Id` for each `Name`",
+        "Only rows where `Name` is NULL"
+      ],
+      "answer": 2,
+      "explanation": "`ROW_NUMBER()` partitioned by `Name` and ordered by `Id` numbers each duplicate group 1, 2, 3, …, and `DELETE ... WHERE rn > 1` removes all but the first.",
+      "source": { "section": "CTE for Deduplication" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "Put the execution pattern of the JOIN / derived-table version of \"salary above department average\" in order.",
+      "steps": [
+        "Calculate the department averages once",
+        "Join `Employees` with the averages",
+        "Filter the rows where salary exceeds the average"
+      ],
+      "explanation": "A correlated subquery may recompute the same department average for every employee; the derived table computes it once, which scales better.",
+      "source": { "section": "2️⃣ JOIN / Derived Table Version" },
+      "reviewed": false
+    }
+  ]
+}

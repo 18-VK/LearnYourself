@@ -1,0 +1,99 @@
+{
+  "lesson": "dependency-injection",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`EmailService.Send` prints `Email sent: {message}`, `SmsService.Send` prints `SMS sent: {message}`, and `NotificationManager` takes an `IMessageService` in its constructor. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var services = new ServiceCollection();\n\n// Register dependencies\nservices.AddTransient<IMessageService, EmailService>();\nservices.AddTransient<NotificationManager>();\n\nvar provider = services.BuildServiceProvider();\n\n// Resolve NotificationManager — dependencies are automatically injected\nvar notifier = provider.GetRequiredService<NotificationManager>();\nnotifier.Notify(\"Hello from DI!\");"
+      },
+      "options": [
+        "SMS sent: Hello from DI!",
+        "Nothing, because `NotificationManager` has no parameterless constructor",
+        "Email sent: Hello from DI!",
+        "Email sent: Hello from DI!, then SMS sent: Hello from DI!"
+      ],
+      "answer": 2,
+      "explanation": "The container sees that `NotificationManager` needs an `IMessageService`, finds the `EmailService` registration and injects it, so the output is `Email sent: Hello from DI!`. Registering `SmsService` instead would change the output without touching `NotificationManager`.",
+      "source": { "section": "Step 2: Register dependencies in the DI Container" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put in order what the DI container does when `Services.GetRequiredService<NotificationManager>()` runs.",
+      "steps": [
+        "Sees that `NotificationManager` needs `IMessageService`",
+        "Looks up the registration `AddTransient<IMessageService, EmailService>()`",
+        "Creates an `EmailService`",
+        "Passes it into the `NotificationManager` constructor",
+        "Returns the constructed `NotificationManager` object"
+      ],
+      "explanation": "This is automatic constructor injection: the container inspects the constructor, resolves each dependency from its registrations, and hands back a fully constructed object.",
+      "source": { "section": "Example + Explained" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "`ILogger` is registered twice: first with `FileLogger`, then with `DbLogger`. What does a constructor that takes a single `ILogger` receive?",
+      "options": [
+        "`FileLogger`, because the first registration wins",
+        "`DbLogger`, because the last registration wins",
+        "An ambiguity exception at startup",
+        "A new list containing both loggers"
+      ],
+      "answer": 1,
+      "explanation": "The Microsoft DI container resolves one service and the last registration wins, with no ambiguity error. To get every implementation, inject `IEnumerable<ILogger>`, which comes in registration order.",
+      "source": { "section": "1. Multiple Registrations for Same Interface" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`ServiceA` and `ServiceB` both inject `ICounter`, registered as **Scoped**. Which Counter Ids do they get across two requests?",
+      "options": [
+        "Request 1: #1 and #2; request 2: #3 and #4",
+        "Request 1: #1 and #1; request 2: #1 and #1",
+        "Request 1: #1 and #2; request 2: #1 and #2",
+        "Request 1: #1 and #1; request 2: #2 and #2"
+      ],
+      "answer": 3,
+      "explanation": "A scoped service is shared within one request but new for each request. Transient would give different counters every time (#1, #2, #3, #4), and Singleton would give #1 forever.",
+      "source": { "section": "Scoped vs Transient" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A Singleton takes a Scoped service in its constructor. What is the problem, and what is the fix the note gives?",
+      "options": [
+        "The scoped service is captured and lives as long as the singleton (a captive dependency); use `IServiceScopeFactory` to create a scope for scoped work",
+        "The singleton is recreated on every request; register it as Transient",
+        "Nothing is wrong; the container gives the singleton a fresh scoped instance each request",
+        "The scoped service is disposed immediately; register it as Singleton too"
+      ],
+      "answer": 0,
+      "explanation": "A longer-lived service holding a shorter-lived one is the captive dependency trap: the scoped instance now lives forever. When a Singleton genuinely needs scoped work, create a scope with `IServiceScopeFactory`.",
+      "source": { "section": "The Captive Dependency trap" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why is `AppDbContext` registered as Scoped rather than Transient when two repositories use it in one request?",
+      "options": [
+        "Because a Transient `DbContext` cannot be injected into repositories",
+        "Because Scoped services are created only once for the whole app",
+        "So both repositories share one `DbContext`, letting change tracking and `SaveChanges` see both changes",
+        "Because Scoped services are faster to construct"
+      ],
+      "answer": 2,
+      "explanation": "With Scoped, `_orders` and `_products` share the same `DbContext` in a request. If it were Transient, each would hold a different `DbContext`, breaking change tracking and transactions and opening two connections.",
+      "source": { "section": "Why does this matter in real code?" },
+      "reviewed": false
+    }
+  ]
+}

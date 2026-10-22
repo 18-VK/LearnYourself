@@ -1,0 +1,114 @@
+{
+  "lesson": "joins",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "Using the lesson's sample data (Customers: Alice 1, Bob 2, Carol 3; Orders 101–103 for customers 1, 1, 2 and order 104 for customer 4), which rows does this return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT c.CustomerId, c.Name, o.OrderId, o.Amount\nFROM Customers c\nINNER JOIN Orders o\n  ON c.CustomerId = o.CustomerId;"
+      },
+      "options": [
+        "Alice 101, Alice 102, Bob 103",
+        "Alice 101, Alice 102, Bob 103, Carol NULL",
+        "Alice 101, Alice 102, Bob 103, NULL 104",
+        "Alice 101, Bob 103"
+      ],
+      "answer": 0,
+      "explanation": "An inner join keeps only matched pairs: Carol has no orders and order 104's customer 4 doesn't exist, so both are dropped.",
+      "source": { "section": "INNER JOIN (most common)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "With the same sample data, how many rows does this return, and which are unmatched?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT c.CustomerId, c.Name, o.OrderId, o.Amount\nFROM Customers c\nFULL OUTER JOIN Orders o\n  ON c.CustomerId = o.CustomerId;"
+      },
+      "options": [
+        "3 rows, none unmatched",
+        "4 rows; Carol has NULL order columns",
+        "12 rows, every customer paired with every order",
+        "5 rows; Carol has NULL order columns and order 104 has NULL customer columns"
+      ],
+      "answer": 3,
+      "explanation": "A full outer join returns the three matches plus the unmatched rows from both sides, filling the missing columns with NULL.",
+      "source": { "section": "FULL OUTER JOIN" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "With the same sample data, which rows does this LEFT JOIN return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT c.Name, o.OrderId\nFROM Customers c\nLEFT JOIN Orders o\nON c.CustomerId = o.CustomerId\nWHERE o.Amount > 60;"
+      },
+      "options": [
+        "Alice 101, Bob 103, Carol NULL",
+        "Alice 101, Alice 102, Bob 103, Carol NULL",
+        "Alice 101, Bob 103",
+        "Carol NULL only"
+      ],
+      "answer": 2,
+      "explanation": "`WHERE` runs after the join. Carol's `Amount` is NULL, and `NULL > 60` is UNKNOWN, so her row is filtered out and the LEFT JOIN behaves like an INNER JOIN. Put the condition in `ON` to keep her.",
+      "source": { "section": "❌ The Mistake" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "With the same sample data, which rows does this `CROSS APPLY` return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT c.CustomerId, c.Name, lo.OrderId, lo.Amount\nFROM Customers c\nCROSS APPLY (\n  SELECT TOP(1) o.OrderId, o.Amount\n  FROM Orders o\n  WHERE o.CustomerId = c.CustomerId\n  ORDER BY o.OrderId DESC\n) lo;"
+      },
+      "options": [
+        "Alice 102, Bob 103",
+        "Alice 101, Bob 103",
+        "Alice 102, Bob 103, Carol NULL",
+        "Alice 101, Alice 102, Bob 103"
+      ],
+      "answer": 0,
+      "explanation": "The subquery picks each customer's latest order (`TOP(1)` by `OrderId DESC`). `CROSS APPLY` works like an inner join, so Carol, whose subquery returns nothing, is removed. `OUTER APPLY` would keep her with NULLs.",
+      "source": { "section": "CROSS APPLY" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You want each customer who has at least one order, listed once. Which approach does the lesson rate best?",
+      "options": [
+        "`INNER JOIN Orders`, which returns one row per customer",
+        "`WHERE EXISTS (SELECT 1 FROM Orders o WHERE o.CustomerId = c.CustomerId)`",
+        "`CROSS JOIN Orders`",
+        "`LEFT JOIN Orders ... WHERE o.OrderId IS NULL`"
+      ],
+      "answer": 1,
+      "explanation": "A plain inner join returns one row per order, duplicating Alice. `DISTINCT` fixes that, but an `EXISTS` semi-join avoids the duplicates in the first place. `LEFT JOIN ... IS NULL` finds customers with no orders.",
+      "source": { "section": "Semi-join (existence check) vs INNER JOIN" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "order-steps",
+      "prompt": "Put these clauses in SQL Server's logical processing order for a `SELECT`, as the lesson gives it.",
+      "steps": [
+        "FROM",
+        "ON",
+        "JOIN",
+        "WHERE",
+        "GROUP BY",
+        "HAVING",
+        "SELECT",
+        "ORDER BY"
+      ],
+      "explanation": "Because `WHERE` is processed after the join, it can remove the NULL rows a LEFT JOIN created. `SELECT` comes late, followed by `DISTINCT`, `ORDER BY` and `TOP`.",
+      "source": { "section": "Why This Happens (Logical Order)" },
+      "reviewed": false
+    }
+  ]
+}

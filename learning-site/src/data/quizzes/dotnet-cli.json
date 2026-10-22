@@ -1,0 +1,96 @@
+{
+  "lesson": "dotnet-cli",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which publish model ships the .NET runtime with your app, so the target machine does not need .NET installed?",
+      "options": [
+        "Framework-dependent",
+        "Self-contained",
+        "`dotnet build -c Release`",
+        "`dotnet pack -c Release`"
+      ],
+      "answer": 1,
+      "explanation": "In the publish types table, self-contained includes the runtime and the target machine does not need .NET, at the cost of a bigger size. Framework-dependent is smaller but needs .NET on the target.",
+      "source": { "section": "Types of Publish" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "When do you need to run `dotnet restore` explicitly?",
+      "options": [
+        "Before every `dotnet build`, because build never restores packages",
+        "Only after running `dotnet publish`",
+        "Usually only in CI or when troubleshooting, because build, run, test and publish restore implicitly",
+        "Never, because the command was removed from the SDK"
+      ],
+      "answer": 2,
+      "explanation": "The note says `dotnet build`, `dotnet run`, `dotnet test` and `dotnet publish` implicitly restore when necessary, and to use an explicit restore in CI or when troubleshooting.",
+      "source": { "section": "Restore dependencies" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does `dotnet add package Newtonsoft.Json` change in your project?",
+      "options": [
+        "It edits the project file to include a `<PackageReference>`",
+        "It copies the package's source code into your project folder",
+        "It creates a new `.sln` file that lists the package",
+        "It publishes your project to NuGet.org"
+      ],
+      "answer": 0,
+      "explanation": "Adding a package edits the project file to include a `<PackageReference>` and performs compatibility checks.",
+      "source": { "section": "Add a package" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the steps of the industry CI/CD publish flow in order.",
+      "steps": [
+        "git push",
+        "CI build",
+        "dotnet publish",
+        "artifact",
+        "deploy",
+        "restart service"
+      ],
+      "explanation": "The note's CI/CD flow goes from a push, through a CI build and `dotnet publish`, to an artifact that is deployed before the service is restarted.",
+      "source": { "section": "Industry CI/CD Publish Flow" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What does `dotnet pack -c Release` produce?",
+      "options": [
+        "A self-contained `.exe` in `bin/Release`",
+        "A `publish/` folder ready to copy to a server",
+        "A new solution file",
+        "`.nupkg` files in `bin/Release`"
+      ],
+      "answer": 3,
+      "explanation": "`dotnet pack` creates a NuGet package from a project; the output is `.nupkg` files in `bin/Release`.",
+      "source": { "section": "Create a package from a project" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "On .NET 10 and later, how do you run a single `program.cs` file without creating a project?",
+      "options": [
+        "`csc program.cs` and then `mono program.exe`",
+        "`dotnet run program.cs`",
+        "`dotnet new console program.cs`",
+        "`dotnet build program.cs`"
+      ],
+      "answer": 1,
+      "explanation": "The note says `csc` and `mono` belong to the .NET Framework / Mono toolchain; on .NET 10 and later you use `dotnet run program.cs`.",
+      "source": { "section": ".NET 10 and later" },
+      "reviewed": false
+    }
+  ]
+}

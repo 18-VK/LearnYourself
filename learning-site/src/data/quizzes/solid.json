@@ -1,0 +1,84 @@
+{
+  "lesson": "solid",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "An `Invoice` class has `CalculateTotal()`, `SaveToDatabase()` and `PrintInvoice()`. Which principle does it break?",
+      "options": [
+        "Single Responsibility: it has three reasons to change",
+        "Liskov Substitution: it can't replace its base class",
+        "Interface Segregation: its interface is too small",
+        "Dependency Inversion: it depends on an abstraction"
+      ],
+      "answer": 0,
+      "explanation": "A class should have only one reason to change. Calculating, saving and printing are three jobs, so the fix splits them into `InvoiceCalculator`, `InvoiceRepository` and `InvoicePrinter`.",
+      "source": { "section": "1) S — Single Responsibility Principle" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`DiscountCalculator.GetDiscount` uses `if (customerType == \"Regular\")` and `if (customerType == \"Premium\")`. A new \"Gold\" type arrives. How does the lesson's Open/Closed fix handle it?",
+      "options": [
+        "Add another `if` branch to `GetDiscount`",
+        "Add a `GoldDiscount : IDiscountStrategy` class without changing `DiscountCalculator`",
+        "Make `GetDiscount` throw for unknown types",
+        "Move the `if` chain into a static helper class"
+      ],
+      "answer": 1,
+      "explanation": "Open for extension, closed for modification: `DiscountCalculator.Calculate` takes an `IDiscountStrategy`, so new discount types are new classes and existing code stays untouched.",
+      "source": { "section": "2) O — Open/Closed Principle" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "What happens when `MakeBirdFly` is called with an `Ostrich`?",
+      "code": {
+        "lang": "csharp",
+        "source": "// VIOLATION\npublic class Bird {\n    public virtual void Fly() => Console.WriteLine(\"Flying!\");\n}\n\npublic class Ostrich : Bird {\n    public override void Fly() {\n        // Ostriches can't fly, so this throws an error\n        throw new NotSupportedException(\"Ostriches can't fly!\");\n    }\n}\n\n// Client code that breaks\npublic void MakeBirdFly(Bird bird) {\n    bird.Fly(); // If 'bird' is an Ostrich, the program crashes\n}"
+      },
+      "options": [
+        "It prints `Flying!`, because `MakeBirdFly` takes a `Bird`",
+        "It throws `NotSupportedException` with the message \"Ostriches can't fly!\"",
+        "It fails to compile, because `Ostrich` can't override `Fly`",
+        "It prints nothing and returns normally"
+      ],
+      "answer": 1,
+      "explanation": "The override runs and throws. That breaks Liskov Substitution: code written for any `Bird` can't safely receive an `Ostrich`. The fix moves flying into a separate `IFlyable` interface.",
+      "source": { "section": "3) L — Liskov Substitution Principle" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`Robot` implements `IWorker` and has to write `Eat() { throw new NotImplementedException(); }`. What is the lesson's fix?",
+      "options": [
+        "Make `Eat()` virtual so `Robot` can skip it",
+        "Have `Robot` inherit from `Human` instead",
+        "Split the interface into `IWorkable` and `IEatable`, and have `Robot` implement only `IWorkable`",
+        "Catch the exception wherever `Eat()` is called"
+      ],
+      "answer": 2,
+      "explanation": "Interface Segregation says a class should not be forced to implement methods it doesn't use, so the interface is split into small, focused ones.",
+      "source": { "section": "4) I — Interface Segregation Principle" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`NotificationManager` creates `new EmailService()` in a field. What does Dependency Inversion change?",
+      "options": [
+        "It makes `EmailService` a static class",
+        "It makes `NotificationManager` inherit from `EmailService`",
+        "It moves `Send` into `NotificationManager`",
+        "It injects an `IMessageSender` through the constructor, so email, SMS or a future sender can be used"
+      ],
+      "answer": 3,
+      "explanation": "High-level modules should depend on abstractions, not concrete classes. Taking `IMessageSender` in the constructor removes the tight coupling to `EmailService`.",
+      "source": { "section": "5) D — Dependency Inversion Principle" },
+      "reviewed": false
+    }
+  ]
+}

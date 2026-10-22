@@ -1,0 +1,90 @@
+{
+  "lesson": "return-types",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "An action returns a `UserDto` on success but can also return `400` or `404`. Which return type does the rule of thumb recommend?",
+      "options": [
+        "`UserDto` directly",
+        "`IActionResult`",
+        "`ActionResult<UserDto>`",
+        "`ActionResult` (non-generic)"
+      ],
+      "answer": 2,
+      "explanation": "A mix of success and error responses calls for `ActionResult<T>`: strongly typed, better Swagger docs, and it can return either `T` or a result like `NotFound()`.",
+      "source": {
+        "section": "Rule of Thumb"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does an action returning `ActionResult<Product>` need fewer `[ProducesResponseType]` attributes than one returning `IActionResult`?",
+      "options": [
+        "Because the 200 response type is inferred from `T`, so you only annotate the error codes",
+        "Because `ActionResult<T>` cannot return error codes",
+        "Because Swagger ignores `[ProducesResponseType]` on `ActionResult<T>`",
+        "Because `ActionResult<T>` always returns 201"
+      ],
+      "answer": 0,
+      "explanation": "With `IActionResult` there is no compile-time knowledge of the body type; with `ActionResult<Product>` the 200 + `Product` response is inferred.",
+      "source": {
+        "section": "With ActionResult<T> — Less Boilerplate"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why is `CreatedAtAction()` generally preferred over `Created()` for a `201 Created` response?",
+      "options": [
+        "It returns `200 OK` instead of `201`, which more clients understand",
+        "It only works for actions named `Get`",
+        "It does not set a `Location` header",
+        "It generates the `Location` URI from an existing action's route, reducing the risk of typos"
+      ],
+      "answer": 3,
+      "explanation": "`Created()` takes a URI you build by hand and must keep correct; `CreatedAtAction()` builds it from the action name and route values using the app's route configuration.",
+      "source": {
+        "section": "CreatedAtAction()"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "An endpoint returns `202 Accepted`. What does that tell the client?",
+      "options": [
+        "The resource was created and its URL is in `Location`",
+        "The request was accepted for processing, but the work is not finished and success is not guaranteed",
+        "The request succeeded and there is nothing to return",
+        "The request was valid but broke a business rule"
+      ],
+      "answer": 1,
+      "explanation": "202 acknowledges a valid request whose processing continues later, such as a background job; the response usually tells the client how to check progress.",
+      "source": {
+        "section": "Accepted() / AcceptedAtAction() / AcceptedAtRoute() → 202 Accepted"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "An order request is well-formed, but `Quantity` is `0`, which breaks a business rule. Using the lesson's mental model, which helper fits?",
+      "options": [
+        "`UnprocessableEntity()` → 422",
+        "`Conflict()` → 409",
+        "`BadRequest()` → 400",
+        "`Problem()` → 500"
+      ],
+      "answer": 0,
+      "explanation": "The lesson's model is 400 for malformed or invalid request data and 422 for valid data that breaks a business rule, a design choice you make for your API.",
+      "source": {
+        "section": "UnprocessableEntity() → 422 Unprocessable Entity"
+      },
+      "reviewed": false
+    }
+  ]
+}

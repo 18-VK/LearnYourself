@@ -1,0 +1,95 @@
+{
+  "lesson": "modern-csharp-syntax",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does `List<int> numbers = new();` mean?",
+      "options": [
+        "It creates an `object` that is converted to `List<int>` at run time",
+        "It is equivalent to `new List<int>()`; the compiler infers the type from the target",
+        "It declares `numbers` without creating a list, so it is `null`",
+        "It creates an empty array of `int`"
+      ],
+      "answer": 1,
+      "explanation": "Target-typed `new` (C# 9) lets the compiler infer the type from the context, such as the variable declaration, so `new()` here is equivalent to `new List<int>()`.",
+      "source": { "section": "2. How It Works" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Inside `DisplayTotal()`, the local function `Show()` prints `total`, a local variable declared in `DisplayTotal()` with the value 100. What happens when `Show()` is called?",
+      "options": [
+        "It does not compile, because local functions can't see the enclosing method's variables",
+        "It prints `Total = 0`, because `total` is copied before it is set",
+        "It prints `Total = 100`, because local functions can capture variables from the outer method",
+        "It throws, because `total` is out of scope"
+      ],
+      "answer": 2,
+      "explanation": "Local functions can capture variables from the outer method, so `Show()` reads `total` and prints `Total = 100`.",
+      "source": { "section": "Access to Outer Variables" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does `global using System.Linq;` do?",
+      "options": [
+        "It makes `System.Linq` available across the entire project, so files don't need their own `using`",
+        "It imports `System.Linq` into the current file only",
+        "It loads every LINQ assembly at startup",
+        "It creates an alias called `global` for `System.Linq`"
+      ],
+      "answer": 0,
+      "explanation": "Global usings (C# 10 / .NET 6) apply a `using` directive project-wide; they usually go in a dedicated `GlobalUsings.cs` file or at the top of `Program.cs`.",
+      "source": { "section": "The Solution: Global Usings" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which statement about top-level statements is true?",
+      "options": [
+        "Every file in the project can contain its own top-level statements",
+        "You cannot declare any other types in a program that uses top-level statements",
+        "Each statement is wrapped in its own generated class",
+        "Only one file in the project can contain top-level statements; the compiler wraps them in a generated `Main` method"
+      ],
+      "answer": 3,
+      "explanation": "The compiler creates a hidden `Program` class and wraps your statements in a generated `Main` method, and only one file in the project can contain top-level statements. Other types can still be declared below the top-level code.",
+      "source": { "section": "How It Works" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`User` declares `public required string Name { get; set; }` and `public required string Email { get; set; }`. What happens with `var user = new User();`?",
+      "options": [
+        "It compiles, and `Name` and `Email` are set to empty strings",
+        "It fails to compile, because the required members are not initialized",
+        "It compiles but throws a `NullReferenceException` at run time",
+        "It compiles, but the compiler shows a warning only"
+      ],
+      "answer": 1,
+      "explanation": "With `required` (C# 11), the compiler forces initialization, so `new User()` without setting `Name` and `Email` is a compile error; `new User { Name = ..., Email = ... }` works.",
+      "source": { "section": "Correct Usage" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why are default interface methods (C# 8) useful?",
+      "options": [
+        "They let an interface hold instance fields",
+        "They force every implementing class to override the method",
+        "They let you add new methods to an existing interface without breaking existing implementations",
+        "They allow a class to inherit from multiple classes"
+      ],
+      "answer": 2,
+      "explanation": "A default body means classes that don't override the method still work, which gives backward compatibility and avoids repeating shared logic.",
+      "source": { "section": "Why It's Useful" },
+      "reviewed": false
+    }
+  ]
+}

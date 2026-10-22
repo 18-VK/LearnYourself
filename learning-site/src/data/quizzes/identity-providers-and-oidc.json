@@ -1,0 +1,73 @@
+{
+  "lesson": "identity-providers-and-oidc",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which service issues the access tokens (JWTs) that a client uses to call APIs?",
+      "options": [
+        "The Identity Provider, because it stores the passwords",
+        "The client app",
+        "The resource API itself, on every request",
+        "The Authorization Server, which handles OAuth 2.0/OIDC, defines scopes and grants permissions"
+      ],
+      "answer": 3,
+      "explanation": "The IdP answers \"Who are you?\" and is the source of truth for credentials; the Authorization Server answers \"What are you allowed to do?\" and issues the tokens.",
+      "source": {
+        "section": "2. What is an Authorization Server?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the steps of an Identity Provider and Authorization Server working together in order.",
+      "steps": [
+        "The user's login request goes to the Authorization Server",
+        "The Authorization Server asks the Identity Provider whether the user is who they say they are",
+        "The Identity Provider checks its database and confirms the user",
+        "The Authorization Server decides what the user may do and issues a signed JWT",
+        "The client presents the JWT to the API, which trusts the Authorization Server's signature"
+      ],
+      "explanation": "The IdP verifies identity; the Authorization Server turns that into a signed token carrying permissions, which the API trusts because of the signature.",
+      "source": {
+        "section": "How they work together (The Flow)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does OpenID Connect add on top of OAuth 2.0?",
+      "options": [
+        "Access tokens and refresh tokens",
+        "An authentication layer: the ID token and the UserInfo endpoint",
+        "Client credentials and scopes",
+        "A replacement for JWT signatures"
+      ],
+      "answer": 1,
+      "explanation": "OAuth 2.0 covers authorization (access and refresh tokens, scopes, client credentials); OIDC builds on it with ID tokens, UserInfo and authentication.",
+      "source": {
+        "section": "How Auth Server, OpenIddict, OAuth 2.0, and OpenID Connect (OIDC) relate to each other"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "How does the lesson describe the relationship between an Identity Provider and an authentication server?",
+      "options": [
+        "They are completely unrelated systems",
+        "An Identity Provider is one small part of an authentication server",
+        "An authentication server is typically one component of an Identity Provider, which also covers user management, MFA, password reset and registration",
+        "An Identity Provider only works with OAuth 2.0, never with OIDC"
+      ],
+      "answer": 2,
+      "explanation": "An IdP is a trusted system that manages identities and authenticates users; it often includes an authentication server along with OAuth 2.0 and OIDC support.",
+      "source": {
+        "section": "Identity provider vs auth server"
+      },
+      "reviewed": false
+    }
+  ]
+}

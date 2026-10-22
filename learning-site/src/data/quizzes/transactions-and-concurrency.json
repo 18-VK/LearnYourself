@@ -1,0 +1,102 @@
+{
+  "lesson": "transactions-and-concurrency",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In a money transfer, the debit from Account 1 succeeds but the credit to Account 2 fails. Which ACID property says Account 1 must not stay debited?",
+      "options": [
+        "Durability",
+        "Isolation",
+        "Atomicity",
+        "Consistency"
+      ],
+      "answer": 2,
+      "explanation": "Atomicity makes the transaction all-or-nothing: either every operation commits or none do, so the debit is rolled back and no partial change remains.",
+      "source": { "section": "A — Atomicity" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "After this batch commits, which change is kept?",
+      "code": {
+        "lang": "sql",
+        "source": "BEGIN TRANSACTION;\n\nUPDATE Accounts SET Balance = Balance - 500 WHERE AccountId = 1;\nSAVE TRANSACTION AfterDebit;\n\nUPDATE Accounts SET Balance = Balance + 500 WHERE AccountId = 2;\nROLLBACK TRANSACTION AfterDebit;\n\nCOMMIT;"
+      },
+      "options": [
+        "Both the debit and the credit",
+        "Neither; the whole transaction is rolled back",
+        "Only the credit to Account 2",
+        "Only the debit from Account 1"
+      ],
+      "answer": 3,
+      "explanation": "`ROLLBACK TRANSACTION AfterDebit` undoes only the work after the savepoint (the credit), and `COMMIT` then saves the debit.",
+      "source": { "section": "Savepoints (Partial Rollback)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "Session 1 has run `BEGIN TRANSACTION` and `UPDATE Accounts SET Balance = 500 WHERE Id = 1` without committing. What does Session 2 get from this?",
+      "code": {
+        "lang": "sql",
+        "source": "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED\n\nSELECT * FROM Accounts WHERE Id = 1"
+      },
+      "options": [
+        "The uncommitted balance of 500 (a dirty read)",
+        "The previous committed balance",
+        "Nothing until Session 1 commits",
+        "A deadlock error"
+      ],
+      "answer": 0,
+      "explanation": "`READ UNCOMMITTED` allows reading uncommitted data. Under the default `READ COMMITTED`, Session 2 would wait until Session 1 commits.",
+      "source": { "section": "1. READ UNCOMMITTED" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which isolation level prevents dirty and non-repeatable reads but still allows phantom reads?",
+      "options": [
+        "READ COMMITTED",
+        "REPEATABLE READ",
+        "SERIALIZABLE",
+        "READ UNCOMMITTED"
+      ],
+      "answer": 1,
+      "explanation": "REPEATABLE READ stops other transactions modifying rows you have read, but new rows can still appear. SERIALIZABLE locks ranges to prevent phantoms too.",
+      "source": { "section": "Isolation Levels" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "Put this blocking scenario in order.",
+      "steps": [
+        "Session 1 updates row `Id = 1` inside a transaction and takes an exclusive lock",
+        "Session 2 selects row `Id = 1` and waits",
+        "Session 1 commits",
+        "Session 2 continues"
+      ],
+      "explanation": "Blocking is normal waiting with no circular dependency: once the lock holder finishes, the waiter proceeds.",
+      "source": { "section": "Blocking" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Session 1 updates row 1 then row 2, while Session 2 updates row 2 then row 1, and SQL Server reports a deadlock. Which prevention tip addresses the root cause?",
+      "options": [
+        "Use `READ UNCOMMITTED` for both sessions",
+        "Remove all indexes on the table",
+        "Access resources in the same order in every transaction",
+        "Wrap each update in its own `SAVE TRANSACTION`"
+      ],
+      "answer": 2,
+      "explanation": "The deadlock is a circular wait created by opposite lock order. Accessing resources in the same order removes the cycle; keeping transactions short, indexing and retry logic also help.",
+      "source": { "section": "How to prevent deadlocks" },
+      "reviewed": false
+    }
+  ]
+}

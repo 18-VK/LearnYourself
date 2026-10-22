@@ -1,0 +1,107 @@
+{
+  "lesson": "resource-dictionaries-and-sizing",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What problem do separate ResourceDictionary files solve in a growing WPF app?",
+      "options": [
+        "They let WinForms forms reuse the app's WPF styles and brushes",
+        "They make every `StaticResource` lookup update at runtime",
+        "They let you split resources out of App.xaml into separate files",
+        "They replace the need to write styles and templates at all"
+      ],
+      "answer": 2,
+      "explanation": "Without ResourceDictionary files everything goes into App.xaml, which becomes huge, hard to manage and difficult to reuse; dictionaries let you split resources into separate files.",
+      "source": {
+        "section": "Why ResourceDictionary is Needed"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You create `Resources/Colors.xaml` containing `PrimaryBrush`, but `{StaticResource PrimaryBrush}` cannot be found anywhere in the app. What is the likely mistake?",
+      "options": [
+        "Colors.xaml was never merged into App.xaml's `MergedDictionaries`",
+        "Brushes cannot be stored in a separate ResourceDictionary file",
+        "`PrimaryBrush` must be referenced with `TemplateBinding` instead",
+        "A ResourceDictionary file must always be named `App.xaml`"
+      ],
+      "answer": 0,
+      "explanation": "A dictionary file is only used once it is merged, typically through `<ResourceDictionary.MergedDictionaries>` in `Application.Resources`. \"Forgetting to merge dictionary\" is one of the lesson's common mistakes.",
+      "source": {
+        "section": "Common Mistakes"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Who decides how much space a WPF control gets?",
+      "options": [
+        "The control itself, from its `Width` and `Height`",
+        "The Window, which gives every control the same size",
+        "The ViewModel bound to the control",
+        "The parent decides, and the child adapts"
+      ],
+      "answer": 3,
+      "explanation": "In WPF the viewport is the space a control is given by its parent: a control does not decide its size; the parent decides and the child adapts.",
+      "source": {
+        "section": "Sizing in WPF"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You want a 30% / 70% two-column layout that keeps those proportions when the window is resized. What does the lesson recommend?",
+      "options": [
+        "Bind each column's `Width` to `ActualWidth` of the root grid multiplied by 0.3 and 0.7",
+        "Use `<ColumnDefinition Width=\"30*\"/>` and `<ColumnDefinition Width=\"70*\"/>`",
+        "Position the two areas on a Canvas and recalculate in code-behind on resize",
+        "Use `Width=\"30%\"` and `Width=\"70%\"`"
+      ],
+      "answer": 1,
+      "explanation": "WPF has no % sizing; Grid star sizing is its percentage equivalent, so `30*` and `70*` give 30% / 70%. Binding to `ActualWidth` or calculating in code-behind breaks the layout passes.",
+      "source": {
+        "section": "Why WPF has no % sizing"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A Grid has three columns: `Width=\"2*\"`, `Width=\"3*\"` and `Width=\"5*\"`. How is the width shared?",
+      "options": [
+        "2px / 3px / 5px",
+        "33% / 33% / 33%",
+        "20% / 30% / 50%",
+        "The third column takes everything left after the first two size to content"
+      ],
+      "answer": 2,
+      "explanation": "Star values are parts of the remaining space: 2 + 3 + 5 = 10 parts, so the columns get 20%, 30% and 50%.",
+      "source": {
+        "section": "Width=\"\" vs Width=\"2\""
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "According to the responsive-UI rules, where is a `Viewbox` appropriate?",
+      "options": [
+        "Around vector visuals such as logos and icons",
+        "Around data entry forms, so they scale to any window",
+        "Around DataGrids, so all columns always fit",
+        "Around the whole main window, in place of Grid star sizing"
+      ],
+      "answer": 0,
+      "explanation": "Rule 5 says to use Viewbox only for vector visuals like logos and icons, not for forms or data grids, since it scales the whole subtree and text may blur if overused.",
+      "source": {
+        "section": "🧠 How to make WPF UI responsive (REAL RULES)"
+      },
+      "reviewed": false
+    }
+  ]
+}

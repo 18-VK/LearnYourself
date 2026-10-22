@@ -1,0 +1,80 @@
+{
+  "lesson": "ef-core-raw-sql-iqueryable-concurrency",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why is `ctx.Products.FromSqlInterpolated($\"... WHERE Price > {minPrice}\")` safe from SQL injection?",
+      "options": [
+        "EF Core strips quotes from `minPrice` before inserting it",
+        "The interpolated values are automatically turned into SQL parameters",
+        "Interpolated strings can only contain numbers",
+        "`FromSqlInterpolated` runs the SQL in a read-only transaction"
+      ],
+      "answer": 1,
+      "explanation": "With `FromSqlInterpolated`, the values in the interpolated string are automatically turned into SQL parameters; the other safe option is `FromSqlRaw` with explicit `DbParameter`s.",
+      "source": { "section": "## SQL Raw Query" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does EF Core send to the database for `_appContext.Tasks.ToList().Where(t => t.IsCompleted)`?",
+      "options": [
+        "`SELECT * FROM Tasks;`, and the `Where` filter then runs in memory",
+        "`SELECT * FROM Tasks WHERE IsCompleted = 1;`",
+        "Nothing until the `Where` result is enumerated",
+        "One query per task to check `IsCompleted`"
+      ],
+      "answer": 0,
+      "explanation": "`ToList()` runs the query first, so all rows are loaded into memory and `Where` filters them locally as an `IEnumerable`. Keeping it `IQueryable` would push the filter into SQL.",
+      "source": { "section": "### IQueryable" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How does EF Core detect that someone else changed a row since you read it?",
+      "options": [
+        "It reloads the row before every `SaveChanges` and compares all columns",
+        "It locks the row from the moment it is read",
+        "It includes the concurrency token in the `UPDATE`/`DELETE` `WHERE` clause; if 0 rows are affected it throws `DbUpdateConcurrencyException`",
+        "It always throws `DbUpdateConcurrencyException` when two users save the same entity, even without a token"
+      ],
+      "answer": 2,
+      "explanation": "EF Core only throws `DbUpdateConcurrencyException` if a property is a concurrency token: the token is in the `WHERE` clause, so a changed row means no match, 0 rows affected, and the exception.",
+      "source": { "section": "### 🔑 How EF Core Detects Concurrency" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What is the downside of marking just `Name` with `.IsConcurrencyToken()` instead of adding a `[Timestamp]` `RowVersion`?",
+      "options": [
+        "It can't be used with SQL Server",
+        "It only detects changes to `Name`, not to other columns",
+        "It makes every update overwrite silently",
+        "It requires `ExecuteUpdateAsync` for every update"
+      ],
+      "answer": 1,
+      "explanation": "A normal property marked as a concurrency token only detects changes to that property. SQL Server updates `RowVersion` whenever any field changes, so checking that one column detects all changes.",
+      "source": { "section": "### 📘 Options for Concurrency Tokens" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Projects have a `RowVersion`. You bulk-update them with `ExecuteUpdateAsync`. What happens to concurrency checking?",
+      "options": [
+        "EF Core checks `RowVersion` automatically and throws on conflicts",
+        "EF Core loads each project first to compare versions",
+        "The update fails, because `ExecuteUpdateAsync` can't run on entities with a `RowVersion`",
+        "It is skipped; you must put `RowVersion` in the `Where` clause yourself if you need it"
+      ],
+      "answer": 3,
+      "explanation": "`ExecuteUpdateAsync` bypasses tracking, so `RowVersion` is not validated and no `DbUpdateConcurrencyException` is thrown. For concurrency safety with bulk updates, include `RowVersion` in the `Where` clause manually.",
+      "source": { "section": "### ✅ Best Practice for You" },
+      "reviewed": false
+    }
+  ]
+}

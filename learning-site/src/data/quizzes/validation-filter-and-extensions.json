@@ -1,0 +1,80 @@
+{
+  "lesson": "validation-filter-and-extensions",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What problem does a `ValidationFilter` solve?",
+      "options": [
+        "It makes model binding faster",
+        "It replaces the need to define request DTOs",
+        "It centralises validation, so `if (!ModelState.IsValid)` isn't repeated, or forgotten, in every endpoint",
+        "It validates the JWT before the controller runs"
+      ],
+      "answer": 2,
+      "explanation": "Without a filter the same check is repeated in every endpoint, is easy to forget and clutters controllers. The filter sets `context.Result` to a `BadRequestObjectResult` when the model state is invalid.",
+      "source": { "section": "Filters/ValidationFilter.cs" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does a `ValidationFilter` that only checks `context.ModelState.IsValid` still report FluentValidation rule failures?",
+      "options": [
+        "FluentValidation automatically adds its errors into `ModelState`",
+        "The filter calls each validator's `Validate` method itself",
+        "FluentValidation throws an exception that the filter catches",
+        "FluentValidation rewrites the action's return value"
+      ],
+      "answer": 0,
+      "explanation": "With `AddFluentValidationAutoValidation()`, rule failures such as \"Title is required\" end up in `ModelState`, which is exactly what the filter inspects.",
+      "source": { "section": "How to use Validation Filter (clean approach) with fluent validation" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What is the main risk of applying the filter with `[ServiceFilter(typeof(ValidationFilter))]` instead of `options.Filters.Add<ValidationFilter>()`?",
+      "options": [
+        "The filter runs twice on every request",
+        "If you forget the attribute on a new endpoint, that endpoint has no validation",
+        "It can't be combined with `[ApiController]`",
+        "It applies to every controller, so you can't exclude a health check"
+      ],
+      "answer": 1,
+      "explanation": "`[ServiceFilter]` gives granular control but is high maintenance. The global registration is \"set it and forget it\", at the cost of making exclusions harder.",
+      "source": { "section": "[ServiceFilter(typeof(ValidationFilter))] vs global filter registration" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Whichever way you apply it, what does the lesson say you must do first?",
+      "options": [
+        "Remove `[ApiController]` from every controller",
+        "Mark the filter class `static`",
+        "Call `app.UseMiddleware<ValidationFilter>()`",
+        "Register the filter in DI with `builder.Services.AddScoped<ValidationFilter>()`"
+      ],
+      "answer": 3,
+      "explanation": "Both the global registration and `[ServiceFilter]` require `ValidationFilter` to be registered in the DI container first.",
+      "source": { "section": "[ServiceFilter(typeof(ValidationFilter))] vs global filter registration" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does the project put registrations in `ServiceCollectionExtensions.AddApplicationServices()`?",
+      "options": [
+        "To move DI code out of `Program.cs`, keeping startup clean and modular",
+        "Because services can't be registered directly in `Program.cs`",
+        "To make every service a singleton",
+        "To register validators automatically by scanning the assembly"
+      ],
+      "answer": 0,
+      "explanation": "Without extensions `Program.cs` grows huge and hard to maintain. `builder.Services.AddApplicationServices()` groups the registrations, which keeps startup clean and makes them reusable.",
+      "source": { "section": "Extensions/ServiceCollectionExtensions.cs" },
+      "reviewed": false
+    }
+  ]
+}

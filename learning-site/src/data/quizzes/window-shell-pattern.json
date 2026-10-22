@@ -1,0 +1,107 @@
+{
+  "lesson": "window-shell-pattern",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "`MainWindowViewModel` sets `Header = new HeaderViewModel();` and the shell has `<ContentControl Content=\"{Binding Header}\" />`. Put what WPF does to turn that into a visible header in order.",
+      "steps": [
+        "The `Header` property holds a `HeaderViewModel` instance (nothing visual yet)",
+        "The binding pushes that object into the ContentControl's `Content`",
+        "The ContentControl asks how to draw this object",
+        "WPF searches the resources for a DataTemplate with `DataType` = `HeaderViewModel`",
+        "WPF creates a `HeaderView` and sets its DataContext to the ViewModel"
+      ],
+      "explanation": "The ViewModel is just data; the ContentControl looks up a DataTemplate by type through the resource chain, finds the `HeaderViewModel` template and creates `HeaderView` with the ViewModel as its DataContext. You never write that code yourself.",
+      "source": {
+        "section": "Step-by-step: what actually happens internally"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In the shell pattern, what keeps ViewModels from ever creating View objects?",
+      "options": [
+        "Each ViewModel's constructor calls `new HeaderView()` and stores it",
+        "Code-behind in MainWindow swaps UserControls on button clicks",
+        "DataTemplates in App.xaml that map each ViewModel type to a View",
+        "The Window's `StartupUri` lists every View that can appear"
+      ],
+      "answer": 2,
+      "explanation": "The DataTemplates in App.xaml (or a merged dictionary) map each ViewModel type to its View, which removes view creation from ViewModels: ViewModels decide state and XAML decides visuals.",
+      "source": {
+        "section": "4️⃣ DataTemplates (MAGIC that binds it all)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which of these is listed as a wrong approach to avoid with the shell pattern?",
+      "options": [
+        "Binding each section of the window to a ViewModel property",
+        "Creating Views inside ViewModels",
+        "Making each section a UserControl",
+        "Using ViewModel-first navigation"
+      ],
+      "answer": 1,
+      "explanation": "The wrong approaches are Header/Footer directly in the Window XAML, creating Views inside ViewModels, code-behind navigation and UserControls without ViewModels. The other options are on the best-practices list.",
+      "source": {
+        "section": "❌ Common wrong approaches (avoid)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`MainWindowViewModel` needs a `TaskFilterViewModel` for its filter panel. What does the lesson call the correct way to supply it?",
+      "options": [
+        "Inject it into `MainWindowViewModel` via DI and bind it as `FilterVM`",
+        "Create `new TaskFilterView()` in code-behind and set its DataContext",
+        "Declare `<vm:TaskFilterViewModel/>` inside the UserControl's XAML",
+        "Look it up from `App.Services` inside the UserControl's constructor"
+      ],
+      "answer": 0,
+      "explanation": "The ViewModel is injected via DI, exposed as a property bound to `<ContentControl Content=\"{Binding FilterVM}\" />`, and WPF resolves `TaskFilterView` from the DataTemplate, with no code-behind creation.",
+      "source": {
+        "section": "Correct way to inject UserControl ViewModels"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "According to the lesson, when should you **not** use the shell + section-ViewModel pattern?",
+      "options": [
+        "When the window has a header, content area and footer",
+        "Whenever the app uses dependency injection for ViewModels",
+        "When the content area needs to swap between views",
+        "For a small application, or a window with little logic"
+      ],
+      "answer": 3,
+      "explanation": "The pattern is for medium-to-large applications; for a small application or a window with small window logic, the lesson says not to use it.",
+      "source": {
+        "section": "Note : This approach is for medium-to-large applications"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "A reusable `BorderlessComboBox` UserControl has no ViewModel. How should its inner ComboBox get the items the parent passes with `ItemsSource=\"{Binding Countries}\"`?",
+      "options": [
+        "Bind the inner ComboBox straight to `{Binding Countries}` as well",
+        "Bind the inner ComboBox to an `ItemsSource` DP on the UserControl",
+        "Give the UserControl its own ViewModel that loads the countries",
+        "Copy the items in code-behind from the parent window's DataContext"
+      ],
+      "answer": 1,
+      "explanation": "Dependency properties let the parent hand values to the UserControl, which passes them to its inner controls: Parent ViewModel → UserControl DependencyProperty → inner ComboBox (`{Binding ItemsSource, ElementName=root}`).",
+      "source": {
+        "section": "What Dependency Properties fix"
+      },
+      "reviewed": false
+    }
+  ]
+}

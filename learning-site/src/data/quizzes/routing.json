@@ -1,0 +1,108 @@
+{
+  "lesson": "routing",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "The conventional route is `api/{controller=Home}/{action=Index}/{id?}`. Which method handles `GET /api/products/details/5`?",
+      "options": [
+        "`ProductsController.Index(5)`",
+        "`DetailsController.Products(5)`",
+        "`HomeController.Index()`",
+        "`ProductsController.Details(5)`"
+      ],
+      "answer": 3,
+      "explanation": "The segments fill the template in order: `products` → `ProductsController` (suffix added), `details` → `Details()`, and `5` → the `id` parameter.",
+      "source": {
+        "section": "How Routing Maps URLs → Methods"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put these `Program.cs` lines in order for an app that uses explicit endpoint routing with authorization.",
+      "steps": [
+        "`builder.Services.AddControllers();`",
+        "`var app = builder.Build();`",
+        "`app.UseRouting();`",
+        "`app.UseAuthorization();`",
+        "`app.UseEndpoints(endpoints => endpoints.MapControllers());`",
+        "`app.Run();`"
+      ],
+      "explanation": "Services are registered before `Build()`. In the pipeline, `UseRouting()` comes first, authentication/authorization middleware goes after it, and `UseEndpoints` maps the controllers before `app.Run()`.",
+      "source": {
+        "section": "Configuration in Program.cs"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why is attribute routing the recommended style for RESTful APIs?",
+      "options": [
+        "It is the only routing style that supports `{id}` parameters",
+        "Routes are defined right on the controllers and actions, giving explicit, fine-grained control over each URL",
+        "It removes the need to call `app.MapControllers()`",
+        "It keeps every route in one central place in `Program.cs`"
+      ],
+      "answer": 1,
+      "explanation": "Attribute routing puts `[Route]`, `[HttpGet]` and friends next to the code that handles the request, allowing specific URLs, constraints and versioning. Central routes in `Program.cs` are the conventional style.",
+      "source": {
+        "section": "Attribute Routing"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "In the real-world example, `[HttpGet(\"search\")] public IActionResult Search(string name)` handles `GET /api/products/search?name=pen`. Where does `name` come from?",
+      "options": [
+        "The route template",
+        "The request body",
+        "The query string",
+        "A request header"
+      ],
+      "answer": 2,
+      "explanation": "`name` is not in the route template, so on a GET it binds from the query string, unlike `{id:int}`, which comes from the route, and POST/PUT data, which comes from the body.",
+      "source": {
+        "section": "Real world example:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which design follows the lesson's production-grade naming rule for creating a task?",
+      "options": [
+        "`[HttpPost] public async Task<IActionResult> Create(...)` at `POST /api/tasks`",
+        "`[HttpGet(\"create\")] public IActionResult Create()` at `GET /api/tasks/create`",
+        "`[HttpPost(\"create-task\")] public IActionResult CreateTask()` at `POST /api/tasks/create-task`",
+        "`[HttpPost(\"tasks/new\")] public IActionResult NewTask()` at `POST /api/tasks/tasks/new`"
+      ],
+      "answer": 0,
+      "explanation": "The HTTP verb already states the intent and the route names the resource, so `POST /api/tasks` is enough; verbs in the URL like `create-task` are the beginner mistake.",
+      "source": {
+        "section": "Action method naming rules for production grade API"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "An action takes a `CancellationToken ct`. When is that token signalled, and what should you do with it?",
+      "options": [
+        "When the action returns; you dispose of it in a `finally` block",
+        "Only when the server shuts down; you can ignore it in controllers",
+        "When validation fails; you return `400` if it is set",
+        "When the client disconnects or cancels; pass it to async calls such as EF Core queries so they can stop early"
+      ],
+      "answer": 3,
+      "explanation": "ASP.NET Core ties the token to the request, so it fires if the client cancels or disconnects. Passing it into EF Core and other async calls prevents wasted CPU and database work.",
+      "source": {
+        "section": "Controller : Action method with Cancellation Token"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "lesson": "httpclient",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why is creating and disposing a new `HttpClient` for every request a problem?",
+      "options": [
+        "Each new client resets the server's session",
+        "Disposed clients keep sending requests in the background",
+        "It can lead to socket exhaustion, because the underlying network connections are not released immediately",
+        "`HttpClient` can only be created once per process"
+      ],
+      "answer": 2,
+      "explanation": "Underlying connections linger after disposal, so many short-lived clients can exhaust sockets. Reuse one instance or, in ASP.NET Core, use `IHttpClientFactory`.",
+      "source": {
+        "section": "Key Concepts and Best Practices"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A single long-lived `HttpClient` avoids socket exhaustion. What extra problem does `IHttpClientFactory` also address?",
+      "options": [
+        "Stale DNS entries, by managing the pooling and lifetime of the underlying `HttpMessageHandler` instances",
+        "Slow JSON parsing",
+        "Missing `async` support",
+        "Requests larger than 2 GB"
+      ],
+      "answer": 0,
+      "explanation": "The factory pools and recycles `HttpMessageHandler` instances, which handles both socket exhaustion and the stale-DNS issue of one client that lives forever.",
+      "source": {
+        "section": "Key Concepts and Best Practices"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You need several clients with different base addresses and headers, and want to fetch each from the factory by a string. Which pattern fits?",
+      "options": [
+        "Basic usage with `CreateClient()` and no configuration",
+        "Calling `CancelPendingRequests()` between calls",
+        "One static `HttpClient` shared by all services",
+        "Named clients registered with `AddHttpClient(string name, ...)`"
+      ],
+      "answer": 3,
+      "explanation": "Named clients each get their own configuration and are retrieved from the factory by name. Typed clients, often preferred, wrap that configuration in a dedicated class instead.",
+      "source": {
+        "section": "Common Usage Patterns with IHttpClientFactory"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `GetFromJsonAsync<List<Product>>(\"api/products\")` do compared with `GetAsync`?",
+      "options": [
+        "It sends a `POST` instead of a `GET`",
+        "It returns the raw `HttpResponseMessage` without reading the body",
+        "It does the GET and deserializes the JSON body into `List<Product>` in one call",
+        "It only works with `SendAsync`"
+      ],
+      "answer": 2,
+      "explanation": "`GetFromJsonAsync<T>` is a shortcut for `GetAsync` followed by `response.Content.ReadFromJsonAsync<T>()`.",
+      "source": {
+        "section": "GetAsync"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Where do cross-cutting concerns such as logging, authentication or retries plug into `HttpClient`?",
+      "options": [
+        "As custom `DelegatingHandler` instances in the handler pipeline",
+        "Into `DefaultRequestVersion`",
+        "Into the `Timeout` property",
+        "Into each call to `PostAsJsonAsync`"
+      ],
+      "answer": 0,
+      "explanation": "The network work is done by an `HttpMessageHandler` (typically `SocketsHttpHandler`), and you can insert `DelegatingHandler`s in front of it for logging, auth or Polly retries.",
+      "source": {
+        "section": "Key Concepts and Best Practices"
+      },
+      "reviewed": false
+    }
+  ]
+}

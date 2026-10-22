@@ -1,0 +1,91 @@
+{
+  "lesson": "jwt",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A JWT has three dot-separated parts. Which one holds claims such as `sub`, `role` and `exp`?",
+      "options": [
+        "The header",
+        "The signature",
+        "The payload",
+        "None; claims are sent in a separate header"
+      ],
+      "answer": 2,
+      "explanation": "The header holds metadata such as `alg`, `typ` and `kid`; the payload stores the claims; the signature protects the integrity of both.",
+      "source": {
+        "section": "JWT Structure"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "With HS256, what is the signature computed over?",
+      "options": [
+        "`base64UrlEncode(header) + \".\" + base64UrlEncode(payload)`, using the secret",
+        "The payload only, using the user's password",
+        "The whole token including the signature, using the public key",
+        "The header only, using the `kid`"
+      ],
+      "answer": 0,
+      "explanation": "`HMACSHA256(base64UrlEncode(header) + \".\" + base64UrlEncode(payload), secret)` — so changing any claim invalidates the signature.",
+      "source": {
+        "section": "3. Signature"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put the steps the .NET API takes with an incoming JWT in order.",
+      "steps": [
+        "The middleware extracts the token from `Authorization: Bearer <JWT>`",
+        "It verifies the token's digital signature",
+        "It validates the claims: issuer, audience and expiration",
+        "It creates a `ClaimsPrincipal` and stores it in `HttpContext.User`",
+        "The authorization middleware checks roles or policies",
+        "The request reaches the controller"
+      ],
+      "explanation": "The JwtBearer middleware extracts and checks the token before the controller runs; only a validated token becomes `HttpContext.User`, which authorization then evaluates.",
+      "source": {
+        "section": "3. API Validation (The Gatekeeper)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The Task API receives a valid, signed token whose `aud` claim is `BillingAPI`. Which check should reject it, and why?",
+      "options": [
+        "The expiration check, because `aud` sets the lifetime",
+        "None; a correctly signed token is always accepted",
+        "The issuer check, because `aud` names the token's creator",
+        "The audience check, because the token was not intended for this API"
+      ],
+      "answer": 3,
+      "explanation": "`aud` names the intended API or client. The middleware validates audience as well as issuer and expiry, so a token minted for another API is rejected.",
+      "source": {
+        "section": "3. API Validation (The Gatekeeper)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why are JWTs a good fit for microservices and scalable apps?",
+      "options": [
+        "They are encrypted, so no HTTPS is needed",
+        "They never expire",
+        "They are stateless: the server does not need to store session information",
+        "They let every service share the user's password"
+      ],
+      "answer": 2,
+      "explanation": "A signed JWT carries its own claims, so the server can verify it without keeping session state in a database.",
+      "source": {
+        "section": "Why JWTs are Popular"
+      },
+      "reviewed": false
+    }
+  ]
+}

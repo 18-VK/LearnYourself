@@ -1,0 +1,82 @@
+{
+  "lesson": "sql-server-functions",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`dbo.GetAnnualSalary` takes `@salary DECIMAL(10,2)` and returns `@salary * 12` as `DECIMAL(10,2)`. What does this return?",
+      "code": { "lang": "sql", "source": "SELECT dbo.GetAnnualSalary(50000);" },
+      "options": [
+        "50000.00",
+        "600000.00",
+        "4166.67",
+        "A table with 12 rows"
+      ],
+      "answer": 1,
+      "explanation": "It is a custom scalar function, so it returns a single value: 50000 × 12 = 600000.00.",
+      "source": { "section": "Custom scalar function example" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "What does this scalar function call return?",
+      "code": { "lang": "sql", "source": "SELECT LEN('SQL Server');" },
+      "options": [
+        "9",
+        "3",
+        "10",
+        "2"
+      ],
+      "answer": 2,
+      "explanation": "`LEN` returns a single value, the number of characters: `SQL Server` has 10, including the space between the words.",
+      "source": { "section": "1. Scalar Functions" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How is `dbo.GetEmployeesByDept` (an inline table-valued function) written and used?",
+      "options": [
+        "`RETURNS TABLE` with a single `SELECT`, and queried in the `FROM` clause like a table",
+        "`RETURNS INT` with a `BEGIN ... END` block, and called in the `SELECT` list",
+        "It declares a `@Result` table variable and fills it with several statements",
+        "It is run with `EXEC`, like a stored procedure"
+      ],
+      "answer": 0,
+      "explanation": "An inline TVF returns a table from one `SELECT`, so you use it as `SELECT * FROM dbo.GetEmployeesByDept('IT')`.",
+      "source": { "section": "3. Inline Table-Valued Functions (TVF)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What distinguishes a multi-statement table-valued function such as `dbo.GetHighEarners()`?",
+      "options": [
+        "It returns a single value",
+        "It can't be used in a `FROM` clause",
+        "It must be a single `SELECT` statement",
+        "It declares a return table such as `@Result TABLE (...)`, fills it with statements like `INSERT`, and ends with `RETURN`"
+      ],
+      "answer": 3,
+      "explanation": "Both kinds of TVF return a table, but the multi-statement kind builds it in a table variable and can contain multiple SQL statements.",
+      "source": { "section": "4. Multi-Statement Table-Valued Functions" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Per the quick summary, how does `SUM(Salary)` (aggregate) differ from `SUM(Salary) OVER ()` (window)?",
+      "options": [
+        "The aggregate returns one value from many rows; the window version returns a value on every row",
+        "The aggregate returns a table; the window version returns a single value",
+        "They both collapse the result into one row",
+        "The window version only works inside a stored procedure"
+      ],
+      "answer": 0,
+      "explanation": "Aggregate functions summarise many rows into one result. Window functions calculate across rows without collapsing them, giving a value per row with window context.",
+      "source": { "section": "Quick Summary" },
+      "reviewed": false
+    }
+  ]
+}

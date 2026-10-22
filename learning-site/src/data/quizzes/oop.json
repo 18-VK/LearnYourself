@@ -1,0 +1,103 @@
+{
+  "lesson": "oop",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`Animal.Speak()` is `virtual` and prints \"Animal speaks\". `Dog` overrides it to print \"Dog barks\". What does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "Animal animal = new Dog();\nanimal.Speak();"
+      },
+      "options": [
+        "Animal speaks",
+        "Dog barks",
+        "Animal speaks, then Dog barks",
+        "It does not compile, because the variable's type is `Animal`"
+      ],
+      "answer": 1,
+      "explanation": "With `virtual` in the base class and `override` in `Dog`, the call uses the actual object's implementation, so it prints `Dog barks` even through an `Animal` reference.",
+      "source": { "section": "2. `override` – Replace base implementation" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`Point` overloads `operator +` to add the `X` and `Y` values, and overrides `ToString()` to return `$\"({X}, {Y})\"`. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "Point point1 = new Point(2, 3);\nPoint point2 = new Point(4, 5);\n\nPoint result = point1 + point2;\n\nConsole.WriteLine(result);"
+      },
+      "options": [
+        "(2, 3)(4, 5)",
+        "(8, 15)",
+        "(6, 8)",
+        "Point"
+      ],
+      "answer": 2,
+      "explanation": "`point1 + point2` calls the overloaded `operator +`, which returns `new Point(2 + 4, 3 + 5)`, and `Console.WriteLine` uses the overridden `ToString()`, giving `(6, 8)`.",
+      "source": { "section": "Operator Overloading" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "After `int num = 10; object obj = num;`, what is true?",
+      "options": [
+        "`obj` and `num` are the same variable under two names",
+        "`num` has been moved to the heap and no longer exists on the stack",
+        "The compiler rejects the code because a cast is required",
+        "`obj` refers to a boxed copy of the value on the heap, and `num` still exists separately"
+      ],
+      "answer": 3,
+      "explanation": "Boxing is an implicit conversion that copies the value type into a reference type on the heap; `num` still exists separately and `obj` refers to the boxed copy.",
+      "source": { "section": "Boxing" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`Point` is a struct. After `Point p1 = new Point { X = 1 }; Point p2 = p1;`, you set `p2.X` to 5. What is `p1.X`?",
+      "options": [
+        "1, because `p2` is a copy of `p1`",
+        "5, because `p1` and `p2` refer to the same object",
+        "0, because the assignment resets `p1`",
+        "It throws, because a struct cannot be copied"
+      ],
+      "answer": 0,
+      "explanation": "Assigning a struct copies the entire value, so mutating `p2.X` does not change `p1`. With a class, both variables would refer to the same object.",
+      "source": { "section": "Memory & copying semantics" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A class is declared with no access modifier, and so are its fields. What access do they get by default?",
+      "options": [
+        "Both the class and its fields are `public`",
+        "The class is `internal` and its fields are `private`",
+        "The class is `private` and its fields are `internal`",
+        "The class is `public` and its fields are `protected`"
+      ],
+      "answer": 1,
+      "explanation": "If no access modifier is written, the type itself is `internal` and its members are `private`, for both classes and structs.",
+      "source": { "section": "Default access specifier" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "You overload `==` for your `Point` type. What else do the operator overloading rules require or recommend?",
+      "options": [
+        "Nothing else; `==` can be overloaded on its own",
+        "Declare `==` as an instance method instead of `static`",
+        "Also overload `!=`, and override `Equals()` and `GetHashCode()` so equality behaves consistently",
+        "Change the precedence of `==` so it runs before arithmetic operators"
+      ],
+      "answer": 2,
+      "explanation": "`==` and `!=` must be overloaded in pairs, operators must be `public static`, and when overloading them you should also override `Equals()` and `GetHashCode()`. You cannot change an operator's precedence.",
+      "source": { "section": "Rules for Operator Overloading" },
+      "reviewed": false
+    }
+  ]
+}

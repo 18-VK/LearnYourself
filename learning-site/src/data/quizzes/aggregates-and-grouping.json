@@ -1,0 +1,69 @@
+{
+  "lesson": "aggregates-and-grouping",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "`Orders` has 10 rows, and 2 of them have `Amount = NULL`. What do `COUNT(*)` and `COUNT(Amount)` return?",
+      "options": [
+        "10 and 10",
+        "8 and 10",
+        "8 and 8",
+        "10 and 8"
+      ],
+      "answer": 3,
+      "explanation": "`COUNT(*)` counts rows, while `COUNT(column_name)` counts only the non-NULL values in that column.",
+      "source": { "section": "COUNT()" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You want only customers whose total sales exceed 10,000. Which query does that?",
+      "options": [
+        "`... WHERE SUM(Amount) > 10000 GROUP BY CustomerName`",
+        "`... GROUP BY CustomerName HAVING SUM(Amount) > 10000`",
+        "`... GROUP BY CustomerName WHERE Amount > 10000`",
+        "`... WHERE Amount > 10000` with no `GROUP BY`"
+      ],
+      "answer": 1,
+      "explanation": "The condition is on a group's total, so it belongs in `HAVING`. `WHERE` filters individual rows before grouping and can't use aggregate functions.",
+      "source": { "section": "HAVING" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which statement about `WHERE` and `HAVING` is correct?",
+      "options": [
+        "`WHERE` filters rows before grouping; `HAVING` filters groups and can use aggregates",
+        "`HAVING` filters rows before grouping; `WHERE` filters groups",
+        "Both filter groups, but `HAVING` is faster",
+        "`WHERE` can use aggregates; `HAVING` can't"
+      ],
+      "answer": 0,
+      "explanation": "In the lesson's example, `WHERE CreatedAt >= '2026-01-01'` filters rows first, then `HAVING SUM(Amount) > 5000` filters the resulting customer groups.",
+      "source": { "section": "WHERE vs HAVING (Interview Question)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "Using the lesson's `Employees` table (Aman/IT/50000, Rahul/IT/60000, Priya/HR/45000), what happens when you run this?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT Department, Name, SUM(Salary)\nFROM Employees\nGROUP BY Department;"
+      },
+      "options": [
+        "Two rows: IT with Aman and 110000, HR with Priya and 45000",
+        "Three rows, one per employee, each with their own salary",
+        "An error: `Employees.Name` is not in an aggregate function or the `GROUP BY` clause",
+        "Two rows, with `Name` shown as `NULL`"
+      ],
+      "answer": 2,
+      "explanation": "Every selected column must be aggregated or grouped. The IT group has two names, so SQL Server can't know which single value to show and rejects the query.",
+      "source": { "section": "Why non-aggregated columns must be in GROUP BY" },
+      "reviewed": false
+    }
+  ]
+}

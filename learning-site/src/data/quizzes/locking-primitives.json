@@ -1,0 +1,99 @@
+{
+  "lesson": "locking-primitives",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`Main` starts 5 threads that each run `Increment` and then joins them all before printing `Counter = {counter}`. What is printed?",
+      "code": {
+        "lang": "csharp",
+        "source": "static void Increment()\n    {\n        for (int i = 0; i < 100_000; i++)\n        {\n            lock (sync)        // same as Monitor.Enter/Exit\n            {\n                counter++;\n            }\n        }\n    }"
+      },
+      "options": [
+        "A value that changes from run to run, usually below 500000",
+        "`Counter = 100000`",
+        "`Counter = 500000`",
+        "Nothing, because the threads deadlock on `sync`"
+      ],
+      "answer": 2,
+      "explanation": "Every `counter++` runs inside `lock (sync)`, so only one thread updates it at a time and no increments are lost: 5 × 100,000 = 500,000.",
+      "source": { "section": "### `lock` (keyword) – Syntactic sugar for Monitor" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Async code must limit itself to 2 concurrent HTTP calls without blocking threads while it waits. Which primitive fits?",
+      "options": [
+        "`lock`, because it is the lightest option",
+        "`SemaphoreSlim`, using `WaitAsync`",
+        "A named `Mutex`, using `WaitOne`",
+        "`Monitor.TryEnter` with a timeout"
+      ],
+      "answer": 1,
+      "explanation": "`SemaphoreSlim` is a lightweight in-process semaphore that supports `WaitAsync` for async throttling; `lock` cannot be awaited and blocks the thread.",
+      "source": { "section": "### SemaphoreSlim — definition & use cases" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You want a second copy of your app to detect that another instance is already running. Which primitive does the lesson use for this?",
+      "options": [
+        "`lock` on a `static readonly object`",
+        "`SemaphoreSlim(1)`",
+        "`Monitor.Pulse`",
+        "A named `Mutex`, checking `createdNew`"
+      ],
+      "answer": 3,
+      "explanation": "A `Mutex` can be named to synchronize across processes. In the single-instance demo the first run gets `createdNew = true`; a second run while the first holds it gets `false` and exits. `lock` is single-process only.",
+      "source": { "section": "### Mutex" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "In the producer/consumer example, Thread A calls `Monitor.Wait(sync)` inside `lock (sync)`. What does that call do?",
+      "options": [
+        "Releases the lock and waits until it is signaled",
+        "Keeps holding the lock and spins until the condition is true",
+        "Throws, because you can't wait while holding a lock",
+        "Wakes every other thread waiting on `sync`"
+      ],
+      "answer": 0,
+      "explanation": "`Monitor.Wait` releases the lock and waits; Thread B can then take the lock, set the condition and call `Monitor.Pulse(sync)` to wake one waiter.",
+      "source": { "section": "#### Example: producer/consumer signaling" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A `SemaphoreSlim` allows 2 concurrent tasks. Both are inside, each awaiting an async call and then updating the same shared value. Can they interfere with each other?",
+      "options": [
+        "No, `SemaphoreSlim` makes the protected section atomic",
+        "No, because `WaitAsync` runs the two tasks one after another",
+        "Yes, because it only limits how many can enter, not what those inside do to shared data",
+        "Only if the semaphore was created with a name"
+      ],
+      "answer": 2,
+      "explanation": "With a concurrency of 2, two tasks may be inside at the same time, so they can affect each other. `SemaphoreSlim` limits how many enter; it doesn't prevent interference between those allowed in.",
+      "source": { "section": "#### Typical use cases" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "A process holding a named `Mutex` is killed without releasing it. What does a second process waiting on that mutex get?",
+      "options": [
+        "It waits forever, because the mutex is never released",
+        "It acquires the mutex and receives an `AbandonedMutexException`",
+        "`OpenExisting` returns a brand-new unowned mutex",
+        "Its `WaitOne()` returns `false` and it must retry"
+      ],
+      "answer": 1,
+      "explanation": "If a mutex is abandoned (its owner terminated without releasing), waiters get `AbandonedMutexException`; the lesson's demo shows the second copy acquiring the mutex and immediately receiving it.",
+      "source": { "section": "#### How to Observe Each Feature" },
+      "reviewed": false
+    }
+  ]
+}

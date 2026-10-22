@@ -1,0 +1,107 @@
+{
+  "lesson": "fluent-validation",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "An interviewer asks: \"Is FluentValidation deprecated?\" What is the accurate answer?",
+      "options": [
+        "Yes, the whole library is deprecated; use data annotations instead",
+        "No. Only its ASP.NET Core integration package for automatic validation is deprecated in v12+; use manual validation or endpoint filters",
+        "No, and automatic validation with `AddFluentValidationAutoValidation()` is still the recommended approach",
+        "Yes, it was replaced by `[ApiController]`"
+      ],
+      "answer": 1,
+      "explanation": "FluentValidation itself is not deprecated. The `FluentValidation.AspNetCore` auto-validation package is, because hidden automatic validation is hard to debug and inflexible.",
+      "source": {
+        "section": "New Recommended Approach (Modern)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the steps of manual FluentValidation inside a controller action in order.",
+      "steps": [
+        "The action receives the `CreateProductDto` and an `IValidator<CreateProductDto>` via `[FromServices]`",
+        "It calls `validator.Validate(dto)` (or `ValidateAsync`)",
+        "It checks `result.IsValid`",
+        "If invalid, it returns `BadRequest(result.Errors)`",
+        "Otherwise it continues and returns `Ok(dto)`"
+      ],
+      "explanation": "In the manual approach the validator is injected and called explicitly, so you control exactly when validation runs and what is returned.",
+      "source": {
+        "section": "Basic Setup (Manual validation using Fluent validation)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You have 10 validators. What is the trade-off between `AddValidatorsFromAssemblyContaining<Program>()` and `AddScoped<IValidator<T>, TValidator>()`?",
+      "options": [
+        "Scanning registers all validators in one line but gives less control; manual registration is one line per validator but registers only what you choose",
+        "The scanning call needs 10 lines; manual registration needs one",
+        "Only manual registration works with `AbstractValidator<T>`",
+        "Scanning makes validators run automatically before every action"
+      ],
+      "answer": 0,
+      "explanation": "Assembly scanning is clean and scalable but registers everything; manual registration gives full control at the cost of boilerplate.",
+      "source": {
+        "section": "AddValidatorsFromAssemblyContaining vs AddScoped registration"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "To make sure a string field was actually provided, why is `.NotEmpty()` preferred over `.NotNull()`?",
+      "options": [
+        "`.NotNull()` only works on value types",
+        "`.NotEmpty()` is asynchronous",
+        "`.NotEmpty()` rejects both `null` and `\"\"`, while `.NotNull()` lets an empty string through",
+        "`.NotNull()` is deprecated in FluentValidation 12"
+      ],
+      "answer": 2,
+      "explanation": "`.NotEmpty()` checks for `null` and empty strings, so a client cannot satisfy the rule by sending `\"\"`.",
+      "source": {
+        "section": "Check field available in request"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A DTO has `public int Age { get; set; }`. How do you tell \"the client sent 0\" apart from \"the client sent nothing\"?",
+      "options": [
+        "Add `.GreaterThan(0)` to the rule",
+        "Make the property `int?` and add `.NotNull()` to its rule",
+        "Use `.NotEmpty()` on the `int` property",
+        "You can't; both arrive as `0`"
+      ],
+      "answer": 1,
+      "explanation": "A missing `int` defaults to `0`. Making it nullable means a missing value stays `null`, which `.NotNull()` then rejects.",
+      "source": {
+        "section": "Check field available in request"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Where should a check like \"does this task already exist in the database?\" go?",
+      "options": [
+        "In the FluentValidation validator, using an async rule",
+        "In a `[Required]` attribute on the entity",
+        "In the DTO's constructor",
+        "In the service layer, keeping validators for request shape and simple rules"
+      ],
+      "answer": 3,
+      "explanation": "Business validation that queries the database belongs in the service layer; validators check request structure, which keeps them fast and keeps concerns separate.",
+      "source": {
+        "section": "Why keep DB validation out of FluentValidation rules"
+      },
+      "reviewed": false
+    }
+  ]
+}

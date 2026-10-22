@@ -1,0 +1,94 @@
+{
+  "lesson": "refresh-tokens",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the lifecycle of a refresh token in order.",
+      "steps": [
+        "Issuance: the user logs in and gets a short-lived access token and a long-lived refresh token",
+        "Access and depletion: the client uses the access token for API requests until it expires",
+        "Refreshing: the client sends the refresh token to get a brand new access token",
+        "Rotation: the server issues a new refresh token and invalidates the old one"
+      ],
+      "explanation": "The refresh token is created once at login; after that, each refresh swaps an expired access token for a new one and, with rotation, replaces the refresh token too.",
+      "source": { "section": "Refresh Token" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In the hand-rolled design, what does the `RefreshTokens` table store for each refresh token?",
+      "options": [
+        "The raw token string, so it can be compared directly",
+        "The token encrypted with the RSA private key",
+        "Only a SHA-256 hash of the token, like a password",
+        "Nothing; refresh tokens are validated from their signature alone"
+      ],
+      "answer": 2,
+      "explanation": "The raw value only ever exists in the HTTP response and the client's storage. On refresh the server recomputes the hash and looks up the row by `TokenHash`.",
+      "source": { "section": "Why refresh tokens exist in the first place" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A valid refresh token rt-001 is used at `/api/auth/refresh`. What does the server do with it?",
+      "options": [
+        "Keeps rt-001 valid until it expires and issues a new access token only",
+        "Revokes rt-001 now, issues rt-002 in the same token family and sets rt-001's `ReplacedByTokenId` to rt-002",
+        "Revokes rt-001 and starts a new token family for rt-002",
+        "Deletes every refresh token the user has and asks for the password again"
+      ],
+      "answer": 1,
+      "explanation": "That is rotation: the old token dies immediately even though it hadn't expired, and the replacement joins the same family so the chain can be traced.",
+      "source": { "section": "Why refresh tokens exist in the first place" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The real user is on rt-004 when an attacker presents the stolen, already-revoked rt-002. What happens?",
+      "options": [
+        "Only rt-002 is rejected; the real user's rt-004 keeps working",
+        "The attacker receives rt-005, because rt-002 belongs to a valid family",
+        "The server revokes the whole family, rt-004 included, so the real user must log in again",
+        "The server ignores the request because rt-002 has not expired"
+      ],
+      "answer": 2,
+      "explanation": "A legitimate client never presents an already-revoked token, so this is treated as theft. The server can't tell who is real, so it burns the whole family and forces a fresh login.",
+      "source": { "section": "Why refresh tokens exist in the first place" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does the lesson say rotation and reuse detection are needed together?",
+      "options": [
+        "Without reuse detection a stolen token starts its own silent chain; without rotation nothing changes between calls, so theft can't be detected",
+        "Rotation makes tokens shorter, and reuse detection makes them expire sooner",
+        "Rotation is needed for access tokens and reuse detection for refresh tokens",
+        "Either one alone is enough; using both only improves performance"
+      ],
+      "answer": 0,
+      "explanation": "Rotation alone lets an attacker's chain run in parallel with the user's forever. Reuse detection alone has no \"this token was already used\" moment to catch.",
+      "source": { "section": "Why refresh tokens exist in the first place" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "How is an OpenIddict refresh token (default mode) different from the hand-built access token JWT?",
+      "options": [
+        "It is a bare random string with no claims, just like the hand-rolled refresh token",
+        "It is signed but not encrypted, so anyone can read its claims",
+        "It carries claims but is encrypted with ASP.NET Core Data Protection, so it is opaque without the server's keys",
+        "It is hashed with SHA-256, so not even the server can read it"
+      ],
+      "answer": 2,
+      "explanation": "A JWT is signed, not encrypted, so anyone can decode its payload. The OpenIddict refresh token is self-contained but encrypted, so a leaked copy only reveals ciphertext.",
+      "source": { "section": "What does a refresh token contain?" },
+      "reviewed": false
+    }
+  ]
+}

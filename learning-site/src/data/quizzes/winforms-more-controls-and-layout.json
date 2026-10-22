@@ -1,0 +1,88 @@
+{
+  "lesson": "winforms-more-controls-and-layout",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A form has a MenuStrip docked to the top and a StatusStrip docked to the bottom. Which setting makes the central Panel expand into all the remaining space?",
+      "options": [
+        "`Dock = DockStyle.Top`",
+        "`Anchor = Top, Left`",
+        "`AutoScroll = true`",
+        "`Dock = DockStyle.Fill`"
+      ],
+      "answer": 3,
+      "explanation": "`DockStyle.Fill` makes a control expand to fill the remaining space, which is the lesson's common pattern: MenuStrip on top, StatusStrip at the bottom, and a Panel filling the center.",
+      "source": {
+        "section": "Dock:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A TextBox has `Anchor = Top, Left, Right`. What happens to it when the user makes the form wider?",
+      "options": [
+        "It stretches wider, keeping its distance from the left and right edges",
+        "It keeps its width and slides right to stay centered on the form",
+        "It sticks to the top edge and fills the full width of the form",
+        "Nothing changes; Anchor only takes effect inside a TableLayoutPanel"
+      ],
+      "answer": 0,
+      "explanation": "Anchor fixes the distance between the control and the chosen edges, so anchoring to both Left and Right makes the TextBox stretch as the form width changes. By default controls are anchored to Top and Left.",
+      "source": {
+        "section": "Anchor:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In a TableLayoutPanel you want the input column to take a proportional share of the available width so it grows when the form is resized. Which `SizeType` should its column style use?",
+      "options": [
+        "`SizeType.Absolute`",
+        "`SizeType.Percent`",
+        "`SizeType.AutoSize`"
+      ],
+      "answer": 1,
+      "explanation": "`SizeType.Percent` sizes a row or column as a percentage of the available space, which is what makes the layout responsive. `Absolute` is a fixed pixel size and `AutoSize` sizes to fit the content.",
+      "source": {
+        "section": "TableLayoutPanel — what it is & when to use it"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put these Designer steps for building a TableLayoutPanel layout in order.",
+      "steps": [
+        "Drag a TableLayoutPanel from the Toolbox onto the form",
+        "Set `ColumnCount` and `RowCount` in the Properties window",
+        "Drag the child controls into the cells you want",
+        "Set each child control's `Dock = Fill` so it expands to its cell"
+      ],
+      "explanation": "You create the panel, define its rows and columns, then place controls into cells, and finally set `Dock = Fill` on the children so they expand to fill their cells.",
+      "source": {
+        "section": "TableLayoutPanel — what it is & when to use it"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "In a horizontal FlowLayoutPanel full of buttons, you want one particular button to always start a new row. What do you use?",
+      "options": [
+        "Set `WrapContents = false` on the FlowLayoutPanel",
+        "Set `FlowDirection = TopDown` on the whole FlowLayoutPanel",
+        "Call `SetFlowBreak(control, true)` on the control before it",
+        "Call `SetColumnSpan(button, 2)` on that button"
+      ],
+      "answer": 2,
+      "explanation": "`SetFlowBreak(control, true)` forces the next control to start on the next line or column. `WrapContents = false` does the opposite, keeping everything on one line with scrollbars.",
+      "source": {
+        "section": "FlowLayoutPanel — what it is & when to use it"
+      },
+      "reviewed": false
+    }
+  ]
+}

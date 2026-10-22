@@ -1,0 +1,93 @@
+{
+  "lesson": "claims-identity-and-principal",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "After this code, what do `principal.Identity.Name`, `principal.IsInRole(\"Admin\")` and `principal.FindFirst(\"department\")?.Value` return?",
+      "code": {
+        "lang": "csharp",
+        "source": "var claims = new List<Claim>\n{\n    new Claim(ClaimTypes.NameIdentifier, \"user-123\"),\n    new Claim(ClaimTypes.Name, \"Aman Kumar\"),\n    new Claim(ClaimTypes.Role, \"Admin\"),\n    new Claim(\"department\", \"Engineering\") // custom claim\n};\n\nvar identity = new ClaimsIdentity(claims, authenticationType: \"Bearer\");\nvar principal = new ClaimsPrincipal(identity);"
+      },
+      "options": [
+        "`\"Aman Kumar\"`, `true`, `\"Engineering\"`",
+        "`\"user-123\"`, `true`, `\"Engineering\"`",
+        "`\"Aman Kumar\"`, `false`, `null`",
+        "`null`, `true`, `\"Engineering\"`"
+      ],
+      "answer": 0,
+      "explanation": "`Identity.Name` reads the `ClaimTypes.Name` claim, `IsInRole` checks the `ClaimTypes.Role` claims, and `FindFirst(\"department\")` finds the custom claim.",
+      "source": {
+        "section": "Basic example — building one manually (Will help while building Auth server)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You build `new ClaimsIdentity(claims)` with no authentication type. What is `IsAuthenticated`?",
+      "options": [
+        "`true`, because the identity has claims",
+        "`true` only if one of the claims is a role",
+        "It throws an exception",
+        "`false`, because `IsAuthenticated` is true only when a non-null authentication type is passed"
+      ],
+      "answer": 3,
+      "explanation": "Passing an `authenticationType` such as `\"Bearer\"` is what makes the identity authenticated; leaving it out is a common trap.",
+      "source": {
+        "section": "Multiple identities on one principal"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put the JwtBearer middleware's work after it receives a valid token in order.",
+      "steps": [
+        "Read: parse the JWT and read its payload",
+        "Create identity: build a `ClaimsIdentity` from the token's claims",
+        "Create principal: wrap that identity in a `ClaimsPrincipal`",
+        "Assign: set the `ClaimsPrincipal` as `HttpContext.User`"
+      ],
+      "explanation": "Claims become a `ClaimsIdentity` (the passport), which is wrapped in a `ClaimsPrincipal` (the person holding it) and exposed as `User` in controllers.",
+      "source": {
+        "section": "How they work together in .NET"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Your API is consumed by non-.NET clients and you want the claim to stay `\"sub\"` instead of becoming the long `ClaimTypes.NameIdentifier` URI. What do you set?",
+      "options": [
+        "`ValidateIssuer = false`",
+        "`authenticationType: \"Cookies\"`",
+        "`options.MapInboundClaims = false` on `AddJwtBearer`",
+        "`ClockSkew = TimeSpan.Zero`"
+      ],
+      "answer": 2,
+      "explanation": "By default the handler maps standard JWT claim names to Microsoft URIs; `MapInboundClaims = false` keeps the raw names such as `sub` and `role`.",
+      "source": {
+        "section": "A gotcha worth knowing for your JWT work"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why must a JWT signature be created with the **private** key rather than the public key?",
+      "options": [
+        "Because the signature proves who made the token; if the freely shared public key could sign, anyone could forge valid tokens",
+        "Because the public key is too short to sign with",
+        "Because the private key encrypts the payload so nobody can read it",
+        "Because APIs only accept tokens signed by their own public key"
+      ],
+      "answer": 0,
+      "explanation": "A JWT is signed, not encrypted. Only the issuer holds the private key, while anyone with the public key can verify the stamp is real.",
+      "source": {
+        "section": "Yes, you can encrypt data using a public key, but a JSON Web Token (JWT) is signed, not encrypted"
+      },
+      "reviewed": false
+    }
+  ]
+}

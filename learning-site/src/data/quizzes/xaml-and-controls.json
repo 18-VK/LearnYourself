@@ -1,0 +1,90 @@
+{
+  "lesson": "xaml-and-controls",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Given `<ComboBox ItemsSource=\"{Binding Users}\" DisplayMemberPath=\"Name\" SelectedValuePath=\"Id\" SelectedValue=\"{Binding SelectedUserId}\" />`, what does `SelectedUserId` receive when the user picks an item?",
+      "options": [
+        "The selected user's `Name`",
+        "The full `User` object",
+        "The selected user's `Id`",
+        "The index of the selected item"
+      ],
+      "answer": 2,
+      "explanation": "`SelectedValuePath` tells WPF which property of the item is the \"value\" of the selection, so `SelectedValue` is `User.Id`. The text shown is `User.Name`, and `SelectedItem` would be the full `User` object.",
+      "source": {
+        "section": "ComboBox — dropdown selection"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does the lesson warn against handling a login form's `PasswordBox` the same way as a `TextBox` with `Text=\"{Binding ...}\"`?",
+      "options": [
+        "`PasswordBox` has no property that holds the typed value",
+        "Its `Password` property is not bindable by default, for security",
+        "`PasswordBox` only works when it is placed inside a `TabControl`",
+        "Binding a password makes the PasswordBox read-only for the user"
+      ],
+      "answer": 1,
+      "explanation": "The `Password` value is not bindable by default for security reasons, and the lesson advises secure handling rather than binding the password in plain text.",
+      "source": {
+        "section": "PasswordBox — secure password input"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A ComboBox bound to `Customers` must show each customer's `Name` followed by their `Id` in gray. What should you use?",
+      "options": [
+        "An `ItemTemplate` with a `DataTemplate` of two TextBlocks",
+        "`DisplayMemberPath=\"Name\"` plus `SelectedValuePath=\"Id\"`",
+        "`DisplayMemberPath=\"Name, Id\"`",
+        "Set `IsEditable=\"True\"` so the ComboBox shows both values"
+      ],
+      "answer": 0,
+      "explanation": "`DisplayMemberPath` shows a single property as text. For complex UI with multiple properties, icons or formatting, use an `ItemTemplate`, as in the lesson's Name + gray Id example.",
+      "source": {
+        "section": "Extra : DisplayMemberPath vs ItemTemplate (IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Each DataGrid row needs a **Delete** button that calls a `DeleteCommand` on the ViewModel. Which column type fits?",
+      "options": [
+        "`DataGridTextColumn` with `IsReadOnly=\"True\"` and a Delete header",
+        "`DataGridCheckBoxColumn` bound to an `IsDeleted` property",
+        "A `GridViewColumn` with `DisplayMemberBinding` set to the command",
+        "`DataGridTemplateColumn` with a `CellTemplate` holding the button"
+      ],
+      "answer": 3,
+      "explanation": "Use `DataGridTemplateColumn` when you need custom UI or MVVM commands inside a cell; `TextColumn`/`CheckBoxColumn` are for simple text or boolean values.",
+      "source": {
+        "section": "DataGrid — editable, full-featured table"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Two WPF RadioButtons, Red and Blue, sit in the same StackPanel. What makes them mutually exclusive in the lesson's example?",
+      "options": [
+        "Both have the same `GroupName=\"Color\"`",
+        "They are in the same `StackPanel` with `Orientation=\"Horizontal\"`",
+        "Each has `IsThreeState=\"True\"`",
+        "Both bind `IsChecked` to the same property"
+      ],
+      "answer": 0,
+      "explanation": "In WPF the `GroupName` property groups radio buttons; the example gives both buttons `GroupName=\"Color\"` so only one can be selected.",
+      "source": {
+        "section": "RadioButton — mutually exclusive choices"
+      },
+      "reviewed": false
+    }
+  ]
+}

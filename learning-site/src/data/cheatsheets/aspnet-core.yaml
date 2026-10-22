@@ -1,0 +1,334 @@
+id: aspnet-core
+title: 'ASP.NET Core: middleware order, routing & binding attributes, return types, DI lifetimes'
+summary: 'The Web API essentials on one page: pipeline order and the built-in middleware, routing styles, [ApiController] and model-binding attributes, action return types and result helpers, DI lifetimes, global exception handling and rate limiting.'
+groups:
+  - title: Middleware pipeline order
+    note: 'Order of registration = order on the way in, reversed on the way out.'
+    items:
+      - term: 'Production order'
+        code: |
+          app.UseExceptionHandler();     // 1. Catch errors first
+          app.UseStaticFiles();          // 2. Serve static files fast
+          app.UseRouting();              // 3. Match endpoint
+          app.UseCors("AllowFrontend");  // 4. Allow frontend
+          app.UseAuthentication();       // 5. Identify user
+          app.UseAuthorization();        // 6. Check access
+          app.UseRateLimiter();          // 7. Protect API
+          app.MapControllers();          // 8. Execute endpoint
+        lang: csharp
+        from: { lesson: middleware, section: 'Final Production Order (VERY IMPORTANT)' }
+      - term: 'Before / after `next`'
+        desc: 'Each middleware gets `HttpContext` and the next delegate; it can work before and after `await next(context);`, or not call it at all (short-circuit).'
+        code: |
+          Request -> Middleware A -> Middleware B -> Middleware C -> Controller
+          -> Middleware C -> Middleware B -> Middleware A -> Response
+        lang: text
+        from: { lesson: middleware, section: 'How middleware works internally' }
+      - term: 'When to write middleware'
+        desc: 'Cross-cutting logic for many/all requests: logging, unhandled exceptions, authentication, timing, correlation IDs, security rules. Not repeated in every action.'
+        from: { lesson: middleware, section: 'Why use middleware' }
+    table:
+      columns: [Middleware, What it does, Order rule]
+      from: { lesson: middleware, section: 'Built-in middleware examples' }
+      rows:
+        - cells: ['`UseExceptionHandler()`', 'Catches unhandled exceptions, returns a safe response', 'Must be FIRST']
+          from: { lesson: middleware, section: 'UseExceptionHandler()' }
+        - cells: ['`UseStaticFiles()`', 'Serves files from `wwwroot` (not needed for pure APIs)', 'Early; bypasses the controller pipeline']
+          from: { lesson: middleware, section: 'UseStaticFiles()' }
+        - cells: ['`UseRouting()`', 'Matches the URL to an endpoint and stores it in `HttpContext`; doesn''t execute it', 'Before authentication/authorization (they need endpoint info)']
+          from: { lesson: middleware, section: 'UseRouting()' }
+        - cells: ['`UseCors()`', 'Lets a frontend on another domain/port call the API', 'Before endpoints']
+          from: { lesson: middleware, section: 'UseCors()' }
+        - cells: ['`UseAuthentication()`', 'Reads and validates the token/cookie, creates `HttpContext.User` (WHO)', 'Before `UseAuthorization()`; doesn''t block by itself']
+          from: { lesson: middleware, section: 'UseAuthentication()' }
+        - cells: ['`UseAuthorization()`', 'Checks `[Authorize]` roles/policies (CAN they)', 'After `UseAuthentication()` and `UseRouting()`']
+          from: { lesson: middleware, section: 'UseAuthorization()' }
+        - cells: ['`UseRateLimiter()`', 'Limits requests per user/IP (abuse, brute force)', 'Then apply with `[EnableRateLimiting("fixed")]`']
+          from: { lesson: middleware, section: 'UseRateLimiter()' }
+        - cells: ['`UseForwardedHeaders()`', 'Reads `X-Forwarded-*` from a reverse proxy so the app knows the original scheme', 'Before `UseHttpsRedirection` / `UseAuthentication`']
+          from: { lesson: https-and-hsts, section: '3. Your app must trust and read those forwarded headers' }
+        - cells: ['`UseHttpsRedirection()`', 'Server-side redirect of every `http://` request to `https://` (e.g. `308`)', 'Safety net for the first contact']
+          from: { lesson: https-and-hsts, section: 'UseHttpsRedirection — server-side redirect, per request' }
+        - cells: ['`UseHsts()`', 'Adds `Strict-Transport-Security` so the browser skips HTTP next time', 'Only outside Development: `if (!app.Environment.IsDevelopment())`']
+          from: { lesson: https-and-hsts, section: 'UseHsts — browser-side instruction, cached ahead of time' }
+
+  - title: Routing
+    items:
+      - term: 'Conventional routing'
+        desc: 'One URL pattern for all controllers, set centrally with `MapControllerRoute`; default `{controller=Home}/{action=Index}/{id?}`. For MVC with views; not preferred for APIs.'
+        code: |
+          app.MapControllerRoute(
+              name: "default",
+              pattern: "api/{controller=Home}/{action=Index}/{id?}"
+          );
+        lang: csharp
+        from: { lesson: routing, section: 'Conventional Routing' }
+      - term: 'Attribute routing'
+        desc: 'Routes on the controller and actions with `[Route]`, `[HttpGet]`, `[HttpPost]`…: the recommended style for REST APIs. Enabled by `AddControllers()` + `MapControllers()`.'
+        from: { lesson: routing, section: 'Attribute Routing' }
+      - term: '`[Route("api/[controller]")]`'
+        desc: 'Controller-level prefix; the `[controller]` token is replaced by the class name without the `Controller` suffix.'
+        from: { lesson: controllers, section: '[Route("api/[controller]")]' }
+      - term: 'Route constraints'
+        desc: '`[HttpGet("{id:int}")]`, `[HttpPut("{id:guid}")]`: the parameter must match the type.'
+        from: { lesson: routing, section: 'Attribute Routing' }
+      - term: 'Where values come from'
+        desc: '`"{id:int}"` → route; a simple parameter like `string name` → query string; POST/PUT payload → body.'
+        code: |
+          // GET /api/products/search?name=pen
+          [HttpGet("search")]
+          public IActionResult Search(string name) => Ok();
+        lang: csharp
+        from: { lesson: routing, section: 'Attribute Routing' }
+      - term: 'Hybrid routing'
+        desc: 'Attribute routes for APIs + conventional routes for MVC/UI in one app; attribute routes take precedence.'
+        from: { lesson: routing, section: 'Hybrid Routing (Attribute + Conventional)' }
+      - term: 'Endpoint routing'
+        desc: 'The middleware-based system that matches a request to an endpoint (controller action, minimal API, Razor page) and executes it. In .NET 6+ `app.MapControllers();` replaces the explicit `UseRouting()` + `UseEndpoints(...)` style of .NET 5.'
+        from: { lesson: routing, section: 'Configuration Example' }
+      - term: '`app.MapControllers()`'
+        desc: 'Scans for `ControllerBase`/`Controller` classes and registers their attribute-routed actions as endpoints.'
+        from: { lesson: routing, section: 'App.MapControllers();' }
+      - term: 'RESTful action naming'
+        desc: 'HTTP verb carries the intent, the route is the resource: `[HttpPost] Create`, `[HttpGet] GetAll`, `[HttpGet("{id:guid}")] GetById`, `[HttpPatch("{id:guid}/status")] UpdateStatus`. Not `[HttpPost("create-task")]`.'
+        from: { lesson: routing, section: 'Action method naming rules for production grade API' }
+      - term: '`CancellationToken ct` parameter'
+        desc: 'Supplied by ASP.NET Core and signalled when the client disconnects; pass it to EF Core / HTTP calls so abandoned requests stop early.'
+        from: { lesson: routing, section: 'Controller : Action method with Cancellation Token' }
+
+  - title: Controllers & [ApiController]
+    items:
+      - term: '`ControllerBase` vs `Controller`'
+        desc: 'Web APIs inherit `ControllerBase` (no view support); `Controller` adds Razor view rendering. Class names end with `Controller`.'
+        from: { lesson: controllers, section: 'ASP - Controller' }
+      - term: '`[ApiController]`'
+        desc: 'Marks an API controller and switches on API behaviors: automatic model validation, parameter binding inference and structured 400 responses.'
+        from: { lesson: controllers, section: '[ApiController]' }
+      - term: 'Automatic 400'
+        desc: 'An invalid body (e.g. a `[Required]` property missing) returns `400 Bad Request` with an `errors` object, no `if (!ModelState.IsValid)` needed.'
+        from: { lesson: controllers, section: '1. Automatic Model Validation' }
+      - term: 'Binding source inference'
+        desc: 'Route (`/api/products/10`), query (`?page=1`) and JSON body are inferred without attributes.'
+        from: { lesson: controllers, section: '4. Binding Source Inference' }
+      - term: 'Thin controllers'
+        desc: 'Controllers only handle request/response; business validation lives in the service layer.'
+        from: { lesson: global-exception-handling, section: '✅ Correct: Move to Service Layer' }
+
+  - title: Model binding attributes
+    note: 'Flow: Routing → Model binding → Model validation → Action → Response.'
+    table:
+      columns: [Attribute, Binds from / does]
+      from: { lesson: model-binding, section: 'Key Attributes for Model Binding' }
+      rows:
+        - ['`[FromQuery]`', 'Query string only']
+        - ['`[FromRoute]`', 'Route parameters only']
+        - ['`[FromForm]`', 'Posted form fields only']
+        - ['`[FromHeader]`', 'HTTP headers only, e.g. `[FromHeader(Name = "If-Match")] string? ifMatch`']
+        - ['`[FromBody]`', 'Request body (JSON) via input formatters; at most one parameter per action']
+        - ['`[Bind("Name,Price")]`', 'Include only the listed properties (protects against overposting)']
+        - ['`[BindNever]`', 'Never bind this property from the request']
+    items:
+      - term: 'Overposting (mass assignment)'
+        desc: 'A client sets a property it shouldn''t (e.g. `isAdminOnly: true`). Best fix: accept a request DTO with only the allowed fields, never the entity itself.'
+        from: { lesson: model-binding, section: '3. Real-World Best Practice (VERY IMPORTANT)' }
+      - term: 'Custom model binder'
+        desc: 'Implement `IModelBinder` for custom formats, e.g. `?ids=1,2,3` → `List<int>`.'
+        from: { lesson: model-binding, section: 'Custom Model Binding' }
+
+  - title: Action return types
+    items:
+      - term: 'Rule of thumb'
+        desc: 'Always 200 with one type → return `T`. Success + error responses → `ActionResult<T>`. Multiple unrelated result types → `IActionResult`.'
+        from: { lesson: return-types, section: 'Rule of Thumb' }
+      - term: '`IActionResult`'
+        desc: 'Interface for any HTTP response; no compile-time body type, so Swagger needs `[ProducesResponseType]` to know the success schema.'
+        from: { lesson: return-types, section: 'IActionResult' }
+      - term: '`ActionResult<T>`'
+        desc: 'Best practice: strongly typed body plus `NotFound()`/`BadRequest()`; `return user;` becomes 200 OK automatically, and the 200 type is inferred for OpenAPI.'
+        code: |
+          [HttpGet("{id}")]
+          public ActionResult<UserDto> GetUser(int id)
+          {
+              if (id <= 0)
+                  return BadRequest("Invalid ID");
+              var user = GetFromDb(id);
+              if (user == null)
+                  return NotFound();
+              return user; // automatically 200 OK
+          }
+        lang: csharp
+        from: { lesson: return-types, section: 'ActionResult<T> (BEST PRACTICE 🔥)' }
+      - term: '`[ProducesResponseType]`'
+        desc: 'Declares status codes and body types for OpenAPI. With `ActionResult<T>` only the error codes need annotating; prefer `StatusCodes` constants over magic numbers.'
+        code: |
+          [ProducesResponseType(typeof(Product), StatusCodes.Status200OK)]
+          [ProducesResponseType(StatusCodes.Status404NotFound)]
+        lang: csharp
+        from: { lesson: return-types, section: '[ProducesResponseType]' }
+      - term: 'Reading request headers'
+        desc: '`Request.Headers["User-Agent"].ToString()`: `Request.Headers` is an `IHeaderDictionary`.'
+        from: { lesson: return-types, section: 'Accessing request headers' }
+
+  - title: Result helpers → status codes
+    table:
+      columns: [Helper, Status, Use when]
+      from: { lesson: return-types, section: 'Type of return value : Controller' }
+      rows:
+        - cells: ['`Ok()` / `Ok(obj)`', '200', 'Succeeded (with or without a body)']
+          from: { lesson: return-types, section: 'Ok() / Ok(object) → 200 OK' }
+        - cells: ['`Created(uri, obj)`', '201', 'You build the `Location` URI yourself']
+          from: { lesson: return-types, section: 'Created()' }
+        - cells: ['`CreatedAtAction(nameof(GetItem), new { id }, obj)`', '201', 'Preferred: `Location` generated from an action name']
+          from: { lesson: return-types, section: 'CreatedAtAction()' }
+        - cells: ['`CreatedAtRoute("GetItem", new { id }, obj)`', '201', 'Uses a named route: `[HttpGet("{id}", Name = "GetItem")]`']
+          from: { lesson: return-types, section: 'CreatedAtRoute()' }
+        - cells: ['`Accepted()`', '202', 'Accepted, processing finishes later (background job / queue)']
+          from: { lesson: return-types, section: 'Accepted() / AcceptedAtAction() / AcceptedAtRoute() → 202 Accepted' }
+        - cells: ['`NoContent()`', '204', 'Update/delete succeeded, nothing to return']
+          from: { lesson: return-types, section: 'NoContent() → 204 No Content' }
+        - cells: ['`BadRequest()` / `BadRequest(ModelState)`', '400', 'Invalid input or failed validation']
+          from: { lesson: return-types, section: 'BadRequest() → 400 Bad Request' }
+        - cells: ['`Unauthorized()`', '401', 'Not authenticated (token missing/invalid/expired)']
+          from: { lesson: return-types, section: 'Unauthorized() → 401 Unauthorized' }
+        - cells: ['`Forbid()`', '403', 'Authenticated but not allowed']
+          from: { lesson: return-types, section: 'Forbid() → 403 Forbidden' }
+        - cells: ['`NotFound()` / `NotFound(obj)`', '404', 'Resource doesn''t exist']
+          from: { lesson: return-types, section: 'NotFound() → 404 Not Found' }
+        - cells: ['`Conflict()`', '409', 'Duplicate email/order number, concurrency conflict']
+          from: { lesson: return-types, section: 'Conflict() → 409 Conflict' }
+        - cells: ['`UnprocessableEntity()`', '422', 'Valid format, business rule fails']
+          from: { lesson: return-types, section: 'UnprocessableEntity() → 422 Unprocessable Entity' }
+        - cells: ['`Problem(title:, detail:, statusCode:)`', 'any (e.g. 500)', 'Standard `ProblemDetails` error body']
+          from: { lesson: return-types, section: 'Problem() → Problem Details response' }
+        - cells: ['`ValidationProblem(ModelState)`', '400', 'RFC 7807 body with an `errors` dictionary (what `[ApiController]` returns automatically)']
+          from: { lesson: return-types, section: 'ValidationProblem() → validation error response' }
+        - cells: ['`StatusCode(503, obj)`', 'custom', 'No built-in helper fits']
+          from: { lesson: return-types, section: 'StatusCode(int, object) → custom status code' }
+
+  - title: DI lifetimes
+    table:
+      columns: [Lifetime, Instance, Use for, Danger]
+      from: { lesson: dependency-injection, section: 'DI Lifetimes in .NET: Scoped, Transient, Singleton' }
+      rows:
+        - cells: ['**Singleton** · `AddSingleton`', 'One for the whole app lifetime; thread-safety is your job', 'Configuration, in-memory caches, connection-pool managers', 'Capturing a Scoped dependency (captive dependency)']
+          from: { lesson: dependency-injection, section: 'Singleton' }
+        - cells: ['**Scoped** · `AddScoped`', 'One per HTTP request (or `IServiceScope`)', '`DbContext`, Unit of Work, per-request state like the current user (most common in web APIs)', 'Resolved from a Singleton, or used in an `IHostedService` without creating a scope']
+          from: { lesson: dependency-injection, section: 'Scoped' }
+        - cells: ['**Transient** · `AddTransient`', 'New every time it''s injected or resolved', 'Lightweight stateless validators, mappers, formatters', '`IDisposable` transients are disposed at scope end, so handles pile up within a request']
+          from: { lesson: dependency-injection, section: 'Transient' }
+    items:
+      - term: 'Scoped or Transient?'
+        desc: '"Within the same request, should two components share the instance?" Yes → Scoped, no → Transient. A Transient `DbContext` would break change tracking and transactions across repositories.'
+        from: { lesson: dependency-injection, section: 'Scoped vs Transient' }
+      - term: 'Captive dependency fix'
+        desc: 'A Singleton or `BackgroundService` that needs scoped work injects `IServiceScopeFactory` and creates a scope. In Development the container throws `InvalidOperationException` when a Singleton captures a Scoped service.'
+        code: |
+          using var scope = _factory.CreateScope();
+          var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        lang: csharp
+        from: { lesson: dependency-injection, section: 'The Captive Dependency trap' }
+      - term: 'Two implementations of one interface'
+        desc: 'Constructor injection gets the LAST registration (no error). Inject `IEnumerable<ILogger>` to get all of them, in registration order.'
+        from: { lesson: dependency-injection, section: 'If for the same interface we have two implementation classes, which one does constructor injection get?' }
+      - term: 'Fail fast on bad registrations'
+        desc: 'Turn on `ValidateScopes` and `ValidateOnBuild` so a missing or mis-scoped service throws at startup instead of at first use.'
+        code: |
+          .UseDefaultServiceProvider(options =>
+          {
+              options.ValidateScopes = true;
+              options.ValidateOnBuild = true; // 🔥 THIS is the key
+          })
+        lang: csharp
+        from: { lesson: taskflow-studio, section: 'METHOD 1 (BEST): Force DI validation at build time' }
+
+  - title: Global exception handling
+    items:
+      - term: '`IExceptionHandler` (built-in)'
+        desc: 'Sealed class with `TryHandleAsync(httpContext, exception, ct)`: log with the trace id, map the exception type to a status, write `ProblemDetails`, return `true` when handled.'
+        code: |
+          builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+          builder.Services.AddProblemDetails();
+        lang: csharp
+        from: { lesson: global-exception-handling, section: 'By Create a sealed class that implements IExceptionHandler' }
+      - term: '…and call `app.UseExceptionHandler()`'
+        desc: 'Registering a handler isn''t enough: handlers are invoked by the exception-handling middleware, so without `UseExceptionHandler` they are never called.'
+        docs: { url: 'https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling', title: 'Handle errors in ASP.NET Core', accessed: '2026-10-22' }
+      - term: 'Custom exception middleware'
+        desc: 'Wraps everything after it in `try { await _next(context); } catch`; register it with `app.UseMiddleware<ExceptionHandlingMiddleware>();`.'
+        code: |
+          public async Task InvokeAsync(HttpContext context)
+          {
+              try
+              {
+                  await _next(context);
+              }
+              catch (Exception ex)
+              {
+                  // handle error
+              }
+          }
+        lang: csharp
+        from: { lesson: global-exception-handling, section: 'Custom middleware concept (example : Global exception handling) - Recommended' }
+      - term: 'Middleware class convention'
+        desc: 'No interface: the constructor takes a `RequestDelegate next`, and `UseMiddleware` finds a method named exactly `InvokeAsync` or `Invoke` returning `Task` with `HttpContext` first, by reflection.'
+        from: { lesson: global-exception-handling, section: 'If you are using a custom middleware class (like one named GlobalExceptionMiddleware) rather than the built-in IExceptionHandler interface' }
+      - term: 'Exception → status mapping'
+        desc: '`ArgumentException` → 400, `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, anything else → 500 (generic message for 500s in production).'
+        code: |
+          int statusCode = ex switch
+          {
+              ArgumentException => StatusCodes.Status400BadRequest,
+              KeyNotFoundException => StatusCodes.Status404NotFound,
+              _ => StatusCodes.Status500InternalServerError
+          };
+        lang: csharp
+        from: { lesson: global-exception-handling, section: 'How to create middleware for global exception handling and how to use it' }
+      - term: '`ProblemDetails` body'
+        desc: 'Standard (RFC 7807) error shape: `title`, `status`, `detail`, `instance`, plus `Extensions["traceId"] = context.TraceIdentifier` for log correlation.'
+        from: { lesson: global-exception-handling, section: 'Use ProblemDetails (BEST PRACTICE)' }
+
+  - title: Rate limiting
+    note: 'Built in since .NET 7 (`Microsoft.AspNetCore.RateLimiting`).'
+    table:
+      columns: [Algorithm, How it works, Trade-off]
+      from: { lesson: rate-limiting, section: 'Common Algorithms' }
+      rows:
+        - cells: ['Fixed window', 'Counter per fixed time block, resets at each boundary', 'Simplest and cheapest; bursts at window edges can let up to 2× the limit through']
+          from: { lesson: rate-limiting, section: 'Fixed Window' }
+        - cells: ['Sliding window', 'Counts over a rolling period (ASP.NET Core: `SegmentsPerWindow` sub-counters)', 'Fixes edge bursts; more memory/compute']
+          from: { lesson: rate-limiting, section: 'Sliding Window' }
+        - cells: ['Token bucket', 'Bucket of tokens (capacity = burst) refilled at a fixed rate; each request takes one', 'Controlled bursts + long-term average; the usual production default']
+          from: { lesson: rate-limiting, section: 'Token Bucket' }
+        - cells: ['Leaky bucket', 'Requests queue and drain at a constant rate', 'Strict constant throughput for fragile downstreams; no burst tolerance']
+          from: { lesson: rate-limiting, section: 'Leaky Bucket' }
+        - cells: ['Concurrency limiter', 'Caps requests in flight at the same time, not per window', 'Protects heavy endpoints (report generation)']
+          from: { lesson: rate-limiter-parameters-and-throttling, section: 'Concurrency Limiter' }
+    items:
+      - term: 'Named policies'
+        desc: '`AddFixedWindowLimiter` (`PermitLimit`, `Window`), `AddSlidingWindowLimiter` (+ `SegmentsPerWindow`), `AddTokenBucketLimiter` (`TokenLimit`, `TokensPerPeriod`, `ReplenishmentPeriod`, `AutoReplenishment`), `AddConcurrencyLimiter`; all take `QueueLimit` (excess requests that wait instead of getting 429).'
+        code: |
+          options.AddTokenBucketLimiter("token", opt =>
+          {
+              opt.TokenLimit = 20;
+              opt.TokensPerPeriod = 5;
+              opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+              opt.AutoReplenishment = true;
+              opt.QueueLimit = 2;
+          });
+        lang: csharp
+        from: { lesson: rate-limiting, section: '2. All Four Limiter Types' }
+      - term: 'Apply / opt out'
+        desc: '`[EnableRateLimiting("concurrency")]` on an action or controller, `[DisableRateLimiting]` for e.g. a webhook callback; named policies only run where attached.'
+        from: { lesson: rate-limiting, section: '5. Using It on Controllers' }
+      - term: '`GlobalLimiter` partitioned per client'
+        desc: '`PartitionedRateLimiter.Create<HttpContext, string>` runs on every request; the lambda returns a key (user name, else IP, else `"anonymous"`) and each key gets its own bucket, created on first sight.'
+        from: { lesson: rate-limiting, section: '3. Per-User / Per-IP Limiting (Partitioned)' }
+      - term: 'Rejection response'
+        desc: '`RejectionStatusCode` defaults to `503`; set `StatusCodes.Status429TooManyRequests` and use `OnRejected` to add `Retry-After` or a body.'
+        from: { lesson: rate-limiter-parameters-and-throttling, section: 'Global Rejection Handling' }
+      - term: 'Multiple instances'
+        desc: 'Built-in limiter state is in memory per instance; behind a load balancer use a Redis-backed limiter (e.g. `RedisRateLimiting`, `AddRedisTokenBucketLimiter`).'
+        from: { lesson: rate-limiting, section: '4. Distributed Rate Limiting (Redis)' }
+      - term: 'Rate limiting vs throttling'
+        desc: 'Rate limiting is a policy that rejects (429); throttling delays/smooths processing, e.g. `SemaphoreSlim(5)` or `QueueLimit > 0`.'
+        from: { lesson: rate-limiter-parameters-and-throttling, section: 'Throttling' }

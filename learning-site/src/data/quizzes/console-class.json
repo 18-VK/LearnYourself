@@ -1,0 +1,65 @@
+{
+  "lesson": "console-class",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the difference between `Console.Write(\"string\")` and `Console.WriteLine(\"string\")`?",
+      "options": [
+        "`Write` prints to a file and `WriteLine` prints to the screen",
+        "`WriteLine` prints the value and then moves the cursor to the next line; `Write` does not",
+        "`WriteLine` can only print strings; `Write` can print any variable",
+        "`Write` clears the screen before printing; `WriteLine` does not"
+      ],
+      "answer": 1,
+      "explanation": "`WriteLine` is the same as `Write` but adds the current line terminator, so the cursor moves to the next line after printing.",
+      "source": { "section": "Methods of Console Class in C#" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which data type should hold the return value of `Console.Read()`?",
+      "options": [
+        "`string`, because it returns the whole line typed",
+        "`char`, because it returns the character itself",
+        "`ConsoleKeyInfo`, because it returns key information",
+        "`int`, because it returns the ASCII value of a single character"
+      ],
+      "answer": 3,
+      "explanation": "`Read()` reads a single character from the keyboard and returns its ASCII value, so the data type should be `int`.",
+      "source": { "section": "Methods of Console Class in C#" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which method returns a `ConsoleKeyInfo` describing the key that was entered?",
+      "options": [
+        "`ReadKey()`",
+        "`ReadLine()`",
+        "`Read()`",
+        "`Beep()`"
+      ],
+      "answer": 0,
+      "explanation": "`ReadKey()` reads a single character and returns its key information as a `ConsoleKeyInfo`. `ReadLine()` returns a `string` and `Read()` returns an `int`.",
+      "source": { "section": "Methods of Console Class in C#" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which method sets the console's foreground and background colors back to their defaults?",
+      "options": [
+        "`Clear()`",
+        "`ResetColor()`",
+        "`Beep()`",
+        "Setting `CursorSize` to 100"
+      ],
+      "answer": 1,
+      "explanation": "`ResetColor()` sets the foreground and background console colors to their defaults. `Clear()` clears the screen but does not reset the colors.",
+      "source": { "section": "Methods of Console Class in C#" },
+      "reviewed": false
+    }
+  ]
+}

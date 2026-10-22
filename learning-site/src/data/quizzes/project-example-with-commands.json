@@ -1,0 +1,91 @@
+{
+  "lesson": "project-example-with-commands",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why is `DeleteItemCommand` created as `new RelayCommand<Transaction>(DeleteItem)` while `LoadCommand` uses the non-generic `RelayCommand`?",
+      "options": [
+        "Generic commands are faster, so they are used for deletes",
+        "`DeleteItem` takes the row's `Transaction` as a typed parameter",
+        "The non-generic `RelayCommand` cannot be bound inside a DataGrid",
+        "`RelayCommand<T>` is the only one that supports `CanExecute`"
+      ],
+      "answer": 1,
+      "explanation": "`DeleteItemCommand` is the row-level command: the button passes the current row with `CommandParameter=\"{Binding}\"`, and `RelayCommand<T>` casts it to `Transaction` for `DeleteItem(Transaction t)`. `Load` takes no parameter.",
+      "source": {
+        "section": "3️⃣ RelayCommand (non-generic + generic)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "The \"Delete Selected\" button starts disabled. What enables it as soon as the user selects a row?",
+      "options": [
+        "The setter calls `CommandManager.InvalidateRequerySuggested()`",
+        "The DataGrid enables every button in the window on selection",
+        "`Load()` runs again after each selection and resets the commands",
+        "Code-behind handles `SelectionChanged` and sets `IsEnabled = true`"
+      ],
+      "answer": 0,
+      "explanation": "`DeleteSelectedCommand` can execute only when `SelectedTransaction != null`, and the setter calls `CommandManager.InvalidateRequerySuggested()` so the button re-evaluates `CanExecute` right away.",
+      "source": {
+        "section": "4️⃣ ViewModel – your class completed"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why does the row's Delete button bind to `DataContext.DeleteItemCommand` with `RelativeSource={RelativeSource AncestorType=DataGrid}` instead of just `{Binding DeleteItemCommand}`?",
+      "options": [
+        "Commands can only be bound through a `RelativeSource` binding",
+        "The DataGrid is read-only, so its cells cannot run commands",
+        "The cell's DataContext is the row's `Transaction`, not the ViewModel",
+        "`ElementName` bindings are not allowed anywhere inside a Window's XAML"
+      ],
+      "answer": 2,
+      "explanation": "Inside the cell template the DataContext is the row's `Transaction`, which has no `DeleteItemCommand`. The binding walks up to the DataGrid and uses its DataContext, the `TransactionViewModel`.",
+      "source": {
+        "section": "5️⃣ View – MainWindow.xaml"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`MainWindow.xaml.cs` contains only `InitializeComponent()`. Where does the window get its ViewModel?",
+      "options": [
+        "From `App.xaml.cs`, which assigns it right after the window has opened",
+        "From the DataGrid, through its `ItemsSource` binding",
+        "It has none; the bindings read from the service directly",
+        "From `<vm:TransactionViewModel/>` inside `Window.DataContext` in XAML"
+      ],
+      "answer": 3,
+      "explanation": "The DataContext is created in XAML with `<vm:TransactionViewModel/>`, so the code-behind has no need to set it and stays free of logic.",
+      "source": {
+        "section": "6️⃣ Code-behind – NO business logic"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "Put the flow of a button click through this project in order.",
+      "steps": [
+        "Button click",
+        "`RelayCommand.Execute`",
+        "The ViewModel method runs",
+        "The service (DB) is called",
+        "The `ObservableCollection` updates",
+        "The DataGrid refreshes automatically"
+      ],
+      "explanation": "The flow summary is Button Click → RelayCommand.Execute → ViewModel method → Service (DB) → ObservableCollection updates → DataGrid refreshes automatically.",
+      "source": {
+        "section": "Flow summary"
+      },
+      "reviewed": false
+    }
+  ]
+}

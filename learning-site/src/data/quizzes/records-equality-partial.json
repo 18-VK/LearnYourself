@@ -1,0 +1,100 @@
+{
+  "lesson": "records-equality-partial",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`Person` is declared as `public record Person(string FirstName, string LastName);`. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var p1 = new Person(\"Aman\", \"Kumar\");\nvar p2 = p1 with { LastName = \"Singh\" };\n\nConsole.WriteLine(p2);"
+      },
+      "options": [
+        "Person { FirstName = Aman, LastName = Kumar }",
+        "Aman Singh",
+        "Person { FirstName = Aman, LastName = Singh }",
+        "Person"
+      ],
+      "answer": 2,
+      "explanation": "`with` creates a copy of the record with the listed changes, and records get an auto-generated `ToString()` in the form `Person { FirstName = Aman, LastName = Singh }`. `p1` is unchanged.",
+      "source": { "section": "\"With\" Expression (Cloning)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`Person` is the same positional record. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var c1 = new Person(\"Aman\", \"Kumar\");\nvar c2 = new Person(\"Aman\", \"Kumar\");\nConsole.WriteLine(c1.Equals(c2));"
+      },
+      "options": [
+        "True",
+        "False",
+        "It does not compile, because records can't be compared"
+      ],
+      "answer": 0,
+      "explanation": "Records use value-based equality, so two records with the same values are equal. For normal classes, which use reference equality by default, the result would be `False`.",
+      "source": { "section": "Value-Based Equality" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "With `public record Person(string FirstName, string LastName);`, what happens with `p.FirstName = \"John\";` after the object is created?",
+      "options": [
+        "It changes the name, because record properties are ordinary setters",
+        "It creates a new record automatically",
+        "It is an error, because positional records create init-only properties",
+        "It compiles, but the change is ignored"
+      ],
+      "answer": 2,
+      "explanation": "A positional record creates init-only properties, so they can't be assigned after creation. Use a `with` expression to get a modified copy, or declare the properties with `set` for a mutable record.",
+      "source": { "section": "Immutable by Default" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the steps a hash-based collection such as `Dictionary<TKey, TValue>` follows to find a key in order.",
+      "steps": [
+        "Call `GetHashCode()` on the key to select a bucket",
+        "Search only inside that bucket instead of checking every item",
+        "Call `Equals()` to confirm the exact matching object"
+      ],
+      "explanation": "The hash code narrows the search to one bucket, and `Equals()` confirms the match. That is why dictionary and hash-set lookups are approximately O(1).",
+      "source": { "section": "How Lookup Works" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which statement follows the equality contract?",
+      "options": [
+        "If two objects have the same hash code, they must be equal",
+        "If `a.Equals(b)` is true, `a.GetHashCode()` must equal `b.GetHashCode()`",
+        "Every object must have a unique hash code",
+        "You can override `Equals()` without overriding `GetHashCode()`"
+      ],
+      "answer": 1,
+      "explanation": "Equal objects must have equal hash codes. The reverse is not guaranteed, because different objects can collide on the same hash code, and if you override `Equals()` you should also override `GetHashCode()` using the same fields.",
+      "source": { "section": "The Equality Contract" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "The `Geeks` class is declared with `public partial class Geeks` in both `Geeks1.cs` and `Geeks2.cs`. What does the compiler do?",
+      "options": [
+        "It reports a duplicate class error",
+        "It merges all the parts into one single class at compile time",
+        "It creates two separate classes named `Geeks`",
+        "It uses whichever file was compiled last"
+      ],
+      "answer": 1,
+      "explanation": "A partial class splits one class definition across files; all parts use the `partial` keyword with the same name and namespace, and the compiler merges them into a single class.",
+      "source": { "section": "Key Points" },
+      "reviewed": false
+    }
+  ]
+}

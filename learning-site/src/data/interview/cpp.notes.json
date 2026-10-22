@@ -1,0 +1,176 @@
+{
+  "topic": "cpp",
+  "questions": [
+    {
+      "id": "cpp-what-interviews-cover",
+      "topic": "cpp",
+      "subtopic": "overview",
+      "difficulty": "junior",
+      "question": "What should you expect in a C++ interview?",
+      "shortAnswer": "If you're preparing for a C++ interview, expect questions ranging from fundamentals (syntax, memory management) to advanced topics like templates, STL, and multithreading.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+        "section": "## C++ questions for interview",
+        "until": "### 🔰 Beginner-Level Questions"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+          "section": "## C++ questions for interview",
+          "until": "### 🔰 Beginner-Level Questions"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "cpp-beginner-level-questions",
+      "topic": "cpp",
+      "subtopic": "fundamentals",
+      "difficulty": "junior",
+      "question": "What are the beginner-level C++ interview questions (C vs C++, struct vs class, new vs malloc, references, overloading)?",
+      "shortAnswer": "C++ adds object-oriented features (classes, inheritance, polymorphism) to C. … By default, members of a `struct` are public, while members of a `class` are private. … `new` calls constructors and returns typed pointers; `malloc` just allocates raw memory.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+        "section": "### 🔰 Beginner-Level Questions"
+      },
+      "pitfalls": [],
+      "followUps": [
+        "What is C++ and how is it different from C?",
+        "Explain the difference between `struct` and `class`.",
+        "What is the difference between `new` and `malloc`?",
+        "What are references in C++?",
+        "Explain function overloading vs operator overloading."
+      ],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+          "section": "### 🔰 Beginner-Level Questions"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "cpp-intermediate-level-questions",
+      "topic": "cpp",
+      "subtopic": "oop-and-memory",
+      "difficulty": "mid",
+      "question": "What are the intermediate-level C++ interview questions (shallow vs deep copy, virtual functions, stack vs heap, templates, exceptions)?",
+      "shortAnswer": "Shallow copy duplicates only pointers; deep copy duplicates the actual data. … Virtual functions enable runtime polymorphism; pure virtual functions (`=0`) make a class abstract.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+        "section": "### ⚙️ Intermediate-Level Questions"
+      },
+      "pitfalls": [],
+      "followUps": [
+        "What is the difference between shallow copy and deep copy?",
+        "Explain virtual functions and pure virtual functions.",
+        "What is the difference between stack and heap memory?",
+        "What are templates in C++?",
+        "Explain exception handling in C++."
+      ],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+          "section": "### ⚙️ Intermediate-Level Questions"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "cpp-advanced-level-questions",
+      "topic": "cpp",
+      "subtopic": "stl-and-concurrency",
+      "difficulty": "senior",
+      "question": "What are the advanced-level C++ interview questions (RAII, vector vs list, map vs unordered_map, multithreading, compile-time vs runtime polymorphism)?",
+      "shortAnswer": "What is RAII (Resource Acquisition Is Initialization)? A design principle where resources (memory, file handles) are tied to object lifetime.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+        "section": "### 🚀 Advanced-Level Questions"
+      },
+      "pitfalls": [],
+      "followUps": [
+        "What is RAII (Resource Acquisition Is Initialization)?",
+        "Difference between `std::vector` and `std::list`?",
+        "What is the difference between `std::map` and `std::unordered_map`?",
+        "Explain multithreading in C++.",
+        "What is the difference between compile-time and runtime polymorphism?"
+      ],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+          "section": "### 🚀 Advanced-Level Questions"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "cpp-quick-comparison-table",
+      "topic": "cpp",
+      "subtopic": "comparisons",
+      "difficulty": "junior",
+      "question": "What are the key C++ differences to remember side by side?",
+      "shortAnswer": "`struct` vs `class` | Default access: public vs private … `new` vs `malloc` | Constructor call vs raw memory … `map` vs `unordered_map` | Ordered O(log n) vs Hash O(1)",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+        "section": "### 📊 Quick Comparison Table"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+          "section": "### 📊 Quick Comparison Table"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "cpp-risks-and-best-practices",
+      "topic": "cpp",
+      "subtopic": "best-practices",
+      "difficulty": "mid",
+      "question": "What are the main risks and best practices in C++?",
+      "shortAnswer": "Memory leaks: Always pair `new` with `delete`, or better use smart pointers (`std::unique_ptr`, `std::shared_ptr`).",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+        "section": "### ⚠️ Risks & Best Practices",
+        "occurrence": 2
+      },
+      "pitfalls": [
+        "Memory leaks: Always pair `new` with `delete`, or better use smart pointers (`std::unique_ptr`, `std::shared_ptr`).",
+        "Multiple inheritance: Can cause ambiguity (diamond problem); use virtual inheritance carefully.",
+        "Templates: Powerful but can lead to code bloat if misused.",
+        "Exception safety: Always ensure destructors are `noexcept` to avoid undefined behavior."
+      ],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md",
+          "section": "### ⚠️ Risks & Best Practices",
+          "occurrence": 2
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    }
+  ]
+}

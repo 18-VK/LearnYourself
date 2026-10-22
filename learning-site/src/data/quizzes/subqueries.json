@@ -1,0 +1,111 @@
+{
+  "lesson": "subqueries",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "Using the sample `Employees` table (Aman 60000, Rahul 50000, Priya 40000, Neha 45000, Karan 70000), which employees does this return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT *\nFROM Employees\nWHERE Salary > (\n    SELECT AVG(Salary)\n    FROM Employees\n);"
+      },
+      "options": [
+        "Aman and Karan",
+        "Karan only",
+        "Aman, Rahul and Karan",
+        "Priya and Neha"
+      ],
+      "answer": 0,
+      "explanation": "The single-row subquery returns the average, (60000 + 50000 + 40000 + 45000 + 70000) / 5 = 53000, and only Aman and Karan earn more than that.",
+      "source": { "section": "Single-Row Subquery" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "Same data, with departments IT (Aman, Rahul), HR (Priya, Neha) and Finance (Karan). Which employees does this correlated subquery return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT *\nFROM Employees e\nWHERE Salary > (\n    SELECT AVG(Salary)\n    FROM Employees\n    WHERE DepartmentId = e.DepartmentId\n);"
+      },
+      "options": [
+        "Aman, Neha and Karan",
+        "Aman and Karan",
+        "Aman and Neha",
+        "Rahul and Priya"
+      ],
+      "answer": 2,
+      "explanation": "The inner query runs per outer row with that row's department average: IT 55000 (Aman qualifies), HR 42500 (Neha qualifies), Finance 70000, which Karan's 70000 does not exceed.",
+      "source": { "section": "Correlated Subquery" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "Same `Employees` data. What does this return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT MAX(Salary)\nFROM Employees\nWHERE Salary < (\n    SELECT MAX(Salary)\n    FROM Employees\n);"
+      },
+      "options": [
+        "70000",
+        "60000",
+        "50000",
+        "53000"
+      ],
+      "answer": 1,
+      "explanation": "The subquery finds the highest salary, 70000; the outer query takes the maximum of the salaries below it, which is the 2nd highest: 60000.",
+      "source": { "section": "2nd Highest Salary" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "Customers are Aman (1), Rahul (2), Priya (3) and Neha (4). As in the lesson's example, `SELECT CustomerId FROM Orders` returns `1, 2, NULL`. What does this query return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT *\nFROM Customers\nWHERE Id NOT IN (\n    SELECT CustomerId FROM Orders\n);"
+      },
+      "options": [
+        "Priya and Neha",
+        "Aman and Rahul",
+        "No rows",
+        "All four customers"
+      ],
+      "answer": 2,
+      "explanation": "`3 NOT IN (1, 2, NULL)` becomes `3 <> 1 AND 3 <> 2 AND 3 <> NULL`, and the last part is UNKNOWN, so no row is ever TRUE. `NOT EXISTS` returns Priya and Neha correctly.",
+      "source": { "section": "NOT IN vs NOT EXISTS with NULL example" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is the difference between `UNION` and `UNION ALL`?",
+      "options": [
+        "`UNION` keeps duplicates; `UNION ALL` removes them",
+        "`UNION` removes duplicates; `UNION ALL` keeps them and is faster",
+        "`UNION` returns only rows common to both queries",
+        "`UNION ALL` returns rows in the first query but not the second"
+      ],
+      "answer": 1,
+      "explanation": "In the lesson, `UNION` of Order customer IDs (1, 1, 2) and Customer IDs (1–4) gives 1, 2, 3, 4, while `UNION ALL` returns all seven values. Common rows are `INTERSECT`; first-minus-second is `EXCEPT`.",
+      "source": { "section": "UNION ALL" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Per the lesson's real performance rule, when should you use `JOIN` rather than `EXISTS`?",
+      "options": [
+        "When you only need to check that related rows exist",
+        "When you need to avoid duplicate rows",
+        "When the logic is correlated",
+        "When you need columns from both tables"
+      ],
+      "answer": 3,
+      "explanation": "`EXISTS` stops at the first match and never duplicates, so it suits existence checks. A `JOIN` is the choice when the result needs columns from the other table.",
+      "source": { "section": "Real Performance Rule" },
+      "reviewed": false
+    }
+  ]
+}

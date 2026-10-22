@@ -1,0 +1,92 @@
+{
+  "lesson": "project-setup",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In the recommended Web API folder structure, where does business logic live, and what belongs in `Controllers/`?",
+      "options": [
+        "Business logic in `Controllers/`; `Services/` holds HTTP endpoints",
+        "Business logic in `Services/`; controllers are HTTP endpoints only",
+        "Business logic in `Repositories/`; controllers also do data access",
+        "Business logic in `DTOs/`; controllers hold the validation rules"
+      ],
+      "answer": 1,
+      "explanation": "Controllers are HTTP endpoints only, services hold business logic, repositories do data access, and validators hold the DTO rules.",
+      "source": {
+        "section": "What each folder means"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the lines of the standard controller-based `Program.cs` in order.",
+      "steps": [
+        "`var builder = WebApplication.CreateBuilder(args);`",
+        "`builder.Services.AddControllers();` and the Swagger services",
+        "`var app = builder.Build();`",
+        "`app.UseSwagger(); app.UseSwaggerUI();` inside the Development check",
+        "`app.UseHttpsRedirection();`",
+        "`app.MapControllers();`",
+        "`app.Run();`"
+      ],
+      "explanation": "Services are registered on `builder.Services` before `Build()`; after that the pipeline is configured (Swagger in Development, HTTPS redirection), controllers are mapped, and `Run()` starts the app.",
+      "source": {
+        "section": "Program.cs"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In the standard `Program.cs`, when is the Swagger UI served?",
+      "options": [
+        "Always, in every environment",
+        "Only after `app.Run()` has been called twice",
+        "Only when `app.Environment.IsDevelopment()` is true",
+        "Only when HTTPS redirection is turned off"
+      ],
+      "answer": 2,
+      "explanation": "`UseSwagger()` and `UseSwaggerUI()` are wrapped in `if (app.Environment.IsDevelopment())`, so the docs UI is available only in Development.",
+      "source": {
+        "section": "Program.cs"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "With `[ApiController]` on the sample `ProductsController`, what happens when model validation fails?",
+      "options": [
+        "ASP.NET Core returns HTTP 400 automatically with a `ValidationProblemDetails` body",
+        "The action runs and must check `ModelState` itself",
+        "ASP.NET Core returns HTTP 500 with a stack trace",
+        "The request is retried without the invalid fields"
+      ],
+      "answer": 0,
+      "explanation": "`[ApiController]` turns model validation errors into an automatic 400 whose default body is `ValidationProblemDetails`; it also requires attribute routing.",
+      "source": {
+        "section": "Sample files"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "In the \"best default template\", what is `options.Filters.Add<ValidationFilter>()` for?",
+      "options": [
+        "It registers every FluentValidation validator in the assembly",
+        "It enables Swagger's request validation",
+        "It is required for `MapControllers()` to find any controller",
+        "It adds a global filter for filter-based validation, so actions don't need validation code"
+      ],
+      "answer": 3,
+      "explanation": "The comment says it is needed only for filter-based validation; the validators themselves are registered separately with `AddValidatorsFromAssemblyContaining<Program>()`.",
+      "source": {
+        "section": "Best default template to start with"
+      },
+      "reviewed": false
+    }
+  ]
+}

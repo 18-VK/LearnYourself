@@ -1,0 +1,90 @@
+{
+  "lesson": "mvvm",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which statement matches the MVVM communication rules in the lesson?",
+      "options": [
+        "The View reads the Model directly, and the ViewModel updates the controls",
+        "The ViewModel holds references to the View's controls to update them",
+        "The View never touches the Model, and the ViewModel never touches the View",
+        "The Model raises `PropertyChanged` so the View can skip the ViewModel"
+      ],
+      "answer": 2,
+      "explanation": "The View binds to the ViewModel and the ViewModel notifies through `INotifyPropertyChanged`. The View never talks to the Model directly, and the layers communicate via bindings and commands, not references.",
+      "source": {
+        "section": "MVVM in WPF"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which of these does **not** belong in the Model?",
+      "options": [
+        "An `Order` entity with `Id`, `Amount` and `Status`",
+        "A `SaveCommand` and `PropertyChanged` notifications",
+        "Business calculations and domain rules",
+        "DTOs used as DB or API contracts"
+      ],
+      "answer": 1,
+      "explanation": "The Model holds what the app knows: entities, DTOs, business calculations and domain rules. UI state, commands and `PropertyChanged` do not belong there.",
+      "source": {
+        "section": "Model — \"What the app KNOWS\""
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which of these belongs in the View?",
+      "options": [
+        "An `if (User.IsAdmin)` check before saving",
+        "A database call that loads the orders",
+        "Business validation of the order amount",
+        "Converters and DataTemplates"
+      ],
+      "answer": 3,
+      "explanation": "The View is what the user sees: XAML, converters, DataTemplates and visual states. Business logic, database calls and if/else decisions do not belong in the View.",
+      "source": {
+        "section": "View — \"What the user SEES\""
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "In `OrderViewModel`, the `Amount` setter calls `OnPropertyChanged()` and then `OnPropertyChanged(nameof(CanSave))`. Why the second call?",
+      "options": [
+        "`CanSave` depends on `Amount`, so the UI must re-read it too",
+        "`CanSave` is stored in the Model and must be saved to the database",
+        "Without it, `Amount` itself would not update in the TextBox",
+        "It runs `SaveCommand` automatically once the amount is valid"
+      ],
+      "answer": 0,
+      "explanation": "`CanSave` is a computed property (`public bool CanSave => Amount > 0;`) with no setter of its own, so the setter that changes `Amount` also raises a change notification for `CanSave`.",
+      "source": {
+        "section": "ViewModel — \"How the screen BEHAVES\" 🧠"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A ViewModel's save method ends with `MessageBox.Show(\"Saved!\");`. Which MVVM separation mistake is this?",
+      "options": [
+        "Logic in the View",
+        "Business logic in a Converter",
+        "UI in the ViewModel",
+        "None; showing messages is the ViewModel's job"
+      ],
+      "answer": 2,
+      "explanation": "The lesson lists `MessageBox.Show(\"Saved!\")` inside a ViewModel as the \"UI in ViewModel\" mistake: the ViewModel must not create or show UI elements.",
+      "source": {
+        "section": "Common MVVM separation mistakes ❌"
+      },
+      "reviewed": false
+    }
+  ]
+}

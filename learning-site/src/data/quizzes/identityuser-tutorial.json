@@ -1,0 +1,80 @@
+{
+  "lesson": "identityuser-tutorial",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Your user class derives from the non-generic `IdentityUser`. What key type are you using?",
+      "options": [
+        "`int`",
+        "`string`, because `IdentityUser` is equivalent to `IdentityUser<string>`",
+        "`Guid`",
+        "No key; the non-generic version has no `Id`"
+      ],
+      "answer": 1,
+      "explanation": "The framework's non-generic `IdentityUser` is `IdentityUser<string>`, so keeping it means you implicitly use `string` keys.",
+      "source": { "section": "What is IdentityUser<T>?" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which key type does the tutorial suggest for distributed systems and stronger, type-safe uniqueness?",
+      "options": [
+        "`Guid`",
+        "`int`",
+        "`string`",
+        "`long`"
+      ],
+      "answer": 0,
+      "explanation": "`Guid` suits distributed systems and typed keys; `int` is smaller and sequential, for some legacy databases; `string` is the default and the most compatible with samples.",
+      "source": { "section": "When to customize the key type" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "With `ApplicationUser : IdentityUser<Guid>`, which role type and DbContext base does the example use?",
+      "options": [
+        "`IdentityRole` and `IdentityDbContext<ApplicationUser>`",
+        "`IdentityRole<int>` and `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`",
+        "`IdentityRole<Guid>` and `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`",
+        "No role type, because Guid keys don't support roles"
+      ],
+      "answer": 2,
+      "explanation": "When you switch key types, every Identity generic type must use the same key, which the three-parameter `IdentityDbContext<TUser, TRole, TKey>` makes explicit.",
+      "source": { "section": "Common gotchas and tips" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does the minimal example use `UseInMemoryDatabase(\"IdentityDemoDb\")`?",
+      "options": [
+        "Because Identity only supports in-memory stores with `Guid` keys",
+        "Because in-memory databases are recommended for production",
+        "Because `AddEntityFrameworkStores` requires it",
+        "So the example runs without SQL Server; production would use a persistent database and migrations"
+      ],
+      "answer": 3,
+      "explanation": "The in-memory provider keeps the demo runnable anywhere. The notes on the example say production would use SQL Server or PostgreSQL and run migrations.",
+      "source": { "section": "Program.cs (minimal console/web host style)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You want the user's `FirstName` to appear as a claim. What does the tutorial suggest?",
+      "options": [
+        "Rename `FirstName` to `ClaimFirstName`",
+        "Add a custom `IUserClaimsPrincipalFactory<TUser>`",
+        "Store it in `AspNetUserTokens`",
+        "Call `AddDefaultTokenProviders()` again"
+      ],
+      "answer": 1,
+      "explanation": "Extra claims such as `FirstName` are added through a custom `IUserClaimsPrincipalFactory<TUser>`.",
+      "source": { "section": "Extending further" },
+      "reviewed": false
+    }
+  ]
+}

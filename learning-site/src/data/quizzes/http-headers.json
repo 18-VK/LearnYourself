@@ -1,0 +1,89 @@
+{
+  "lesson": "http-headers",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the steps of a conditional `GET` with `ETag` in order.",
+      "steps": [
+        "The client sends `GET /api/tasks/42`",
+        "The server replies `200 OK` with the body and `ETag: \"a1b2c3d4\"`",
+        "Later, the client sends `GET /api/tasks/42` with `If-None-Match: \"a1b2c3d4\"`",
+        "The resource is unchanged, so the server replies `304 Not Modified` with an empty body"
+      ],
+      "explanation": "`ETag` fingerprints the resource; the client echoes it back in `If-None-Match`, and if nothing changed the server sends `304` without re-sending the data.",
+      "source": {
+        "section": "`ETag` + `If-None-Match`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Two users edit the same task at once, and the second `PUT` silently overwrites the first. Which headers fix this \"lost update\"?",
+      "options": [
+        "`ETag` plus `If-Match`, with the server answering `412 Precondition Failed` if the resource changed",
+        "`Cache-Control: no-store` on the `PUT` response",
+        "`Idempotency-Key` on the `PUT` request",
+        "`If-None-Match`, with the server answering `304 Not Modified`"
+      ],
+      "answer": 0,
+      "explanation": "The client sends the `ETag` it last read in `If-Match`; if the resource has changed since, the server rejects the write with `412 Precondition Failed`.",
+      "source": {
+        "section": "4. Concurrency Control"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What is the difference between `Cache-Control: no-store` and `Cache-Control: no-cache`?",
+      "options": [
+        "`no-cache` means never cache; `no-store` means cache for one hour",
+        "They are synonyms",
+        "`no-store` caches per user; `no-cache` caches across users",
+        "`no-store` means never cache; `no-cache` means cache but revalidate every time"
+      ],
+      "answer": 3,
+      "explanation": "`no-store` is for data that must never be cached, such as sensitive per-user data; `no-cache` allows caching but forces revalidation on every use.",
+      "source": {
+        "section": "`Cache-Control`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why is it useful for a server to send `WWW-Authenticate` with a `401` response?",
+      "options": [
+        "It tells the browser to switch to HTTPS",
+        "It grants the client a new token automatically",
+        "It lets the client tell \"no token\" apart from \"token expired\" or \"wrong scheme\", for example to trigger a refresh-token flow",
+        "It tells the client how many seconds to wait before retrying"
+      ],
+      "answer": 2,
+      "explanation": "`WWW-Authenticate` names the scheme the client should use and can carry details such as `error=\"invalid_token\"`, so a well-behaved client knows whether to refresh its token.",
+      "source": {
+        "section": "`WWW-Authenticate`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is the difference between the `Content-Type` and `Accept` headers?",
+      "options": [
+        "`Content-Type` declares the media type of the body being sent; `Accept` lists the response formats the client can handle",
+        "`Content-Type` is only for responses; `Accept` is only for errors",
+        "`Accept` declares the body's format; `Content-Type` lists the languages the client prefers",
+        "Both declare the request body's format; `Accept` is the older name"
+      ],
+      "answer": 0,
+      "explanation": "`Content-Type` describes the body of a request or response; `Accept` is the client saying which formats it wants back, and the server can answer `406 Not Acceptable` if it can produce none.",
+      "source": {
+        "section": "2. Content Negotiation"
+      },
+      "reviewed": false
+    }
+  ]
+}

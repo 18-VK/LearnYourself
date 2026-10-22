@@ -1,0 +1,84 @@
+{
+  "lesson": "continuations-configureawait-valuetask",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "An async method reaches `await SomeTask();` and `SomeTask` has **already completed**. What happens?",
+      "options": [
+        "The method always returns to its caller and resumes later on a pool thread",
+        "It continues synchronously on the current thread",
+        "It throws, because a completed task can't be awaited",
+        "It blocks the current thread until a continuation is scheduled"
+      ],
+      "answer": 1,
+      "explanation": "At the `await` point the state machine checks whether the task is complete: if it is, execution continues synchronously on the current thread; only an incomplete task causes a continuation to be registered.",
+      "source": { "section": "### 1) Setting the stage" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In a WPF app, an event handler on the UI thread runs `await Task.Run(...)` without `ConfigureAwait`. Where does the code after the `await` run?",
+      "options": [
+        "On the same thread that ran the `Task.Run` work",
+        "On any free ThreadPool thread",
+        "On a new dedicated thread created for the continuation",
+        "Back on the UI thread"
+      ],
+      "answer": 3,
+      "explanation": "The continuation is scheduled on the `SynchronizationContext` captured at the `await`; for a WPF/WinForms UI thread that is the same UI thread, which is why the demo prints `After await: 1`.",
+      "source": { "section": "### 2) How continuation thread selection works" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "On a UI thread, `var result = GetDataAsync().Result;` deadlocks when `GetDataAsync` does `await Task.Delay(1000);`. Why, and what is the lesson's fix?",
+      "options": [
+        "The continuation needs the blocked UI thread; add `.ConfigureAwait(false)` to the `await`",
+        "`Task.Delay` never completes on a UI thread; replace it with `Thread.Sleep`",
+        "`.Result` cancels the task; wrap the call in a `try/catch`",
+        "The method returns `string` instead of `Task`; change its return type"
+      ],
+      "answer": 0,
+      "explanation": "The `await` captured the UI context, but the UI thread is blocked on `.Result`, so the continuation can't resume. With `ConfigureAwait(false)` the continuation runs on a thread-pool thread and no deadlock occurs.",
+      "source": { "section": "#### Deadlock Example (classic ASP.NET or WinForms)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "Given `GetValueAsync` from the lesson (returns `new ValueTask<int>(42)` from cache, or wraps a `Task` that returns `99` after a delay), what does `Main` print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var result1 = await GetValueAsync(true);   // fast path (sync)\n        Console.WriteLine($\"Result1 = {result1}\");\n\n        var result2 = await GetValueAsync(false);  // slow path (async)\n        Console.WriteLine($\"Result2 = {result2}\");"
+      },
+      "options": [
+        "`Result1 = 42` then `Result2 = 99`",
+        "`Result2 = 99` then `Result1 = 42`",
+        "`Result1 = 42` then `Result2 = 0`",
+        "`Result1 = 99` then `Result2 = 42`"
+      ],
+      "answer": 0,
+      "explanation": "Each call is awaited before the next line runs: the fast path returns 42 directly with no `Task` allocation, and the slow path wraps a `Task` that returns 99 after its delay.",
+      "source": { "section": "#### Example 1 — Returning ValueTask" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which use of `ValueTask` does the lesson warn against?",
+      "options": [
+        "Returning it from a method that sometimes completes synchronously",
+        "Awaiting the same `ValueTask` instance more than once",
+        "Wrapping a `Task` inside a `ValueTask`",
+        "Returning a result directly with `new ValueTask<int>(42)`"
+      ],
+      "answer": 1,
+      "explanation": "You can await a `Task` multiple times safely, but a `ValueTask` should only be awaited once; awaiting it again is undefined behavior.",
+      "source": { "section": "### Things to Watch Out For" },
+      "reviewed": false
+    }
+  ]
+}

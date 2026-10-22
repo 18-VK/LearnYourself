@@ -1,0 +1,81 @@
+{
+  "lesson": "signing-keys-and-discovery",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why does the lesson prefer an asymmetric key pair over a shared secret for signing JWTs?",
+      "options": [
+        "Asymmetric keys make tokens smaller",
+        "The API only needs the public key to validate, so it never holds anything that can create tokens",
+        "Asymmetric keys never need to be rotated",
+        "A shared secret can't be used with JWT bearer authentication"
+      ],
+      "answer": 1,
+      "explanation": "With RSA the auth server signs with the private key and the API validates with the public key. A shared secret must be copied to every API, and if it leaks an attacker can create tokens.",
+      "source": { "section": "How to share signing key between auth server and API" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the steps the auth server follows to validate a login in order.",
+      "steps": [
+        "Receive the username and password",
+        "Fetch the user from the database, rejecting if not found",
+        "Verify the password against the stored salted hash",
+        "Create the claims (`sub`, `email`, `role`)",
+        "Generate the signed JWT",
+        "Return the token to the client"
+      ],
+      "explanation": "Passwords are stored as `HASH(password + salt)`, so the server verifies the hash before building claims and signing the token.",
+      "source": { "section": "So how does Auth server validate user login?" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "The API is configured with `options.Authority = \"https://auth-server\"`. How often does it call the auth server while validating tokens?",
+      "options": [
+        "On every request, to ask whether the token is valid",
+        "Never; `Authority` only sets the expected issuer name",
+        "It fetches metadata initially, caches the keys, validates locally and refreshes periodically",
+        "Only when a user logs out"
+      ],
+      "answer": 2,
+      "explanation": "At startup the API fetches the discovery document and keys; at runtime it validates locally using the cached keys. The auth server is not called on every request.",
+      "source": { "section": "What actually happens in production" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The auth server rotates its signing key: the new key is added to the JWKS and the old one expires. What does an API that uses `Authority` do?",
+      "options": [
+        "It fails until someone updates the public key in its config",
+        "It fetches the new keys automatically and picks the right one using the token's `kid`",
+        "It accepts any token until it restarts",
+        "It asks every user to log in again"
+      ],
+      "answer": 1,
+      "explanation": "Automatic key rotation is a key benefit of `Authority` over a hardcoded public key, which needs manual updates and risks downtime.",
+      "source": { "section": "What happens during key rotation" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Your demo auth server only has a custom `/api/auth/login` controller, and the API sets `options.Authority = \"https://localhost:5001\"`. What happens?",
+      "options": [
+        "It works, because every Web API exposes `/.well-known/openid-configuration` automatically",
+        "It works, but key rotation is disabled",
+        "It fails, because that URL doesn't expose `/.well-known/openid-configuration`",
+        "It fails, because `Authority` only accepts Azure AD URLs"
+      ],
+      "answer": 2,
+      "explanation": "The discovery endpoint is exposed only by an OpenID Connect auth server. Fix it by using OpenIddict, or by removing `Authority` and setting the public key manually.",
+      "source": { "section": "So your API config currently is misleading" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "lesson": "async-await",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What happens to the calling thread when an `async` method reaches an `await`?",
+      "options": [
+        "The thread is blocked until the awaited operation completes",
+        "Control yields back to the caller, so the thread can do other work instead of waiting",
+        "A new thread is always created to run the rest of the method",
+        "The awaited operation is cancelled"
+      ],
+      "answer": 1,
+      "explanation": "The `await` keyword yields control back to the caller of the async method, so the calling thread can continue doing other work rather than waiting for the operation to complete.",
+      "source": { "section": "`await` Keyword" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "An async method fetches a value and returns `\"Sample Data\"`. What should its return type be?",
+      "options": [
+        "`string`",
+        "`Task`",
+        "`Task<string>`",
+        "`void`"
+      ],
+      "answer": 2,
+      "explanation": "`Task<T>` is used for async methods that return a value, so `GetDataAsync()` returns `Task<string>`. Plain `Task` is for async methods that don't return a value.",
+      "source": { "section": "How to Return Data with Async Programming" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why is asynchronous programming especially helpful for server applications?",
+      "options": [
+        "It handles many concurrent connections without tying up a blocked thread for each one",
+        "It makes every operation finish faster",
+        "It removes the need for a thread pool",
+        "It lets the server skip slow requests"
+      ],
+      "answer": 0,
+      "explanation": "In synchronous code each task needs a dedicated thread that is blocked while it waits, which wastes resources under heavy load. Async code uses threads more efficiently, so a server can handle many concurrent connections.",
+      "source": { "section": "Where is Asynchronous Programming helpful?" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does the CLR's thread pool do?",
+      "options": [
+        "It creates a brand-new thread for every task and destroys it afterwards",
+        "It keeps only the main thread and runs every task on it",
+        "It runs tasks on the GPU",
+        "It keeps a collection of worker threads that are assigned to tasks and returned to the pool for reuse"
+      ],
+      "answer": 3,
+      "explanation": "The thread pool is a collection of worker threads maintained by the CLR; a thread is assigned to a ready task and returns to the pool afterwards, avoiding the overhead of creating and destroying threads repeatedly.",
+      "source": { "section": "Thread Pool" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "predict-output",
+      "prompt": "What does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "async Task CancellableDelay(CancellationToken ct)\n{\n    Console.WriteLine(\"Work started\");\n    // Pass token to Task.Delay so it cancels cooperatively\n    await Task.Delay(5000, ct);\n    Console.WriteLine(\"Work finished\");\n}\n\nvar cts = new CancellationTokenSource();\nvar task = CancellableDelay(cts.Token);\n\n// cancel after 1 second\ncts.CancelAfter(1000);\n\ntry\n{\n    await task;\n}\ncatch (OperationCanceledException)\n{\n    Console.WriteLine(\"Task was canceled\");\n}"
+      },
+      "options": [
+        "\"Work started\", then \"Work finished\"",
+        "\"Work started\", then \"Work finished\", then \"Task was canceled\"",
+        "\"Work started\", then \"Task was canceled\"",
+        "Only \"Task was canceled\""
+      ],
+      "answer": 2,
+      "explanation": "The method prints \"Work started\" and then waits on `Task.Delay(5000, ct)`. `CancelAfter(1000)` cancels the token after one second, so the delay is cancelled, \"Work finished\" never runs, and the caller catches `OperationCanceledException`.",
+      "source": { "section": "Cancel async request / Cancelling an Async Call" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "How do you raise the \"flag\" that tells a running async loop to stop?",
+      "options": [
+        "Set the `CancellationToken` variable to `null`",
+        "Call `Cancel()` on the `CancellationTokenSource`; the loop checks the token, for example with `token.ThrowIfCancellationRequested()`",
+        "Call `Dispose()` on the running `Task`",
+        "Throw an exception from the calling method"
+      ],
+      "answer": 1,
+      "explanation": "The flag is set by calling `Cancel()` on the `CancellationTokenSource`; the worker cooperatively checks its token with `ThrowIfCancellationRequested()` and passes it to `Task.Delay`.",
+      "source": { "section": "Raise flag to stop async call" },
+      "reviewed": false
+    }
+  ]
+}

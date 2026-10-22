@@ -1,0 +1,106 @@
+{
+  "lesson": "observablecollection-and-validation",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A ViewModel exposes `public List<Transaction> Transactions { get; } = new();` bound to a DataGrid. What happens when code calls `Transactions.Add(new Transaction())`?",
+      "options": [
+        "The DataGrid shows the new row straight away",
+        "WPF throws, because a `List<T>` cannot be bound",
+        "The new row appears only after the user sorts a column",
+        "The list changes, but the DataGrid does not refresh"
+      ],
+      "answer": 3,
+      "explanation": "`List<T>` does not notify the UI, so adding an item does not update the DataGrid. `ObservableCollection<T>` implements `INotifyCollectionChanged` and does.",
+      "source": {
+        "section": "Why List<T> is NOT enough ❌"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`Transactions` is an `ObservableCollection<Transaction>`. Code runs `Transactions[0].Amount = 500;` but the grid still shows the old amount. What is the fix?",
+      "options": [
+        "Call `Transactions.Clear()` and re-add the items after each edit",
+        "Make `Transaction` raise `PropertyChanged` in its `Amount` setter",
+        "Replace the collection with a plain `List<Transaction>`",
+        "Set `UpdateSourceTrigger=PropertyChanged` on the DataGrid binding"
+      ],
+      "answer": 1,
+      "explanation": "ObservableCollection only notifies when the collection changes (add, remove, clear, replace). When an item's property changes, the item itself must implement `INotifyPropertyChanged`.",
+      "source": {
+        "section": "❌ It does NOT notify when:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You need to show a freshly loaded `newList`. Which approach does the lesson mark as **wrong**?",
+      "options": [
+        "Assigning a new collection to a property that never raises `PropertyChanged`",
+        "Calling `Transactions.Clear()`, then adding each item from `newList`",
+        "Assigning a new collection through a setter that calls `OnPropertyChanged()`"
+      ],
+      "answer": 0,
+      "explanation": "Replacing the collection object is invisible to the UI unless the property raises a change. Either clear and refill the existing collection, or make the property's setter call `OnPropertyChanged()`.",
+      "source": {
+        "section": "Replace entire collection (IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which validation approach does the lesson rate as the most MVVM-friendly?",
+      "options": [
+        "`ValidationRules` declared in XAML",
+        "Throwing exceptions from the Model's property setters",
+        "`INotifyDataErrorInfo`, with the logic in the ViewModel",
+        "Checking the values in the Save button's `Click` handler"
+      ],
+      "answer": 2,
+      "explanation": "`INotifyDataErrorInfo` keeps validation in the ViewModel and gets the top MVVM rating; it supports async validation and multiple errors per property. `ValidationRules` live in XAML and exceptions in the Model, which rate much lower.",
+      "source": {
+        "section": "2️⃣ Validation approaches (most → least used)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "With `INotifyDataErrorInfo`, put the steps that turn an invalid Amount into a red border in order.",
+      "steps": [
+        "The user changes the value",
+        "The ViewModel validates and updates its error collection",
+        "The ViewModel raises `ErrorsChanged`",
+        "WPF calls `GetErrors(propertyName)`",
+        "The UI updates (red border, tooltip, button state)"
+      ],
+      "explanation": "WPF does not poll for errors: it re-queries `GetErrors` only after the ViewModel raises `ErrorsChanged`. No event means no UI update.",
+      "source": {
+        "section": "Why is this event required?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Which threading rule does the lesson give for `ObservableCollection`?",
+      "options": [
+        "It can be modified from any thread, because it is thread-safe",
+        "It must be modified on the UI thread",
+        "It must be modified on a background thread so the UI stays responsive",
+        "It can only be modified inside the ViewModel's constructor"
+      ],
+      "answer": 1,
+      "explanation": "The lesson's threading rule is that an `ObservableCollection` must be modified on the UI thread.",
+      "source": {
+        "section": "Threading rule (VERY IMPORTANT)"
+      },
+      "reviewed": false
+    }
+  ]
+}

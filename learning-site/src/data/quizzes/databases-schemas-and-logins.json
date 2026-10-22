@@ -1,0 +1,80 @@
+{
+  "lesson": "databases-schemas-and-logins",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A user with the default settings runs `CREATE TABLE Employees (Id INT, Name NVARCHAR(100));` without naming a schema. What table is created?",
+      "options": [
+        "`dbo.Employees`",
+        "`sys.Employees`",
+        "`master.Employees`",
+        "An error, because a schema is required"
+      ],
+      "answer": 0,
+      "explanation": "`dbo` exists automatically in every database, and if you don't specify a schema SQL Server uses it.",
+      "source": { "section": "dbo = database owner" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "After `ALTER USER AppUser WITH DEFAULT_SCHEMA = Sales;`, `AppUser` runs `CREATE TABLE Orders (...)`. Where does the table go?",
+      "options": [
+        "`dbo.Orders`",
+        "`AppUser.Orders`",
+        "`Sales.Orders`",
+        "It fails because `Orders` has no schema prefix"
+      ],
+      "answer": 2,
+      "explanation": "Setting a default schema for a user makes unqualified new objects go into that schema automatically.",
+      "source": { "section": "Set Default Schema for a User (Optional)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why does the lesson call custom schemas a major security talking point compared with putting everything in `dbo`?",
+      "options": [
+        "Custom schemas encrypt their tables",
+        "You can grant or deny access per schema, such as `GRANT ... ON SCHEMA::Sales` and `DENY SELECT ON SCHEMA::HR`",
+        "Users can't see `dbo` at all",
+        "Custom schemas store data on a separate disk"
+      ],
+      "answer": 1,
+      "explanation": "With only `dbo`, access to it often means access to everything. Custom schemas allow fine-grained control. Schemas are logical only, not physical storage.",
+      "source": { "section": "Security Difference (Very Important ⭐)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Can `Sales.Users` and `HR.Users` exist in the same database?",
+      "options": [
+        "No, table names must be unique across the whole database",
+        "Only if one of them is a view",
+        "Only if they are in different filegroups",
+        "Yes, two schemas can have tables with the same name"
+      ],
+      "answer": 3,
+      "explanation": "A schema is a logical container, so the schema-qualified names `Sales.Users` and `HR.Users` are different objects.",
+      "source": { "section": "Common Interview Traps" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You are building a multi-tenant SaaS where each customer needs strict isolation and separate backups. Databases or schemas?",
+      "options": [
+        "Schemas, because they are lighter to manage",
+        "A separate database per customer",
+        "One schema per customer inside `dbo`",
+        "It makes no difference for isolation"
+      ],
+      "answer": 1,
+      "explanation": "Use different databases for complete isolation (separate backups, security, tuning). Schemas suit one application with related modules on shared infrastructure.",
+      "source": { "section": "Should I use diff databases or schemas?" },
+      "reviewed": false
+    }
+  ]
+}

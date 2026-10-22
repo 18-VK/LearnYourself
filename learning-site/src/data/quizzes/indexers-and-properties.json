@@ -1,0 +1,80 @@
+{
+  "lesson": "indexers-and-properties",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How is an indexer declared and used?",
+      "options": [
+        "With a name like `Item`, and called as `collection.Item(0)`",
+        "With `this[parameterType index]`; it has no name and is used with `[]` on the object",
+        "With the `indexer` keyword, and it can only have a `get` accessor",
+        "As a static method that returns an array"
+      ],
+      "answer": 1,
+      "explanation": "An indexer is declared with `this[parameterType index]`, can have `get` and/or `set` accessors, can be overloaded, and has no name: you use `[]` directly on the object.",
+      "source": { "section": "Key points" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why can't you pass a property as a `ref` or `out` argument?",
+      "options": [
+        "Because properties are always read-only",
+        "Because properties are stored on the stack",
+        "Because a property is really `get_`/`set_` methods, so there is no storage location to pass",
+        "Because `ref` and `out` only work with static members"
+      ],
+      "answer": 2,
+      "explanation": "Under the hood a property is two methods, `get_PropertyName()` and `set_PropertyName(value)`. `ref` and `out` need the actual storage location of a variable, which a property does not expose.",
+      "source": { "section": "Restrictions on properties" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A property is declared `public string Name { get; init; }`. When can `Name` be set?",
+      "options": [
+        "Only during object initialization, such as `new Student { Name = \"Aman\" }`",
+        "At any time, like a normal `set`",
+        "Never; `init` makes it a compile-time constant",
+        "Only inside a static constructor"
+      ],
+      "answer": 0,
+      "explanation": "Init-only properties (C# 9+) can be set at object initialization only; a later assignment like `s.Name = \"Raj\"` is not allowed.",
+      "source": { "section": "Init-Only Properties (C# 9+)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`Middle : Base` declares `public sealed override int Value { get; set; }`. What does `sealed` mean here?",
+      "options": [
+        "`Value` can no longer be read from outside `Middle`",
+        "`Middle` itself can no longer be inherited",
+        "`Value` becomes a static property",
+        "A class derived from `Middle` cannot override `Value` again"
+      ],
+      "answer": 3,
+      "explanation": "On a property, `sealed` prevents further derived classes from overriding an already overridden property, so classes derived from `Middle` cannot override `Value`.",
+      "source": { "section": "Property Modifier Summary" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`Employee` is an abstract class that implements `IWorker`, which declares `void Work();`. Does `Employee` have to provide a body for `Work()`?",
+      "options": [
+        "Yes; every class must implement all interface members itself",
+        "No; it can declare `public abstract void Work();` and let a concrete derived class implement it",
+        "No; interface members are implemented automatically",
+        "Yes, unless `Work()` is marked `static`"
+      ],
+      "answer": 1,
+      "explanation": "An abstract class may implement an interface member, declare it abstract, or defer it to a later derived class; a concrete class such as `Developer` must implement it.",
+      "source": { "section": "Abstract Class and Interface Members" },
+      "reviewed": false
+    }
+  ]
+}

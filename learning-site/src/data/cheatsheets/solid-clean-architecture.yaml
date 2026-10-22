@@ -1,0 +1,212 @@
+id: solid-clean-architecture
+title: 'SOLID & Clean Architecture'
+summary: 'The five SOLID principles with their smells and fixes, Clean Architecture layers and the inward dependency rule, which layer owns which model, dependency injection as the glue, and the repository pattern with EF Core.'
+groups:
+  - title: SOLID at a glance
+    note: 'Five design principles for code that is easier to maintain, test, extend and refactor.'
+    table:
+      columns: [Principle, Rule, Smell, Fix]
+      from: { lesson: solid, section: 'SOLID Principle' }
+      rows:
+        - cells: ['**S** — Single Responsibility', 'A class has only one reason to change', '`Invoice` that calculates, saves to DB and prints', '`InvoiceCalculator`, `InvoiceRepository`, `InvoicePrinter`']
+          from: { lesson: solid, section: '1) S — Single Responsibility Principle' }
+        - cells: ['**O** — Open/Closed', 'Open for extension, closed for modification', '`if (customerType == "Regular") … if ("Premium") …` edited for every new type', '`IDiscountStrategy` with one class per discount']
+          from: { lesson: solid, section: '2) O — Open/Closed Principle' }
+        - cells: ['**L** — Liskov Substitution', 'A subclass must be usable wherever its base class is, honoring the base contract', '`Ostrich.Fly()` throws `NotSupportedException`', 'Split behaviors: `IBird` + `IFlyable`; only flyers implement `Fly`']
+          from: { lesson: solid, section: '3) L — Liskov Substitution Principle' }
+        - cells: ['**I** — Interface Segregation', 'Don''t force a class to implement methods it doesn''t use', '`Robot : IWorker` with `Eat()` throwing `NotImplementedException`', 'Small interfaces: `IWorkable`, `IEatable`']
+          from: { lesson: solid, section: '4) I — Interface Segregation Principle' }
+        - cells: ['**D** — Dependency Inversion', 'High-level modules depend on abstractions, not concrete classes', '`private EmailService _emailService = new EmailService();`', 'Inject `IMessageSender` through the constructor']
+          from: { lesson: solid, section: '5) D — Dependency Inversion Principle' }
+    items:
+      - term: 'One-line memory aid'
+        desc: '**S** one class, one job · **O** add behavior without modifying old code · **L** child must work like parent · **I** small, focused interfaces · **D** depend on interfaces, not concrete classes.'
+        from: { lesson: solid, section: 'Easy way to remember SOLID' }
+
+  - title: SOLID in code
+    items:
+      - term: 'Open/Closed via strategy'
+        desc: 'New discount types are new classes; `DiscountCalculator` never changes.'
+        code: |
+          public interface IDiscountStrategy
+          {
+              decimal GetDiscount(decimal amount);
+          }
+
+          public class PremiumDiscount : IDiscountStrategy
+          {
+              public decimal GetDiscount(decimal amount) => amount * 0.2m;
+          }
+
+          public class DiscountCalculator
+          {
+              public decimal Calculate(IDiscountStrategy strategy, decimal amount)
+              {
+                  return strategy.GetDiscount(amount);
+              }
+          }
+        lang: csharp
+        from: { lesson: solid, section: '2) O — Open/Closed Principle' }
+      - term: 'Liskov: accept only what can do the job'
+        desc: 'The client asks for the capability it needs, so an `Ostrich` can never be passed in.'
+        code: |
+          public void MakeBirdFly(IFlyable bird) {
+              bird.Fly();
+          }
+        lang: csharp
+        from: { lesson: solid, section: '3) L — Liskov Substitution Principle' }
+      - term: 'Dependency inversion'
+        desc: '`NotificationManager` works with email, SMS or any future sender.'
+        code: |
+          public class NotificationManager
+          {
+              private readonly IMessageSender _messageSender;
+
+              public NotificationManager(IMessageSender messageSender)
+              {
+                  _messageSender = messageSender;
+              }
+
+              public void Notify(string message)
+              {
+                  _messageSender.Send(message);
+              }
+          }
+        lang: csharp
+        from: { lesson: solid, section: '5) D — Dependency Inversion Principle' }
+      - term: 'LSP warning sign'
+        desc: 'A derived class that throws `NotImplementedException` / `NotSupportedException` for an inherited member breaks the base contract.'
+        from: { lesson: solid, section: '3) L — Liskov Substitution Principle' }
+
+  - title: Clean Architecture rules
+    items:
+      - term: 'Definition'
+        desc: 'Structure the app so business logic is independent of frameworks, UI and databases: maintainable, testable, flexible to change.'
+        from: { lesson: clean-architecture, section: 'Clean Architecture' }
+      - term: 'Core idea'
+        desc: 'Dependencies always point inward toward the core business logic: outer layers depend on inner ones, never the reverse.'
+        from: { lesson: clean-architecture, section: 'Clean Architecture' }
+      - term: 'Inner vs outer'
+        desc: 'Inner = Domain (entities) + Application (use cases/services): pure logic, nothing external. Outer = database (EF Core), Web API controllers, UI, external services: depend on the inner layers and change often.'
+        from: { lesson: clean-architecture, section: 'Outer layer vs Inner layer' }
+      - term: 'Dependency direction'
+        code: |
+          Controller → Service → Interface → Domain
+          Infrastructure → Interface (implements it)
+        lang: text
+        desc: 'Not allowed: `Service → EF Core`, `Domain → Controller`.'
+        from: { lesson: clean-architecture, section: '🔁 Dependency Direction (Very Important)' }
+      - term: 'Why it pays off'
+        desc: 'The database (SQL → Mongo), UI (web → mobile) or framework can change while the business logic stays stable.'
+        from: { lesson: clean-architecture, section: '💡 Why this matters?' }
+      - term: 'Interfaces live inside, implementations outside'
+        desc: '`IOrderRepository` is declared in Application; `OrderRepository` in Infrastructure implements it with EF Core: the Dependency Inversion Principle across layers.'
+        from: { lesson: clean-architecture, section: 'Example in .NET' }
+
+  - title: The four layers
+    table:
+      columns: [Layer, Contains, Depends on]
+      from: { lesson: clean-architecture, section: 'Layers of Clean Architecture' }
+      rows:
+        - cells: ['**Domain** (core)', 'Entities, value objects, business rules, domain exceptions ("enterprise business rules")', 'Nothing: zero dependencies on other layers or libraries']
+          from: { lesson: clean-architecture, section: 'Domain (Core)' }
+        - cells: ['**Application**', 'Use cases / services, interfaces such as `IProductRepository`, DTOs, CQRS/MediatR handlers ("application business rules")', 'Domain; orchestrates it without knowing how data is stored']
+          from: { lesson: clean-architecture, section: 'Application' }
+        - cells: ['**Infrastructure**', 'EF Core repositories, email, file system, external APIs', 'Application interfaces (implements them)']
+          from: { lesson: clean-architecture, section: 'Infrastructure' }
+        - cells: ['**Web / Presentation**', 'ASP.NET Core controllers (the entry point); wires up DI and maps input to the Application layer', 'Application']
+          from: { lesson: clean-architecture, section: 'Web / Presentation' }
+    items:
+      - term: 'Domain rule in the entity'
+        code: |
+          public Product(string name, decimal price) {
+              // Business logic: Price cannot be negative
+              if (price < 0) throw new ArgumentException("Price invalid");
+              Id = Guid.NewGuid();
+              Name = name;
+              Price = price;
+          }
+        lang: csharp
+        from: { lesson: clean-architecture, section: 'Domain (Core)' }
+
+  - title: Which layer owns "the model"?
+    note: '"It depends on what you mean by Model."'
+    table:
+      columns: [Model, Layer, Example, Notes]
+      from: { lesson: clean-architecture, section: 'Example' }
+      rows:
+        - cells: ['Domain model', 'Domain (inner)', '`Order { Id, Amount }`', 'Used in business logic; no EF Core / API dependency; most important']
+          from: { lesson: clean-architecture, section: '✅ 1. Domain Model (Domain Layer — INNER)' }
+        - cells: ['API model / DTO', 'Presentation (outer)', '`CreateOrderRequest { Amount }`', 'Used by controllers; avoids exposing the domain directly']
+          from: { lesson: clean-architecture, section: '✅ 2. API Model / DTO (Presentation Layer — OUTER)' }
+        - cells: ['Data model / entity', 'Infrastructure (outer)', '`OrderEntity { Id, Amount }`', 'Used by the DbContext; may carry EF Core annotations; maps to the domain model']
+          from: { lesson: clean-architecture, section: '✅ 3. Data Model / Entity (Infrastructure Layer — OUTER)' }
+    items:
+      - term: 'Flow'
+        code: |
+          API Model (Request DTO)
+                  ↓
+          Application Service
+                  ↓
+          Domain Model (Business Logic)
+                  ↓
+          Infrastructure Model (DB Entity)
+        lang: text
+        from: { lesson: clean-architecture, section: '🔁 Flow Example' }
+
+  - title: Dependency injection — the glue
+    items:
+      - term: 'Dependency Injection'
+        desc: 'A class doesn''t create its own dependencies; they''re provided from outside (the DI container), so classes depend on abstractions.'
+        from: { lesson: dependency-injection, section: 'Dependency Injection (DI)' }
+      - term: 'Swap an implementation'
+        desc: 'Change one registration and the business class is untouched.'
+        code: |
+          services.AddTransient<IMessageService, SmsService>();
+        lang: csharp
+        from: { lesson: dependency-injection, section: 'Step 3: Changing Implementation Easily' }
+      - term: 'Why DI'
+        desc: 'Loose coupling · easier testing with mocks/fakes · change implementations without touching other classes · reusable components · less object-creation code.'
+        from: { lesson: dependency-injection, section: 'Why Use Dependency Injection?' }
+    table:
+      columns: [Injection type, How, When]
+      from: { lesson: dependency-injection, section: 'What is a "Type" of Dependency Injection?' }
+      rows:
+        - ['Constructor', 'Through the constructor', 'Most common; preferred in .NET Core']
+        - cells: ['Property', 'Through a public settable property', 'Optional or changeable dependency; may be left null, so not for critical ones']
+          from: { lesson: dependency-injection, section: '2. Property Injection' }
+        - cells: ['Method', 'As a method parameter', 'Dependency used by a single method only']
+          from: { lesson: dependency-injection, section: '3. Method Injection' }
+
+  - title: Repository pattern
+    items:
+      - term: 'Repository'
+        desc: 'A layer that hides data-access logic: `_orderRepository.Add(order);` instead of `_context.Orders.Add(order); _context.SaveChanges();` everywhere.'
+        from: { lesson: repository-pattern, section: 'IRepository' }
+      - term: 'Why'
+        desc: 'Without it: EF Core code spread everywhere, tight coupling to `DbContext`, painful mocking. With it: separation of concerns, easier unit tests, centralized data access.'
+        from: { lesson: repository-pattern, section: 'Why do we need IRepository?' }
+      - term: 'Structure'
+        code: |
+          UI / ViewModel / Controller
+                  ↓
+               Service
+                  ↓
+             IRepository<T>
+                  ↓
+             EF Core (DbContext)
+                  ↓
+               Database
+        lang: text
+        from: { lesson: repository-pattern, section: 'Repository pattern structure' }
+      - term: 'Open generic registration (99% of cases)'
+        code: |
+          services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
+        lang: csharp
+        from: { lesson: repository-pattern, section: 'Use open generic (BEST PRACTICE)' }
+      - term: 'Closed generic (special case)'
+        desc: 'One entity with special logic or its own implementation: `services.AddScoped<IRepository<Order>, EfRepository<Order>>();`.'
+        from: { lesson: repository-pattern, section: 'Use closed generic (special case)' }
+      - term: 'Registration mistakes'
+        desc: 'Open generic interface mapped to a non-generic class (`typeof(OrderRepository)`) · forgetting `AddDbContext`, so DI resolution fails.'
+        from: { lesson: repository-pattern, section: 'Common mistakes ❌' }

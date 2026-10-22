@@ -1,0 +1,109 @@
+{
+  "lesson": "auth-server-concepts",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the core auth loop (login → issue → validate → refresh → revoke) in order.",
+      "steps": [
+        "The client sends username and password to the auth server",
+        "The auth server verifies the credentials against the hashed password in the DB",
+        "The auth server issues an access token and a refresh token",
+        "The client calls the resource API with `Authorization: Bearer <access_token>`",
+        "The API middleware validates the JWT signature and claims",
+        "When the access token expires, the client calls `/auth/refresh` with the refresh token",
+        "On logout or breach detection, the refresh token is revoked"
+      ],
+      "explanation": "This single loop is most of every auth server; RS256, JWKS, rotation and reuse detection are hardening around it.",
+      "source": {
+        "section": "Before any code, understand the shape of the system. There are always 3 parties:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How do the access token and the refresh token differ?",
+      "options": [
+        "The access token is long-lived and sent only to `/auth/refresh`; the refresh token is short-lived and sent to every API",
+        "The refresh token is the user's password, encrypted",
+        "They are identical tokens with different names",
+        "The access token is a short-lived JWT that proves identity to APIs; the refresh token is long-lived and used only to get a new access token"
+      ],
+      "answer": 3,
+      "explanation": "Access tokens are short-lived (e.g. 15 minutes) and go to the APIs; refresh tokens last days or weeks and are only exchanged at the refresh endpoint.",
+      "source": {
+        "section": "Before any code, understand the shape of the system. There are always 3 parties:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What is the auth server's `GET /.well-known/jwks.json` endpoint for?",
+      "options": [
+        "Listing every user account",
+        "Exposing the public signing keys so APIs can verify RS256-signed JWTs",
+        "Issuing new refresh tokens",
+        "Returning the current user's profile"
+      ],
+      "answer": 1,
+      "explanation": "JWKS publishes the public keys; APIs use them to check signatures without ever seeing the private key.",
+      "source": {
+        "section": "Example Endpoints"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "A user-facing client receives both an ID token and an access token. Which one should it send to call the API?",
+      "options": [
+        "The access token; ID tokens are for signing the user in and should not be used to call APIs",
+        "The ID token, because it describes the user",
+        "Both, joined with a dot",
+        "Neither; it should send the refresh token"
+      ],
+      "answer": 0,
+      "explanation": "Access tokens are for API authorization; ID tokens are for signing the user in to the client.",
+      "source": {
+        "section": "How the developer usually builds it"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A background job in one backend service must call another service with no user involved. Which flow fits?",
+      "options": [
+        "The authorization code flow with the user's password",
+        "Sending an ID token",
+        "The client credentials flow, using the application's own identity",
+        "Calling `/auth/refresh` with no token"
+      ],
+      "answer": 2,
+      "explanation": "Service-to-service calls use the client credentials flow, which is based on the application's identity rather than a user's, common for daemons and background jobs.",
+      "source": {
+        "section": "How the developer usually builds it"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "What is the main drawback of having the same Web API handle login, token issuing and business endpoints (Option 1)?",
+      "options": [
+        "It cannot validate JWTs",
+        "Auth and business logic are tightly coupled, which makes it hard to scale and to reuse across multiple APIs",
+        "Clients cannot store the tokens",
+        "It requires an external identity provider"
+      ],
+      "answer": 1,
+      "explanation": "Option 1 is fine for learning, small internal apps and MVPs, but production systems usually use a separate auth server that several APIs trust.",
+      "source": {
+        "section": "✅ Option 1: Same API handles Auth + Tokens (Beginner / Small apps)"
+      },
+      "reviewed": false
+    }
+  ]
+}

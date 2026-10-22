@@ -1,0 +1,80 @@
+{
+  "lesson": "dapper",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In `conn.QuerySingleOrDefault<Product>(\"... WHERE Sku = @sku\", new { sku = \"A100\" })`, how do the columns and the parameter get handled?",
+      "options": [
+        "Columns map to properties by position, and `@sku` is concatenated into the SQL string",
+        "Columns map to properties by name (case-insensitive), and the anonymous object becomes SQL parameters",
+        "You must configure each column mapping, and `@sku` must be a `SqlParameter`",
+        "Columns map only if their names match exactly in case, and parameters need `DynamicParameters`"
+      ],
+      "answer": 1,
+      "explanation": "Dapper maps columns to properties by name (case-insensitive), and when you pass an anonymous object for parameters it parameterizes them automatically.",
+      "source": { "section": "### Example : Querying data" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does `await conn.ExecuteAsync(\"UPDATE Products SET Price = @Price WHERE Id = @Id\", new { Id = 10, Price = 9.99m })` return?",
+      "options": [
+        "The updated `Product` object",
+        "The new value of `Price`",
+        "The number of affected rows",
+        "Nothing; `ExecuteAsync` returns a plain `Task`"
+      ],
+      "answer": 2,
+      "explanation": "`Execute` / `ExecuteAsync` are for INSERT, UPDATE and DELETE and return the affected row count.",
+      "source": { "section": "### Methods" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "The stored procedure `dbo.CreateOrder` returns the new order id through an **output** parameter. How does the lesson read it with Dapper?",
+      "options": [
+        "Add it to a `DynamicParameters` with `direction: ParameterDirection.Output`, run the procedure, then read it with `p.Get<int>(\"@NewOrderId\")`",
+        "Pass `new { NewOrderId = 0 }` and read the anonymous object's property afterwards",
+        "Use `Query<int>` and take the first row of the result",
+        "Read the return value of `ExecuteAsync`"
+      ],
+      "answer": 0,
+      "explanation": "Use `DynamicParameters` when you need output parameters or return values: add the parameter with `ParameterDirection.Output`, execute with `CommandType.StoredProcedure`, then call `p.Get<int>(...)`.",
+      "source": { "section": "## Parameters & DynamicParameters" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "An `INSERT` and an `UPDATE` run through Dapper must succeed or fail together. What does the lesson do?",
+      "options": [
+        "Run each call on a separate connection so one failure doesn't affect the other",
+        "Call `tx.Commit()` before the first `ExecuteAsync`",
+        "Use `QueryMultiple` so both statements share one result set",
+        "Begin a transaction on the open connection, pass the same `tx` to both calls, then commit (or roll back on error)"
+      ],
+      "answer": 3,
+      "explanation": "Share the same `IDbTransaction` with the Dapper calls so everything is atomic: pass `tx` to each call, commit at the end, and roll back in `catch`.",
+      "source": { "section": "## Transactions" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "In the multi-mapping query `QueryAsync<Student, Department, Student>(..., splitOn: \"DeptId\")`, what does `splitOn` tell Dapper?",
+      "options": [
+        "Which column to sort the results by",
+        "The column at which it starts mapping the second object (`Department`)",
+        "The foreign key used to join the tables",
+        "Which rows to skip when a department is missing"
+      ],
+      "answer": 1,
+      "explanation": "`splitOn` names the column(s) where the next type's mapping starts; it defaults to `\"Id\"`, so the SQL aliases a column (here `DeptId`) to match it.",
+      "source": { "section": "## One-to-one / simple multi-mapping (entity + navigation)" },
+      "reviewed": false
+    }
+  ]
+}

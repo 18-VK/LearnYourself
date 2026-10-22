@@ -1,0 +1,79 @@
+{
+  "lesson": "openiddict",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which OpenIddict endpoint automatically generates and exposes the public keys your API uses for validation?",
+      "options": [
+        "The Authorization Endpoint",
+        "The Token Endpoint",
+        "The JWKS Endpoint",
+        "The `/api/auth/login` endpoint"
+      ],
+      "answer": 2,
+      "explanation": "The Authorization Endpoint handles login and consent, the Token Endpoint validates client requests and issues JWTs, and the JWKS Endpoint publishes the public keys.",
+      "source": { "section": "How OpenIddict Works" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "With OpenIddict, what is left for your code to do when creating a JWT?",
+      "options": [
+        "Choose the algorithm, sign the token and serialise it",
+        "Create the `ClaimsPrincipal`; OpenIddict generates the JWT from it",
+        "Nothing; OpenIddict also decides which claims the user has",
+        "Write the token endpoint's HTTP handling by hand"
+      ],
+      "answer": 1,
+      "explanation": "Without OpenIddict you handle claims, signing, expiry, algorithm, issuer, audience and serialisation yourself. With it you create the `ClaimsPrincipal` and OpenIddict produces the JWT.",
+      "source": { "section": "2. JWT Creation" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "A request with `Authorization: Bearer eyJ...` reaches `GET /api/orders`. Put what the API does in order.",
+      "steps": [
+        "Validate the JWT's signature, issuer, audience and expiration",
+        "Create the `ClaimsPrincipal` from the token",
+        "Set it as `HttpContext.User`",
+        "The controller executes"
+      ],
+      "explanation": "The API doesn't ask OpenIddict about every request; once it has the signing keys, validation is local and fast.",
+      "source": { "section": "Why This Matters for Your API" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Does every app or website with login and registration need a separate auth server?",
+      "options": [
+        "Yes, issuing your own JWTs from a Web API is never done in production",
+        "Yes, because refresh tokens only work with a separate auth server",
+        "No, but only if the app has no refresh tokens",
+        "No, a `/login` endpoint in your own Web API is normal for a single application and team"
+      ],
+      "answer": 3,
+      "explanation": "Login inside your own Web API is used by many production systems, typically one frontend plus one backend with nothing else sharing the identity.",
+      "source": { "section": "Option A: No separate auth server (login lives in your own WebAPI)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A calendar app built by an outside developer wants permission to read a user's tasks on your platform. Which reason for a separate authorization server does this match?",
+      "options": [
+        "Third-party applications need access to your APIs, the primary use case OAuth 2.0 was designed for",
+        "Centralised security, compliance and auditing",
+        "Single sign-on across your own products",
+        "You don't want to maintain password hashing code"
+      ],
+      "answer": 0,
+      "explanation": "The authorization server obtains the user's consent and issues an access token with limited scopes, so the third-party app never sees the password and access can be revoked.",
+      "source": { "section": "4. Third-Party Applications Need Access to Your APIs" },
+      "reviewed": false
+    }
+  ]
+}

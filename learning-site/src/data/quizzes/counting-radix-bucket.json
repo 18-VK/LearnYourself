@@ -1,0 +1,111 @@
+{
+  "lesson": "counting-radix-bucket",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`CountingSortByAge` is the stable, cumulative-count version. In what order are the employees after this call?",
+      "code": {
+        "lang": "csharp",
+        "source": "var staff = new Employee[]\n{\n    new Employee(\"Aman\", 30),\n    new Employee(\"Riya\", 25),\n    new Employee(\"Karan\", 30),\n    new Employee(\"Sana\", 25),\n    new Employee(\"Vikram\", 28)\n};\n\nCountingSortByAge(staff);"
+      },
+      "options": [
+        "Sana (25), Riya (25), Vikram (28), Karan (30), Aman (30)",
+        "Riya (25), Sana (25), Vikram (28), Aman (30), Karan (30)",
+        "Riya (25), Sana (25), Vikram (28), Karan (30), Aman (30)",
+        "Aman (30), Karan (30), Vikram (28), Riya (25), Sana (25)"
+      ],
+      "answer": 1,
+      "explanation": "The array is sorted by `Age` only, and because the sort is stable, employees with the same age keep their input order: Riya before Sana, Aman before Karan.",
+      "source": {
+        "section": "Worked example: sorting objects by a key"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In the stable counting sort, Step 3 walks the input from right to left. Why?",
+      "options": [
+        "It makes the algorithm run in O(n) instead of O(n + k)",
+        "It avoids an index-out-of-range error on the first element",
+        "Cumulative counts point at the last valid slot for each value, so filling from the right keeps equal elements in their original order",
+        "It lets the sort write directly into `arr` without an `output` array"
+      ],
+      "answer": 2,
+      "explanation": "After Step 2 each count is the last output slot for that value. Placing elements from the right and decrementing the count puts the last tie in the last slot, which preserves original order.",
+      "source": {
+        "section": "1. Stable version (cumulative count)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You only need to sort a plain `int[]`. Which counting-sort version does the lesson recommend, and why?",
+      "options": [
+        "The simple version, because both produce identical output for plain integers and it is easier to read",
+        "The stable version, because the simple version gives wrong output for duplicates",
+        "The stable version, because it is asymptotically faster",
+        "Neither; counting sort cannot sort negative integers"
+      ],
+      "answer": 0,
+      "explanation": "For plain integers a `3` is indistinguishable from any other `3`, so stability is invisible and both versions give the same result. The stable version matters when sorting objects by a key.",
+      "source": {
+        "section": "Rule of thumb"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "When does the lesson call counting sort impractical?",
+      "options": [
+        "When the input contains duplicate values",
+        "When the input is already sorted",
+        "When the array has more than a few thousand elements",
+        "When the value range `k` is very large compared with `n`, such as 10 numbers with values up to 10⁹"
+      ],
+      "answer": 3,
+      "explanation": "Counting sort costs O(n + k) time and space, so a huge range wastes memory and time. It shines on bounded ranges such as ages 0-120 or scores 0-100.",
+      "source": {
+        "section": "7. Counting Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How does radix sort process the numbers?",
+      "options": [
+        "Digit by digit from the most significant digit, using quicksort on each digit",
+        "By comparing whole numbers pairwise, like merge sort",
+        "Digit by digit from the least significant digit, using a stable sort such as counting sort on each digit",
+        "By distributing numbers into buckets by value range and sorting each bucket"
+      ],
+      "answer": 2,
+      "explanation": "Radix sort goes from the least significant to the most significant digit and uses a stable per-digit sort (typically counting sort), so it needs no comparisons at all.",
+      "source": {
+        "section": "8. Radix Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Bucket sort is near-linear on uniformly distributed input. When does it degrade to O(n²)?",
+      "options": [
+        "When the data is skewed or clustered, so most elements land in one bucket",
+        "When the input is already sorted",
+        "When there are more buckets than elements",
+        "When the values are floats instead of integers"
+      ],
+      "answer": 0,
+      "explanation": "The worst case is all elements in one bucket, where sorting that single bucket dominates. Bucket sort needs prior knowledge of the data's distribution and range to work well.",
+      "source": {
+        "section": "9. Bucket Sort"
+      },
+      "reviewed": false
+    }
+  ]
+}

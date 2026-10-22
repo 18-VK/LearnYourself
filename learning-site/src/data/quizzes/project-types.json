@@ -1,0 +1,80 @@
+{
+  "lesson": "project-types",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which project type has no entry point (`Main` method), outputs a `.dll`, and is meant to be referenced by other projects?",
+      "options": [
+        "Console Application",
+        "Worker Service",
+        "Class Library",
+        "WPF App"
+      ],
+      "answer": 2,
+      "explanation": "A Class Library builds reusable components or business logic, outputs a `.dll`, has no `Main` entry point and can be referenced by other projects or shipped as a NuGet package.",
+      "source": { "section": "3. Class Library" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What output type does an ASP.NET web application produce, according to the note?",
+      "options": [
+        "A `.dll` hosted on IIS or Kestrel",
+        "An `.exe` that the user double-clicks",
+        "A platform-specific `.apk`",
+        "A `.nupkg` package"
+      ],
+      "answer": 0,
+      "explanation": "The ASP.NET Web Application section lists its output type as `.dll`, hosted on IIS or Kestrel.",
+      "source": { "section": "2. ASP.NET Web Application" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How do the two Blazor types differ?",
+      "options": [
+        "Blazor Server runs in the browser; Blazor WebAssembly runs on the server",
+        "Blazor Server runs on the server and uses SignalR; Blazor WebAssembly runs in the browser",
+        "Blazor Server is for desktop apps; Blazor WebAssembly is for mobile apps",
+        "Blazor Server uses JavaScript components; Blazor WebAssembly uses Razor components"
+      ],
+      "answer": 1,
+      "explanation": "The note lists Blazor Server as running on the server and using SignalR, and Blazor WebAssembly as running in the browser; both use Razor components written in C#.",
+      "source": { "section": "7. Blazor App" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You need a background service that processes a message queue on a schedule. Which project type fits?",
+      "options": [
+        "Windows Forms App",
+        "Class Library",
+        "Blazor App",
+        "Worker Service"
+      ],
+      "answer": 3,
+      "explanation": "A Worker Service is for background services or daemons, such as scheduled tasks and message queue processors, and uses the hosted service model.",
+      "source": { "section": "8. Worker Service" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which project type builds cross-platform apps for Android, iOS, Windows and macOS from a shared codebase?",
+      "options": [
+        "WPF App",
+        ".NET MAUI App",
+        "Windows Forms App",
+        "Azure Functions"
+      ],
+      "answer": 1,
+      "explanation": "A .NET MAUI App targets Android, iOS, Windows and macOS with a shared codebase, using XAML UI and MVVM.",
+      "source": { "section": "10. .NET MAUI App" },
+      "reviewed": false
+    }
+  ]
+}
