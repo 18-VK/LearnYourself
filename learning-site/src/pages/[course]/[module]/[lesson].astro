@@ -1,6 +1,7 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { runnableFor, scriptJson } from '../../../lib/runnable';
 import { courseById, courseUrl, GLYPH, lessonsOf, lessonUrl, url } from '../../../lib/site';
 
 export async function getStaticPaths() {
@@ -26,6 +27,8 @@ const lessonData = { id: entry.id, title: d.title, course: d.course, courseTitle
 const moduleNumber = course.modules.filter((m) => m.status !== 'planned').findIndex((m) => m.id === d.module) + 1;
 const assets = d.resources.filter((r) => r.type === 'asset');
 const links = d.resources.filter((r) => r.type !== 'asset');
+// C# blocks that can run in the browser (decided at build time by scripts/runner/check.ts); null = none on this page
+const runnable = runnableFor(entry.id);
 ---
 
 <BaseLayout title={d.title} description={`${d.courseTitle} › ${d.moduleTitle}: ${d.title}`} course={d.course} searchable>
@@ -153,6 +156,7 @@ const links = d.resources.filter((r) => r.type !== 'asset');
     </nav>
   </div>
   <script type="application/json" id="lesson-data" set:html={JSON.stringify(lessonData)} />
+  {runnable && <script type="application/json" id="runnable-data" set:html={scriptJson(runnable)} />}
   <script>
     import '../../../scripts/lesson';
   </script>

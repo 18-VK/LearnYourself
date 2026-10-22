@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Unit tests for the runner: program shapes, line mapping, execution limits, and runnable-block detection. -->
+  <Import Project="../References.props" />
+  <Import Project="../CopyReferences.targets" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>LearnYourself.Runner.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Runner.Check/Runner.Check.csproj" />
+    <ProjectReference Include="../Runner.Core/Runner.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

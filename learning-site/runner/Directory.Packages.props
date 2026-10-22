@@ -1,0 +1,7 @@
+<Project>
+  <!-- Exact versions, each at least 7 days old when chosen (see NOTES.md). -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+</Project>

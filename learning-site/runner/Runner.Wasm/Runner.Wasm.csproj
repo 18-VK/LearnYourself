@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <!--
+    The in-browser C# runner: the .NET WebAssembly runtime + Roslyn, driven from a Web Worker through [JSExport].
+    Plain WebAssembly app model (no Blazor UI). `dotnet publish -c Release` writes the bundle to
+    bin/Release/net10.0/publish/wwwroot; scripts/runner/publish.ts copies it to public/runner/.
+  -->
+  <Import Project="../References.props" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>LearnYourself.Runner.Wasm</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmEnableThreads>false</WasmEnableThreads>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <EventSourceSupport>false</EventSourceSupport>
+    <UseSystemResourceKeys>false</UseSystemResourceKeys>
+    <DebuggerSupport>false</DebuggerSupport>
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Runner.Core/Runner.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Learner programs are compiled at run time against these, so the trimmer must keep them whole. -->
+    <TrimmerRootAssembly Include="@(RunnerKeep)" />
+  </ItemGroup>
+
+  <!-- Embed the reference assemblies (from the targeting pack this project itself compiles against) as resources. -->
+  <Target Name="EmbedRunnerReferences" BeforeTargets="PrepareResources" DependsOnTargets="ResolveTargetingPackAssets">
+    <PropertyGroup>
+      <_RunnerRefDir>@(Reference->WithMetadataValue('Filename','System.Runtime')->WithMetadataValue('FrameworkReferenceName','Microsoft.NETCore.App')->'%(RootDir)%(Directory)')</_RunnerRefDir>
+    </PropertyGroup>
+    <Error Condition="'$(_RunnerRefDir)' == ''" Text="Could not find the Microsoft.NETCore.App reference assemblies." />
+    <ItemGroup>
+      <_RunnerRefFile Include="@(RunnerReference->'$(_RunnerRefDir)%(Identity).dll')" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(_RunnerRefFile.FullPath)')" Text="Reference assembly %(_RunnerRefFile.Filename) is not in the targeting pack." />
+    <ItemGroup>
+      <EmbeddedResource Include="@(_RunnerRefFile)" LogicalName="ref/%(Filename)%(Extension)" WithCulture="false" Type="Non-Resx" />
+    </ItemGroup>
+  </Target>
+</Project>

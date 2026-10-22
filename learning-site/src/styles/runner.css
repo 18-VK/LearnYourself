@@ -1,0 +1,83 @@
+/* C# runner: buttons on runnable code blocks, the output panel, and the CodeMirror editor.
+   Loaded with src/scripts/runner/attach.ts, so pages without runnable blocks don't download it.
+   Colours are the site's tokens, so both themes work without extra rules (except the syntax colours below). */
+
+.code-frame.is-runnable .code-head { gap: 8px; flex-wrap: wrap; }
+.runner-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.runner-btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px;
+  padding: 3px 10px; font: 500 12.5px/1.3 var(--font); cursor: pointer; min-height: 28px;
+}
+.runner-btn:hover { border-color: var(--ink-3); }
+.runner-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.runner-btn.runner-run { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.runner-btn.runner-run:hover { opacity: 0.9; }
+.runner-btn:disabled { opacity: 0.6; cursor: progress; }
+.code-frame.is-runnable .code-copy { margin-left: 0; }
+
+.runner { margin: 8px 0 1.4em; display: grid; gap: 8px; font-size: 14.5px; }
+.runner[hidden], .runner-io[hidden] { display: none; }
+.runner-io { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+.runner-label { margin: 0; font: 600 11px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.runner-note { margin: 0; color: var(--ink-2); font-size: 14px; }
+.runner-stdin-box { display: grid; gap: 4px; }
+.runner-stdin {
+  width: 100%; min-height: 2.6em; resize: vertical; font: 13px/1.5 var(--mono); color: var(--code-ink);
+  background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; box-sizing: border-box;
+}
+.runner-stdin:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.runner-progress { display: grid; gap: 4px; color: var(--ink-2); font-size: 13.5px; }
+.runner-progress[hidden] { display: none; }
+.runner-progress progress { width: 100%; height: 8px; accent-color: var(--accent); }
+.runner-status { margin: 0; font-size: 13.5px; color: var(--ink-2); min-height: 1.3em; }
+.runner-status[data-kind="ok"] { color: var(--good); }
+.runner-status[data-kind="error"] { color: var(--bad); }
+.runner-problems { margin: 0; padding-left: 1.2em; color: var(--bad); font: 12.5px/1.5 var(--mono); }
+.runner-problems[hidden] { display: none; }
+.runner-pre {
+  margin: 0; padding: 8px 12px; max-height: 22em; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: var(--code-bg); color: var(--code-ink); border: 1px solid var(--line); border-radius: 8px; font: 13px/1.55 var(--mono);
+}
+.runner-pre:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.runner-output:empty::before { content: " "; }
+.runner-exception { color: var(--bad); font-weight: 600; }
+.runner-expected { display: grid; gap: 4px; }
+.runner-harness-row { display: flex; }
+.runner-harness { display: grid; gap: 6px; border-left: 3px solid var(--warn); padding-left: 10px; }
+.runner-harness[hidden] { display: none; }
+
+/* a runtime exception's line in the (not edited) code block */
+.code-frame pre .line.runner-mark { background: var(--bad-bg); box-shadow: inset 3px 0 0 var(--bad); }
+
+/* editor */
+.runner-editor .cm-editor { max-height: 34em; }
+.runner-editor .cm-scroller { overflow: auto; }
+.cm-runner-line-error, .cm-runner-line-exception { background: var(--bad-bg); }
+.cm-runner-line-warning { background: var(--warn-bg); }
+.cm-runner-range-error { text-decoration: underline wavy var(--bad); text-underline-offset: 3px; }
+.cm-runner-range-warning { text-decoration: underline wavy var(--warn); text-underline-offset: 3px; }
+.cm-runner-msg { font: 12px/1.45 var(--font); padding: 2px 10px 4px 14px; white-space: pre-wrap; }
+.cm-runner-msg-error, .cm-runner-msg-exception { color: var(--bad); background: var(--bad-bg); }
+.cm-runner-msg-warning { color: var(--warn); background: var(--warn-bg); }
+
+/* C# syntax colours (classHighlighter's tok-* classes), close to the github-light / github-dark Shiki themes */
+.runner-editor { --tok-kw: #cf222e; --tok-str: #0a3069; --tok-num: #0550ae; --tok-com: #6e7781; --tok-type: #953800; --tok-def: #8250df; --tok-meta: #116329; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .runner-editor { --tok-kw: #ff7b72; --tok-str: #a5d6ff; --tok-num: #79c0ff; --tok-com: #8b949e; --tok-type: #ffa657; --tok-def: #d2a8ff; --tok-meta: #7ee787; }
+}
+:root[data-theme="dark"] .runner-editor { --tok-kw: #ff7b72; --tok-str: #a5d6ff; --tok-num: #79c0ff; --tok-com: #8b949e; --tok-type: #ffa657; --tok-def: #d2a8ff; --tok-meta: #7ee787; }
+.runner-editor .tok-keyword, .runner-editor .tok-modifier, .runner-editor .tok-controlKeyword { color: var(--tok-kw); }
+.runner-editor .tok-string, .runner-editor .tok-string2 { color: var(--tok-str); }
+.runner-editor .tok-number, .runner-editor .tok-bool, .runner-editor .tok-atom { color: var(--tok-num); }
+.runner-editor .tok-comment { color: var(--tok-com); font-style: italic; }
+.runner-editor .tok-typeName, .runner-editor .tok-className { color: var(--tok-type); }
+.runner-editor .tok-definition, .runner-editor .tok-function { color: var(--tok-def); }
+.runner-editor .tok-meta { color: var(--tok-meta); }
+
+@media (max-width: 480px) {
+  .runner-actions { margin-left: 0; width: 100%; }
+  .runner-btn { flex: 1 1 auto; }
+}
+@media print {
+  .runner-actions, .runner-io, .runner-harness-row { display: none !important; }
+}

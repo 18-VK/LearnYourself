@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C# runner spike</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 16px; max-width: 900px; }
+  pre { background: #f4f4f4; padding: 8px; white-space: pre-wrap; }
+  button { margin: 4px 4px 4px 0; }
+</style>
+</head>
+<body>
+<h1>C# runner spike (Checkpoint 3)</h1>
+<p>Compiles and runs C# with Roslyn on .NET WebAssembly inside a Web Worker. Used by the measurement script only.</p>
+<p><button id="run-sort">Run insertion sort</button><button id="run-loop">Run while (true) { }</button><button id="tick">Click counter: <span id="clicks">0</span></button></p>
+<p>Frames painted while running: <span id="frames">0</span></p>
+<progress id="bar" max="1" value="0"></progress> <span id="bar-text"></span>
+<pre id="out"></pre>
+<script type="module">
+// The insertion sort block from Competitive Programming/sorting-algorithms-notes.md ("### 3. Insertion Sort"),
+// verbatim, plus a harness that calls it with that section's own example input [2, 5, 7, 3].
+const SORT = `void InsertionSort(int[] arr)
+{
+    for (int i = 1; i < arr.Length; i++)
+    {
+        int key = arr[i];
+        int j = i - 1;
+        while (j >= 0 && arr[j] > key)
+        {
+            arr[j + 1] = arr[j];
+            j--;
+        }
+        arr[j + 1] = key;
+    }
+}`;
+const HARNESS = `int[] arr = { 2, 5, 7, 3 };
+InsertionSort(arr);
+Console.WriteLine("[" + string.Join(", ", arr) + "]");`;
+const LOOP = 'while (true) { }';
+
+const out = document.getElementById('out');
+const log = (s) => { out.textContent += s + '\n'; };
+let worker = null;
+let nextId = 1;
+const pending = new Map();
+let readyResolve;
+let ready = null;
+
+function start() {
+  worker = new Worker(new URL('../runner-worker.js', import.meta.url), { type: 'module' });
+  ready = new Promise((r) => (readyResolve = r));
+  worker.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === 'progress') {
+      document.getElementById('bar').value = m.total ? m.loaded / m.total : 0;
+      document.getElementById('bar-text').textContent = `${(m.loaded / 1048576).toFixed(1)} / ${(m.total / 1048576).toFixed(1)} MB`;
+    } else if (m.type === 'ready') {
+      window.__ready = m.info;
+      readyResolve(m.info);
+    } else if (m.type === 'phase') {
+      pending.get(m.id)?.onPhase(m);
+    } else if (m.type === 'output') {
+      pending.get(m.id)?.onOutput(m.text);
+    } else if (m.type === 'result') {
+      pending.get(m.id)?.resolve(m.result);
+    } else if (m.type === 'fatal') {
+      log('FATAL ' + m.message);
+      (m.id ? pending.get(m.id) : null)?.resolve({ fatal: m.message });
+    }
+  };
+  worker.postMessage({ type: 'init' });
+}
+
+/** Runs code; resolves with the result, or { outcome: 'timeout' } after timeoutMs of *execution* (compile excluded). */
+function run(code, harness, stdin = '', timeoutMs = 5000) {
+  if (!worker) start();
+  const id = nextId++;
+  const t0 = performance.now();
+  let output = '';
+  return new Promise((resolve) => {
+    let timer = null;
+    const done = (r) => {
+      clearTimeout(timer);
+      pending.delete(id);
+      resolve({ ...r, output, wallMs: performance.now() - t0 });
+    };
+    pending.set(id, {
+      onOutput: (t) => { output += t; },
+      onPhase: (m) => {
+        if (m.phase === 'running') {
+          timer = setTimeout(() => {
+            worker.terminate();
+            worker = null;
+            done({ outcome: 'timeout', compileMs: m.ms });
+          }, timeoutMs);
+        }
+      },
+      resolve: done,
+    });
+    worker.postMessage({ type: 'run', id, code, harness, stdin, maxOutput: 65536 });
+  });
+}
+window.__run = run;
+window.__boot = () => { if (!worker) start(); return ready; };
+window.__SORT = SORT; window.__HARNESS = HARNESS; window.__LOOP = LOOP;
+
+let clicks = 0;
+document.getElementById('tick').onclick = () => { document.getElementById('clicks').textContent = String(++clicks); };
+let frames = 0;
+const raf = () => { frames++; document.getElementById('frames').textContent = String(frames); requestAnimationFrame(raf); };
+requestAnimationFrame(raf);
+document.getElementById('run-sort').onclick = async () => { const r = await run(SORT, HARNESS); log(JSON.stringify(r)); };
+document.getElementById('run-loop').onclick = async () => { const r = await run(LOOP, null); log(JSON.stringify(r)); };
+</script>
+</body>
+</html>

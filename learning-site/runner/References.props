@@ -1,0 +1,30 @@
+<Project>
+  <!--
+    The reference assemblies a learner's program compiles against, in the browser AND in the build-time check.
+    Each name is a reference assembly from the net10.0 targeting pack (Microsoft.NETCore.App.Ref), which ships with
+    the .NET SDK, so it always matches the runtime pack the browser runner is published with.
+
+    Rule: every assembly listed here must also be kept whole in the browser bundle (see RunnerKeep below), otherwise a
+    program could compile against an API the trimmer removed and fail at run time with MissingMethodException.
+    Adding a name grows the download; Runner.Check's report (src/data/generated/runnable.json → "assemblies") shows
+    which assemblies the notes' blocks actually use.
+  -->
+  <ItemGroup>
+    <RunnerReference Include="System.Runtime" />
+    <RunnerReference Include="System.Console" />
+    <RunnerReference Include="System.Collections" />
+    <RunnerReference Include="System.Collections.NonGeneric" />
+    <RunnerReference Include="System.Collections.Specialized" />
+    <RunnerReference Include="System.Collections.Concurrent" />
+    <RunnerReference Include="System.Linq" />
+    <RunnerReference Include="System.Memory" />
+    <RunnerReference Include="System.ObjectModel" />
+    <RunnerReference Include="System.Runtime.Numerics" />
+    <RunnerReference Include="System.Text.RegularExpressions" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Implementation assemblies kept untrimmed in the browser: the ones above plus where their types really live. -->
+    <RunnerKeep Include="@(RunnerReference)" />
+    <RunnerKeep Include="System.Private.CoreLib;System.Private.Uri" />
+  </ItemGroup>
+</Project>

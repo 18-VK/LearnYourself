@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { AstroIntegration } from 'astro';
 import { buildContent } from './lib/generate';
 import { CURRICULUM_DIR, REPO_ROOT, SITE_ROOT, SKIP_DIRS } from './lib/paths';
+import { runnerBuildStep } from './runner/step';
 
 /**
  * Astro caches rendered Markdown by each file's content, not by the remark/rehype plugins that render it.
@@ -40,6 +41,13 @@ export function contentPipeline(): AstroIntegration {
         if (!result.ok) {
           for (const e of result.errors) logger.error(e);
           if (command === 'build') throw new Error(`Content pipeline found ${result.errors.length} problem(s). See the log above and coverage-report.md.`);
+        }
+        // C# runner (builds only): publish the browser bundle and decide which C# blocks get Run buttons.
+        // Needs the generated lessons, so it runs here, after the pipeline. Skipped with a warning without a .NET SDK.
+        if (command === 'build' && result.ok) {
+          const runner = await runnerBuildStep({ info: (m) => logger.info(m), warn: (m) => logger.warn(m) });
+          for (const e of runner.errors) logger.error(e);
+          if (!runner.ok) throw new Error(`The C# runner check found ${runner.errors.length} problem(s). See the log above and runnable-report.md.`);
         }
       },
       'astro:server:setup': ({ server, logger }) => {

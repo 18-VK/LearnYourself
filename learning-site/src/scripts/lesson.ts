@@ -138,3 +138,6 @@ if (body && (data.kind === 'checklist' || data.kind === 'roadmap')) {
 
 // ── Visualizers: hydrate each placeholder when it approaches the viewport ─────────────────
 if (document.querySelector('.viz-slot[data-viz]')) void import('./viz-loader');
+
+// ── C# runner: Edit / Run / Reset on runnable blocks (loads its code only on lessons that have them) ──
+if (document.getElementById('runnable-data')) void import('./runner/attach');

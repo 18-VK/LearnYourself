@@ -18,3 +18,10 @@ coverage-report.md
 test-results/
 playwright-report/
 coverage/
+
+# C# runner: published bundle (scripts/runner/publish.ts) and .NET build output
+public/runner/
+runner/**/bin/
+runner/**/obj/
+runner/**/TestResults/
+runnable-report.md
