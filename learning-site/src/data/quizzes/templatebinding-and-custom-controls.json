@@ -1,0 +1,73 @@
+{
+  "lesson": "templatebinding-and-custom-controls",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Inside `<ControlTemplate TargetType=\"local:NumericUpDown\">`, a TextBlock uses `{TemplateBinding Value}`. Where does the value come from?",
+      "options": [
+        "From `Value` on the NumericUpDown that uses the template",
+        "From a `Value` property on the ViewModel in the DataContext",
+        "From the nearest parent element whose name is `Value`",
+        "From a window resource declared with `x:Key=\"Value\"`"
+      ],
+      "answer": 0,
+      "explanation": "TemplateBinding is a lightweight binding used only inside a ControlTemplate. It binds an element in the template to a property of the control the template is applied to (the templated parent).",
+      "source": {
+        "section": "But let's cover what TemplateBinding actually does, since it's a classic interview topic."
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You are building a `ToggleSwitch` that different app themes must be able to restyle completely without changing its behavior. What should it be?",
+      "options": [
+        "A UserControl with its whole layout in `ToggleSwitch.xaml`",
+        "A DataTemplate keyed by `ToggleSwitch`",
+        "A CustomControl whose look is defined by a style/template",
+        "A Window shown through `IWindowService`"
+      ],
+      "answer": 2,
+      "explanation": "Build a CustomControl when consumers should be able to completely change the visual appearance without changing behavior; its look can be replaced through its `ControlTemplate`. A UserControl's layout is part of its identity.",
+      "source": {
+        "section": "What's the difference between UserControl and CustomControl? When would you build a CustomControl?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Where does the `Rating` CustomControl get its default look?",
+      "options": [
+        "From `Rating.xaml`, compiled together with its code-behind",
+        "From its default Style in `Themes/Generic.xaml`",
+        "From the `ItemTemplate` of the window that uses it",
+        "From the ViewModel's bound `ProductRating` property"
+      ],
+      "answer": 1,
+      "explanation": "A CustomControl is a C# class plus `Themes/Generic.xaml`, where its default Style sets the `Template`. A UserControl, by contrast, defines its layout in its own XAML file.",
+      "source": {
+        "section": "What's the difference between UserControl and CustomControl? When would you build a CustomControl?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The window uses `<local:ProfileCard DataContext=\"{Binding SelectedUser}\" />`. Where do the card's `{Binding Name}` and `{Binding Email}` get their values?",
+      "options": [
+        "From dependency properties named `Name` and `Email` on ProfileCard",
+        "From the window's ViewModel, ignoring the DataContext set on the card",
+        "From `Themes/Generic.xaml`",
+        "From the `SelectedUser` object, which becomes the card's DataContext"
+      ],
+      "answer": 3,
+      "explanation": "The UserControl's bindings resolve against its DataContext, which the window sets to `SelectedUser`. Consumers set its data, but its layout is built into the control.",
+      "source": {
+        "section": "What's the difference between UserControl and CustomControl? When would you build a CustomControl?"
+      },
+      "reviewed": false
+    }
+  ]
+}

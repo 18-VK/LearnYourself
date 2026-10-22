@@ -1,0 +1,80 @@
+{
+  "lesson": "ways-to-access-a-database",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which drawback does the lesson give for plain ADO.NET (`SqlConnection`, `SqlCommand`, `SqlDataReader`)?",
+      "options": [
+        "It is slower than EF Core for large queries",
+        "It cannot run raw SQL queries",
+        "It is verbose, and you map rows to objects by hand",
+        "It needs migrations before any query can run"
+      ],
+      "answer": 2,
+      "explanation": "ADO.NET is very fast and gives full control, but it is verbose and error-prone, and you manually handle mapping between rows and objects.",
+      "source": { "section": "### 1. ADO.NET (Low-Level, Manual Control)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does Dapper do for you, and what does it leave to you?",
+      "options": [
+        "It maps query results to objects automatically, but you still write the SQL",
+        "It writes the SQL from LINQ, but you map the rows to objects",
+        "It handles migrations and change tracking, but not object mapping",
+        "It generates the database schema, but cannot run parameterized queries"
+      ],
+      "answer": 0,
+      "explanation": "Dapper is a micro-ORM that maps results to objects automatically but leaves SQL control to you; it has no migrations or schema management and no tracking overhead.",
+      "source": { "section": "### 2. Dapper (Micro-ORM)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which feature does EF Core provide that Dapper does not, according to the lesson?",
+      "options": [
+        "Near ADO.NET performance on large queries",
+        "Running SQL with parameters such as `@price`",
+        "Opening a `SqlConnection`",
+        "Migrations, relationships and change tracking"
+      ],
+      "answer": 3,
+      "explanation": "EF Core is a full ORM that handles migrations, relationships and tracking and lets you use LINQ; Dapper's cons include \"no migrations or schema management\".",
+      "source": { "section": "### 3. Entity Framework Core (ORM)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `context.Products.FromSqlRaw(\"SELECT * FROM Products WHERE Price > {0}\", 100).ToList()` show?",
+      "options": [
+        "EF Core sending SQL through Dapper",
+        "EF Core mixing your own SQL with ORM mapping to entities",
+        "A query that skips the `DbContext` entirely",
+        "A migration being applied to the `Products` table"
+      ],
+      "answer": 1,
+      "explanation": "EF Core allows mixing LINQ and SQL: `FromSqlRaw` runs your SQL while EF Core still maps the results, giving ORM mapping plus SQL control.",
+      "source": { "section": "### 4. EF Core + Raw SQL" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which pairing matches the lesson's recommendations for modern .NET apps?",
+      "options": [
+        "Performance-critical reporting: EF Core with lazy loading",
+        "Enterprise or complex apps: ADO.NET only",
+        "Performance-critical reporting: ADO.NET or Dapper for raw queries",
+        "Small projects / APIs: EF Core plus ADO.NET together"
+      ],
+      "answer": 2,
+      "explanation": "The lesson recommends Dapper for small projects/APIs, EF Core with migrations for enterprise apps, ADO.NET or Dapper for performance-critical reporting, and EF Core + Dapper as a hybrid.",
+      "source": { "section": "### Recommended in Modern .NET Apps" },
+      "reviewed": false
+    }
+  ]
+}

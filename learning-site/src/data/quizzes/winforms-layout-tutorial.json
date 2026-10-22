@@ -1,0 +1,73 @@
+{
+  "lesson": "winforms-layout-tutorial",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put these Designer steps for the menu / grid / button / status layout in the order the tutorial builds them.",
+      "steps": [
+        "Set the form's `Padding` to `0,0,0,0`",
+        "Add the MenuStrip with `Dock = Top` and the StatusStrip with `Dock = Bottom`",
+        "Add the outer TableLayoutPanel with `Dock = Fill` and two rows",
+        "Place `tlpGridWrapper` (columns 20 | 100% | 20) in Row0",
+        "Place the DataGridView in the wrapper's center column with `Dock = Fill`"
+      ],
+      "explanation": "The tutorial clears the form padding, docks the two strips, fills the rest with `tlpOuter`, then nests the grid wrapper in Row0 and finally puts the grid in the wrapper's center column.",
+      "source": {
+        "section": "Steps in the Designer (quick)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How does the tutorial give the DataGridView a margin on the left and right while the MenuStrip and StatusStrip stay edge to edge?",
+      "options": [
+        "It sets the form's `Padding` to 20 on the left and right sides",
+        "It nests the grid in the middle column of a 20px | 100% | 20px table",
+        "It sets `AutoSizeColumnsMode = Fill` on the DataGridView",
+        "It docks the grid straight into Row0 of `tlpOuter` with Dock = Fill"
+      ],
+      "answer": 1,
+      "explanation": "`tlpGridWrapper` has two fixed 20px side columns and a 100% center column, and the grid fills the center column. The form padding stays `0` so the strips have no margin.",
+      "source": {
+        "section": "Steps in the Designer (quick)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "The Button sits in the middle column of `tlpButtonWrapper`. Which settings keep it centered at its natural size instead of stretching?",
+      "options": [
+        "`Dock = Fill` and `AutoSize = False`",
+        "`Anchor = Left, Right` and `AutoSize = True`",
+        "`Anchor = None` and `AutoSize = True`",
+        "`Anchor = Top, Left` and `AutoSize = False`"
+      ],
+      "answer": 2,
+      "explanation": "The tutorial sets `Anchor = None` and `AutoSize = True` on the button, so it centers in its cell and sizes to its content.",
+      "source": {
+        "section": "Designer summary (properties)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does `tlpOuter` use Percent 100 for Row0 and AutoSize for Row1?",
+      "options": [
+        "Row0 (the grid) takes the leftover height; Row1 (the button) fits its content",
+        "Row0 is fixed in pixels so the grid never resizes, and Row1 grows with the form",
+        "Both rows share the height equally, so the grid and button get the same space",
+        "AutoSize is needed on Row1 so the StatusStrip can dock below it"
+      ],
+      "answer": 0,
+      "explanation": "Row0 = Percent 100 gives the grid area all the space left over, while Row1 = AutoSize sizes the button row to fit the button.",
+      "source": {
+        "section": "Steps in the Designer (quick)"
+      },
+      "reviewed": false
+    }
+  ]
+}

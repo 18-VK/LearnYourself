@@ -1,0 +1,94 @@
+{
+  "lesson": "model-validation",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A controller does **not** have `[ApiController]`. How does an action reject an invalid `Product`?",
+      "options": [
+        "It checks `ModelState.IsValid` and returns `BadRequest(ModelState)` when it is `false`",
+        "It doesn't need to; ASP.NET Core always returns 400 for invalid models",
+        "It wraps the action body in `try`/`catch` for `ValidationException`",
+        "It calls `Validate()` on each data annotation attribute"
+      ],
+      "answer": 0,
+      "explanation": "Automatic 400 responses come from `[ApiController]`. Without it, validation still runs, but the action must check `ModelState.IsValid` itself.",
+      "source": {
+        "section": "Manual Validation (Without ApiController)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "A client posts `{ \"password\": \"123\", \"confirmPassword\": \"456\" }` as a `RegisterDto`. What is the validation result?",
+      "code": {
+        "lang": "csharp",
+        "source": "public class RegisterDto\n{\n    public string Password { get; set; }\n\n    [Compare(\"Password\", ErrorMessage = \"Passwords do not match\")]\n    public string ConfirmPassword { get; set; }\n}"
+      },
+      "options": [
+        "Valid, because `Password` has no attributes",
+        "Valid, because both values are strings",
+        "An exception, because `Compare` needs `[Required]` first",
+        "Invalid, with the error \"Passwords do not match\""
+      ],
+      "answer": 3,
+      "explanation": "`[Compare(\"Password\")]` compares `ConfirmPassword` with `Password`; `\"456\"` is not `\"123\"`, so validation fails with the custom message.",
+      "source": {
+        "section": "7. [Compare(\"OtherProperty\")]"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You put `[DataType(DataType.EmailAddress)]` on `Email`. Will it reject `\"abc.com\"`?",
+      "options": [
+        "Yes, `[DataType]` validates the format strictly",
+        "Only when combined with `[Phone]`",
+        "No, `[DataType]` is mainly for formatting and UI; use `[EmailAddress]` for real validation",
+        "Yes, but only inside MVC views"
+      ],
+      "answer": 2,
+      "explanation": "`[DataType]` does not strictly validate data; it is used for UI rendering and documentation. Real email validation needs `[EmailAddress]`.",
+      "source": {
+        "section": "7. [DataType(DataType.X)]"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `[CreditCard]` actually check?",
+      "options": [
+        "The number's format and the Luhn algorithm, but not whether the card is real or active",
+        "Only that the value is 16 digits long",
+        "That the card exists and is active with the bank",
+        "That the card's expiry date is in the future"
+      ],
+      "answer": 0,
+      "explanation": "`[CreditCard]` checks the format and the Luhn checksum. It cannot tell whether the card is real or active.",
+      "source": {
+        "section": "10. [CreditCard]"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A `UniqueEmailAttribute` needs `IUserService` to check the database. How does it get the service?",
+      "options": [
+        "Through constructor injection into the attribute",
+        "Through a static property set in `Program.cs`",
+        "By creating `new UserService()` inside `IsValid`",
+        "By calling `context.GetService(typeof(IUserService))` on the `ValidationContext`, with the service registered in DI"
+      ],
+      "answer": 3,
+      "explanation": "It overrides `IsValid(object value, ValidationContext context)` and resolves the service from the context, which works because `IUserService` is registered with `AddScoped`.",
+      "source": {
+        "section": "Custom Attribute with Dependency Injection"
+      },
+      "reviewed": false
+    }
+  ]
+}

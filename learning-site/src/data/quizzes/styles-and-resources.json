@@ -1,0 +1,106 @@
+{
+  "lesson": "styles-and-resources",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "`Window.Resources` contains `<Style TargetType=\"Button\">` with no `x:Key`. Which buttons in that window use it?",
+      "options": [
+        "None, until each button sets `Style=\"{StaticResource Button}\"`",
+        "Only the first Button declared in the window",
+        "Every Button in the window, automatically",
+        "Only buttons that also set `BasedOn`"
+      ],
+      "answer": 2,
+      "explanation": "A style with no key is an implicit style: it applies to all controls of its `TargetType` automatically, with no need to set `Style=...`.",
+      "source": {
+        "section": "A Dependency Property (DP) is:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`DangerButtonStyle` is declared with `BasedOn=\"{StaticResource PrimaryButtonStyle}\"` and a single setter for `Background=Red`. What does a button using `DangerButtonStyle` get?",
+      "options": [
+        "Only the red background; the `PrimaryButtonStyle` setters are ignored",
+        "Every `PrimaryButtonStyle` setter, with only the background changed to red",
+        "`PrimaryButtonStyle`'s blue background, because the base style always wins",
+        "An error, because a style cannot change a property its base style already sets"
+      ],
+      "answer": 1,
+      "explanation": "`BasedOn` inherits another style's setters, so you override only what is different, here the `Background`.",
+      "source": {
+        "section": "A Dependency Property (DP) is:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A TextBlock should turn red whenever the ViewModel's `IsError` property is `true`. Which trigger fits?",
+      "options": [
+        "`<DataTrigger Binding=\"{Binding IsError}\" Value=\"True\">`",
+        "`<Trigger Property=\"IsMouseOver\" Value=\"True\">`",
+        "`<Trigger Property=\"IsEnabled\" Value=\"False\">`",
+        "A `MultiTrigger` with a single `Condition Property=\"IsError\"`"
+      ],
+      "answer": 0,
+      "explanation": "A `DataTrigger` reacts to bound data such as `{Binding IsError}`, which makes it common in MVVM. `Trigger` and `MultiTrigger` work with the control's own dependency properties, not bindings.",
+      "source": {
+        "section": "A Dependency Property (DP) is:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the places WPF searches for a resource in the order it checks them.",
+      "steps": [
+        "The current control",
+        "Its parent control(s)",
+        "The Window",
+        "The Application",
+        "System resources"
+      ],
+      "explanation": "Resource lookup walks outward from the current control through its parents, the Window and the Application to the system resources, and the closest resource wins.",
+      "source": {
+        "section": "Note : How Resource Lookup Works (IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`Application.Resources` defines `ThemeColor` as Blue and `Window.Resources` defines `ThemeColor` as Green. What color is `<Button Background=\"{StaticResource ThemeColor}\"/>` inside that window?",
+      "options": [
+        "Blue, because application resources always take priority",
+        "Neither; duplicate keys cause a XAML error",
+        "The system default button color",
+        "Green, because the closest resource wins"
+      ],
+      "answer": 3,
+      "explanation": "Lookup starts at the control and moves outward, so the Window's `ThemeColor` is found before the Application's: the button background is Green.",
+      "source": {
+        "section": "Note : How Resource Lookup Works (IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Your app lets users switch between Light and Dark themes while it is running. How should buttons reference `PrimaryBrush`?",
+      "options": [
+        "`{StaticResource PrimaryBrush}`, because it is faster to look up",
+        "`{DynamicResource PrimaryBrush}`, because it updates at runtime",
+        "Either one; both re-read the brush whenever it changes"
+      ],
+      "answer": 1,
+      "explanation": "A `StaticResource` is loaded once and cannot change after load, while a `DynamicResource` updates at runtime, so use it for light/dark themes and runtime color changes.",
+      "source": {
+        "section": "StaticResource vs DynamicResource (Quick Tip)"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "topic": "dotnet-runtime",
+  "questions": [
+    {
+      "id": "dotnet-runtime-is-dotnet-required-to-run-an-app",
+      "topic": "dotnet-runtime",
+      "subtopic": "deployment",
+      "difficulty": "junior",
+      "question": "Is it mandatory to have .NET installed to run a .NET application (.dll/.exe)?",
+      "shortAnswer": "No, it is not always mandatory. It depends on how the application is deployed.",
+      "answerFrom": {
+        "file": "InterviewQuestion.md",
+        "section": "# Is it mandatory to have .NET installed to run a .NET application (.dll/.exe)?"
+      },
+      "code": {
+        "lang": "bash",
+        "source": "dotnet publish -r win-x64 --self-contained true"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "InterviewQuestion.md",
+          "section": "# Is it mandatory to have .NET installed to run a .NET application (.dll/.exe)?"
+        }
+      ],
+      "relatedLessons": [
+        "dotnet-cli",
+        "what-is-dotnet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-aspnetcore-environment-from-windows-variables",
+      "topic": "dotnet-runtime",
+      "subtopic": "configuration-and-hosting",
+      "difficulty": "junior",
+      "question": "Can you set ASPNETCORE_ENVIRONMENT through Windows environment variables, and does changing it need a rebuild?",
+      "shortAnswer": "Yes, setting `ASPNETCORE_ENVIRONMENT` through Windows environment variables is valid. The application reads it at startup, so only a restart is required, not a rebuild.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/AppSettingExample.md",
+        "section": "# Interview-Ready Answer"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/AppSettingExample.md",
+          "section": "# Interview-Ready Answer"
+        }
+      ],
+      "relatedLessons": [
+        "configuration",
+        "environment-and-launchsettings"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    }
+  ]
+}

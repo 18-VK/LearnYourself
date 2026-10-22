@@ -1,0 +1,105 @@
+{
+  "lesson": "converters-and-code-behind",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In an `IValueConverter`, which direction does each method handle?",
+      "options": [
+        "`Convert`: UI → ViewModel; `ConvertBack`: ViewModel → UI",
+        "Both run ViewModel → UI; `ConvertBack` is only a fallback",
+        "`Convert`: ViewModel → UI; `ConvertBack`: UI → ViewModel",
+        "`Convert` runs at startup and `ConvertBack` runs when the window closes"
+      ],
+      "answer": 2,
+      "explanation": "A converter translates ViewModel data into UI-friendly data and back: `Convert` goes ViewModel → UI, and `ConvertBack` goes UI → ViewModel for TwoWay bindings.",
+      "source": {
+        "section": "Converter (IValueConverter)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the steps for using the `BoolToVisibilityConverter` on an Admin Panel TextBlock in order.",
+      "steps": [
+        "Write a `BoolToVisibilityConverter` class that implements `IValueConverter`",
+        "Register it in `Window.Resources` with `x:Key=\"BoolToVisibility\"`",
+        "Use it in the binding: `Visibility=\"{Binding IsAdmin, Converter={StaticResource BoolToVisibility}}\"`"
+      ],
+      "explanation": "The lesson's three steps are: create the converter, register it as a keyed resource in XAML, then reference it from the binding with `StaticResource`.",
+      "source": {
+        "section": "Most common example: bool → Visibility ⭐"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "With the lesson's `BoolToVisibilityConverter`, what Visibility does the \"Admin Panel\" TextBlock get when `IsAdmin` is `false`?",
+      "options": [
+        "`Visibility.Visible`",
+        "`Visibility.Collapsed`",
+        "`Visibility.Hidden`",
+        "An exception, because `false` is not a Visibility"
+      ],
+      "answer": 1,
+      "explanation": "`Convert` computes `isVisible = value is bool b && b` and returns `isVisible ? Visibility.Visible : Visibility.Collapsed`, so `false` gives `Collapsed`.",
+      "source": {
+        "section": "Most common example: bool → Visibility ⭐"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`StatusToBrushConverter` colors a read-only TextBlock bound OneWay to `Status`. Does it need a real `ConvertBack`?",
+      "options": [
+        "No; ConvertBack is only needed for TwoWay bindings and editing",
+        "Yes; every converter is called in both directions",
+        "Yes; WPF calls ConvertBack after every Convert to verify the result",
+        "Only if the TextBlock uses `UpdateSourceTrigger=PropertyChanged`"
+      ],
+      "answer": 0,
+      "explanation": "The ConvertBack table marks OneWay bindings and read-only UI as not needing it; it is for TwoWay bindings and user input editing. The lesson's example simply returns `Binding.DoNothing`.",
+      "source": {
+        "section": "When to use ConvertBack?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which of these is listed as a common converter mistake?",
+      "options": [
+        "Passing a `ConverterParameter` such as `Invert`",
+        "Registering the converter in a merged ResourceDictionary",
+        "Mapping an enum value to a Brush",
+        "Doing DB or API calls inside the converter"
+      ],
+      "answer": 3,
+      "explanation": "Converters are for UI-specific formatting; doing DB/API calls or changing ViewModel state in them are listed as mistakes. Parameters, enum-to-brush mapping and dictionary registration are all shown as good uses.",
+      "source": {
+        "section": "Common mistakes ❌"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Which of these is allowed in a window's code-behind under the \"no business logic in code-behind\" rule?",
+      "options": [
+        "Checking `if (Amount <= 0)` and showing an error before saving",
+        "Calling `db.Transactions.Add(...)` and then `db.SaveChanges()`",
+        "Calling `InitializeComponent()` and setting the `DataContext`",
+        "Deciding which features the current user has permission to use"
+      ],
+      "answer": 2,
+      "explanation": "Code-behind is UI glue only: `InitializeComponent()`, setting `DataContext`, view-specific behavior and lifecycle handling. Validation rules, database work and authorization are business logic.",
+      "source": {
+        "section": "1️⃣ What code-behind is allowed to contain ✅"
+      },
+      "reviewed": false
+    }
+  ]
+}

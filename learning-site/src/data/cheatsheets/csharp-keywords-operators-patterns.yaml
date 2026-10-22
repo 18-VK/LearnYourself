@@ -1,0 +1,270 @@
+id: csharp-keywords-operators-patterns
+title: 'C# keywords, operators & pattern matching'
+summary: 'C# keywords by category, every operator family, `var` vs `dynamic`, and the pattern-matching forms, condensed from the Phase 1 language notes.'
+groups:
+  - title: Access modifiers
+    note: 'Who can see a type or member.'
+    table:
+      columns: [Keyword, Accessible from]
+      from: { lesson: keywords, section: 'Access Modifiers' }
+      rows:
+        - ['`public`', 'Any code']
+        - ['`private`', 'Only within its containing type']
+        - ['`protected`', 'The type and types derived from it']
+        - ['`internal`', 'Only within the same assembly (project or DLL)']
+        - cells: ['`protected internal`', 'The same assembly **or** derived classes, even in other assemblies']
+          from: { lesson: keywords, section: 'protected internal - Accessible from assembly or derived types' }
+        - cells: ['`private protected`', 'Only derived types that are in the same assembly (C# 7.2)']
+          from: { lesson: keywords, section: 'private protected' }
+        - cells: ['`file`', 'The type is visible only within the same source file (C# 11+); for helpers other files must not see']
+          from: { lesson: keywords, section: 'file (file-scoped type) — C# 11+' }
+
+  - title: Modifiers
+    table:
+      columns: [Keyword, Meaning, Example]
+      from: { lesson: keywords, section: 'Modifiers' }
+      rows:
+        - ['`abstract`', 'Class cannot be instantiated; serves as a base class. Abstract members have no body and must be overridden', '`abstract class C { public abstract void M(); }`']
+        - ['`sealed`', 'Prevents further inheritance', '`sealed class D {}`']
+        - ['`static`', 'Belongs to the type, not an instance', '`static void E() {}`']
+        - ['`readonly`', 'Field can be assigned only at its declaration or inside the constructor', '`public readonly int Year;`']
+        - ['`const`', 'Compile-time constant', '`const double Pi = 3.14;`']
+        - ['`volatile`', 'Field may be modified by several threads; always read from memory, not a thread-local cache or register', '`volatile int counter;`']
+        - ['`unsafe`', 'Permits pointers and unmanaged code', '`unsafe { int* p; }`']
+
+  - title: Types and declarations
+    table:
+      columns: [Keyword, Defines, Example]
+      from: { lesson: keywords, section: 'Types' }
+      rows:
+        - ['`class`', 'A reference type', '`class E {}`']
+        - ['`struct`', 'A value type', '`struct F { public int X; }`']
+        - ['`interface`', 'A contract for types', '`interface IG { void M(); }`']
+        - ['`enum`', 'A set of named constants', '`enum Color { Red, Green }`']
+        - ['`delegate`', 'A type-safe method pointer', '`delegate void G(int x);`']
+        - ['`record`', 'An immutable reference type (C# 9+)', '`record Person(string Name, int Age);`']
+        - cells: ['`init`', 'Property can be set only during object initialization', '`public string Name { get; init; }`']
+          from: { lesson: keywords, section: 'init - Sets property only during object-init' }
+        - cells: ['`with`', 'Creates a modified copy of a record', '`var p2 = p with { Name = "Bob" };`']
+          from: { lesson: keywords, section: 'with - Creates modified copy of record' }
+        - cells: ['`partial`', 'Splits a type across files', '`partial class P {}`']
+          from: { lesson: keywords, section: 'partial - Splits a type across files' }
+
+  - title: Type testing and conversion
+    items:
+      - term: '`is`'
+        desc: 'Checks type compatibility at runtime and returns `bool`; null-aware. With a variable (`obj is string str`, C# 7+) it also casts.'
+        code: |
+          object obj = "Hello";
+
+          if (obj is string str)   // if true, also casts into str
+          {
+              Console.WriteLine($"String length = {str.Length}");
+          }
+        lang: csharp
+        from: { lesson: keywords, section: 'is Keyword' }
+      - term: '`as`'
+        desc: 'Safe cast to a reference type or nullable value type (`as int?`): returns `null` instead of throwing. Not for non-nullable value types (use an explicit cast).'
+        code: |
+          object obj = 42;
+          string str = (string)obj; // ❌ Throws InvalidCastException
+          string str = obj as string; // ✅ No exception, str becomes null
+        lang: csharp
+        from: { lesson: keywords, section: 'as - Safe cast; returns null if incompatible' }
+      - term: '`typeof` / `sizeof`'
+        desc: '`typeof` gets the `Type` object of a type at compile time; `sizeof` gets the size in bytes of an unmanaged type.'
+        code: |
+          Type t = typeof(int);
+          Console.WriteLine(t.FullName); // Output: System.Int32
+          var sz = sizeof(int);
+        lang: csharp
+        from: { lesson: keywords, section: 'typeof - Gets the Type object' }
+      - term: '`implicit` / `explicit` conversion operators'
+        desc: '`implicit`: automatic, no cast; use when safe, lossless and unsurprising. `explicit`: caller must cast; use when it may lose information or fail. Both must be `public static`, and one side must be the containing type.'
+        code: |
+          // int -> MyInt: automatic conversion
+          public static implicit operator MyInt(int x)
+          {
+              return new MyInt(x);
+          }
+
+          // MyInt -> int: manual conversion
+          public static explicit operator int(MyInt number)
+          {
+              return number.value;
+          }
+
+          MyInt number = 10;       // implicit: int -> MyInt
+          int value = (int)number; // explicit: MyInt -> int
+        lang: csharp
+        from: { lesson: keywords, section: 'Complete Example' }
+      - term: '`checked` / `unchecked`'
+        desc: '`checked` throws `OverflowException` on integer overflow; `unchecked` (the default in most builds) wraps, so `int.MaxValue + 1` becomes `int.MinValue`.'
+        from: { lesson: keywords, section: 'checked / unchecked - Controls overflow checking' }
+    table:
+      columns: ['`checked` context', Example]
+      from: { lesson: keywords, section: 'checked / unchecked - Controls overflow checking' }
+      rows:
+        - ['Block level', '`checked { int x = a + b; }`']
+        - ['Expression level', '`int x = checked(a + b);`']
+        - ['Type cast', '`byte b = checked((byte)intValue);`']
+
+  - title: Parameters and method control
+    table:
+      columns: [Keyword, Meaning, Example]
+      from: { lesson: keywords, section: 'Parameters & Method Control' }
+      rows:
+        - cells: ['`params`', 'Any number of arguments. Only one `params` per method and nothing after it; length is 0 when no arguments are passed', '`void Log(params string[] msgs) {}`']
+          from: { lesson: keywords, section: 'Params' }
+        - ['`ref`', 'Passes by reference; the argument must be initialized', '`void M(ref int x) { x++; }`']
+        - ['`out`', 'Passes by reference; the argument need not be initialized', '`void M(out int x) { x = 5; }`']
+        - ['`in`', 'Passes by reference as read-only', '`void M(in int x) { }`']
+        - ['`yield`', 'Produces a sequence from an iterator method', '`IEnumerable<int> Gen() { yield return 1; }`']
+
+  - title: Other keywords
+    table:
+      columns: [Keyword, Meaning, Example]
+      from: { lesson: keywords, section: 'C# Keywords - Definitions and Examples' }
+      rows:
+        - cells: ['Control flow', '`if`/`else`, `switch`/`case`/`default`, `for`, `foreach`, `while`, `do`, `break`, `continue`, `return`, `throw`, `try`/`catch`/`finally`', '`do {} while(false);`']
+          from: { lesson: keywords, section: 'Control Flow' }
+        - cells: ['`using`', 'Imports a namespace, or manages an `IDisposable` resource', '`using System;`']
+          from: { lesson: keywords, section: 'using - Imports namespace or manages resources with IDisposable' }
+        - cells: ['`operator`', 'Overloads an operator for a type', '`public static MyInt operator +(MyInt a, MyInt b) => a;`']
+          from: { lesson: keywords, section: 'operator - Overloads operator for type' }
+        - cells: ['`when`', 'Filters an exception (`catch … when`) or guards a pattern', '`string s when s.Length > 5 => "long string",`']
+          from: { lesson: keywords, section: 'when - Filters exception or pattern' }
+        - cells: ['`let`', 'Introduces a variable inside a LINQ query', '`var q = from x in xs let y = x*2 select y;`']
+          from: { lesson: keywords, section: 'let - Introduces variable in LINQ' }
+        - cells: ['`async` / `await`', 'Marks an async method / waits for an async operation', '`async Task M() {}` · `await Task.Delay(1);`']
+          from: { lesson: keywords, section: 'async - Marks async method' }
+        - cells: ['`not`, `and`, `or`', 'Pattern negation and combining', '`if (x is not null) {}` · `if (x is int and > 0) {}`']
+          from: { lesson: keywords, section: 'and, or - Pattern combining' }
+        - cells: ['`fixed`', 'Pins an object in memory', '`unsafe { fixed(int* p = &x) {} }`']
+          from: { lesson: keywords, section: 'fixed - Pins an object in memory' }
+        - cells: ['`stackalloc`', 'Allocates memory on the stack', '`Span<int> buf = stackalloc int[10];`']
+          from: { lesson: keywords, section: 'stackalloc - Allocates memory in stack' }
+        - cells: ['`extern`', 'Declares a method implemented externally', '`[DllImport("lib")] extern static void E();`']
+          from: { lesson: keywords, section: 'extern - Declares method implemented externally' }
+        - cells: ['`nint`, `nuint`', 'Native-sized integer types', '`nint ni = 0;`']
+          from: { lesson: keywords, section: 'nint, nuint - Native-sized integer types' }
+
+  - title: '`var` vs `dynamic`'
+    note: '`var` is fixed at compile time and cannot change type later; `dynamic` is resolved at runtime and can hold anything.'
+    table:
+      columns: [Feature, '`var`', '`dynamic`']
+      from: { lesson: var-and-dynamic, section: 'Comparison' }
+      rows:
+        - ['Type resolved at', 'Compile-time', 'Runtime']
+        - ['Compile-time check', '✅ Yes', '❌ No']
+        - ['Type safe', '✅ Yes', '❌ No (risk of runtime exceptions)']
+        - ['IntelliSense support', '✅ Full', '❌ Limited']
+        - ['Reflection/COM support', '❌ Not ideal', '✅ Preferred']
+        - ['Performance', 'Fast (no binding needed)', 'Slower (uses runtime binder)']
+    items:
+      - term: 'Use `var` for'
+        desc: 'LINQ query results, anonymous types (`new { Name = "Aman", Age = 25 }`), and avoiding redundant typing (`var dict = new Dictionary<string, List<int>>();`).'
+        from: { lesson: var-and-dynamic, section: 'var' }
+      - term: 'Use `dynamic` for'
+        desc: 'JSON or `ExpandoObject`, reflection-based or late-bound APIs (`Activator.CreateInstance`), and COM interop.'
+        from: { lesson: var-and-dynamic, section: 'dynamic' }
+
+  - title: Operators
+    table:
+      columns: [Family, Operators, Example]
+      from: { lesson: operators, section: 'C# Operators with Examples' }
+      rows:
+        - cells: ['Arithmetic', '`+` `-` `*` `/` `%`', '`7 % 3 = 1`']
+          from: { lesson: operators, section: '1. Arithmetic Operators' }
+        - cells: ['Relational', '`==` `!=` `>` `<` `>=` `<=`', '`5 >= 5` → true']
+          from: { lesson: operators, section: '2. Relational / Comparison Operators' }
+        - cells: ['Logical', '`&&` `||` `!`', '`true && false` → false']
+          from: { lesson: operators, section: '3. Logical Operators' }
+        - cells: ['Assignment', '`=` `+=` `-=` `*=` `/=` `%=`', '`x += 5`']
+          from: { lesson: operators, section: '4. Assignment Operators' }
+        - cells: ['Unary', '`++` `--` `+` `-` `!`', '`a++` yields the old value, `++a` the new one']
+          from: { lesson: operators, section: '5. Unary Operators' }
+        - cells: ['Bitwise', '`&` `|` `^` `~` `<<` `>>`', '`5 & 3` → 1, `5 | 3` → 7, `5 ^ 3` → 6, `~5` → -6, `5 << 1` → 10, `5 >> 1` → 2']
+          from: { lesson: operators, section: '6. Bitwise Operators' }
+        - cells: ['Ternary', '`condition ? expr1 : expr2`', '`(age >= 18) ? "Adult" : "Minor"`']
+          from: { lesson: operators, section: '7. Ternary Operator' }
+        - cells: ['Null-coalescing', '`??`: left operand if not null, otherwise the right', '`name ?? "Default"`']
+          from: { lesson: operators, section: '8. Null-Coalescing Operators' }
+        - cells: ['Null-conditional', '`?.`: safe member access that avoids `NullReferenceException`', '`obj?.MethodName();`']
+          from: { lesson: operators, section: '8. Null-Coalescing Operators' }
+        - cells: ['Null-coalescing assignment', '`??=`: assigns the right operand only if the left operand is `null`; the right side is not evaluated otherwise', '`variable ??= expression;`']
+          docs: { url: 'https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/null-coalescing-operator', title: '?? and ??= operators - null-coalescing operators - C# reference', accessed: '2026-10-22' }
+    items:
+      - term: 'Postfix vs prefix increment'
+        code: |
+          int a = 5;
+          Console.WriteLine(a++);  // 5 (then a = 6)
+          Console.WriteLine(++a);  // 7
+        lang: csharp
+        from: { lesson: operators, section: '5. Unary Operators' }
+
+  - title: Pattern matching
+    note: 'Test type, shape or value directly instead of casting or long `if-else` chains.'
+    table:
+      columns: [Pattern, Example, Matches]
+      from: { lesson: pattern-matching, section: '12. Quick Summary Table' }
+      rows:
+        - ['**Type**', '`if (x is int i)`', 'Match type and assign']
+        - ['**Property**', '`{ Age: >= 18 }`', 'Match object properties']
+        - ['**Relational**', '`>= 90`', 'Compare numeric values']
+        - ['**Logical**', '`and`, `or`, `not`', 'Combine or negate patterns']
+        - ['**Tuple**', '`(x, y) =>`', 'Match tuples']
+        - ['**Positional**', '`(var x, var y)`', 'Match a deconstructed record']
+        - ['**Guard (`when`)**', '`when condition`', 'Add extra conditions']
+        - ['**Discard (`_`)**', '`_ => "default"`', 'Catch-all pattern']
+        - cells: ['**List**', '`numbers is [1, 2, 3]` · `[> 0, > 0, ..]`', 'A sequence, element by element; the slice `..` matches zero or more elements']
+          docs: { url: 'https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/patterns', title: 'Patterns - Pattern matching using the is and switch expressions - C# reference', accessed: '2026-10-22' }
+    items:
+      - term: '`switch` expression'
+        code: |
+          string result = o switch
+          {
+              null => "nothing",
+              int i => $"integer {i}",
+              string s when s.Length > 5 => "long string",
+              string s => $"short string ({s})",
+              _ => "unknown"
+          };
+        lang: csharp
+        from: { lesson: pattern-matching, section: '2. switch Expression Pattern' }
+      - term: 'Property + relational patterns'
+        code: |
+          string category = p switch
+          {
+              { Age: < 13 } => "child",
+              { Age: >= 13 and < 20 } => "teen",
+              { Age: >= 20 } => "adult",
+              _ => "unknown"
+          };
+        lang: csharp
+        from: { lesson: pattern-matching, section: '3. Property Pattern' }
+      - term: 'Tuple pattern'
+        code: |
+          string pos = point switch
+          {
+              (0, 0) => "origin",
+              (_, 0) => "on X-axis",
+              (0, _) => "on Y-axis",
+              (var a, var b) when a > 0 && b > 0 => "Quadrant 1",
+              _ => "other"
+          };
+        lang: csharp
+        from: { lesson: pattern-matching, section: '5. Tuple Pattern' }
+      - term: 'Type + property pattern'
+        code: |
+          string status = o switch
+          {
+              Person { Age: < 18 } p => $"{p.Name} is a minor",
+              Person { Age: >= 18 } p => $"{p.Name} is an adult",
+              _ => "unknown"
+          };
+        lang: csharp
+        from: { lesson: pattern-matching, section: '7. Type + Property Pattern' }
+      - term: 'Best practices'
+        desc: 'Use patterns for concise, readable logic; combine relational and property patterns; avoid overly complex nested patterns.'
+        from: { lesson: pattern-matching, section: '11. Best Practices' }

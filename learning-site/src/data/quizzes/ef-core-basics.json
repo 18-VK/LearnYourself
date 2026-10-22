@@ -1,0 +1,79 @@
+{
+  "lesson": "ef-core-basics",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In ORM mapping, a C# class maps to a table and an object maps to a row. What does a property of the class map to?",
+      "options": [
+        "A foreign key relationship",
+        "A column",
+        "A one-to-many relation",
+        "A separate table"
+      ],
+      "answer": 1,
+      "explanation": "The mapping table pairs class ↔ table, object ↔ row, property ↔ column, object reference ↔ foreign key and `List<T>` ↔ one-to-many relation.",
+      "source": { "section": "## ORM (Object–Relational Mapping)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You want EF Core to talk to SQL Server. Which package do you need to install?",
+      "options": [
+        "Only `Microsoft.EntityFrameworkCore`; it includes every provider",
+        "`Microsoft.EntityFrameworkCore.Sqlite`, the default provider",
+        "`Microsoft.EntityFrameworkCore.SqlServer`, which also brings in the core library",
+        "No package; EF Core is built into .NET"
+      ],
+      "answer": 2,
+      "explanation": "Installing `Microsoft.EntityFrameworkCore` alone is not sufficient; you also need a database provider such as `Microsoft.EntityFrameworkCore.SqlServer`, and installing the provider automatically installs the core library.",
+      "source": { "section": "### Install EF Core to use in Application" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In `EFContext`, what is the role of `public DbSet<Product> Products { get; set; }`?",
+      "options": [
+        "It represents the `Products` table and offers methods such as `Add`, `Attach` and `Remove`",
+        "It holds the connection string for the database",
+        "It runs the migrations when the app starts",
+        "It defines the database provider used by `OnConfiguring`"
+      ],
+      "answer": 0,
+      "explanation": "A `DbSet<TEntity>` represents a table; it provides `Add`, `Attach`, `Remove` and so on, and the context maps those operations to SQL run through the database provider.",
+      "source": { "section": "## DbSet" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the steps for creating a database with EF Core Code-First in the order the lesson follows.",
+      "steps": [
+        "Create the `Product` entity class (a public POCO)",
+        "Create `EFContext : DbContext` with a `DbSet<Product>` property and the connection string in `OnConfiguring`",
+        "Run `Add-Migration \"NewDatabase\"` in the Package Manager Console",
+        "Run `Update-Database` to apply the migration and create the database"
+      ],
+      "explanation": "With the model, context and `DbSet` ready, migrations create the database: `Add-Migration` generates the instructions, then `Update-Database` uses them and creates the database if it doesn't exist.",
+      "source": { "section": "### Creating the database" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A generated migration has an `Up()` and a `Down()` method. When is `Down()` used?",
+      "options": [
+        "Every time `Update-Database` runs, before `Up()`",
+        "When the app starts, to drop and recreate tables",
+        "Only when the database does not exist yet",
+        "When rolling back, to remove the tables, columns and constraints that `Up()` created"
+      ],
+      "answer": 3,
+      "explanation": "`Up()` creates tables, columns and constraints; `Down()` removes them and is used when rolling back.",
+      "source": { "section": "### 2) Create the database using the Migrations from the previous step" },
+      "reviewed": false
+    }
+  ]
+}

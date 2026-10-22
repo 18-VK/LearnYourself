@@ -1,0 +1,90 @@
+{
+  "lesson": "debounce-search",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does debouncing a search box mean?",
+      "options": [
+        "Run the search on every keystroke, but on a background thread",
+        "Run the search at most once per second, even while the user is still typing",
+        "Wait until the user stops typing, then run the search once",
+        "Run the search only when the user presses Enter"
+      ],
+      "answer": 2,
+      "explanation": "Debouncing means \"wait until the user stops typing, then do the work once\": typing `task` triggers one search instead of one for `t`, `ta`, `tas` and `task`.",
+      "source": {
+        "section": "What debouncing actually means"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "With the WPF `DispatcherTimer` debounce (300 ms), put the events from one keystroke to the search in order.",
+      "steps": [
+        "The user types and the `SearchText` setter runs",
+        "`_searchTimer.Stop()` cancels any pending countdown",
+        "`_searchTimer.Start()` begins a new 300 ms countdown",
+        "The user stops typing and 300 ms pass with no more setter calls",
+        "`Tick` fires: the timer is stopped and `ApplySearch()` runs"
+      ],
+      "explanation": "Every setter call stops and restarts the timer; only when no keystroke arrives for the full interval does `Tick` fire, stop the timer and call `ApplySearch()`.",
+      "source": {
+        "section": "In WPF"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "With a 300 ms debounce, the user types `T`, `Ta`, `Tas`, `Task`, each keystroke less than 300 ms after the previous one, then stops. How many times does `ApplySearch()` run?",
+      "options": [
+        "Once, after the user stops typing",
+        "Four times, once per keystroke",
+        "Twice, at the first and last keystroke",
+        "Never, because the timer was stopped"
+      ],
+      "answer": 0,
+      "explanation": "Each keystroke cancels the previous countdown and starts a new one, so the timer only reaches `Tick` 300 ms after the last keystroke, and `ApplySearch()` runs exactly one time.",
+      "source": {
+        "section": "In WPF"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why is calling `_searchTimer.Stop()` right before `_searchTimer.Start()` the heart of the debounce?",
+      "options": [
+        "It makes the timer tick twice as fast while the user types",
+        "It cancels the pending countdown and starts a fresh one",
+        "It clears `SearchText` so the next search starts from empty",
+        "`Start()` throws an exception if the timer is already running"
+      ],
+      "answer": 1,
+      "explanation": "Stop-then-Start cancels the pending countdown and schedules a fresh one. As long as keystrokes keep arriving, the timer never reaches `Tick` and the search never runs.",
+      "source": {
+        "section": "Why Stop() before Start() is critical"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "In the WinForms version, where is the debounce countdown restarted?",
+      "options": [
+        "In the form's `Load` event handler",
+        "In the timer's own `Tick` handler",
+        "In the search button's `Click` handler",
+        "In the TextBox's `TextChanged` handler"
+      ],
+      "answer": 3,
+      "explanation": "In WinForms, `textBoxSearch_TextChanged` calls `_searchTimer.Stop()` to cancel the previous countdown and `_searchTimer.Start()` to restart it; when typing stops, `Tick` fires and the search runs once.",
+      "source": {
+        "section": "In Winform"
+      },
+      "reviewed": false
+    }
+  ]
+}

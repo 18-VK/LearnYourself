@@ -1,0 +1,93 @@
+{
+  "lesson": "resources-and-assembly-loading",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the steps for loading an embedded DLL with `ResourceManager` in order.",
+      "steps": [
+        "Create a `ResourceManager` that points to the `Resources.resx` file inside your assembly",
+        "Call `GetObject(\"exassembly\")` to retrieve the resource stored as a byte array",
+        "Call `Assembly.Load(bytes)` to load the DLL directly from memory"
+      ],
+      "explanation": "The resource manager finds the compiled resources, `GetObject` returns the embedded DLL's bytes, and `Assembly.Load(byte[])` loads it from memory, so the DLL doesn't need to exist on disk.",
+      "source": { "section": "Step-by-step" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which call returns the main entry point assembly (your EXE)?",
+      "options": [
+        "`Assembly.GetExecutingAssembly()`",
+        "`Assembly.GetCallingAssembly()`",
+        "`Assembly.GetEntryAssembly()`",
+        "`Assembly.Load(bytes)`"
+      ],
+      "answer": 2,
+      "explanation": "`GetEntryAssembly()` returns the main entry point assembly. `GetExecutingAssembly()` returns the assembly where the current code is running, and `GetCallingAssembly()` the one that invoked the current method.",
+      "source": { "section": "🧩 Related Reflection Calls" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "When does `AppDomain.CurrentDomain.AssemblyResolve` fire?",
+      "options": [
+        "Every time any assembly is loaded successfully",
+        "When the runtime fails to locate or load an assembly",
+        "When the application starts, before `Main` runs",
+        "When an assembly is unloaded"
+      ],
+      "answer": 1,
+      "explanation": "`AssemblyResolve` is raised when the CLR cannot bind to an assembly by name at run time, giving your handler a chance to load it from a custom folder, a resource or elsewhere.",
+      "source": { "section": "What is AppDomain.CurrentDomain.AssemblyResolve" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Your `AssemblyResolve` handler can't find the requested DLL and returns `null`. What happens?",
+      "options": [
+        "The runtime retries the handler until it returns an assembly",
+        "The runtime loads an empty placeholder assembly",
+        "The load attempt fails",
+        "The runtime downloads the assembly from NuGet"
+      ],
+      "answer": 2,
+      "explanation": "The handler must return a valid `Assembly` that satisfies the request; if it returns `null`, the load attempt fails.",
+      "source": { "section": "🔑 Key Facts About AssemblyResolve" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What does `args.Name` hold inside an `AssemblyResolve` handler?",
+      "options": [
+        "The file path of the DLL to load",
+        "The display name of the assembly the runtime is trying to load, such as `MyLibrary, Version=1.0.0.0, ...`",
+        "The name of the method that caused the load",
+        "The name of the event handler"
+      ],
+      "answer": 1,
+      "explanation": "`ResolveEventArgs` is created by the runtime; `args.Name` is the display name of the missing assembly and `args.RequestingAssembly` is the assembly that triggered the request.",
+      "source": { "section": "📂 What's Inside ResolveEventArgs" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "How should `AssemblyResolve` be used, according to the risks and best practices?",
+      "options": [
+        "Only as a fallback for failed loads, loading assemblies from trusted sources",
+        "As the main way to load every assembly in the app",
+        "Only for assemblies that are already loaded",
+        "Without any checks, because the CLR verifies every assembly it receives"
+      ],
+      "answer": 0,
+      "explanation": "The note says not to use it for general assembly loading, because it should only be a fallback; overuse can slow startup, and assemblies should come from trusted sources to avoid injection attacks.",
+      "source": { "section": "⚠️ Risks & Best Practices" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "lesson": "winforms-intro-and-controls",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "You drag a Button from the Toolbox onto `Form1` in the Visual Studio Designer. Where does the code that creates that button end up?",
+      "options": [
+        "In the form's `Load` event handler",
+        "In `InitializeComponent()`, generated automatically",
+        "In `Program.Main`, before `Application.Run`",
+        "Nowhere; the Designer stores controls only in the project file"
+      ],
+      "answer": 1,
+      "explanation": "Controls dragged from the Toolbox have their code automatically generated in `InitializeComponent()`. You can also set their properties in the Properties window or in code.",
+      "source": {
+        "section": "Introduction to Windows Forms (WinForms)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A form needs two independent sets of radio buttons (Gender and Plan), where picking one option clears only the others in its own set. How do you group them in WinForms?",
+      "options": [
+        "Give each set a different `GroupName` value, such as `Gender` and `Plan`",
+        "Set `AutoCheck = false` on every radio button",
+        "Put each set inside its own container, such as a `GroupBox` or `Panel`",
+        "Handle `Click` on each button and uncheck the other set manually"
+      ],
+      "answer": 2,
+      "explanation": "WinForms has no `GroupName` property: grouping is determined by the container, so radio buttons inside the same `GroupBox` or `Panel` form one mutually exclusive group.",
+      "source": {
+        "section": "Common WinForms Controls"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You want a ComboBox where the user must pick one of the listed colors and cannot type a new value. Which `DropDownStyle` do you set?",
+      "options": [
+        "`ComboBoxStyle.DropDownList`",
+        "`ComboBoxStyle.DropDown`",
+        "`ComboBoxStyle.Simple`"
+      ],
+      "answer": 0,
+      "explanation": "`DropDownList` makes the ComboBox non-editable, like a fixed list. `DropDown` (the default) allows typing new values, and `Simple` keeps the list always visible.",
+      "source": {
+        "section": "Common WinForms Controls"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Inside a ListBox's `SelectedIndexChanged` handler, how can you tell that no item is currently selected?",
+      "options": [
+        "`SelectedItem` is an empty string",
+        "`SelectedIndex` is `0`",
+        "`Items.Count` is `0`",
+        "`SelectedIndex` is `-1`"
+      ],
+      "answer": 3,
+      "explanation": "`SelectedIndex` is the index of the selected item, or `-1` if none is selected. That is why the lesson's example checks `listBox.SelectedIndex != -1` before reading `SelectedItem`.",
+      "source": {
+        "section": "Common WinForms Controls"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "On a dialog form, which Button property makes the form close with a given result (for example `OK`) when the button is clicked?",
+      "options": [
+        "`Enabled`",
+        "`DialogResult`",
+        "`FlatStyle`",
+        "`Text`"
+      ],
+      "answer": 1,
+      "explanation": "Setting a button's `DialogResult` (e.g. `DialogResult.OK`) closes the form with that result when it is clicked; `Enabled`, `FlatStyle` and `Text` only affect whether and how the button is shown.",
+      "source": {
+        "section": "Common WinForms Controls"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "lesson": "ef-core-change-tracking-and-cascade",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "You load an entity with a query and then change one of its properties. What entity state does the `ChangeTracker` give it after the change?",
+      "options": [
+        "Added",
+        "Unchanged",
+        "Modified",
+        "Detached"
+      ],
+      "answer": 2,
+      "explanation": "When you query and load an entity its state is set to Unchanged; if you then make any changes to it, its state becomes Modified.",
+      "source": { "section": "## Change tracking in EF Core" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How does `SaveChanges` decide whether to send an `INSERT`, `UPDATE` or `DELETE` for each tracked entity?",
+      "options": [
+        "It compares every table in the database with the model",
+        "It uses each entity's state (Added, Modified, Deleted) to generate the SQL",
+        "It always deletes and re-inserts every tracked entity",
+        "It asks the database which rows have changed"
+      ],
+      "answer": 1,
+      "explanation": "`SaveChanges` uses the entity states to determine and generate the SQL query: Insert, Update or Delete.",
+      "source": { "section": "## Change tracking in EF Core" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Where does EF Core keep an entity's state, original values and current values?",
+      "options": [
+        "In an `EntityEntry` instance that the `ChangeTracker` creates for each tracked entity",
+        "In hidden columns added to the entity's table",
+        "In the `DbSet<TEntity>` property, as one list for all entities",
+        "In the migration snapshot file"
+      ],
+      "answer": 0,
+      "explanation": "The `ChangeTracker` creates an `EntityEntry` for every entity it tracks, and that entry holds the entity state, original values, current values and so on.",
+      "source": { "section": "### ChangeTracker" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You configure a relationship with `.OnDelete(DeleteBehavior.Cascade)` and create the database with an EF Core migration. What referential action does the foreign key get?",
+      "options": [
+        "`ON DELETE SET NULL`",
+        "`ON DELETE NO ACTION`",
+        "None; cascade happens only in the client",
+        "`ON DELETE CASCADE`"
+      ],
+      "answer": 3,
+      "explanation": "`Cascade` is a behavior that maps to the database, so the migration sets up `ON DELETE CASCADE` (child records are deleted both in the client and the database).",
+      "source": { "section": "### Behaviors that map to the database" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is the difference between `ClientCascade` and `Cascade`?",
+      "options": [
+        "`ClientCascade` deletes child rows only in the database",
+        "`ClientCascade` deletes tracked child records in the client only; the migration adds no referential action to the database",
+        "`ClientCascade` sets the foreign key to NULL instead of deleting",
+        "There is no difference; `ClientCascade` is the old name"
+      ],
+      "answer": 1,
+      "explanation": "Behaviors starting with `Client` don't map to the database: migrations don't generate referential actions for them, so `ClientCascade` deletes the child records in the client only.",
+      "source": { "section": "### Behaviors that do not map to the database" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "The Department–Employee relationship uses `DeleteBehavior.ClientSetNull`. You call `db.Departments.Remove(dept)` and `SaveChanges()`. What happens to the department's tracked employees?",
+      "options": [
+        "They are deleted along with the department",
+        "Nothing happens to them",
+        "Their `DepartmentID` is updated to NULL",
+        "`SaveChanges()` throws before deleting anything"
+      ],
+      "answer": 2,
+      "explanation": "With `ClientSetNull` (or `SetNull`) the context updates the `DepartmentID` of the employee records to NULL; on `SaveChanges` it deletes the department and updates the tracked employees.",
+      "source": { "section": "### Behaviors that do not map to the database" },
+      "reviewed": false
+    }
+  ]
+}

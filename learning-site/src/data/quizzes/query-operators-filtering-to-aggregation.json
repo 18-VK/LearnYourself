@@ -1,0 +1,83 @@
+{
+  "lesson": "query-operators-filtering-to-aggregation",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "`numbers` is a `List<List<int>>` holding `{1,2}`, `{3,4}` and `{5,6}`. What is the difference between `numbers.Select(n => n)` and `numbers.SelectMany(n => n)`?",
+      "options": [
+        "Both give the six numbers; `SelectMany` also removes duplicates",
+        "`Select` flattens the lists; `SelectMany` keeps them nested",
+        "`Select` gives a sequence of three lists; `SelectMany` gives one sequence `1, 2, 3, 4, 5, 6`",
+        "`SelectMany` only works with a result selector"
+      ],
+      "answer": 2,
+      "explanation": "`Select` gives you a sequence of sequences, while `SelectMany` projects each element to an `IEnumerable` and flattens the results into one sequence.",
+      "source": { "section": "#### 3) `SelectMany(selector)`" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "Which elements does `pageData` contain?",
+      "code": {
+        "lang": "csharp",
+        "source": "int[] numbers = { 10, 20, 30, 40, 50, 60, 70, 80, 90 };\n\n// Page 2 (Skip 3 elements of Page 1, Take next 3)\nint pageSize = 3;\nint pageNumber = 2;\n\nvar pageData = numbers\n                .Skip((pageNumber - 1) * pageSize)\n                .Take(pageSize);"
+      },
+      "options": [
+        "`10, 20, 30`",
+        "`40, 50, 60`",
+        "`20, 30, 40`",
+        "`70, 80, 90`"
+      ],
+      "answer": 1,
+      "explanation": "`Skip((2 - 1) * 3)` bypasses the first 3 elements and `Take(3)` returns the next 3, so page 2 is `40, 50, 60`.",
+      "source": { "section": "#### 5) `Take(n)` / `Skip(n)`" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var numbers = new[] { 2, 3, 4 };\n// Start with seed = 10\nint result = numbers.Aggregate(10, (acc, n) => acc + n);\nConsole.WriteLine(result);"
+      },
+      "options": ["`9`", "`24`", "`10`", "`19`"],
+      "answer": 3,
+      "explanation": "With a seed, the accumulator starts at the value you provide, so the result is 10 + 2 + 3 + 4 = 19. Without a seed, the first element would be the initial value.",
+      "source": { "section": "#### 10) `Aggregate(seed?, func, resultSelector?)`" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "According to the lesson, when do `nums.Where(n => n % 2 == 0)` and `products.Sum(p => p.Price)` actually run?",
+      "options": [
+        "`Where` runs when the result is enumerated; `Sum` runs immediately",
+        "Both run immediately when the line executes",
+        "Both wait until you call `ToList()`",
+        "`Sum` waits until enumerated; `Where` runs immediately"
+      ],
+      "answer": 0,
+      "explanation": "`Where` uses deferred execution and is invoked when enumerated, while aggregation operators such as `Count`, `Sum` and `Min` execute immediately.",
+      "source": { "section": "#### 9) `Count()` / `LongCount()` / `Sum(selector)` / `Min(selector)` / `Max(selector)` / `Average(selector)`" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "When should you use `LongCount()` instead of `Count()`?",
+      "options": [
+        "When the elements are of type `long`",
+        "When the collection may contain more elements than `int.MaxValue`",
+        "When you need the count to be deferred",
+        "When counting with a predicate"
+      ],
+      "answer": 1,
+      "explanation": "`Count()` returns an `int`; `LongCount()` returns a 64-bit `long` for collections that may hold more than `int.MaxValue` (2,147,483,647) elements.",
+      "source": { "section": "#### 9) `Count()` / `LongCount()` / `Sum(selector)` / `Min(selector)` / `Max(selector)` / `Average(selector)`" },
+      "reviewed": false
+    }
+  ]
+}

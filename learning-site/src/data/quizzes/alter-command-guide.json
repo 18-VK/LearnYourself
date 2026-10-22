@@ -1,0 +1,65 @@
+{
+  "lesson": "alter-command-guide",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How does the guide's interview summary describe `ALTER`?",
+      "options": [
+        "It drops an object and recreates it with the new definition",
+        "It copies a table into a new one with changes applied",
+        "It changes the data stored in rows",
+        "It modifies existing objects such as tables, constraints, indexes, views and procedures without dropping and recreating them"
+      ],
+      "answer": 3,
+      "explanation": "`ALTER` changes an object's definition in place. Changing row data is `UPDATE`'s job.",
+      "source": { "section": "🎯 Interview Summary" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Grades in `Enrollments` must be one of A, B, C, D or F. Which `ALTER` usage does the guide map to \"enforce business rule\"?",
+      "options": [
+        "`ADD CONSTRAINT CHK_Grade CHECK (Grade IN ('A','B','C','D','F'))`",
+        "`ADD CONSTRAINT DF_Grade DEFAULT 'A' FOR Grade`",
+        "`ALTER INDEX ALL ON Enrollments REBUILD`",
+        "`ALTER COLUMN Grade NVARCHAR(1)`"
+      ],
+      "answer": 0,
+      "explanation": "The real-world usage table maps \"Enforce business rule\" to `ADD CHECK`; a CHECK constraint rejects values outside the allowed set.",
+      "source": { "section": "🔥 Real-World Usage" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You try to shrink `StudentName` with `ALTER COLUMN StudentName NVARCHAR(20)`, but some names are longer than 20 characters. What does the guide warn?",
+      "options": [
+        "The long names are silently cut to 20 characters",
+        "The column becomes `NVARCHAR(MAX)` automatically",
+        "You can't shrink the size if data truncation would occur",
+        "The rows with long names are deleted"
+      ],
+      "answer": 2,
+      "explanation": "Changing a column's type or size is allowed only when the existing data still fits; shrinking below existing values would truncate data, so it is refused.",
+      "source": { "section": "➤ Modify Column (Change Data Type)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why might dropping the primary key `PK_Students` fail?",
+      "options": [
+        "Primary keys can never be dropped once created",
+        "A foreign key, such as one in another table, still references it",
+        "The table has a DEFAULT constraint",
+        "The database is in READ_WRITE mode"
+      ],
+      "answer": 1,
+      "explanation": "The important notes say you can't drop a PK while an FK references it, and you can't modify a column that is used in an index or constraint.",
+      "source": { "section": "🚨 Important Notes" },
+      "reviewed": false
+    }
+  ]
+}

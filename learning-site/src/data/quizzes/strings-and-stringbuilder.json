@@ -1,0 +1,99 @@
+{
+  "lesson": "strings-and-stringbuilder",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How do `string` and `String` relate in C#?",
+      "options": [
+        "`string` is a value type and `String` is a reference type",
+        "`String` is the mutable version of `string`",
+        "Both refer to the `System.String` class",
+        "`string` is a keyword with no class behind it"
+      ],
+      "answer": 2,
+      "explanation": "A string is represented by the class `System.String`; the `string` keyword and `String` are both shorthand for it.",
+      "source": { "section": "C# Strings" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What happens when you call a modifying method such as `Replace()` on a string?",
+      "options": [
+        "The existing string object is changed in place",
+        "A new string is created, because strings are immutable",
+        "The string is converted into a `StringBuilder`",
+        "It throws, because strings cannot be modified"
+      ],
+      "answer": 1,
+      "explanation": "Strings are immutable, so any operation that modifies a string creates a new string instead of changing the existing one.",
+      "source": { "section": "Methods and properties" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "string str = \"Hello World\";\nConsole.WriteLine(str.Substring(6));"
+      },
+      "options": [
+        "Hello",
+        "o World",
+        "World",
+        "Hello World"
+      ],
+      "answer": 2,
+      "explanation": "`Substring(6)` extracts the part of the string from index 6 to the end. Index 6 is the `W`, so the result is `World`.",
+      "source": { "section": "15. `Substring()`" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which check returns `true` for a string that contains only spaces, such as `\"   \"`?",
+      "options": [
+        "`string.IsNullOrWhiteSpace(str)`",
+        "`string.IsNullOrEmpty(str)`",
+        "`str.Equals(\"\")`",
+        "`str.Length == 0`"
+      ],
+      "answer": 0,
+      "explanation": "`IsNullOrWhiteSpace()` checks whether a string is null, empty or only whitespace. `IsNullOrEmpty()` only checks for null or empty, and `\"   \"` has a length of 3.",
+      "source": { "section": "19. `IsNullOrWhiteSpace()`" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why is `StringBuilder` preferred over string concatenation inside a loop?",
+      "options": [
+        "Because concatenation in a loop throws after a few iterations",
+        "Because `StringBuilder` is a value type stored on the stack",
+        "Because `StringBuilder` modifies the same object, while concatenation creates a new string object each time",
+        "Because string concatenation is not allowed inside loops"
+      ],
+      "answer": 2,
+      "explanation": "String concatenation in loops creates multiple string objects, which is slow and memory-inefficient. `StringBuilder` is mutable and modifies the same object.",
+      "source": { "section": "Performance Difference" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "What is the main advantage of prefixing a string with `@` (a verbatim string)?",
+      "options": [
+        "It enables `{}` placeholders for variables",
+        "It makes the string mutable",
+        "It stores the string in a `StringBuilder`",
+        "It tells the compiler to ignore escape characters and line breaks, which helps with file paths and multi-line text"
+      ],
+      "answer": 3,
+      "explanation": "The note says `@` tells the string constructor to ignore escape characters and line breaks, which makes verbatim strings useful for file paths and readable multi-line strings. `$` is the prefix for interpolation.",
+      "source": { "section": "Verbatim string literal" },
+      "reviewed": false
+    }
+  ]
+}

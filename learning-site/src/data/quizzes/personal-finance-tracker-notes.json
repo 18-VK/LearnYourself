@@ -1,0 +1,88 @@
+{
+  "lesson": "personal-finance-tracker-notes",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why do the notes recommend drawing the SR No. in `RowPostPaint` instead of storing it in the row data?",
+      "options": [
+        "Painting is faster than adding a real column, so large grids load much quicker",
+        "It is drawn from the row index, so it stays right after inserts, deletes and sorts",
+        "Stored SR values cannot be exported to CSV along with the other columns",
+        "`RowPostPaint` is the only grid event that fires at all for unbound DataGridViews"
+      ],
+      "answer": 1,
+      "explanation": "Option A renders `e.RowIndex + 1` while painting, so nothing is kept in the model and the number is always correct after insert/delete/sort/filter. It is the choice when SR is display-only.",
+      "source": {
+        "section": "Option A — Best practice: Show SR dynamically (no data change)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Your SR column must be part of the data because it is exported to CSV. What keeps the numbers correct after the user deletes a row?",
+      "options": [
+        "Nothing extra; the DataGridView renumbers the SR column on its own",
+        "Setting `AllowUserToAddRows = false` so the new-row line disappears",
+        "Calling `UpdateSerialNumbers()` from `RowsAdded` and `RowsRemoved`",
+        "Drawing the number in the row header with `TextRenderer.DrawText`"
+      ],
+      "answer": 2,
+      "explanation": "When SR is a real column (Option B) you must maintain it yourself: `UpdateSerialNumbers()` loops over the rows and sets `Cells[\"SrColumn\"].Value = i + 1`, hooked to `RowsAdded` and `RowsRemoved`.",
+      "source": {
+        "section": "Option B — SR is an actual column in grid/data"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "`dataGridViewMain.DataSource` is bound to `Program.TransactionData`. Put the steps of the safe way to clear that list in order.",
+      "steps": [
+        "Set `dataGridViewMain.DataSource = null`",
+        "Call `Program.TransactionData.Clear()`",
+        "Set `dataGridViewMain.DataSource = Program.TransactionData` again"
+      ],
+      "explanation": "Clearing the list while it is still bound leaves the grid thinking old rows exist, which leads to an `IndexOutOfRangeException` on repaint. Unbinding first, clearing, then rebinding avoids it.",
+      "source": {
+        "section": "✅ 1. If the List is bound to DataGridView → YES, it WILL cause issues"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "In the keyset paging code, which query fetches the next page of `TableTransactions`? (`lastId` holds the last Id of the previous page.)",
+      "options": [
+        "`Where(t => t.Id > lastId).OrderBy(t => t.Id).Take(1024)`",
+        "`Skip(pageNumber * 1024).Take(1024)` on the unordered table",
+        "`OrderByDescending(t => t.Id).Take(1024)`, then reverse the list",
+        "`Where(t => t.Id < lastId).Take(1024)` with no `OrderBy` at all"
+      ],
+      "answer": 0,
+      "explanation": "Keyset paging relies on a monotonically increasing `Id`: each page asks for rows with `Id > lastId`, ordered by `Id`, and then remembers the last Id it received.",
+      "source": {
+        "section": "Keyset paging (RECOMMENDED for large data), for reading records"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "According to the notes' comparison table, when is plain `Skip + Take` paging the right choice?",
+      "options": [
+        "For continuous scrolling",
+        "When stable sorting is required",
+        "For a large table with 10k+ rows",
+        "For a small table"
+      ],
+      "answer": 3,
+      "explanation": "The table recommends `Skip + Take` only for a small table; large tables, continuous scrolling and stable sorting all call for keyset paging.",
+      "source": {
+        "section": "Which should YOU use?"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "lesson": "ef-core-model-config-and-loading",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A property's convention-inferred configuration isn't what you want, so you add a Data Annotation attribute to it. Which wins?",
+      "options": [
+        "The convention, because conventions are always applied last",
+        "The Data Annotation, because annotations override the conventions",
+        "Neither; EF Core reports a conflict at migration time",
+        "Whichever is declared first in the class"
+      ],
+      "answer": 1,
+      "explanation": "Conventions have their limits; Data Annotations let you fine-tune the model, and they override the conventions.",
+      "source": { "section": "### 2) Configure Using Data Annotations" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A dashboard always shows each student with all enrolled courses. Which loading style fits, and how does it fetch the data?",
+      "options": [
+        "Lazy loading: one extra query each time `Courses` is accessed",
+        "Explicit loading: call `Load()` for every student in a loop",
+        "Eager loading with `Include(s => s.Courses)`: related data comes back as part of the query, using JOINs",
+        "Eager loading with `ToList()` alone: EF Core includes every navigation by default"
+      ],
+      "answer": 2,
+      "explanation": "Eager loading (`Include` / `ThenInclude`) loads related data immediately as part of the query, a single query with JOINs; it suits cases where you know you'll need the related data.",
+      "source": { "section": "#### 1. Eager loading" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You installed `Microsoft.EntityFrameworkCore.Proxies` and called `UseLazyLoadingProxies()`. What else does the lesson say lazy loading needs?",
+      "options": [
+        "Navigation properties must be declared `virtual`",
+        "Every query must end with `Include`",
+        "The context must be created with `AsNoTracking()`",
+        "Navigation properties must be arrays instead of `ICollection<T>`"
+      ],
+      "answer": 0,
+      "explanation": "Lazy loading must be enabled: install the Proxies package, call `UseLazyLoadingProxies()` in `OnConfiguring`, and make the navigation properties `virtual`.",
+      "source": { "section": "#### 2. Lazy Loading" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "With lazy loading on, this loop prints `s.Courses.Count` for every student loaded by `context.Students.ToList()`. What problem does the lesson warn about?",
+      "options": [
+        "The courses are never loaded, so every count is 0",
+        "All courses for every student are loaded in the first query",
+        "It throws, because `Courses` must be included first",
+        "The N+1 problem: one query for the students plus a separate query per student's courses"
+      ],
+      "answer": 3,
+      "explanation": "Lazy loading runs a separate query each time a navigation property is first accessed, so a loop over many students causes the N+1 query problem.",
+      "source": { "section": "#### 2. Lazy Loading" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You have already loaded one `student` and now want its courses, but only for this student. Which call does the lesson use?",
+      "options": [
+        "`context.Students.Include(s => s.Courses).Load()`",
+        "`context.Entry(student).Collection(s => s.Courses).Load()`",
+        "`student.Courses.ToList()` with lazy loading turned off",
+        "`context.Entry(student).Reference(s => s.Courses).Include()`"
+      ],
+      "answer": 1,
+      "explanation": "Explicit loading loads related data manually after the main entity is retrieved, with `.Entry(...).Collection(...).Load()` (or `.Reference(...).Load()` for a single navigation).",
+      "source": { "section": "#### 3. Explicit Loading" },
+      "reviewed": false
+    }
+  ]
+}

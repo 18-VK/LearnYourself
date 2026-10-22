@@ -1,0 +1,2246 @@
+{
+ "topic": "auth",
+ "questions": [
+  {
+   "id": "auth-jwt-signed-not-encrypted",
+   "topic": "auth",
+   "subtopic": "jwt",
+   "difficulty": "junior",
+   "question": "What are the three parts of a JWT, and can anyone read its payload?",
+   "shortAnswer": "A JWT in its usual signed (JWS) form is `header.payload.signature`, each part base64url-encoded. The signature proves who issued the token and that nobody changed it, but it hides nothing: anyone holding the token can decode and read every claim, so secret data needs an encrypted JWT (JWE) or no JWT at all.",
+   "answer": "**Key points**\n- RFC 7519 defines a JWT as a set of claims carried either as the payload of a **JWS** (signed or MACed) or as the plaintext of a **JWE** (encrypted). Nearly every bearer token you meet in an API is a JWS.\n- The compact JWS form has three base64url segments joined by dots:\n  - **header**: `alg` (signing algorithm), optionally `typ` and `kid` (which key signed it);\n  - **payload**: the claims, for example `iss`, `sub`, `aud`, `exp`, `iat`, plus your own;\n  - **signature**: computed over `base64url(header) + \".\" + base64url(payload)`.\n- Base64url is an encoding, not encryption. Pasting a token into a decoder shows every claim.\n- The signature gives **integrity and authenticity**, not **confidentiality**.\n- All registered claims are optional in RFC 7519 itself; profiles such as JWT access tokens (RFC 9068) make `iss`, `exp`, `aud`, `sub`, `client_id`, `iat` and `jti` mandatory.\n\n**Detail**\nBecause the payload is readable, keep it small and harmless to disclose: an id, roles or scopes, and the standard\ntime and audience claims. Personal data, internal ids you don't want exposed and anything secret don't belong there.\nIf a token really has to carry confidential data, the issuer can encrypt it (JWE), or issue an opaque *reference\ntoken* that the API looks up instead.\n\n`typ` is optional too. RFC 7519 recommends `JWT` when it's present, and newer profiles use explicit types such as\n`at+jwt` for access tokens, so a validator can tell one kind of token from another.",
+   "code": {
+    "lang": "csharp",
+    "source": "// Reading the claims needs no key at all, which is the point of this demo.\nvar handler = new JsonWebTokenHandler();              // Microsoft.IdentityModel.JsonWebTokens\nJsonWebToken jwt = handler.ReadJsonWebToken(tokenString);\nConsole.WriteLine(jwt.Alg);                           // for example RS256\nforeach (var claim in jwt.Claims)\n    Console.WriteLine($\"{claim.Type} = {claim.Value}\");\n// Never trust these values until the token has been validated (signature, iss, aud, exp)."
+   },
+   "pitfalls": [
+    "Calling a normal JWT 'encrypted'; it is signed, and its payload is only base64url-encoded.",
+    "Putting personal or secret data in claims because the token looks unreadable.",
+    "Using claims from a token you only decoded (for example with `ReadJsonWebToken`) instead of one you validated.",
+    "Confusing the signature's job (integrity and authenticity) with confidentiality."
+   ],
+   "followUps": [
+    "When would you use JWE instead of a signed JWT?",
+    "What is the difference between a JWT and an opaque reference token?",
+    "Which claims would you put in an access token, and which would you leave out?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7519",
+     "title": "RFC 7519: JSON Web Token (JWT)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9068",
+     "title": "RFC 9068: JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwt",
+    "claims-identity-and-principal"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-jwt-validation-checks",
+   "topic": "auth",
+   "subtopic": "jwt",
+   "difficulty": "mid",
+   "question": "Which checks must an API perform on an incoming JWT, and how do you configure them in ASP.NET Core?",
+   "shortAnswer": "The API must verify the signature with a key it trusts, then check the issuer, the audience and the lifetime (`exp`, and `nbf` when present), and answer 401 if any check fails. In ASP.NET Core, `AddJwtBearer` does this for you, using the identity provider's discovery document (`Authority`) or explicit `TokenValidationParameters`.",
+   "answer": "**Key points**\n- **Signature**: proves the token came from the holder of the signing key and wasn't modified. For RS256/ES256 use the issuer's published public keys (JWKS).\n- **Issuer (`iss`)**: must equal the authority you trust.\n- **Audience (`aud`)**: must name *this* API, so a token minted for another API can't be replayed against you.\n- **Lifetime**: reject after `exp` and before `nbf`, with a small allowance for clock skew.\n- Microsoft's guidance is to validate all four fully. For OAuth 2.0 JWT access tokens, RFC 9068 also requires `sub`, `client_id`, `iat` and `jti`.\n- Optional hardening: pin the algorithm (`ValidAlgorithms`) and the token type (`ValidTypes`, for example `at+jwt`).\n\n**Detail**\nWith an OpenID Connect provider, `Authority` plus `Audience` is usually all you need: the handler downloads the\ndiscovery document and the keys, the default parameters validate issuer, audience and lifetime, and a signed token\nis required (`RequireSignedTokens` defaults to `true`). Set `TokenValidationParameters` yourself when the issuer is\nnon-standard, when you accept several issuers or audiences, or to tighten the defaults.\n\n`ClockSkew` defaults to **5 minutes** (`TokenValidationParameters.DefaultClockSkew`), so a token with a 5-minute\nlifetime can still be accepted for about 5 minutes after it expires. RFC 7519 only expects \"some small leeway, usually\nno more than a few minutes\", and many teams lower it to 30-60 seconds when server clocks are synchronized.\n\nThe bearer handler only *authenticates*. Whether the caller may use the endpoint is decided afterwards by\nauthorization (`[Authorize]`, policies), and that's where 403 comes from.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\n    .AddJwtBearer(o =>\n    {\n        o.Authority = \"https://login.example.com/\";       // discovery document + JWKS\n        o.Audience  = \"api://tasks\";\n        o.MapInboundClaims = false;                       // keep \"sub\", \"scope\" as issued\n        o.TokenValidationParameters = new TokenValidationParameters\n        {\n            ValidateIssuer = true,\n            ValidateAudience = true,\n            ValidateLifetime = true,\n            ValidateIssuerSigningKey = true,\n            ValidAlgorithms = new[] { SecurityAlgorithms.RsaSha256 },\n            ClockSkew = TimeSpan.FromSeconds(30)          // default is 5 minutes\n        };\n    });"
+   },
+   "pitfalls": [
+    "Turning off `ValidateAudience` or `ValidateIssuer` to 'make it work', which lets in tokens issued for other apps.",
+    "Forgetting the 5-minute default `ClockSkew` and wondering why expired tokens are still accepted.",
+    "Hard-coding a shared secret in `appsettings.json` instead of using the issuer's published keys.",
+    "Treating a 401 from the bearer handler as a permissions problem; it means the token was missing or invalid."
+   ],
+   "followUps": [
+    "How does the handler find the right public key when the issuer rotates its keys?",
+    "Why does a token for API A fail on API B even though both trust the same issuer?",
+    "What changes if the API must accept tokens from two different identity providers?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7519",
+     "title": "RFC 7519: JSON Web Token (JWT)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9068",
+     "title": "RFC 9068: JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters.defaultclockskew",
+     "title": "TokenValidationParameters.DefaultClockSkew field",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters.validalgorithms",
+     "title": "TokenValidationParameters.ValidAlgorithms property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters.requiresignedtokens",
+     "title": "TokenValidationParameters.RequireSignedTokens property",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwt-authentication-setup",
+    "jwt"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-jwt-hs256-vs-rs256",
+   "topic": "auth",
+   "subtopic": "jwt",
+   "difficulty": "mid",
+   "question": "HS256 or RS256: which should you use to sign JWTs, and why?",
+   "shortAnswer": "HS256 uses one shared secret both to sign and to verify, so every service that validates tokens could also forge them. RS256 (or ES256) signs with a private key only the issuer holds and verifies with a public key anyone may see, which is why it's the default choice whenever more than one party validates tokens.",
+   "answer": "**Key points**\n- **HS256 (HMAC with SHA-256)** is symmetric: the issuer and every validator hold the same key. It's fast and simple, but each validator can mint tokens, and the key has to be distributed and protected everywhere.\n- **RS256 (RSA with SHA-256)**, **PS256** and **ES256 (ECDSA P-256)** are asymmetric: the issuer keeps the private key, validators download public keys from a JWKS endpoint. A compromised API can't forge tokens.\n- Asymmetric keys make **rotation** simple: publish the new public key under a new `kid`, start signing with it, retire the old key later.\n- RFC 7518: an HS256 key must be at least as long as the hash output, so **256 bits (32 bytes) or more**. RFC 8725 adds that human-memorable passwords must not be used directly as keys, because they can be brute-forced offline from one captured token.\n- Microsoft's JWT guidance for ASP.NET Core: asymmetric keys should always be used when creating access tokens.\n\n**Detail**\nHS256 can still be acceptable when the issuer and the only validator are the same process, such as a single API\nthat signs its own short-lived tokens. Even then, anyone who reads the configuration can forge any identity, so\ngenerate the key with a cryptographic random generator and keep it in a secret store.\n\nES256 gives security comparable to RSA with much smaller keys and signatures. RS256 is the most widely supported, and\nOpenID Connect discovery requires providers to support it (`id_token_signing_alg_values_supported` must include `RS256`).",
+   "code": {
+    "lang": "csharp",
+    "source": "// HS256: a random 256-bit key, never a typed passphrase\nbyte[] secret = RandomNumberGenerator.GetBytes(32);\nvar hmacCreds = new SigningCredentials(new SymmetricSecurityKey(secret), SecurityAlgorithms.HmacSha256);\n\n// RS256: the issuer signs with the private key...\nvar rsa = RSA.Create(2048);\nvar rsaKey = new RsaSecurityKey(rsa) { KeyId = \"2026-10\" };   // kid lets validators pick the key\nvar rsaCreds = new SigningCredentials(rsaKey, SecurityAlgorithms.RsaSha256);\n// ...and publishes only the public part (as a JWK in its JWKS) for APIs to verify with."
+   },
+   "pitfalls": [
+    "Using a short string like `my-secret` as an HS256 key; it can be brute-forced offline from a single token.",
+    "Copying the HS256 secret into every microservice, so each of them can impersonate any user.",
+    "Giving the RSA private key to APIs that only need to verify.",
+    "Letting the token header's `alg` decide how to verify instead of pinning the expected algorithm."
+   ],
+   "followUps": [
+    "How would you rotate an RS256 signing key without downtime?",
+    "What is an algorithm-confusion attack between RS256 and HS256?",
+    "Why does OpenID Connect discovery require RS256 support?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7518",
+     "title": "RFC 7518: JSON Web Algorithms (JWA)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8725",
+     "title": "RFC 8725: JSON Web Token Best Current Practices",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-discovery-1_0.html",
+     "title": "OpenID Connect Discovery 1.0",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "creating-and-signing-jwts",
+    "signing-keys-and-discovery"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-jwt-alg-none-and-algorithm-confusion",
+   "topic": "auth",
+   "subtopic": "jwt",
+   "difficulty": "senior",
+   "question": "What are the `alg: none` and algorithm-confusion attacks on JWTs, and how do you defend a .NET API against them?",
+   "shortAnswer": "Both attacks abuse a validator that trusts the token's own `alg` header: `none` claims the token needs no signature, and RS256-to-HS256 confusion tricks the server into checking an HMAC with its RSA *public* key as the secret. The defence is to fix the allowed algorithms and keys on the server, require signed tokens, and never let the header choose how to verify.",
+   "answer": "**Key points**\n- **`alg: none`**: JWS allows \"unsecured\" tokens with an empty signature. A library that honours the header would accept a token the attacker wrote. RFC 7518 says implementations must not accept unsecured JWSs by default.\n- **Algorithm confusion**: the attacker takes the issuer's RSA public key (it's public), uses it as an HMAC secret to sign an HS256 token, and sends that. A library that picks the verification routine from the header computes the HMAC with the same public key and accepts the forgery.\n- RFC 8725's fixes: let the application decide which algorithms are acceptable, use **each key with exactly one algorithm**, and reject the whole JWT if any cryptographic check fails.\n- Related best practices interviewers like: validate `iss` and `aud`; use explicit typing (`typ`) so one kind of JWT can't be accepted as another; don't fetch verification keys from `jku`/`x5u` URLs in the header without an allowlist (that invites attacker-supplied keys and SSRF).\n\n**Detail**\nIn .NET, `Microsoft.IdentityModel` requires signed tokens by default (`RequireSignedTokens = true`) and looks the key up\namong the keys you configured or downloaded from your authority, matching the token's `kid`; the token can't bring its\nown key. You can tighten validation further:\n- `ValidAlgorithms = new[] { \"RS256\" }` rejects every other algorithm;\n- `ValidTypes = new[] { \"at+jwt\" }` (only if your issuer sets `typ`) stops ID tokens or other JWTs being used as access tokens.\n\nMost real JWT vulnerabilities were bugs in exactly these library checks, so keep the identity packages up to date.",
+   "code": {
+    "lang": "csharp",
+    "source": "o.TokenValidationParameters = new TokenValidationParameters\n{\n    RequireSignedTokens = true,                               // the default, shown for emphasis\n    ValidAlgorithms = new[] { SecurityAlgorithms.RsaSha256 }, // nothing else is accepted\n    ValidTypes = new[] { \"at+jwt\" },                          // only if your issuer sets typ\n    ValidIssuer = \"https://login.example.com/\",\n    ValidAudience = \"api://tasks\"\n};"
+   },
+   "pitfalls": [
+    "Writing your own JWT parsing and verifying with whatever algorithm the header names.",
+    "Setting `RequireSignedTokens = false` for a test and letting it reach production.",
+    "Using the same key material for RSA and HMAC, which is what makes confusion possible.",
+    "Trusting a key URL found in the token header (`jku`, `x5u`) without an allowlist."
+   ],
+   "followUps": [
+    "What does explicit typing (`typ: at+jwt`) protect against?",
+    "Why does RFC 8725 say each key should be used with exactly one algorithm?",
+    "How would you test that your API rejects an unsigned token?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8725",
+     "title": "RFC 8725: JSON Web Token Best Current Practices",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7518",
+     "title": "RFC 7518: JSON Web Algorithms (JWA)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters.requiresignedtokens",
+     "title": "TokenValidationParameters.RequireSignedTokens property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters.validalgorithms",
+     "title": "TokenValidationParameters.ValidAlgorithms property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters.validtypes",
+     "title": "TokenValidationParameters.ValidTypes property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9068",
+     "title": "RFC 9068: JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwt-authentication-setup",
+    "creating-and-signing-jwts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-jwt-inbound-claim-mapping",
+   "topic": "auth",
+   "subtopic": "jwt",
+   "difficulty": "mid",
+   "question": "Why does the `sub` claim of my JWT show up as `ClaimTypes.NameIdentifier` in ASP.NET Core, and what should I do about it?",
+   "shortAnswer": "By default the JWT bearer handler maps well-known JWT claim names to the long .NET/WS-Federation claim-type URIs, so `sub` becomes `.../nameidentifier` and `role` becomes `ClaimTypes.Role`. Set `MapInboundClaims = false` to keep the names exactly as issued, and then tell the identity which claims mean 'name' and 'role'.",
+   "answer": "**Key points**\n- The mapping comes from the token handler's `DefaultInboundClaimTypeMap`. Since ASP.NET Core 8 the bearer handler uses `JsonWebTokenHandler` and its map; earlier versions used `JwtSecurityTokenHandler`.\n- `MapInboundClaims = false` on the scheme (or clearing the static map for the whole app) keeps `sub`, `role`, `scope`, `email` unchanged.\n- After switching mapping off, set `TokenValidationParameters.NameClaimType` and `RoleClaimType` (for example `name` and `role`) so `User.Identity.Name`, `User.IsInRole` and `[Authorize(Roles = ...)]` keep working.\n- Mismatched claim names are a classic cause of \"the role check always fails\" and \"`FindFirst` returns null\".\n\n**Detail**\nThe mapping is a leftover from WS-* and older Windows identity APIs. It's harmless if all your code uses\n`ClaimTypes.*`, but it surprises people when tokens are shared with non-.NET services or when code mixes both\nspellings. Pick one convention for the API and make it explicit in configuration.\n\nASP.NET Core 8 also changed the runtime type of `SecurityToken` in `JwtBearerEvents` to `JsonWebToken`. Code that casts\nit to `JwtSecurityToken` gets `null`, unless you change the cast or set `UseSecurityTokenValidators = true`.",
+   "code": {
+    "lang": "csharp",
+    "source": ".AddJwtBearer(o =>\n{\n    o.Authority = \"https://login.example.com/\";\n    o.Audience  = \"api://tasks\";\n    o.MapInboundClaims = false;                         // keep \"sub\", \"role\", \"scope\"\n    o.TokenValidationParameters.NameClaimType = \"name\";\n    o.TokenValidationParameters.RoleClaimType = \"role\";\n});\n\n// later, in an endpoint\nstring? userId = User.FindFirst(\"sub\")?.Value;          // works because mapping is off"
+   },
+   "pitfalls": [
+    "Reading `sub` in one place and `ClaimTypes.NameIdentifier` in another; only one of them exists, depending on the mapping setting.",
+    "Turning mapping off and then wondering why `[Authorize(Roles = ...)]` stopped working; set `RoleClaimType`.",
+    "Casting `context.SecurityToken` to `JwtSecurityToken` in events on ASP.NET Core 8+, where it's a `JsonWebToken`."
+   ],
+   "followUps": [
+    "How do roles in a JWT become something `User.IsInRole` understands?",
+    "Where would you add claims that aren't in the token?",
+    "What changed in the JWT bearer handler in ASP.NET Core 8?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/claims",
+     "title": "Map, customize, and transform claims in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/breaking-changes/8/securitytoken-events",
+     "title": "Breaking change: Security token events return a JsonWebToken (ASP.NET Core 8)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "claims-identity-and-principal",
+    "jwt-authentication-setup"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "ASP.NET Core 8+ validates with `JsonWebTokenHandler` (map: `JsonWebTokenHandler.DefaultInboundClaimTypeMap`) and exposes `JsonWebToken` in events; ASP.NET Core 7 and earlier used `JwtSecurityTokenHandler` and `JwtSecurityToken`.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-jwt-cookies-vs-bearer-tokens",
+   "topic": "auth",
+   "subtopic": "jwt",
+   "difficulty": "junior",
+   "question": "Session cookies or JWT bearer tokens: what are the trade-offs for authenticating calls to your API?",
+   "shortAnswer": "A cookie is sent by the browser automatically and can be made unreadable to JavaScript, which is simple and safe from token theft by scripts but needs CSRF protection and only works for its own site. A bearer token is attached explicitly in the `Authorization` header and can be validated by any API without a session lookup, but it can't be revoked easily and is exposed to any script that can read it.",
+   "answer": "**Key points**\n- **Cookies**: attached automatically to requests for their site; can be `HttpOnly`, `Secure` and `SameSite`. Automatic sending is exactly why cookie-authenticated endpoints need **CSRF** defences. Scoped to a domain.\n- **Bearer tokens** (often JWTs): the client must add `Authorization: Bearer ...` itself, so classic CSRF doesn't apply. They work across domains, from mobile apps and between services, and a self-contained JWT is validated locally (signature and claims) without a database hit.\n- **Revocation**: a server-side session can be ended at once; a JWT stays valid until `exp` unless you add a denylist or introspection, so keep access tokens short-lived.\n- **Storage**: a browser app that keeps tokens in `localStorage` hands them to any XSS payload. OWASP says not to store session identifiers in local storage, and Microsoft and the IETF browser-apps BCP point browser apps to keeping tokens on a backend and giving the browser only an `HttpOnly` cookie (the BFF pattern).\n- Rule of thumb: first-party browser apps use cookies (directly or through a BFF); mobile apps, other services and third parties use bearer tokens.\n\n**Detail**\n\"Stateless\" isn't free: you trade a lookup per request for harder logout, bigger requests and key management.\nASP.NET Core supports both, even side by side in one app, and the docs for Identity's own API endpoints recommend\ncookies for browser clients because the browser handles them without exposing them to JavaScript.",
+   "pitfalls": [
+    "Claiming JWTs are 'more secure' than cookies; they solve a different problem and move the risk to storage and revocation.",
+    "Moving an SPA to cookie auth and forgetting CSRF protection on state-changing endpoints.",
+    "Keeping access or refresh tokens in `localStorage`, where any injected script can read them.",
+    "Issuing long-lived JWTs to avoid writing refresh logic, so a stolen token works for days."
+   ],
+   "followUps": [
+    "How would you log a user out everywhere if you use JWTs?",
+    "Why isn't a bearer-token API vulnerable to classic CSRF?",
+    "What is the Backend-for-Frontend (BFF) pattern?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization",
+     "title": "Use Identity to secure a Web API backend for SPAs",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html",
+     "title": "OWASP HTML5 Security Cheat Sheet",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6750",
+     "title": "RFC 6750: OAuth 2.0 Bearer Token Usage",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc10017",
+     "title": "RFC 10017: OAuth 2.0 for Browser-Based Applications",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authn-and-authz-basics",
+    "signin-and-identity-registration",
+    "jwt"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oauth2-purpose-and-roles",
+   "topic": "auth",
+   "subtopic": "oauth2",
+   "difficulty": "junior",
+   "question": "What problem does OAuth 2.0 solve, what are its four roles, and is it an authentication protocol?",
+   "shortAnswer": "OAuth 2.0 lets a user give an application limited, revocable access to their data on another service without handing over their password; the application gets an access token instead. Its roles are the resource owner, the client, the authorization server and the resource server, and it is an authorization (delegation) framework, not an authentication protocol.",
+   "answer": "**Key points**\n- **Resource owner**: usually the user, who can grant access.\n- **Client**: the application asking for access (web app, SPA, mobile app, service).\n- **Authorization server**: authenticates the resource owner, obtains consent and issues tokens.\n- **Resource server**: the API that accepts access tokens.\n- The client receives an **access token** limited by `scope` and lifetime, and possibly a **refresh token**, which RFC 6749 says is only for the authorization server and is never sent to resource servers.\n- OAuth 2.0 doesn't tell the client *who* the user is; an access token is meant for the API. OpenID Connect adds the `openid` scope and the ID token for sign-in.\n\n**Detail**\nBefore OAuth, the \"password anti-pattern\" was common: give a third-party site your email password so it can read\nyour contacts. OAuth replaces that with tokens that cover only what was consented to and that the user can revoke.\nRFC 6749 also defines client types (confidential and public) and grant types. Today's guidance (RFC 9700) is the\nauthorization code grant with PKCE whenever a user is involved, and client credentials for service-to-service calls.",
+   "pitfalls": [
+    "Calling OAuth 2.0 an authentication protocol and using a bare access token to 'log the user in' to the client.",
+    "Sending the refresh token to the resource server.",
+    "Mixing up the authorization server (issues tokens) and the resource server (accepts them)."
+   ],
+   "followUps": [
+    "What does OpenID Connect add on top of OAuth 2.0?",
+    "What is the difference between a confidential and a public client?",
+    "Which grant type would you use for a SPA, and why?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+     "title": "OpenID Connect Core 1.0",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "auth-server-approaches-and-oauth2",
+    "authn-and-authz-basics",
+    "identity-providers-and-oidc"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oauth2-which-grant-type",
+   "topic": "auth",
+   "subtopic": "oauth2",
+   "difficulty": "mid",
+   "question": "Which OAuth 2.0 grant types should you use today, and which are deprecated?",
+   "shortAnswer": "Use the authorization code grant with PKCE whenever a user is involved, client credentials for service-to-service calls, the device authorization grant for devices without a usable browser, and refresh tokens to renew access. The implicit grant and the resource owner password credentials grant are out: RFC 9700 says clients should not use implicit and the password grant must not be used.",
+   "answer": "**Key points**\n\n| Scenario | Grant |\n|---|---|\n| A user signs in to a web app, SPA, desktop or mobile app | Authorization code + PKCE |\n| A backend job or service calls an API, no user | Client credentials |\n| TV, CLI or IoT device without a browser or keyboard | Device authorization grant (RFC 8628) |\n| Renew an expired access token | Refresh token |\n| SPA receives tokens in the redirect URL | Implicit: **should not** be used |\n| App collects the user's password and swaps it for a token | Password (ROPC): **must not** be used |\n\n- Implicit put tokens in the redirect URL, where browser history, referrers and injected scripts can see them, and it gave no way to bind tokens to the client.\n- The password grant exposes the user's credentials to the client, trains users to type passwords into apps, and doesn't fit MFA or federated sign-in (RFC 9700, section 2.4).\n- OAuth 2.1, still an IETF draft, folds these rules into the core specification.\n\n**Detail**\nWhen a service needs to call a downstream API *on behalf of the signed-in user*, prefer a delegated token (OAuth\ntoken exchange, or Entra ID's on-behalf-of flow) to client credentials, so the downstream API still sees the user.\nMicrosoft's ASP.NET Core guidance is also explicit that you should not create an access token from a username/password\nrequest, and should use an OpenID Connect or OAuth standard flow instead.",
+   "pitfalls": [
+    "Building a login form in a SPA that posts the password straight to the token endpoint (ROPC) because it looks simpler.",
+    "Keeping the implicit flow in an existing SPA; the code flow with PKCE replaced it.",
+    "Using client credentials when a user is involved, which loses the user's identity downstream."
+   ],
+   "followUps": [
+    "Why was the implicit flow considered unsafe?",
+    "How does a backend API call another API on behalf of the signed-in user?",
+    "What does the device authorization grant look like for the user?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8628",
+     "title": "RFC 8628: OAuth 2.0 Device Authorization Grant",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1/",
+     "title": "The OAuth 2.1 Authorization Framework (IETF draft)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "auth-server-approaches-and-oauth2",
+    "auth-server-concepts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oauth2-client-credentials",
+   "topic": "auth",
+   "subtopic": "oauth2",
+   "difficulty": "mid",
+   "question": "How does the client credentials grant work, and why doesn't it return a refresh token?",
+   "shortAnswer": "The client authenticates to the token endpoint with its own credentials (a secret, or better a certificate or signed JWT) and receives an access token that represents the application itself, with no user involved. Because it can simply ask again with the same credentials, RFC 6749 says a refresh token should not be included.",
+   "answer": "**Key points**\n- Used for daemons, background jobs and service-to-service calls where no user is present.\n- Request: `POST` to the token endpoint with `grant_type=client_credentials`, the client's authentication and optionally `scope`.\n- The token carries the application's identity and *application* permissions (in Entra ID, app roles), not delegated user permissions.\n- Prefer asymmetric client authentication (`private_key_jwt` from OpenID Connect, or mutual TLS) over shared secrets; RFC 9700 recommends asymmetric methods. On Azure, a managed identity removes the stored secret entirely.\n- Cache the token until shortly before `expires_in` instead of requesting one per call.\n\n**Detail**\nIn .NET, a library (MSAL's confidential client, Duende.AccessTokenManagement) or a delegating handler on the typed\n`HttpClient` usually requests, caches and attaches the token. On the API side, authorize app tokens with policies that\ncheck app roles or scopes and, where it matters, the client id. If the endpoint only requires an authenticated caller,\nany application that can get a token for your audience gets in.",
+   "code": {
+    "lang": "http",
+    "source": "POST /connect/token HTTP/1.1\nHost: login.example.com\nContent-Type: application/x-www-form-urlencoded\n\ngrant_type=client_credentials\n&client_id=billing-worker\n&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer\n&client_assertion=eyJhbGciOiJSUzI1NiIsImtpZCI6...\n&scope=invoices.read"
+   },
+   "pitfalls": [
+    "Requesting a new token for every outgoing call instead of caching it until it nears expiry.",
+    "Hard-coding the client secret in source code or `appsettings.json`.",
+    "Using client credentials for calls made on behalf of a user, so downstream APIs never see the user.",
+    "Protecting the API with 'authenticated user' only, so any client that can obtain a token for the audience passes."
+   ],
+   "followUps": [
+    "What is `private_key_jwt` client authentication?",
+    "How would you restrict which services may call an endpoint?",
+    "When would you use token exchange or on-behalf-of instead?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+     "title": "OpenID Connect Core 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "auth-server-concepts",
+    "jwk-jwks-and-pkce"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oauth2-confidential-vs-public-clients",
+   "topic": "auth",
+   "subtopic": "oauth2",
+   "difficulty": "junior",
+   "question": "What is the difference between a confidential client and a public client in OAuth 2.0?",
+   "shortAnswer": "A confidential client can keep a credential secret because its code runs on a server you control, such as an ASP.NET Core web app or a backend service. A public client can't, because SPAs, mobile and desktop apps run on the user's device, so it must not rely on a client secret and must use PKCE.",
+   "answer": "**Key points**\n- RFC 6749 defines the two types by a single property: whether the client can keep its credentials confidential.\n- **Confidential**: server-rendered web apps, APIs that call other APIs, daemons. They authenticate at the token endpoint (secret, certificate, `private_key_jwt`, mutual TLS).\n- **Public**: browser SPAs, native and mobile apps, CLI tools. Any embedded \"secret\" can be pulled out of the JavaScript bundle or the binary, so it isn't a secret.\n- RFC 9700: public clients **must** use PKCE, and it's recommended for confidential clients too.\n- Because the authorization server can't authenticate a public client, it leans on exact redirect URI matching, PKCE and, for refresh tokens, rotation or sender-constraining.\n\n**Detail**\nAn SPA can sit behind a confidential client by moving all token handling to its own backend (the BFF pattern): the\nbackend is the OAuth client and keeps the tokens, and the browser only gets a session cookie. RFC 10017 (OAuth 2.0\nfor Browser-Based Applications) recommends that arrangement for business and sensitive applications.",
+   "pitfalls": [
+    "Putting a client secret in an Angular or React environment file and calling the app confidential.",
+    "Thinking PKCE is only for mobile apps; every public client needs it.",
+    "Allowing wildcard redirect URIs for public clients."
+   ],
+   "followUps": [
+    "How does PKCE make up for the missing client secret?",
+    "How does the BFF pattern turn an SPA into a confidential client?",
+    "Why must refresh tokens for public clients be rotated or sender-constrained?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc10017",
+     "title": "RFC 10017: OAuth 2.0 for Browser-Based Applications",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwk-jwks-and-pkce",
+    "auth-server-approaches-and-oauth2"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oauth2-scopes-vs-roles",
+   "topic": "auth",
+   "subtopic": "oauth2",
+   "difficulty": "mid",
+   "question": "What is the difference between OAuth scopes and user roles, and how should an API use each?",
+   "shortAnswer": "A scope says what the *client application* has been allowed to do on the user's behalf (for example `tasks.read`); a role or permission says what the *user* may do in your system. An API should check both: scopes limit the app, roles and ownership rules limit the person.",
+   "answer": "**Key points**\n- Scopes are requested by the client, consented to by the user or an admin, and recorded in the token. RFC 6749 lets the authorization server grant fewer scopes than were requested, and scope values are a space-separated list.\n- Roles, groups and permissions come from your identity system or your app's database and describe the user.\n- Effective access is the **intersection**: an admin using an app that was only granted `tasks.read` must not be able to delete.\n- App-only tokens (client credentials) have no user; authorize them on application roles or scopes.\n- When the token is valid but lacks the scope, RFC 6750 says to answer **403** with `error=\"insufficient_scope\"`.\n\n**Detail**\nKeep scopes coarse and stable, because they appear on consent screens and in client configuration. Keep fine-grained\nbusiness rules, such as \"only the owner may edit a task\", in the API's authorization layer. RFC 9700 also asks for\naccess tokens to be limited to the resources and actions the client actually needs (least privilege).\n\nIn ASP.NET Core, express the scope check as a policy and combine it with role or resource-based checks. If your\nissuer puts all scopes in a single space-separated `scope` claim, an exact-match `RequireClaim` won't work, so split\nthe value in an assertion or handler.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddAuthorizationBuilder()\n    .AddPolicy(\"tasks.write\", p => p\n        .RequireAuthenticatedUser()\n        .RequireAssertion(ctx => ctx.User.FindAll(\"scope\")\n            .SelectMany(c => c.Value.Split(' '))\n            .Contains(\"tasks.write\")));\n\napp.MapDelete(\"/api/tasks/{id:guid}\", DeleteTask)\n   .RequireAuthorization(\"tasks.write\");    // the app was granted the scope...\n// ...and DeleteTask still checks that this user owns the task (resource-based authorization)."
+   },
+   "pitfalls": [
+    "Treating scopes as user permissions, so any user of a privileged client gets admin powers.",
+    "Using an exact-match `RequireClaim` on `scope` when the issuer sends all scopes in one space-separated value.",
+    "Creating one scope per database operation, which bloats consent screens and tokens."
+   ],
+   "followUps": [
+    "How would you authorize a call made with client credentials?",
+    "What does `insufficient_scope` in a `WWW-Authenticate` header tell the client?",
+    "Where do fine-grained rules like 'owner only' belong?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6750",
+     "title": "RFC 6750: OAuth 2.0 Bearer Token Usage",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies",
+     "title": "Policy-based authorization in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies",
+    "auth-server-approaches-and-oauth2"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oauth2-exact-redirect-uri-matching",
+   "topic": "auth",
+   "subtopic": "oauth2",
+   "difficulty": "senior",
+   "question": "Why must an authorization server match redirect URIs exactly, and what goes wrong with looser matching?",
+   "shortAnswer": "The redirect URI is where the authorization server delivers the authorization code, so if an attacker can make it point at a place they control, they receive the victim's code. RFC 9700 therefore requires exact string matching against pre-registered redirect URIs (with a narrow port exception for native apps on localhost) and forbids open redirectors.",
+   "answer": "**Key points**\n- Pattern, prefix and wildcard rules have been bypassed again and again: look-alike hosts such as `app.example.com.evil.net`, user-controlled subdomains, or a path on the right host that contains an open redirect.\n- With an **open redirector** on the client or the authorization server, an attacker can bounce the authorization response, code included, to their own site.\n- A stolen code can be redeemed directly (by a public client without PKCE) or **injected** into the attacker's own session to sign them in as the victim. PKCE helps against both, but doesn't replace exact matching.\n- Native apps may redirect to a loopback address whose port changes on each run; that's the one allowed exception.\n- RFC 6749 also requires the client to repeat the same `redirect_uri` at the token endpoint when it sent one in the authorization request.\n\n**Detail**\nFor your own authorization server (OpenIddict, Duende IdentityServer, Keycloak), register full redirect URIs per\nenvironment, never patterns, and remove development URIs such as `localhost` from production client registrations.\nOn the client side, make sure the callback page doesn't follow an unchecked `returnUrl`; ASP.NET Core provides\n`LocalRedirect` and `Url.IsLocalUrl` for exactly this.",
+   "pitfalls": [
+    "Registering `https://*.example.com/*` so that preview environments work.",
+    "Leaving `http://localhost` redirect URIs on a production client.",
+    "Assuming PKCE makes redirect URI validation unnecessary.",
+    "Following an unchecked `returnUrl` after login, which turns the client into an open redirector."
+   ],
+   "followUps": [
+    "What is authorization code injection, and how do PKCE and `nonce` help?",
+    "How do native apps receive the redirect securely?",
+    "What is an open redirect, and how do you prevent one in ASP.NET Core?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/preventing-open-redirects",
+     "title": "Prevent open redirect attacks in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "auth-server-approaches-and-oauth2",
+    "openiddict"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oauth2-sender-constrained-tokens",
+   "topic": "auth",
+   "subtopic": "oauth2",
+   "difficulty": "senior",
+   "question": "What are sender-constrained access tokens (DPoP, mutual TLS), and when would you use them instead of plain bearer tokens?",
+   "shortAnswer": "A bearer token works for whoever holds it, so a leaked token is as good as a password until it expires. A sender-constrained token is bound to a key the client holds, either through a DPoP proof JWT signed for each request (RFC 9449) or through the client's TLS certificate (RFC 8705), so a stolen token is useless without that private key.",
+   "answer": "**Key points**\n- **DPoP**: the client creates a key pair and sends a `DPoP` header with every request. It contains a small JWT signed with the private key, holding `htm` (method), `htu` (URL), `iat`, a unique `jti`, and `ath` (hash of the access token). The token carries `cnf.jkt`, a thumbprint of the client's public key, and is sent as `Authorization: DPoP <token>`. Servers can demand a nonce so proofs can't be prepared in advance.\n- **Mutual TLS** (RFC 8705): the token is bound to the client certificate's thumbprint, and the API compares it with the certificate on the connection. A good fit for service-to-service calls, awkward for browsers.\n- RFC 9700 says authorization and resource servers should use sender-constraining, and it allows refresh tokens of public clients to be sender-constrained instead of rotated.\n- Costs: more client code, replay tracking for `jti`, clock checks, and care with proxies that terminate TLS.\n\n**Detail**\nUse them for high-value APIs (finance, health, admin), for long-lived or refresh tokens held by public clients, or\nwhen tokens pass through components you don't fully trust. For ordinary first-party APIs, short-lived bearer tokens\nover HTTPS, plus a BFF for browsers, are often enough. Microsoft's ASP.NET Core JWT guidance names DPoP and mutual TLS\nas the two ways to sender-constrain tokens; check what your identity provider and libraries support first.",
+   "pitfalls": [
+    "Assuming HTTPS alone prevents token replay; it protects the token in transit, not after it leaks from a log or a compromised client.",
+    "Implementing DPoP without tracking `jti` or checking `htm` and `htu`, which lets proofs be replayed.",
+    "Binding tokens to client certificates behind a proxy that terminates TLS without passing the certificate on securely."
+   ],
+   "followUps": [
+    "How would DPoP protect a refresh token held by a SPA?",
+    "What does the `cnf` claim contain?",
+    "Why does RFC 9700 accept sender-constraining as an alternative to refresh token rotation?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9449",
+     "title": "RFC 9449: OAuth 2.0 Demonstrating Proof of Possession (DPoP)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oidc-what-it-adds",
+   "topic": "auth",
+   "subtopic": "openid-connect",
+   "difficulty": "junior",
+   "question": "What does OpenID Connect add on top of OAuth 2.0?",
+   "shortAnswer": "OpenID Connect is an identity layer on OAuth 2.0: when the client includes the `openid` scope, the authorization server also returns an ID token, a signed JWT telling the client who the user is and how and when they authenticated. It also standardizes the UserInfo endpoint, discovery metadata, standard claims and scopes, and logout.",
+   "answer": "**Key points**\n- OAuth 2.0 answers \"may this app call that API?\"; OpenID Connect answers \"who just signed in?\".\n- **ID token**: always a JWT, addressed to the client (`aud` is the client id), with `iss`, `sub`, `aud`, `exp`, `iat`, and `nonce`, `auth_time` or `acr` when relevant.\n- The **`openid` scope** is mandatory in an OpenID Connect request; `profile`, `email`, `address` and `phone` ask for standard claims.\n- **UserInfo endpoint**: returns claims about the user when called with the access token; its `sub` must exactly match the ID token's `sub`.\n- **Discovery** (`/.well-known/openid-configuration`) and the **JWKS** let clients and APIs configure themselves.\n- Companion specs cover RP-initiated, front-channel and back-channel logout.\n\n**Detail**\nIn ASP.NET Core, `AddOpenIdConnect` is the client side (a web app signs users in, then keeps the session in a cookie),\nand `AddJwtBearer` is the API side; both read the same discovery document. \"Sign in with Google/Microsoft\" buttons\nare OpenID Connect. Plain OAuth would only hand the app an access token, which isn't meant to identify the user to the client.",
+   "pitfalls": [
+    "Using the access token's claims to decide who signed in to the client; the access token is for the API.",
+    "Forgetting the `openid` scope and getting no ID token back.",
+    "Treating `email` as the user's unique id instead of `iss` plus `sub`."
+   ],
+   "followUps": [
+    "Why shouldn't an API accept ID tokens?",
+    "How must a client validate an ID token?",
+    "What does the discovery document contain, and who uses it?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+     "title": "OpenID Connect Core 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-discovery-1_0.html",
+     "title": "OpenID Connect Discovery 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-oidc-web-authentication",
+     "title": "Configure OpenID Connect Web (UI) authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "openid-connect",
+    "identity-providers-and-oidc"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oidc-id-token-vs-access-token",
+   "topic": "auth",
+   "subtopic": "openid-connect",
+   "difficulty": "mid",
+   "question": "Why shouldn't you send an ID token to your API instead of an access token?",
+   "shortAnswer": "An ID token is addressed to the client (its audience is the client id) and proves that a user authenticated; it says nothing about which API the app may call or with which permissions. An access token is issued for a specific resource (its audience is the API) with scopes, so APIs should accept access tokens only.",
+   "answer": "**Key points**\n- **Audience**: ID token `aud` = the client id; access token `aud` = the API. An API that validates `aud` properly rejects ID tokens anyway.\n- **Purpose**: the ID token is the authentication result for the client UI; the access token is the authorization for the resource server.\n- **Format**: ID tokens are always JWTs; access tokens can be any format (JWT, opaque reference, encrypted), and the client shouldn't parse them.\n- ID tokens don't carry delegated scopes, and their lifetime is tied to the sign-in, not to API access.\n- RFC 9068 gives JWT access tokens the type `at+jwt` precisely so validators can tell them apart from ID tokens.\n\n**Detail**\nMicrosoft's documentation is blunt: ID tokens should never be used to access APIs, and a UI app shouldn't open or\ninterpret access tokens. A common SPA bug is to send whichever token is at hand. If the API has audience validation\nturned off, the ID token \"works\" and the bug ships. Fix both sides: the API validates `aud` (and optionally the token\ntype), and the client requests a token for the API's scope.",
+   "pitfalls": [
+    "Turning off audience validation so the SPA's ID token passes.",
+    "Decoding the access token in the frontend to read user details; use the ID token or the UserInfo endpoint.",
+    "Assuming every access token is a JWT."
+   ],
+   "followUps": [
+    "How can an API tell an ID token from an access token when both are JWTs?",
+    "What should a SPA do to get a token for a second API?",
+    "What is the UserInfo endpoint for?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/entra/identity-platform/id-tokens",
+     "title": "ID tokens in the Microsoft identity platform",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9068",
+     "title": "RFC 9068: JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+     "title": "OpenID Connect Core 1.0",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "openid-connect",
+    "auth-server-concepts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oidc-id-token-validation",
+   "topic": "auth",
+   "subtopic": "openid-connect",
+   "difficulty": "senior",
+   "question": "How must a client validate an OpenID Connect ID token?",
+   "shortAnswer": "Verify the signature with the provider's published keys and the algorithm you expect, check that `iss` exactly matches the provider and `aud` contains your client id (and `azp`, when present, is you), that the token isn't expired or too old, and that `nonce` equals the value you sent. ASP.NET Core's OpenID Connect handler does this for you, but you should know each step.",
+   "answer": "**Key points** (OpenID Connect Core, section 3.1.3.7)\n1. Decrypt the token if it's encrypted.\n2. `iss` must exactly match the issuer from the discovery document.\n3. `aud` must contain your `client_id`; reject the token if it also lists audiences you don't trust. If `azp` is present, it should be your client id.\n4. Validate the signature with the key from `jwks_uri` (matched by `kid`) and the expected algorithm (RS256 by default). For a token received directly from the token endpoint over TLS, the spec lets TLS server validation stand in for this step, but libraries normally verify the signature anyway.\n5. The current time must be before `exp`; use `iat` to reject tokens issued too long ago.\n6. If you sent a `nonce`, the claim must be present and equal to it, which protects against replay and token injection.\n7. If you asked for `max_age` or a particular `acr`, check `auth_time` and `acr`.\n\n**Detail**\nThe discovery spec also requires the `issuer` in the metadata to be identical to the `iss` in ID tokens, which is why\na trailing-slash mismatch breaks sign-in. Microsoft notes that validation really pays off in confidential clients; a\npublic client running on a device you don't control can have its checks tampered with.\n\nIntermittent \"Correlation failed\" or nonce errors in ASP.NET Core usually mean the temporary cookies or Data\nProtection keys weren't available on the instance that handled the callback (for example several instances without a\nshared key ring), not an attack.",
+   "pitfalls": [
+    "Comparing `iss` loosely (case, trailing slash) instead of exactly.",
+    "Skipping the `nonce` check in a hand-written OpenID Connect client.",
+    "Accepting an ID token whose `aud` also lists clients you don't trust.",
+    "Turning off nonce or correlation checks to fix a cookie problem in a load-balanced deployment."
+   ],
+   "followUps": [
+    "What's the difference between `state` and `nonce`?",
+    "What is `azp`, and when does it appear?",
+    "Why might OpenID Connect sign-ins fail only some of the time behind a load balancer?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+     "title": "OpenID Connect Core 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-discovery-1_0.html",
+     "title": "OpenID Connect Discovery 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/entra/identity-platform/id-tokens",
+     "title": "ID tokens in the Microsoft identity platform",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/web-farm",
+     "title": "Host ASP.NET Core in a web farm",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "openid-connect",
+    "signing-keys-and-discovery"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oidc-discovery-and-signing-keys",
+   "topic": "auth",
+   "subtopic": "openid-connect",
+   "difficulty": "mid",
+   "question": "What is the OpenID Connect discovery document, and how does an ASP.NET Core API use it to get signing keys?",
+   "shortAnswer": "It's a JSON document at `{issuer}/.well-known/openid-configuration` listing the issuer, the endpoints, supported algorithms and the `jwks_uri` that holds the public signing keys. When you set `Authority` on `AddJwtBearer`, the handler fetches and caches this metadata and the keys, refreshes them periodically, and fetches again early when a token is signed with a key it doesn't have.",
+   "answer": "**Key points**\n- Required metadata includes `issuer`, `authorization_endpoint`, `token_endpoint`, `jwks_uri`, `response_types_supported`, `subject_types_supported` and `id_token_signing_alg_values_supported`, which must include RS256.\n- The `issuer` value must be identical to the URL used for discovery and to the `iss` in tokens.\n- The JWT handler gets the configuration through a `ConfigurationManager` when a request needs it (not at app start-up), caches it, and refreshes it after `AutomaticRefreshInterval` (default 12 hours).\n- `RefreshOnIssuerKeyNotFound` (on by default) requests a refresh when the signing key isn't found, which is what makes key rollover automatic. `RefreshInterval` sets the minimum time between such retrievals.\n- `RequireHttpsMetadata` (default `true`) keeps metadata retrieval on HTTPS.\n\n**Detail**\nSo the API doesn't call the authorization server on every request; it validates locally with cached keys. If your\ntoken issuer has no discovery document (a hand-written token endpoint, for example), either publish a discovery\ndocument and JWKS yourself, or configure `IssuerSigningKey(s)` and `ValidIssuer` explicitly. In that case key rotation\nbecomes a configuration deployment you have to plan.",
+   "pitfalls": [
+    "Believing the API contacts the identity provider on every request.",
+    "Pointing `Authority` at a custom auth API that has no discovery document, then getting metadata errors on the first request.",
+    "Setting `RequireHttpsMetadata = false` outside local development.",
+    "Blocking outbound calls from the API to the JWKS endpoint and then wondering why a newly rotated key is rejected."
+   ],
+   "followUps": [
+    "What happens during a signing key rotation?",
+    "How would you validate tokens if the API can't reach the identity provider?",
+    "What is the difference between `Authority` and `MetadataAddress`?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://openid.net/specs/openid-connect-discovery-1_0.html",
+     "title": "OpenID Connect Discovery 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Security/Authentication/JwtBearer/src/JwtBearerHandler.cs",
+     "title": "JwtBearerHandler.cs (dotnet/aspnetcore source)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbeareroptions.refreshonissuerkeynotfound",
+     "title": "JwtBearerOptions.RefreshOnIssuerKeyNotFound property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbeareroptions.automaticrefreshinterval",
+     "title": "JwtBearerOptions.AutomaticRefreshInterval property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.protocols.configurationmanager-1.defaultautomaticrefreshinterval",
+     "title": "ConfigurationManager<T>.DefaultAutomaticRefreshInterval field",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbeareroptions.refreshinterval",
+     "title": "JwtBearerOptions.RefreshInterval property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "signing-keys-and-discovery",
+    "openid-connect",
+    "jwk-jwks-and-pkce"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oidc-stable-user-identifier",
+   "topic": "auth",
+   "subtopic": "openid-connect",
+   "difficulty": "mid",
+   "question": "Which claim should you use as the key for a user who signs in through an external OpenID Connect provider?",
+   "shortAnswer": "Use `iss` together with `sub`: the specification says those two are the only claims a relying party can rely on as a stable identifier. Email, phone number, preferred_username and name can change, and an email can even be reassigned to someone else, so none of them should be the unique key.",
+   "answer": "**Key points**\n- `sub` is \"locally unique and never reassigned\" *within the issuer*, so store it with the issuer (or the provider name), never alone across providers.\n- OpenID Connect Core section 5.7: `email`, `phone_number`, `preferred_username` and `name` must not be used as unique identifiers, and an issuer may reuse an email value for a different user later.\n- Some providers issue **pairwise** subjects. In Microsoft Entra ID, `sub` is unique per application, while `oid` is the same across apps in a tenant; Microsoft suggests `sub` or `oid` (with `tid`) as the key.\n- ASP.NET Core Identity stores external logins in `AspNetUserLogins` as (`LoginProvider`, `ProviderKey`); the provider key should be the `sub`.\n\n**Detail**\nLinking an external login to an existing local account *by matching email* is a well-known account-takeover path:\nif the provider doesn't verify addresses, or the attacker controls an address the victim once used, they land in the\nvictim's account. Auto-link only when the provider is trusted for that address and `email_verified` is true, or ask the\nuser to sign in with the existing method first and then link the new provider explicitly.",
+   "pitfalls": [
+    "Using email as the primary key for external users.",
+    "Storing `sub` without the issuer, so subjects from two providers can collide.",
+    "Auto-linking accounts on an unverified email claim."
+   ],
+   "followUps": [
+    "What is a pairwise subject identifier?",
+    "How does ASP.NET Core Identity store external logins?",
+    "How would you safely link a Google sign-in to an existing password account?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+     "title": "OpenID Connect Core 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference",
+     "title": "ID token claims reference (Microsoft identity platform)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "usermanager-external-logins-and-2fa",
+    "openid-connect",
+    "identity-and-its-tables"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-oidc-logout",
+   "topic": "auth",
+   "subtopic": "openid-connect",
+   "difficulty": "senior",
+   "question": "How does logout work with OpenID Connect, and why is single logout harder than single sign-on?",
+   "shortAnswer": "Signing out of your app only clears your app's session cookie; to end the user's session at the identity provider you redirect to its `end_session_endpoint` (RP-initiated logout) with an `id_token_hint` and a registered `post_logout_redirect_uri`. Telling every other app the user signed in to is harder: front-channel logout relies on the browser visiting each app, and back-channel logout needs the provider to POST a signed logout token to each app's server.",
+   "answer": "**Key points**\n- **Local sign-out** (clearing the cookie scheme) isn't enough on its own: while the provider's session is alive, the next challenge signs the user straight back in.\n- **RP-initiated logout**: redirect the browser to the provider's `end_session_endpoint`. `post_logout_redirect_uri` must have been registered and must match; `id_token_hint` tells the provider whose session to end, and without it the provider should ask the user to confirm.\n- **Front-channel logout**: the provider makes the browser load each relying party's logout URL. It only works while the browser and those apps' cookies cooperate, so it's fragile.\n- **Back-channel logout**: the provider POSTs a `logout_token` (a signed JWT with `iss`, `aud`, `iat`, `exp`, `jti`, an `events` claim, `sub` and/or `sid`, and **no** `nonce`) to each app's registered endpoint. The app validates it and ends the matching server-side session. More reliable, but the app needs server-side session state and must be reachable from the provider.\n- Also revoke refresh tokens (RFC 7009), or the app can keep minting new access tokens after \"logout\".\n\n**Detail**\nIn ASP.NET Core, returning `SignOut(...)` for both the cookie scheme and the OpenID Connect scheme clears the local\nsession and then redirects to the provider's sign-out endpoint; the signed-out callback path (default\n`/signout-callback-oidc`) must be registered with the provider. Access tokens already handed out stay valid until\nthey expire, which is one more reason to keep them short-lived.",
+   "code": {
+    "lang": "csharp",
+    "source": "[Authorize]\npublic IActionResult Logout() =>\n    SignOut(new AuthenticationProperties { RedirectUri = \"/signed-out\" },\n        CookieAuthenticationDefaults.AuthenticationScheme,   // clear the app's session cookie\n        OpenIdConnectDefaults.AuthenticationScheme);         // then redirect to the provider's end-session endpoint"
+   },
+   "pitfalls": [
+    "Clearing only the local cookie and being surprised that the user is signed straight back in.",
+    "Not registering the post-logout or signed-out callback URI, so the provider refuses to redirect back.",
+    "Accepting a back-channel logout token without validating its signature and `aud`, and checking that it has no `nonce`.",
+    "Assuming logout revokes access tokens that were already issued."
+   ],
+   "followUps": [
+    "Why must a logout token not contain a `nonce`?",
+    "What server-side state do you need to support back-channel logout?",
+    "How do refresh tokens fit into logout?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://openid.net/specs/openid-connect-rpinitiated-1_0.html",
+     "title": "OpenID Connect RP-Initiated Logout 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-backchannel-1_0.html",
+     "title": "OpenID Connect Back-Channel Logout 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7009",
+     "title": "RFC 7009: OAuth 2.0 Token Revocation",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-oidc-web-authentication",
+     "title": "Configure OpenID Connect Web (UI) authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "auth-pkce-how-it-works",
+   "topic": "auth",
+   "subtopic": "pkce",
+   "difficulty": "mid",
+   "question": "How does PKCE work, and what attack does it prevent?",
+   "shortAnswer": "Before redirecting to the authorization server, the client generates a random `code_verifier` and sends only its SHA-256 hash as the `code_challenge`; when it later redeems the authorization code it must present the original verifier. An attacker who intercepts the code can't redeem it without the verifier, which defeats authorization code interception.",
+   "answer": "**Key points**\n- `code_verifier`: a high-entropy random string of 43-128 characters from the unreserved set (`A-Z`, `a-z`, `0-9`, `-`, `.`, `_`, `~`). RFC 7636 suggests 32 random bytes, base64url-encoded into 43 characters.\n- `code_challenge = BASE64URL(SHA256(ASCII(code_verifier)))`, sent with `code_challenge_method=S256`.\n- The authorization server stores the challenge with the code. At the token endpoint it hashes the presented verifier and compares; a mismatch returns `invalid_grant`.\n- The `plain` method (challenge equals verifier) exists only for clients that can't compute SHA-256. If the method is omitted it **defaults to `plain`**, so always send `S256`; RFC 9700 notes S256 is currently the only method that doesn't expose the verifier.\n- The original threat (RFC 7636): a malicious app on the same device registers the same custom URI scheme and receives the code. RFC 9700 also relies on PKCE against code injection and as CSRF protection for the redirect.\n\n**Detail**\nThe verifier never travels in a URL, only in the back-channel POST to the token endpoint, so logs and browser history\nnever see it. Generate a fresh verifier for every authorization request and keep it only until the callback (in\nsession storage for a SPA, or the server-side session or a protected cookie for a confidential client).",
+   "code": {
+    "lang": "csharp",
+    "source": "// 32 random bytes -> a 43-character base64url verifier\nstring verifier = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));\nstring challenge = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));\n\n// authorize request: ...&code_challenge={challenge}&code_challenge_method=S256\n// token request:     ...&code={code}&code_verifier={verifier}"
+   },
+   "pitfalls": [
+    "Leaving out `code_challenge_method`, which silently falls back to `plain`.",
+    "Reusing one verifier for every sign-in, or generating it with `Random` instead of a cryptographic generator.",
+    "Thinking PKCE replaces exact redirect URI matching or protects tokens after they're issued."
+   ],
+   "followUps": [
+    "Should confidential clients use PKCE too?",
+    "What's the difference between `state`, `nonce` and PKCE?",
+    "Why was PKCE first designed for native apps?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7636",
+     "title": "RFC 7636: Proof Key for Code Exchange by OAuth Public Clients (PKCE)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwk-jwks-and-pkce"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-pkce-confidential-clients",
+   "topic": "auth",
+   "subtopic": "pkce",
+   "difficulty": "mid",
+   "question": "A server-side web app already authenticates with a client secret. Does it still need PKCE?",
+   "shortAnswer": "Yes, it should use it. The client secret proves *which application* is redeeming the code, not that the code belongs to *this* user's browser session; PKCE ties the code to the transaction that started it, which stops authorization code injection. RFC 9700 recommends PKCE for confidential clients and requires it for public ones.",
+   "answer": "**Key points**\n- RFC 9700: public clients **must** use PKCE; it's **recommended** for confidential clients (OpenID Connect clients may use `nonce` instead, with extra precautions); authorization servers **must** support PKCE.\n- **Code injection**: an attacker who obtains a victim's code (from logs, a referrer, a leaky redirect) feeds it into *their own* session with the legitimate client. The client's secret is then used on the attacker's behalf, and the attacker ends up signed in as the victim. With PKCE, the attacker's session holds a different verifier, so redemption fails.\n- PKCE also gives CSRF protection for the redirect, so `state` can carry application state.\n- The cost is tiny, so many servers require PKCE for every client; OpenIddict, for example, can enforce it globally.\n\n**Detail**\nASP.NET Core's OpenID Connect handler uses PKCE by default for the code flow (`UsePkce` defaults to `true`), alongside\nthe client secret, and Microsoft's guidance for web apps is the confidential code flow *with* PKCE. Keep both: the\nsecret (or better `private_key_jwt`) authenticates the client, PKCE protects each individual sign-in.",
+   "pitfalls": [
+    "Treating PKCE and client secrets as alternatives instead of complementary controls.",
+    "Turning PKCE off server-wide because one legacy client doesn't support it, instead of exempting only that client."
+   ],
+   "followUps": [
+    "What exactly is authorization code injection?",
+    "What does `nonce` add for OpenID Connect clients?",
+    "How would you enforce PKCE on your own authorization server?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7636",
+     "title": "RFC 7636: Proof Key for Code Exchange by OAuth Public Clients (PKCE)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.openidconnect.openidconnectoptions.usepkce",
+     "title": "OpenIdConnectOptions.UsePkce property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-oidc-web-authentication",
+     "title": "Configure OpenID Connect Web (UI) authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwk-jwks-and-pkce"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-pkce-replaced-implicit-flow",
+   "topic": "auth",
+   "subtopic": "pkce",
+   "difficulty": "mid",
+   "question": "Why did single-page apps move from the implicit flow to the authorization code flow with PKCE?",
+   "shortAnswer": "The implicit flow returned the access token directly in the redirect URL, where browser history, referrers, extensions or injected scripts could pick it up, and it offered no way to bind the token to the client or to issue refresh tokens safely. The code flow with PKCE puts only a short-lived, single-use code in the URL and delivers tokens through a back-channel POST, and RFC 9700 now says clients should not use the implicit grant.",
+   "answer": "**Key points**\n- Implicit (`response_type=token`): no client authentication, token in the URL, no PKCE, no refresh tokens, hard to sender-constrain.\n- Code + PKCE: the code in the URL is useless without the verifier; tokens come from the token endpoint over a CORS request; refresh tokens become possible, with rotation or sender-constraining for public clients.\n- Modern browsers support the CORS and Web Crypto features the code flow needs, which removed the original reason for implicit.\n- Even with PKCE, a browser-only client is exposed to XSS stealing its tokens; RFC 10017 recommends a backend (BFF) for business and sensitive apps, and Microsoft no longer recommends public clients for web apps.\n\n**Detail**\nMigrating an Angular or React app usually means switching the OpenID Connect client library to `response_type=code`\nwith PKCE, registering the SPA as a public client with exact redirect URIs, and enabling refresh token rotation on the\nidentity provider, or moving token handling into a BFF so the browser never holds tokens.",
+   "pitfalls": [
+    "Leaving `response_type=id_token token` in an old SPA configuration after upgrading the library.",
+    "Assuming code + PKCE makes keeping tokens in the browser safe from XSS."
+   ],
+   "followUps": [
+    "What does the BFF pattern change compared with code + PKCE in the browser?",
+    "Why do public clients need refresh token rotation?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc10017",
+     "title": "RFC 10017: OAuth 2.0 for Browser-Based Applications",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7636",
+     "title": "RFC 7636: Proof Key for Code Exchange by OAuth Public Clients (PKCE)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-oidc-web-authentication",
+     "title": "Configure OpenID Connect Web (UI) authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwk-jwks-and-pkce",
+    "auth-server-approaches-and-oauth2"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-pkce-state-nonce-pkce",
+   "topic": "auth",
+   "subtopic": "pkce",
+   "difficulty": "senior",
+   "question": "`state`, `nonce` and PKCE all look like random values in the sign-in flow. What does each one protect?",
+   "shortAnswer": "`state` is round-tripped through the redirect so the client can tie the response to the request it made (CSRF protection plus app state); `nonce` is copied into the ID token so the client can tie the token to its own sign-in and reject replays; and PKCE's verifier proves at the token endpoint that whoever redeems the code started the flow. RFC 9700 accepts PKCE (or `nonce`) for CSRF protection, but the three guard different steps.",
+   "answer": "**Key points**\n\n| Value | Sent in | Checked by | Protects against |\n|---|---|---|---|\n| `state` | authorization request, echoed in the redirect | the client, at its callback | CSRF on the redirect endpoint, mixing up concurrent sign-ins; carries app state |\n| `nonce` | authorization request, copied into the ID token | the client, when validating the ID token | ID token replay and injection |\n| `code_challenge` / `code_verifier` | challenge in the authorization request, verifier at the token endpoint | the authorization server | code interception and code injection |\n\n- All three must be unguessable, single-use and bound to the user's browser session.\n- If you rely on `state` for CSRF protection, RFC 9700 says it must be one-time-use and bound to the user agent.\n- With PKCE in place, `state` can still carry data such as a return URL, as long as it's protected and the return URL is checked (ASP.NET Core's handlers protect `state` for you).\n\n**Detail**\nInterviewers like this question because the three get lumped together. A compact summary: `state` protects the\n**client's callback**, `nonce` protects the **ID token**, and PKCE protects the **code redemption**.",
+   "pitfalls": [
+    "Using a constant or predictable `state` value.",
+    "Validating `state` but not `nonce` in a hand-written OpenID Connect client.",
+    "Putting an unchecked return URL in `state`, which creates an open redirect."
+   ],
+   "followUps": [
+    "What is an OAuth mix-up attack?",
+    "Where does ASP.NET Core keep `state` and `nonce` during the redirect?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+     "title": "OpenID Connect Core 1.0",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7636",
+     "title": "RFC 7636: Proof Key for Code Exchange by OAuth Public Clients (PKCE)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwk-jwks-and-pkce",
+    "auth-server-approaches-and-oauth2"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-pkce-native-desktop-and-mobile-apps",
+   "topic": "auth",
+   "subtopic": "pkce",
+   "difficulty": "mid",
+   "question": "How should a desktop or mobile .NET app (WPF, WinForms, .NET MAUI) sign users in with OAuth 2.0 / OpenID Connect?",
+   "shortAnswer": "Treat it as a public client: open the system browser rather than an embedded web view for the authorization request, receive the redirect on a loopback address, a claimed HTTPS link or a private-use URI scheme, and redeem the code with PKCE. Keep refresh tokens in the operating system's protected storage (for example MAUI `SecureStorage`), never in plain files or settings.",
+   "answer": "**Key points** (RFC 8252, OAuth 2.0 for Native Apps)\n- Native apps **must** use an external user agent, typically the system browser. An embedded web view lets the app read the password the user types and loses the browser's existing session (and its SSO and MFA state).\n- Redirect options: a private-use URI scheme (reverse-domain style, such as `com.example.app:/callback`), a claimed `https` link, or a loopback redirect (`http://127.0.0.1:{port}/`), where the authorization server must accept any port.\n- Native apps are public clients: PKCE is required and any embedded \"client secret\" isn't treated as a secret.\n- Store tokens with platform protection. In .NET MAUI, `SecureStorage` uses the iOS Keychain, Android `EncryptedSharedPreferences` and Windows `DataProtectionProvider`; a WPF app can protect a token cache with DPAPI (`ProtectedData`).\n- Request only the scopes you need, and handle refresh failures by sending the user back through the browser sign-in.\n\n**Detail**\nFor Microsoft Entra ID, MSAL.NET implements all of this (system browser or broker, PKCE, token cache). For other\nproviders, a certified OpenID Connect client library is far safer than hand-rolled HTTP calls. The same rules apply to\nCLI tools, which can also use the device authorization grant when no browser is available on the machine.",
+   "pitfalls": [
+    "Embedding a WebView to host the provider's login page, which exposes the user's credentials to the app.",
+    "Shipping a client secret inside the app and assuming the app is a confidential client.",
+    "Saving refresh tokens to a JSON file or app settings in plain text."
+   ],
+   "followUps": [
+    "Why do loopback redirects allow any port?",
+    "When would a desktop tool use the device authorization grant instead?",
+    "How would you protect a token cache on Windows without MAUI?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8252",
+     "title": "RFC 8252: OAuth 2.0 for Native Apps",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7636",
+     "title": "RFC 7636: Proof Key for Code Exchange by OAuth Public Clients (PKCE)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/storage/secure-storage",
+     "title": "Secure storage - .NET MAUI",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8628",
+     "title": "RFC 8628: OAuth 2.0 Device Authorization Grant",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "jwk-jwks-and-pkce"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-refresh-why-two-tokens",
+   "topic": "auth",
+   "subtopic": "refresh-tokens",
+   "difficulty": "junior",
+   "question": "Why do we use short-lived access tokens together with refresh tokens?",
+   "shortAnswer": "A short access-token lifetime limits how long a stolen token is useful and lets APIs validate tokens without state, but users can't be asked to sign in every few minutes. The refresh token is a longer-lived credential sent only to the authorization server to get new access tokens, where it can be checked, rotated and revoked.",
+   "answer": "**Key points**\n- **Access token**: sent with every API call, to many servers, validated locally and hard to revoke, so keep it short. RFC 6750 suggests one hour or less; 5-15 minutes is common.\n- **Refresh token**: sent only to the token endpoint, never to APIs (RFC 6749). The authorization server keeps track of it, so it **can** be revoked, rotated and tied to a session.\n- The pair gives you one central place to enforce logout, password changes, disabled accounts and reuse detection.\n- Client credentials flows don't need refresh tokens; the client simply asks again.\n- For public clients, RFC 9700 requires refresh tokens to be rotated or sender-constrained.\n\n**Detail**\nA refresh is also a natural moment to re-check the user: re-read roles, confirm the account is still active, and\nissue updated claims. If tokens are never refreshed, a demoted admin keeps admin claims until the token expires.",
+   "pitfalls": [
+    "Making access tokens last hours or days to avoid writing refresh logic.",
+    "Sending the refresh token to the API with every request.",
+    "Never expiring refresh tokens (no absolute lifetime)."
+   ],
+   "followUps": [
+    "How does refresh token rotation detect theft?",
+    "Where should a browser app keep its refresh token?",
+    "What happens to already-issued access tokens when the user logs out?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6750",
+     "title": "RFC 6750: OAuth 2.0 Bearer Token Usage",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "refresh-tokens",
+    "auth-server-concepts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-refresh-rotation-and-reuse-detection",
+   "topic": "auth",
+   "subtopic": "refresh-tokens",
+   "difficulty": "mid",
+   "question": "What is refresh token rotation with reuse detection, and how would you implement it on the server?",
+   "shortAnswer": "With rotation, every refresh invalidates the presented refresh token and returns a new one in the same 'family'. If a token that was already used is ever presented again, the server treats it as theft and revokes the whole family, forcing a new sign-in, so a stolen token only works until the legitimate client next refreshes.",
+   "answer": "**Key points**\n- Track tokens in families: one family per sign-in; each token records its family, its successor and whether it was used or revoked.\n- On refresh: look the token up by its hash, check expiry and status, mark it used, issue a successor in the same family.\n- On reuse of a consumed token: revoke every token in the family (the attacker's and the user's) and log a security event.\n- RFC 9700 describes rotation as the way to detect refresh token replay for public clients. RFC 10017 adds that a rotated token must not extend the lifetime beyond the original expiry, and that refresh tokens need a maximum lifetime or an idle timeout.\n- It doesn't stop a thief who refreshes *before* the user does; it limits how long the theft goes unnoticed.\n\n**Detail**\nStore only a **hash** of each refresh token. A fast hash such as SHA-256 is fine here, because the token is a long\nrandom value, not a guessable password. Bind tokens to the client id (and ideally to the session), give them an\nabsolute lifetime (say 14-30 days) plus an optional idle timeout, and revoke the family on password change, account\ndisablement or \"sign out everywhere\". Rotation without reuse detection lets a thief run a parallel chain unnoticed;\nreuse detection without rotation has nothing to detect.",
+   "pitfalls": [
+    "Storing raw refresh tokens in the database.",
+    "Giving each rotated token a fresh 'now + 30 days' expiry, so a session can live forever.",
+    "Not handling legitimate concurrent refreshes, so normal users get logged out by reuse detection."
+   ],
+   "followUps": [
+    "How do you handle two browser tabs refreshing at the same moment?",
+    "What else should revoke a whole token family?",
+    "How is sender-constraining an alternative to rotation?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc10017",
+     "title": "RFC 10017: OAuth 2.0 for Browser-Based Applications",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6749",
+     "title": "RFC 6749: The OAuth 2.0 Authorization Framework",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "refresh-tokens",
+    "auth-module-readme"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-refresh-concurrent-refresh-race",
+   "topic": "auth",
+   "subtopic": "refresh-tokens",
+   "difficulty": "senior",
+   "question": "Two browser tabs refresh with the same refresh token at the same moment, and reuse detection logs the user out. How do you fix it?",
+   "shortAnswer": "Make refreshing single-flight on the client and tolerant on the server: one tab (or a shared worker, or a BFF) refreshes while the others wait for its result, and the server can allow a very short grace window in which presenting the just-rotated token returns the same successor instead of revoking the family. Keep that window to seconds and tie it to the same client and session, or you weaken reuse detection.",
+   "answer": "**Key points**\n- Root cause: with rotation, only the first request wins. The second presents a consumed token, which looks exactly like a replay.\n- **Client side**: serialize refreshes (one shared in-flight request), coordinate tabs with a shared worker or `BroadcastChannel`, or move refreshing into a BFF so the browser never does it.\n- **Server side**: make refresh idempotent for a short window. If a consumed token comes back within a few seconds of its rotation, from the same client and session, return the successor already issued rather than minting another or revoking. Outside the window, revoke the family.\n- Make the \"mark as used\" step **atomic** (a conditional update or optimistic concurrency on the token row), so two requests can't both succeed and fork the family.\n- Monitor reuse events: a spike right after a release usually means a client bug, not an attack.\n\n**Detail**\nThe trade-off is explicit: a grace window gives an attacker who steals a token *during* a refresh a few seconds of\noverlap. That's usually acceptable; document it and keep it short. Retries after a network timeout cause the same\nsymptom on mobile clients, so idempotent refresh helps there too.",
+   "code": {
+    "lang": "csharp",
+    "source": "// Only one request can flip the token from active to used (a single UPDATE ... WHERE).\nint changed = await db.RefreshTokens\n    .Where(t => t.TokenHash == hash && t.ConsumedAtUtc == null && t.ExpiresAtUtc > now)\n    .ExecuteUpdateAsync(s => s.SetProperty(t => t.ConsumedAtUtc, now), ct);\n\nif (changed == 0)\n{\n    // Already consumed: within the grace window return the existing successor,\n    // otherwise treat it as reuse and revoke the whole family.\n}"
+   },
+   "pitfalls": [
+    "Switching reuse detection off entirely because of tab races.",
+    "A grace window of minutes, which makes theft detection meaningless.",
+    "Check-then-update in two separate queries, so two concurrent requests both pass the check."
+   ],
+   "followUps": [
+    "How would a BFF remove this problem altogether?",
+    "How does the same issue show up with mobile retries?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9700",
+     "title": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc10017",
+     "title": "RFC 10017: OAuth 2.0 for Browser-Based Applications",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/ef/core/saving/execute-insert-update-delete",
+     "title": "ExecuteUpdate and ExecuteDelete - EF Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "refresh-tokens"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "`ExecuteUpdateAsync` is available from EF Core 7; with older versions use a concurrency token and `SaveChanges`.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-refresh-logout-with-stateless-jwts",
+   "topic": "auth",
+   "subtopic": "refresh-tokens",
+   "difficulty": "mid",
+   "question": "How do you implement logout or 'revoke access' when your access tokens are self-contained JWTs?",
+   "shortAnswer": "Revoke the refresh token (or its whole family) on the server so no new access tokens can be issued, and accept that JWT access tokens already handed out stay valid until they expire unless the API checks something extra. For immediate cut-off, use very short access-token lifetimes, a denylist of revoked `jti` or session ids, a per-user version or security-stamp claim, or reference tokens with introspection.",
+   "answer": "**Key points**\n- RFC 7009 revocation: the client posts the token to the revocation endpoint. If the server supports it, revoking a refresh token should also invalidate access tokens from the same grant. The response is 200 even for unknown tokens.\n- Self-contained JWTs are validated without asking the issuer, so RFC 7009 warns they \"will not be immediately invalidated\" unless the servers coordinate in some extra way.\n- Ways to cut access faster, cheapest first:\n  1. Short access-token lifetime (5-15 minutes) plus a revoked refresh token.\n  2. A denylist of revoked `jti` values or session ids in a fast store such as Redis, checked when the token is validated; entries only need to live until that token's `exp`.\n  3. A version or security-stamp claim in the token, compared with the user's current value (cached).\n  4. Opaque reference tokens validated through introspection (RFC 7662): revocation takes effect at once, at the cost of a call (or a short cache) per request.\n- \"Sign out everywhere\" (password change, compromised account) revokes all of the user's refresh-token families.\n\n**Detail**\nChoose by risk. Most apps are fine with option 1; admin consoles and financial apps often add 2 or 3. Whatever you\npick, revoke on password reset, account disablement and role changes that remove privileges.",
+   "code": {
+    "lang": "csharp",
+    "source": "o.Events = new JwtBearerEvents\n{\n    OnTokenValidated = async ctx =>\n    {\n        var jti = ctx.Principal?.FindFirst(\"jti\")?.Value;\n        var denylist = ctx.HttpContext.RequestServices.GetRequiredService<ITokenDenylist>(); // your own service\n        if (jti is null || await denylist.IsRevokedAsync(jti))\n            ctx.Fail(\"Token has been revoked\");          // the request ends as 401\n    }\n};"
+   },
+   "pitfalls": [
+    "Saying that deleting the JWT on the client logs the user out everywhere.",
+    "Revoking the refresh token while access tokens still last 24 hours.",
+    "A denylist with no expiry, which grows forever."
+   ],
+   "followUps": [
+    "What are the trade-offs of introspection compared with local JWT validation?",
+    "How does ASP.NET Core Identity's security stamp relate to this?",
+    "What should happen to a user's tokens when they change their password?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7009",
+     "title": "RFC 7009: OAuth 2.0 Token Revocation",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7662",
+     "title": "RFC 7662: OAuth 2.0 Token Introspection",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6750",
+     "title": "RFC 6750: OAuth 2.0 Bearer Token Usage",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "refresh-tokens",
+    "auth-module-readme",
+    "creating-and-signing-jwts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-identity-what-it-is-and-isnt",
+   "topic": "auth",
+   "subtopic": "aspnet-core-identity",
+   "difficulty": "junior",
+   "question": "What is ASP.NET Core Identity, and what does it not do?",
+   "shortAnswer": "ASP.NET Core Identity is a membership library: it stores users, hashes and verifies passwords, and manages roles, claims, lockout, email/phone confirmation, two-factor authentication and links to external logins, usually in SQL through EF Core. It is not an OAuth 2.0/OpenID Connect server: if other apps or APIs need tokens from a central identity service, you add something like Duende IdentityServer, OpenIddict or Keycloak, or use a hosted provider such as Microsoft Entra ID.",
+   "answer": "**Key points**\n- Main services: `UserManager<TUser>` (user data), `SignInManager<TUser>` (sign-in, cookies, two-factor), `RoleManager<TRole>`, and stores (`IUserStore<TUser>` and friends; the EF Core implementation comes from `AddEntityFrameworkStores`).\n- Registration options: `AddIdentity`, `AddIdentityCore`, `AddDefaultIdentity` (adds the Razor UI) and, since .NET 8, `AddIdentityApiEndpoints` with `MapIdentityApi` for SPA and mobile backends.\n- Default tables: `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, `AspNetUserClaims`, `AspNetRoleClaims`, `AspNetUserLogins`, `AspNetUserTokens`; .NET 10 adds passkey storage.\n- It doesn't issue standards-based tokens for third-party clients, show consent screens or give single sign-on across separate apps.\n\n**Detail**\nFor one app with its own users, Identity with cookies (or Identity's API endpoints) is enough. When you need SSO,\nseveral client apps, third-party API access or OpenID Connect compliance, put an OIDC server in front of the same user\nstore (OpenIddict and Duende both build on Identity) or use a managed identity provider. Microsoft's\n\"Identity management solutions for .NET web apps\" page lists these options side by side.",
+   "pitfalls": [
+    "Confusing ASP.NET Core Identity with Microsoft Entra ID or with an OAuth server.",
+    "Hand-writing a token endpoint on top of Identity for third-party clients instead of using an OpenID Connect server.",
+    "Forgetting `AddEntityFrameworkStores`, so `UserManager` has no store to talk to."
+   ],
+   "followUps": [
+    "When would you choose `AddIdentityCore` over `AddIdentity`?",
+    "What do `MapIdentityApi` tokens look like; are they JWTs?",
+    "How do you add custom fields to the user?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/identity-management-solutions",
+     "title": "Identity management solutions for .NET web apps",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization",
+     "title": "Use Identity to secure a Web API backend for SPAs",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+     "title": "Configure ASP.NET Core Identity",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.identity.entityframeworkcore.identityusercontext-1",
+     "title": "IdentityUserContext<TUser> class",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0",
+     "title": "What's new in ASP.NET Core in .NET 10",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "identity-and-its-tables",
+    "signin-and-identity-registration",
+    "identityuser-tutorial"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "`AddIdentityApiEndpoints`/`MapIdentityApi` exist from .NET 8; passkey (WebAuthn) support was added in .NET 10.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-identity-password-hashing",
+   "topic": "auth",
+   "subtopic": "aspnet-core-identity",
+   "difficulty": "mid",
+   "question": "How does ASP.NET Core Identity hash passwords, and how do you raise the work factor safely?",
+   "shortAnswer": "Identity's default `PasswordHasher<TUser>` uses PBKDF2 with a random 128-bit salt and a 256-bit subkey; the current version-3 format uses HMAC-SHA512 with 100,000 iterations and stores the algorithm, iteration count and salt inside the hash itself. Because the parameters travel with the hash, you can raise `IterationCount`, and older hashes are upgraded automatically the next time each user signs in successfully.",
+   "answer": "**Key points**\n- The hash is one-way and salted per user, so it can only be verified, never decrypted.\n- `PasswordHasherOptions`: `CompatibilityMode` (default `IdentityV3`) and `IterationCount` (default 100,000 today; the docs for ASP.NET Core 3.1 and 5.0 list 10,000).\n- The first byte of the stored hash is a format marker, so hashes made with different settings can coexist.\n- `VerifyHashedPassword` returns `SuccessRehashNeeded` when a stored hash uses fewer iterations than configured, an older PRF (HMAC-SHA1 or SHA256), or the old V2 format. `UserManager`'s password check then rehashes and saves the user.\n- OWASP's current numbers: Argon2id first choice; PBKDF2 when FIPS-140 compliance is needed, with 600,000 iterations for HMAC-SHA256 or 220,000 for HMAC-SHA512. Identity's default is below that, so consider tuning it, or plug in an Argon2 or bcrypt `IPasswordHasher<TUser>`.\n\n**Detail**\nMore iterations mean more CPU per sign-in. Measure login latency on production-like hardware and protect the login\nendpoint with rate limiting, because a slow hash also makes it an easier DoS target. Replacing the hasher is a single\nDI registration, and the format marker lets old and new hashes live side by side during a migration.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.Configure<PasswordHasherOptions>(o =>\n{\n    o.CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV3;\n    o.IterationCount = 220_000;   // measure first; existing hashes are upgraded at each user's next sign-in\n});"
+   },
+   "pitfalls": [
+    "Storing passwords encrypted (reversible) instead of hashed.",
+    "Writing your own SHA-256(password + salt) instead of a slow key-derivation function.",
+    "Raising the iteration count without load-testing the login endpoint.",
+    "Assuming changed options rehash every user at once; it happens per user, at the next successful sign-in."
+   ],
+   "followUps": [
+    "What is a pepper, and would you add one?",
+    "How would you migrate users from a legacy table of unsalted MD5 hashes?",
+    "Why is a fast hash fine for refresh tokens but not for passwords?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Extensions.Core/src/PasswordHasher.cs",
+     "title": "PasswordHasher.cs (dotnet/aspnetcore source)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Extensions.Core/src/UserManager.cs",
+     "title": "UserManager.cs (dotnet/aspnetcore source)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.identity.passwordhasheroptions.iterationcount",
+     "title": "PasswordHasherOptions.IterationCount property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+     "title": "Configure ASP.NET Core Identity",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",
+     "title": "OWASP Password Storage Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "identity-and-its-tables",
+    "usermanager-users-and-passwords"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "Current ASP.NET Core (the V3 format with HMAC-SHA512 and 100,000 iterations) differs from older releases: the ASP.NET Core 3.1/5.0 documentation lists a 10,000-iteration default. Older hashes still verify and are flagged for rehash.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-identity-registration-methods",
+   "topic": "auth",
+   "subtopic": "aspnet-core-identity",
+   "difficulty": "mid",
+   "question": "`AddIdentity`, `AddIdentityCore`, `AddDefaultIdentity` or `AddIdentityApiEndpoints`: which do you use for a Web API?",
+   "shortAnswer": "`AddIdentityCore<TUser>` registers only the user-management services (UserManager, password hasher, validators) and no authentication schemes, which suits an API that authenticates with JWTs from a token service. `AddIdentity` adds roles, SignInManager and Identity's cookie schemes for server-rendered apps, `AddDefaultIdentity` adds the stock Razor UI, and .NET 8's `AddIdentityApiEndpoints` with `MapIdentityApi` gives a SPA ready-made login endpoints using cookies or Identity's own (non-JWT) bearer tokens.",
+   "answer": "**Key points**\n\n| Method | Adds | Typical app |\n|---|---|---|\n| `AddIdentityCore<TUser>()` | UserManager, hasher, validators, options; chain `.AddRoles<TRole>()`, `.AddSignInManager()` as needed | API authenticated with JWT bearer |\n| `AddIdentity<TUser, TRole>()` | Core + roles + SignInManager + Identity's cookie schemes (application, external, two-factor) | MVC or Razor Pages |\n| `AddDefaultIdentity<TUser>()` | Core + cookies + the default Razor Class Library UI | Razor apps using the stock pages |\n| `AddIdentityApiEndpoints<TUser>()` (.NET 8+) | Core + SignInManager + cookie **and** bearer-token schemes; pair with `MapIdentityApi<TUser>()` | SPA or mobile backend served by the same app |\n\n- `AddIdentity` makes Identity's application cookie the default scheme. In an API that also uses JWT bearer, set the bearer scheme as the default (or name it on the endpoints), or missing-token responses can turn into login-page redirects.\n- `MapIdentityApi` tokens are **proprietary, not JWTs**; Microsoft says this option isn't meant to be a full identity provider or token server, and recommends cookies for browser clients.\n\n**Detail**\nSince ASP.NET Core 10, cookie authentication answers 401/403 for requests to known API endpoints instead of\nredirecting to the login page, which removes much of the old \"my API redirects to /Account/Login\" pain. Explicit\nscheme configuration is still the clearest option in mixed apps.",
+   "pitfalls": [
+    "Calling `AddIdentity` in a JWT-only API and then fighting cookie redirects.",
+    "Assuming `MapIdentityApi` issues JWTs that other services can validate.",
+    "Forgetting `.AddRoles<TRole>()` with `AddIdentityCore`, so `RoleManager` and role stores aren't registered."
+   ],
+   "followUps": [
+    "How do you make JWT bearer the default scheme when Identity is registered too?",
+    "Which endpoints does `MapIdentityApi` add?",
+    "When would you still need an OpenID Connect server?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization",
+     "title": "Use Identity to secure a Web API backend for SPAs",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+     "title": "Configure ASP.NET Core Identity",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0",
+     "title": "What's new in ASP.NET Core in .NET 10",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "signin-and-identity-registration"
+   ],
+   "notCoveredYet": false,
+   "versionNote": ".NET 8 introduced `AddIdentityApiEndpoints`/`MapIdentityApi`; .NET 10 changed cookie authentication to return 401/403 for known API endpoints (identified through `IApiEndpointMetadata`) instead of redirecting.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-identity-security-stamp",
+   "topic": "auth",
+   "subtopic": "aspnet-core-identity",
+   "difficulty": "mid",
+   "question": "What is the security stamp in ASP.NET Core Identity, and how do you use it to 'sign out everywhere'?",
+   "shortAnswer": "The security stamp is a random value stored for each user that Identity changes after security-sensitive events such as a password change or a new external login. The sign-in cookie carries the stamp, Identity's `SecurityStampValidator` compares it with the database at regular intervals, and calling `UserManager.UpdateSecurityStampAsync(user)` invalidates existing cookies the next time they're checked.",
+   "answer": "**Key points**\n- Stored in `AspNetUsers.SecurityStamp` and included in the cookie principal as the `AspNet.Identity.SecurityStamp` claim.\n- The validator hooks the cookie's `OnValidatePrincipal` event for the application and two-factor cookies and re-checks every `SecurityStampValidatorOptions.ValidationInterval` (default **30 minutes**). A changed stamp signs the user out; otherwise the principal is regenerated, which also picks up new roles and claims.\n- Data-protection user tokens (password reset, email confirmation) embed the stamp as well, so a password change invalidates outstanding reset links.\n- For Identity's bearer tokens (`MapIdentityApi`), the access-token lifetime limits how long a session survives a security change.\n- Your own JWTs don't get this for free: add a stamp or version claim and check it, or revoke the refresh tokens.\n\n**Detail**\nThe interval is a trade-off between database load and how quickly changes take effect. For sensitive apps, shorten\nit (for example to a few minutes), and when you implement \"sign out of all devices\", call `UpdateSecurityStampAsync`\n*and* revoke any server-side refresh tokens. It never takes effect instantly; it applies at the next validation.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.Configure<SecurityStampValidatorOptions>(o =>\n    o.ValidationInterval = TimeSpan.FromMinutes(5));       // default is 30 minutes\n\n// \"Sign out of all devices\"\nawait userManager.UpdateSecurityStampAsync(user);\nawait refreshTokens.RevokeAllForUserAsync(user.Id);         // your own JWT refresh tokens, if any"
+   },
+   "pitfalls": [
+    "Expecting `UpdateSecurityStampAsync` to end sessions instantly; it applies at the next validation.",
+    "Assuming your hand-written JWTs are covered by the security stamp.",
+    "Changing a user's roles and expecting the cookie to reflect it immediately."
+   ],
+   "followUps": [
+    "How would you push a role change into an active session quickly?",
+    "How is `ConcurrencyStamp` different from `SecurityStamp`?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+     "title": "Configure ASP.NET Core Identity",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.identity.securitystampvalidatoroptions.validationinterval",
+     "title": "SecurityStampValidatorOptions.ValidationInterval property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization",
+     "title": "Use Identity to secure a Web API backend for SPAs",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "identity-and-its-tables",
+    "usermanager-users-and-passwords"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-identity-lockout",
+   "topic": "auth",
+   "subtopic": "aspnet-core-identity",
+   "difficulty": "junior",
+   "question": "How does account lockout work in ASP.NET Core Identity, and what's the most common mistake with it?",
+   "shortAnswer": "Identity counts failed password attempts per user and, once `MaxFailedAccessAttempts` is reached (default 5), sets `LockoutEnd` so that sign-ins fail for `DefaultLockoutTimeSpan` (default 5 minutes); a successful sign-in resets the count. The classic mistake is calling `PasswordSignInAsync` with `lockoutOnFailure: false`, as the template does, so failures are never counted.",
+   "answer": "**Key points**\n- Options (`IdentityOptions.Lockout`): `AllowedForNewUsers` (true), `MaxFailedAccessAttempts` (5), `DefaultLockoutTimeSpan` (5 minutes).\n- Per-user columns: `LockoutEnabled`, `LockoutEnd`, `AccessFailedCount`.\n- `SignInManager` counts failures only when you pass `lockoutOnFailure: true`, and reports `IsLockedOut` while the account is locked.\n- If a custom JWT login checks the password with `UserManager.CheckPasswordAsync`, **lockout isn't enforced at all**: that method only verifies the hash. Use `SignInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true)`, or call `IsLockedOutAsync`, `AccessFailedAsync` and `ResetAccessFailedCountAsync` yourself.\n- OWASP warns that lockout can be abused to lock real users out, so combine it with rate limiting, generic error messages and preferably MFA.\n\n**Detail**\nReturn the same response for \"wrong password\", \"no such user\" and \"locked out\", and log the real reason on the\nserver; otherwise the login endpoint tells attackers which accounts exist. An admin \"suspend account\" can be done with\n`SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue)`.",
+   "code": {
+    "lang": "csharp",
+    "source": "var user = await userManager.FindByEmailAsync(dto.Email);\nif (user is null) return Unauthorized();                       // same response as a wrong password\n\nvar result = await signInManager.CheckPasswordSignInAsync(\n    user, dto.Password, lockoutOnFailure: true);               // counts failures and honours lockout\n\nif (!result.Succeeded) return Unauthorized();                  // don't reveal IsLockedOut to the caller\nreturn Ok(await tokens.IssueAsync(user));"
+   },
+   "pitfalls": [
+    "Keeping `lockoutOnFailure: false` from the template.",
+    "Using `UserManager.CheckPasswordAsync` in a custom login and assuming lockout still applies.",
+    "Telling the caller 'account locked', which confirms that the account exists.",
+    "Locking accounts permanently after a few failures, which lets attackers lock out real users."
+   ],
+   "followUps": [
+    "How else would you protect the login endpoint?",
+    "How do you unlock a user early?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+     "title": "Configure ASP.NET Core Identity",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Extensions.Core/src/UserManager.cs",
+     "title": "UserManager.cs (dotnet/aspnetcore source)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",
+     "title": "OWASP Authentication Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "usermanager-confirmation-roles-claims-lockout",
+    "signin-and-identity-registration"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-identity-token-provider-lifespans",
+   "topic": "auth",
+   "subtopic": "aspnet-core-identity",
+   "difficulty": "senior",
+   "question": "How do you give password-reset tokens and email-confirmation tokens different lifetimes in ASP.NET Core Identity?",
+   "shortAnswer": "Both use `DataProtectorTokenProvider` by default, so a single `DataProtectionTokenProviderOptions.TokenLifespan` (default one day) applies to both. To change one of them, subclass `DataProtectorTokenProvider<TUser>` with its own options class, register it in `Tokens.ProviderMap`, and point `Tokens.EmailConfirmationTokenProvider` (or `PasswordResetTokenProvider`) at it; the normal `GenerateEmailConfirmationTokenAsync` and `ConfirmEmailAsync` calls then use it automatically.",
+   "answer": "**Key points**\n- Default provider: `DataProtectorTokenProvider<TUser>`, registered by `AddDefaultTokenProviders()`, lifespan **one day**. Its tokens are protected with Data Protection and tied to the user's security stamp.\n- `Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = ...)` changes every data-protection token at once.\n- Per-purpose lifetime: a provider subclass plus its own options type (so DI resolves different options), added with `Tokens.ProviderMap.Add(name, new TokenProviderDescriptor(typeof(...)))` and selected with `Tokens.EmailConfirmationTokenProvider = name`.\n- `IdentityOptions.Tokens` also has `PasswordResetTokenProvider`, `ChangeEmailTokenProvider`, `ChangePhoneNumberTokenProvider` and `AuthenticatorTokenProvider`, so the built-in methods keep working with whatever provider you choose.\n- Short numeric codes for email or SMS come from security-stamp-based TOTP providers (`EmailTokenProvider`, `PhoneNumberTokenProvider`), not from `DataProtectorTokenProvider`.\n\n**Detail**\nTypical choices: password reset 15-60 minutes, email confirmation one to three days. The token string isn't URL-safe,\nso encode it in links (the Identity UI base64url-encodes it). On several server instances, all of them need a shared\nData Protection key ring, or a token generated on one instance fails on another.",
+   "code": {
+    "lang": "csharp",
+    "source": "public class EmailConfirmationTokenProviderOptions : DataProtectionTokenProviderOptions\n{\n    public EmailConfirmationTokenProviderOptions()\n    {\n        Name = \"EmailDataProtectorTokenProvider\";\n        TokenLifespan = TimeSpan.FromDays(3);\n    }\n}\n\npublic class EmailConfirmationTokenProvider<TUser> : DataProtectorTokenProvider<TUser> where TUser : class\n{\n    public EmailConfirmationTokenProvider(IDataProtectionProvider dp,\n        IOptions<EmailConfirmationTokenProviderOptions> options,\n        ILogger<DataProtectorTokenProvider<TUser>> logger) : base(dp, options, logger) { }\n}\n\nbuilder.Services.AddIdentityCore<AppUser>(o =>\n    {\n        o.Tokens.ProviderMap.Add(\"EmailConfirmation3d\",\n            new TokenProviderDescriptor(typeof(EmailConfirmationTokenProvider<AppUser>)));\n        o.Tokens.EmailConfirmationTokenProvider = \"EmailConfirmation3d\";\n    })\n    .AddEntityFrameworkStores<AppDbContext>()\n    .AddDefaultTokenProviders();\nbuilder.Services.AddTransient<EmailConfirmationTokenProvider<AppUser>>();\n\n// Password reset keeps the default provider; shorten that one globally:\nbuilder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));"
+   },
+   "pitfalls": [
+    "Believing `ResetPasswordAsync` and `ConfirmEmailAsync` can't use custom providers, and bypassing them; point `IdentityOptions.Tokens` at your provider instead.",
+    "Reusing `DataProtectionTokenProviderOptions` in the subclass, so DI gives both providers the same lifespan.",
+    "Forgetting to URL-encode the token in the email link.",
+    "Running several instances without a shared Data Protection key ring, so links generated on one instance fail on another."
+   ],
+   "followUps": [
+    "Why does a password change invalidate outstanding reset links?",
+    "How are six-digit email codes generated differently?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/accconfirm",
+     "title": "Account confirmation and password recovery in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+     "title": "Configure ASP.NET Core Identity",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.identity.emailtokenprovider-1",
+     "title": "EmailTokenProvider<TUser> class",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/web-farm",
+     "title": "Host ASP.NET Core in a web farm",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "usermanager-confirmation-roles-claims-lockout",
+    "usermanager-users-and-passwords"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-identity-account-enumeration",
+   "topic": "auth",
+   "subtopic": "aspnet-core-identity",
+   "difficulty": "mid",
+   "question": "How do you stop the login, registration and 'forgot password' endpoints from revealing which accounts exist?",
+   "shortAnswer": "Return the same response, with the same status code, body and roughly the same timing, whether the account exists, the password is wrong or the account is locked, and make 'forgot password' always answer 'if that address is registered, we've sent a link'. Registration is harder; the safest pattern is to accept the request and email the address owner instead of replying 'email already taken'.",
+   "answer": "**Key points**\n- OWASP: authentication responses should be generic in both status code and body, and processing-time differences can also give accounts away.\n- **Login**: one message (\"Invalid email or password\"), one status (401). Doing comparable work when the user doesn't exist keeps timing similar.\n- **Forgot password**: always 200 with the same message; send the email only when the user exists and is confirmed, and don't change the account until a valid token is presented (OWASP Forgot Password cheat sheet).\n- **Registration**: avoid \"email already registered\"; say \"check your inbox\" and email the owner instead (\"someone tried to register with this address\").\n- Add rate limits per account and per IP, CAPTCHA after repeated failures, and monitoring.\n\n**Detail**\nEnumeration matters because a confirmed list of accounts feeds credential stuffing and phishing. Some products accept\nthe risk on registration for usability; make it a deliberate decision. In ASP.NET Core, the rate limiting middleware on\nthe auth endpoints and Identity's lockout cover the brute-force side; consistent responses cover the information leak.",
+   "code": {
+    "lang": "csharp",
+    "source": "[AllowAnonymous, HttpPost(\"forgot-password\")]\npublic async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)\n{\n    var user = await _users.FindByEmailAsync(dto.Email);\n    if (user is not null && await _users.IsEmailConfirmedAsync(user))\n    {\n        var token = await _users.GeneratePasswordResetTokenAsync(user);\n        await _emailQueue.EnqueueResetLinkAsync(user, token);   // queued, so timing doesn't leak\n    }\n    return Ok(new { message = \"If that address is registered, a reset link has been sent.\" });\n}"
+   },
+   "pitfalls": [
+    "Returning 404 'user not found' from login or forgot-password.",
+    "Sending the reset email synchronously only for real users, which makes real addresses measurably slower.",
+    "Different responses for 'locked out' and 'wrong password'."
+   ],
+   "followUps": [
+    "How would you defend against credential stuffing?",
+    "What makes a password-reset token secure?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",
+     "title": "OWASP Authentication Cheat Sheet",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html",
+     "title": "OWASP Forgot Password Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "usermanager-users-and-passwords"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-policies-requirements-and-handlers",
+   "topic": "auth",
+   "subtopic": "policies-and-claims",
+   "difficulty": "mid",
+   "question": "How do requirements and handlers work in ASP.NET Core policy-based authorization, and what happens when there are several of each?",
+   "shortAnswer": "A policy is a list of requirements (`IAuthorizationRequirement`) that handlers (`AuthorizationHandler<T>`) evaluate; a handler marks a requirement as met with `context.Succeed(requirement)`. All requirements in a policy must succeed (AND), while several handlers for the same requirement are alternatives (OR), unless one of them calls `context.Fail()`, which fails it regardless.",
+   "answer": "**Key points**\n- A requirement holds data (for example `MinimumAgeRequirement(21)`); a handler holds the logic and is registered in DI as `IAuthorizationHandler`.\n- Not calling `Succeed` isn't a failure by itself; it just leaves the requirement pending for other handlers.\n- `context.Fail()` guarantees failure even if another handler succeeds. All handlers still run by default (`InvokeHandlersAfterFailure = true`), which is handy for logging.\n- Handlers run in no guaranteed order, and they run even when authentication failed.\n- Shortcuts such as `RequireRole`, `RequireClaim` and `RequireAssertion(ctx => ...)` build requirements for you.\n- Several `[Authorize(Policy = ...)]` attributes on one endpoint must **all** pass.\n\n**Detail**\nKeep handlers quick and free of side effects; if they need the database, register them with a scoped lifetime and\ncache what you can, since they run on every authorized request. Name policies after capabilities (\"CanApproveLeave\")\nrather than scattering role lists through controllers.",
+   "code": {
+    "lang": "csharp",
+    "source": "public sealed class MinimumAgeRequirement(int age) : IAuthorizationRequirement\n{\n    public int Age { get; } = age;\n}\n\npublic sealed class MinimumAgeHandler : AuthorizationHandler<MinimumAgeRequirement>\n{\n    protected override Task HandleRequirementAsync(AuthorizationHandlerContext ctx, MinimumAgeRequirement req)\n    {\n        var dob = ctx.User.FindFirst(ClaimTypes.DateOfBirth)?.Value;\n        if (dob is not null &&\n            DateOnly.Parse(dob).AddYears(req.Age) <= DateOnly.FromDateTime(DateTime.UtcNow))\n        {\n            ctx.Succeed(req);\n        }\n        return Task.CompletedTask;   // no Succeed = not met here (another handler may still succeed)\n    }\n}\n\nbuilder.Services.AddSingleton<IAuthorizationHandler, MinimumAgeHandler>();\nbuilder.Services.AddAuthorizationBuilder()\n    .AddPolicy(\"AtLeast21\", p => p.AddRequirements(new MinimumAgeRequirement(21)));"
+   },
+   "pitfalls": [
+    "Expecting two policies on the same endpoint to be OR-ed; they're AND-ed.",
+    "Calling `Fail()` in a handler that simply doesn't apply, which blocks other handlers from succeeding.",
+    "Injecting a scoped `DbContext` into a handler registered as a singleton.",
+    "Relying on the order in which handlers run."
+   ],
+   "followUps": [
+    "How would you implement 'admin OR owner' for editing a document?",
+    "When do you need a custom `IAuthorizationPolicyProvider`?",
+    "What's the difference between the default and the fallback policy?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies",
+     "title": "Policy-based authorization in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies",
+    "authn-and-authz-basics"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-policies-resource-based-ownership",
+   "topic": "auth",
+   "subtopic": "policies-and-claims",
+   "difficulty": "mid",
+   "question": "How do you enforce 'users can only edit their own records' in ASP.NET Core?",
+   "shortAnswer": "Use resource-based (imperative) authorization: load the record, call `IAuthorizationService.AuthorizeAsync(User, resource, requirementOrPolicy)`, and return `Forbid()` (or `NotFound()`) when it fails. An `[Authorize]` attribute can't do this, because attributes are evaluated before the action has loaded the resource.",
+   "answer": "**Key points**\n- Write an `AuthorizationHandler<TRequirement, TResource>` that compares the user (for example `sub`) with the resource (for example `OwnerId`); allow admins in the same handler or in a second one.\n- `OperationAuthorizationRequirement` (Create, Read, Update, Delete) lets one handler cover several operations.\n- When an authenticated user is refused, return 403 (`Forbid()`); some APIs return 404 so as not to reveal that the record exists, which Microsoft's JWT guidance also mentions.\n- Also filter **queries** by owner or tenant (`Where(t => t.OwnerId == userId)` or EF Core global query filters), so list endpoints don't leak other users' rows. Missing object-level checks are OWASP API Security's number one risk, Broken Object Level Authorization (API1:2023).\n- Keep the rule in one place (a handler or an application service), not as copy-pasted `if` statements in every action.\n\n**Detail**\nInline comparisons work, but they scatter the rule, are easy to forget on a new endpoint and can't be reused by other\nlayers. A handler keeps the rule testable and lets you add \"managers can edit their team's tasks\" later without\ntouching controllers. Always take the user id from the authenticated principal, never from the request body.",
+   "code": {
+    "lang": "csharp",
+    "source": "public static class Operations\n{\n    public static readonly OperationAuthorizationRequirement Update = new() { Name = nameof(Update) };\n}\n\npublic sealed class TaskOwnerHandler : AuthorizationHandler<OperationAuthorizationRequirement, TaskItem>\n{\n    protected override Task HandleRequirementAsync(AuthorizationHandlerContext ctx,\n        OperationAuthorizationRequirement op, TaskItem task)\n    {\n        var userId = ctx.User.FindFirst(\"sub\")?.Value;\n        if (userId == task.OwnerId.ToString() || ctx.User.IsInRole(\"Admin\"))\n            ctx.Succeed(op);\n        return Task.CompletedTask;\n    }\n}\n\n[HttpPut(\"{id:guid}\")]\npublic async Task<IActionResult> Update(Guid id, UpdateTaskRequest req, [FromServices] IAuthorizationService authz)\n{\n    var task = await _db.Tasks.FindAsync(id);\n    if (task is null) return NotFound();\n\n    var result = await authz.AuthorizeAsync(User, task, Operations.Update);\n    if (!result.Succeeded) return Forbid();\n\n    // ... apply the update\n    return NoContent();\n}"
+   },
+   "pitfalls": [
+    "Trying to express ownership with `[Authorize]` attributes or roles.",
+    "Checking ownership on `GET /tasks/{id}` but not on update, delete or list endpoints.",
+    "Comparing against a user id taken from the request body instead of the authenticated principal."
+   ],
+   "followUps": [
+    "Should a failed ownership check return 403 or 404?",
+    "How do EF Core global query filters help with multi-tenancy?",
+    "How do you unit-test an authorization handler?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/resourcebased",
+     "title": "Resource-based authorization in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies",
+     "title": "Policy-based authorization in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization",
+     "title": "OWASP API Security Top 10 2023 - API1: Broken Object Level Authorization",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-policies-default-vs-fallback",
+   "topic": "auth",
+   "subtopic": "policies-and-claims",
+   "difficulty": "mid",
+   "question": "What is the difference between the default authorization policy and the fallback policy?",
+   "shortAnswer": "The default policy is what a bare `[Authorize]` (or `RequireAuthorization()` without a name) uses, and out of the box it requires an authenticated user. The fallback policy applies only to endpoints that have no authorization metadata at all; it's `null` by default, so setting it to 'require an authenticated user' makes the app secure by default, with `[AllowAnonymous]` on the public endpoints.",
+   "answer": "**Key points**\n- No authorization metadata: `FallbackPolicy` (default `null`, meaning no authorization).\n- `[Authorize]` without a name: `DefaultPolicy` (default: authenticated user).\n- `[Authorize(Policy = \"X\")]`: policy X. `[Authorize(Roles = \"A\")]`: a roles policy, without the default policy added.\n- Several `[Authorize]` attributes are combined and **all** must pass; the fallback is never combined with them.\n- `[AllowAnonymous]` stops the authorization middleware from enforcing a failure; authentication can still run and fill in `User`.\n- The fallback only covers requests that reach `UseAuthorization`; static files served earlier in the pipeline aren't protected by it.\n\n**Detail**\nA common setup: fallback = authenticated user; default = authenticated user via the JWT scheme; named policies for\ncapabilities; `[AllowAnonymous]` on login, register, refresh and health checks. Making `DefaultPolicy` stricter (say,\nrequiring a scope) silently changes every bare `[Authorize]`, which can surprise teammates; prefer named policies for\nextra requirements.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddAuthorizationBuilder()\n    .SetFallbackPolicy(new AuthorizationPolicyBuilder()\n        .RequireAuthenticatedUser().Build())                    // endpoints with no metadata\n    .SetDefaultPolicy(new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)\n        .RequireAuthenticatedUser().Build())                    // bare [Authorize]\n    .AddPolicy(\"AdminOnly\", p => p.RequireRole(\"Admin\"));\n\napp.MapHealthChecks(\"/health\").AllowAnonymous();"
+   },
+   "pitfalls": [
+    "Thinking the fallback policy also applies to endpoints that have `[Authorize]`.",
+    "Forgetting `[AllowAnonymous]` on login and refresh after turning on the fallback policy.",
+    "Expecting the fallback policy to protect static files served before the authorization middleware."
+   ],
+   "followUps": [
+    "How do roles and named policies combine on the same endpoint?",
+    "How would you exempt a health-check endpoint?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies",
+     "title": "Policy-based authorization in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies",
+    "signin-and-identity-registration"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "`AddAuthorizationBuilder()` with `SetFallbackPolicy`/`SetDefaultPolicy` is the ASP.NET Core 7+ style; earlier versions set `AuthorizationOptions.FallbackPolicy` and `DefaultPolicy` inside `AddAuthorization(options => ...)`.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-policies-claims-transformation",
+   "topic": "auth",
+   "subtopic": "policies-and-claims",
+   "difficulty": "senior",
+   "question": "When would you use `IClaimsTransformation`, and what are its traps?",
+   "shortAnswer": "`IClaimsTransformation.TransformAsync` runs after authentication to enrich the `ClaimsPrincipal`, for example adding app-specific roles or permissions from your database to a token issued by an external identity provider. It can run more than once per request and runs on every authenticated request, so it must be idempotent and cheap (cache your lookups).",
+   "answer": "**Key points**\n- Microsoft's docs warn that `TransformAsync` \"might be called multiple times\", so only add a claim if it isn't there already.\n- Add claims through a new `ClaimsIdentity` on the principal, as the docs' sample does, rather than relying on shared mutable state.\n- Typical uses: map external groups to app roles, add a tenant id, load permissions.\n- Cost: it runs per request, so cache per user with a short lifetime or explicit invalidation.\n- Alternatives: put the claims into the token at issue time (Identity's `IUserClaimsPrincipalFactory`, or claim mapping at the identity provider), or check permissions directly in an authorization handler.\n\n**Detail**\nThe transformed principal isn't saved anywhere; it's rebuilt on every request. Watch the claim types: if you add role\nclaims, they must use the identity's `RoleClaimType`, or `IsInRole` and `[Authorize(Roles = ...)]` won't see them.",
+   "code": {
+    "lang": "csharp",
+    "source": "public sealed class PermissionClaimsTransformation(IPermissionCache cache) : IClaimsTransformation\n{\n    public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)\n    {\n        if (principal.HasClaim(c => c.Type == \"perm\")) return principal;   // idempotent\n        var userId = principal.FindFirst(\"sub\")?.Value;\n        if (userId is null) return principal;\n\n        var extra = new ClaimsIdentity();\n        foreach (var p in await cache.GetPermissionsAsync(userId))        // cached, not a DB hit per request\n            extra.AddClaim(new Claim(\"perm\", p));\n        principal.AddIdentity(extra);\n        return principal;\n    }\n}\n\nbuilder.Services.AddTransient<IClaimsTransformation, PermissionClaimsTransformation>();"
+   },
+   "pitfalls": [
+    "Adding the same claims again on every call because the code isn't idempotent.",
+    "Querying the database on every request without caching.",
+    "Adding role claims with a claim type that doesn't match `RoleClaimType`."
+   ],
+   "followUps": [
+    "Where else could you add those claims instead?",
+    "How would you invalidate cached permissions when an admin changes them?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/claims",
+     "title": "Map, customize, and transform claims in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "claims-identity-and-principal",
+    "authorization-policies"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-policies-challenge-vs-forbid",
+   "topic": "auth",
+   "subtopic": "policies-and-claims",
+   "difficulty": "mid",
+   "question": "What is the difference between Challenge and Forbid in ASP.NET Core, and how do they map to 401 and 403?",
+   "shortAnswer": "When authorization fails for an unauthenticated caller, the authorization middleware *challenges*: the JWT bearer handler answers 401 with a `WWW-Authenticate: Bearer` header, while the cookie handler redirects to the login page. When the caller is authenticated but lacks permission, it *forbids*: bearer answers 403, and cookies redirect to the access-denied page.",
+   "answer": "**Key points**\n- **401** means \"authentication required or failed\". RFC 9110 requires a `WWW-Authenticate` header on it, and for OAuth bearer tokens RFC 6750 adds `error=\"invalid_token\"`. The bearer handler only adds `error=\"invalid_token\"` when a token was actually presented and failed, not when it was missing.\n- **403** means \"I know who you are, and you're not allowed\"; RFC 6750 uses `error=\"insufficient_scope\"` for a token without the needed scope.\n- Controllers can trigger these with `Challenge()` and `Forbid()`, which run the scheme's logic; `Unauthorized()` just sets 401 without it.\n- The scheme decides the response: bearer gives 401/403 plus headers, cookies give redirects (in .NET 10, known API endpoints get 401/403 instead), and a custom handler does what you code.\n- Customize centrally with `IAuthorizationMiddlewareResultHandler` (for example a ProblemDetails body, or 404 for chosen failures) or with `JwtBearerEvents.OnChallenge` and `OnForbidden`.\n\n**Detail**\nAn API shouldn't redirect callers to an identity provider to get a token; Microsoft's guidance is to answer 401 or\n403 and leave token acquisition to the client. If an app mixes cookie and bearer schemes, make sure API endpoints\nchallenge with bearer, or JavaScript clients receive a 302 to an HTML login page instead of a 401.",
+   "pitfalls": [
+    "Returning 403 for an expired token (it should be 401) or 401 for a missing permission (it should be 403).",
+    "Using `Unauthorized()` in an action and losing the `WWW-Authenticate` header that clients rely on.",
+    "An API answering with 302 redirects to a login page because cookies are the default challenge scheme."
+   ],
+   "followUps": [
+    "How would you add a ProblemDetails body to 401 and 403 responses?",
+    "When is returning 404 instead of 403 appropriate?",
+    "What does `insufficient_scope` ask the client to do?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6750",
+     "title": "RFC 6750: OAuth 2.0 Bearer Token Usage",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Security/Authentication/JwtBearer/src/JwtBearerHandler.cs",
+     "title": "JwtBearerHandler.cs (dotnet/aspnetcore source)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/customizingauthorizationmiddlewareresponse",
+     "title": "Customize the behavior of AuthorizationMiddleware",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0",
+     "title": "What's new in ASP.NET Core in .NET 10",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies",
+    "jwt"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "ASP.NET Core 10: cookie authentication returns 401/403 for known API endpoints instead of redirecting to the login or access-denied page.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-policies-multiple-schemes",
+   "topic": "auth",
+   "subtopic": "policies-and-claims",
+   "difficulty": "senior",
+   "question": "How do you support two authentication schemes in one API, such as tokens from two identity providers, or cookies for the browser and JWTs for mobile?",
+   "shortAnswer": "Register each scheme under its own name, then either pin endpoints to schemes (`[Authorize(AuthenticationSchemes = ...)]` or a policy with `AuthenticationSchemes`) or add a policy scheme whose `ForwardDefaultSelector` looks at the request, such as the `Authorization` header or the token's issuer, and forwards to the right handler. Make sure the default authenticate and challenge schemes suit the clients that call each endpoint.",
+   "answer": "**Key points**\n- `AddAuthentication(...).AddJwtBearer(\"Entra\", ...).AddJwtBearer(\"Partner\", ...)`, each with its own authority and audience.\n- **Per endpoint**: a policy built with `new AuthorizationPolicyBuilder(\"Entra\", \"Partner\")` authenticates with both schemes and merges the identities.\n- **Policy scheme**: `AddPolicyScheme(\"smart\", null, o => o.ForwardDefaultSelector = ctx => ...)`, set as `DefaultScheme` and `DefaultChallengeScheme`. Forwarding checks the specific `Forward*` options first, then the selector, then `ForwardDefault`.\n- Cookies plus JWT: forward to bearer when there's an `Authorization: Bearer` header (or the path starts with `/api`), otherwise to cookies.\n- Peeking at the issuer before validation is fine **only to choose a handler**; the chosen handler still validates the token fully.\n\n**Detail**\nMicrosoft also lists separate APIs per issuer as the simpler alternative. Watch the claims: two providers may name the\nsame thing differently, so normalize with `IClaimsTransformation` or per-scheme `TokenValidationParameters`, or\npolicies will only work for one of them.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddAuthentication(o =>\n    {\n        o.DefaultScheme = \"smart\";\n        o.DefaultChallengeScheme = \"smart\";\n    })\n    .AddJwtBearer(\"Entra\", o => { o.Authority = \"https://login.microsoftonline.com/{tenant}/v2.0\"; o.Audience = \"api://tasks\"; })\n    .AddJwtBearer(\"Partner\", o => { o.Authority = \"https://id.partner.example\"; o.Audience = \"tasks-api\"; })\n    .AddPolicyScheme(\"smart\", null, o => o.ForwardDefaultSelector = ctx =>\n    {\n        string? auth = ctx.Request.Headers.Authorization;\n        if (auth?.StartsWith(\"Bearer \") == true)\n        {\n            var token = auth[\"Bearer \".Length..].Trim();\n            var handler = new JsonWebTokenHandler();\n            if (handler.CanReadToken(token) &&\n                handler.ReadJsonWebToken(token).Issuer == \"https://id.partner.example\")\n                return \"Partner\";                 // routing only; that handler still validates everything\n        }\n        return \"Entra\";\n    });"
+   },
+   "pitfalls": [
+    "Trusting the unvalidated issuer for anything other than choosing which handler validates the token.",
+    "Leaving cookies as the default challenge scheme for API endpoints.",
+    "Two schemes producing different claim types, so policies only work for one of them."
+   ],
+   "followUps": [
+    "How do `ForwardDefaultSelector` and `ForwardChallenge` differ?",
+    "When would separate APIs be simpler than multiple schemes?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/policyschemes",
+     "title": "Policy schemes in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies",
+     "title": "Policy-based authorization in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "claims-identity-and-principal",
+    "signin-and-identity-registration"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-policies-permission-based-authorization",
+   "topic": "auth",
+   "subtopic": "policies-and-claims",
+   "difficulty": "senior",
+   "question": "How would you implement permission-based authorization (an attribute like `[HasPermission(Permissions.TasksDelete)]`) without registering hundreds of policies?",
+   "shortAnswer": "Encode the permission in the policy name through a custom attribute derived from `AuthorizeAttribute`, and implement a custom `IAuthorizationPolicyProvider` that builds the policy on demand when it sees that name prefix, delegating every other name to `DefaultAuthorizationPolicyProvider`. A handler then checks the permission against the user's claims or a cached permission store.",
+   "answer": "**Key points**\n- ASP.NET Core uses **one** `IAuthorizationPolicyProvider`. Replacing it means you still have to serve named, default and fallback policies, so delegate to `DefaultAuthorizationPolicyProvider` for anything that isn't yours.\n- Naming scheme: `Permission:tasks.delete` becomes a policy with `PermissionRequirement(\"tasks.delete\")`.\n- Handler: `context.User.HasClaim(\"perm\", requirement.Name)`, or a lookup of role-to-permission mappings in a cache.\n- Where permissions come from: claims in the token (small, stable sets), claims transformation, or a permission service queried by the handler (large or fast-changing sets).\n- On .NET 8+, an attribute implementing `IAuthorizationRequirementData` can supply requirements directly, without a custom provider; the docs note that in ASP.NET Core 8.0-10.0 those attributes are only enforced on minimal API and routed endpoints.\n\n**Detail**\nKeep permission names in constants rather than string literals spread across controllers, and expose them to the UI\nso it can hide actions the user can't perform. Don't put hundreds of permissions into the JWT; tokens get large and stale.",
+   "code": {
+    "lang": "csharp",
+    "source": "public sealed class HasPermissionAttribute(string permission)\n    : AuthorizeAttribute(PermissionPolicyProvider.Prefix + permission);\n\npublic sealed class PermissionPolicyProvider(IOptions<AuthorizationOptions> options) : IAuthorizationPolicyProvider\n{\n    public const string Prefix = \"Permission:\";\n    private readonly DefaultAuthorizationPolicyProvider _default = new(options);\n\n    public Task<AuthorizationPolicy?> GetPolicyAsync(string name) =>\n        name.StartsWith(Prefix, StringComparison.Ordinal)\n            ? Task.FromResult<AuthorizationPolicy?>(\n                new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)\n                    .RequireAuthenticatedUser()\n                    .AddRequirements(new PermissionRequirement(name[Prefix.Length..]))\n                    .Build())\n            : _default.GetPolicyAsync(name);\n\n    public Task<AuthorizationPolicy> GetDefaultPolicyAsync() => _default.GetDefaultPolicyAsync();\n    public Task<AuthorizationPolicy?> GetFallbackPolicyAsync() => _default.GetFallbackPolicyAsync();\n}\n\n// PermissionRequirement(string Name) and a PermissionHandler : AuthorizationHandler<PermissionRequirement> complete it.\nbuilder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();"
+   },
+   "pitfalls": [
+    "A custom provider that returns `null` for every other name, which breaks roles and normal named policies.",
+    "Stuffing every permission into the JWT.",
+    "Forgetting to register the requirement's handler, so every permission check ends in 403."
+   ],
+   "followUps": [
+    "How would you cache role-to-permission mappings and invalidate them?",
+    "What does `IAuthorizationRequirementData` change in .NET 8?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/iauthorizationpolicyprovider",
+     "title": "Custom authorization policy providers in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies",
+     "title": "Policy-based authorization in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "`IAuthorizationRequirementData` is .NET 8+; per the docs, in ASP.NET Core 8.0-10.0 it's enforced only on minimal API and routed endpoints.",
+   "reviewed": false
+  },
+  {
+   "id": "auth-servers-build-vs-buy",
+   "topic": "auth",
+   "subtopic": "auth-servers",
+   "difficulty": "mid",
+   "question": "Should you write your own token server, use a framework such as OpenIddict or Duende IdentityServer, or use a hosted identity provider?",
+   "shortAnswer": "For production, avoid hand-rolling token issuance: Microsoft's guidance is not to create your own access tokens except for testing and to use OpenID Connect/OAuth standards. Pick a hosted provider (Entra ID, Auth0, Okta) for the least operational work, a self-hosted framework (OpenIddict, Duende IdentityServer, Keycloak) when you need control, on-premises hosting or custom flows, and plain ASP.NET Core Identity with cookies when there's a single app and no third-party token consumers.",
+   "answer": "**Key points**\n\n| Option | Pros | Cons |\n|---|---|---|\n| Hosted (Entra ID, Auth0, Okta) | MFA, social sign-in, breach detection and compliance handled for you | Per-user cost, vendor lock-in, customization limits |\n| Self-hosted framework (OpenIddict: Apache 2.0; Duende IdentityServer: commercial; Keycloak: Apache 2.0) | Standards-compliant flows, discovery, JWKS, PKCE, consent; your data stays with you | You run, patch, scale and secure it |\n| Identity with cookies or `MapIdentityApi` | Simple for one app | No SSO, no third-party clients; Identity's bearer tokens aren't JWTs |\n| Hand-written token endpoint | Full control | Every security edge case is yours; easy to get wrong |\n\n- Decide by requirements: how many client apps, SSO, third-party access, compliance, hosting constraints and team capacity.\n- Whatever you pick, keep APIs as pure *validators* (`AddJwtBearer` with `Authority`), so you can change the issuer later.\n\n**Detail**\nAn endpoint that takes a username and password and returns a JWT is how many tutorials and learning projects begin,\nand it's a good way to understand the mechanics. Microsoft explicitly advises against it in production: tokens aren't\ncreated through an authenticated OpenID Connect/OAuth flow, the approach is exposed to impersonation and phishing, and\nyou inherit key rotation, revocation and reuse detection. When you outgrow it, put an OpenID Connect server in front of\nthe same Identity database.",
+   "pitfalls": [
+    "Choosing a framework only by licence cost, without counting the operational work.",
+    "Coupling APIs to a custom token format, which makes moving to a real identity provider painful.",
+    "Assuming a hosted provider means the API no longer needs to validate tokens properly."
+   ],
+   "followUps": [
+    "What would make you move from a custom JWT endpoint to OpenIddict?",
+    "How do APIs stay independent of the identity provider you choose?",
+    "What do commercial licences such as Duende's mean for a small company?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/identity-management-solutions",
+     "title": "Identity management solutions for .NET web apps",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization",
+     "title": "Use Identity to secure a Web API backend for SPAs",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "auth-server-approaches-and-oauth2",
+    "openiddict",
+    "auth-server-concepts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-servers-signing-key-rotation",
+   "topic": "auth",
+   "subtopic": "auth-servers",
+   "difficulty": "senior",
+   "question": "How do you rotate a token server's signing key without breaking clients and APIs?",
+   "shortAnswer": "Publish the new public key in the JWKS (under a new `kid`) well before you use it, then switch signing to the new private key, and keep the old public key published until every token signed with it has expired. APIs that use discovery pick up the new key at their periodic metadata refresh, or immediately when they meet an unknown `kid`.",
+   "answer": "**Key points**\n1. **Pre-publish**: add key B to the JWKS while still signing with key A, and wait at least one metadata-refresh period of your slowest validator (ASP.NET Core's automatic refresh defaults to 12 hours).\n2. **Switch**: sign new tokens with B; their header carries `kid: B`.\n3. **Overlap**: keep A in the JWKS until the longest-lived token signed with it (plus clock skew) has expired, longer if refresh or ID tokens are JWTs signed with A.\n4. **Retire**: remove A and destroy its private key.\n- `kid` exists so validators can pick the right key from a set during rollover (RFC 7517).\n- ASP.NET Core's JWT handler asks for a metadata refresh when the signing key isn't found (`RefreshOnIssuerKeyNotFound = true`), limited by `RefreshInterval`.\n- Emergency rotation after a key compromise: publish B and remove A at once, accepting that every A-signed token stops working.\n\n**Detail**\nAPIs configured with a hard-coded public key instead of discovery won't rotate by themselves; they need a configuration\ndeployment as part of the rotation plan. Keep private keys in an HSM or a key vault (ideally signing there), and\nautomate rotation on a schedule. Rotate client secrets with the same overlap approach.",
+   "pitfalls": [
+    "Swapping the key in one step, so APIs reject tokens until their cached metadata refreshes.",
+    "Removing the old key while tokens signed with it are still valid.",
+    "Reusing a `kid` value for a new key.",
+    "Forgetting APIs that have the public key hard-coded."
+   ],
+   "followUps": [
+    "What would you do if the private key leaked?",
+    "How does the JWT handler choose a key from the JWKS?",
+    "Where should the private key live?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7517",
+     "title": "RFC 7517: JSON Web Key (JWK)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbeareroptions.refreshonissuerkeynotfound",
+     "title": "JwtBearerOptions.RefreshOnIssuerKeyNotFound property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.protocols.configurationmanager-1.defaultautomaticrefreshinterval",
+     "title": "ConfigurationManager<T>.DefaultAutomaticRefreshInterval field",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbeareroptions.automaticrefreshinterval",
+     "title": "JwtBearerOptions.AutomaticRefreshInterval property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbeareroptions.refreshinterval",
+     "title": "JwtBearerOptions.RefreshInterval property",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "signing-keys-and-discovery",
+    "jwk-jwks-and-pkce",
+    "creating-and-signing-jwts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-servers-reference-vs-self-contained-tokens",
+   "topic": "auth",
+   "subtopic": "auth-servers",
+   "difficulty": "senior",
+   "question": "Self-contained JWT access tokens or reference (opaque) tokens with introspection: how do you choose?",
+   "shortAnswer": "A self-contained JWT is validated locally by the API with the issuer's public key, so it's fast and needs no call per request, but it can't be revoked before it expires and anyone holding it can read its claims. A reference token is a random handle the API must check at the authorization server's introspection endpoint (RFC 7662), which allows immediate revocation and keeps the data private, at the cost of a network call (or a short cache) per request.",
+   "answer": "**Key points**\n- **JWT**: offline validation, scales well across many APIs; revocation needs short lifetimes or extra checks; payload readable unless encrypted; grows with every claim.\n- **Reference token + introspection**: the API POSTs the token to the introspection endpoint and gets back `active` plus details such as `scope`, `client_id`, `sub`, `exp` and `aud`. The API must authenticate to that endpoint, and cached results trade revocation delay for load; a cached response must never outlive the token's `exp`.\n- A common hybrid: JWT access tokens with server-stored (reference) refresh tokens.\n- A gateway can introspect opaque tokens at the edge and pass a JWT to internal services (\"phantom token\" style), keeping claims private outside the perimeter.\n\n**Detail**\nPrefer JWTs when you have many APIs and high traffic and can tolerate minutes of revocation delay. Prefer reference\ntokens for high-risk APIs, for tokens handed to third-party clients when you don't want to expose claims, or when you\nneed instant revocation. OpenIddict and Duende IdentityServer support both formats, and Microsoft's JWT guidance notes\nthat introspection is used with reference tokens.",
+   "pitfalls": [
+    "Caching introspection results beyond the token's `exp`.",
+    "Leaving the introspection endpoint unauthenticated, so attackers can test stolen tokens.",
+    "Choosing reference tokens and then calling introspection on every request with no caching under heavy load."
+   ],
+   "followUps": [
+    "How would an API gateway help with reference tokens?",
+    "Why is the response for an inactive token deliberately minimal?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7662",
+     "title": "RFC 7662: OAuth 2.0 Token Introspection",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7009",
+     "title": "RFC 7009: OAuth 2.0 Token Revocation",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "refresh-tokens",
+    "openiddict"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-servers-spa-token-storage-and-bff",
+   "topic": "auth",
+   "subtopic": "auth-servers",
+   "difficulty": "senior",
+   "question": "Where should a React or Angular SPA keep its tokens, and what is the Backend-for-Frontend (BFF) pattern?",
+   "shortAnswer": "Any token the page's JavaScript can read can be stolen through an XSS bug, so for sensitive apps the recommended design is a BFF: a small server-side component acts as the confidential OAuth client, keeps the access and refresh tokens on the server, and gives the browser only an `HttpOnly`, `Secure`, `SameSite` session cookie while it proxies API calls. If tokens must live in the browser, keep them in memory rather than `localStorage`, and use code + PKCE with rotated refresh tokens.",
+   "answer": "**Key points**\n- RFC 10017 (OAuth 2.0 for Browser-Based Applications) ranks three architectures, most to least secure: **BFF** (tokens never reach the browser), **token-mediating backend** (the backend keeps the refresh token and gives the browser access tokens), and **browser-based OAuth client** (everything in JavaScript).\n- It calls the BFF \"strongly recommended\" for business applications, sensitive applications and apps handling personal data.\n- OWASP: don't store session identifiers in local storage; a single XSS can read all of it.\n- Microsoft: for secure web apps, keep access tokens on a trusted backend and share only an HTTP-only cookie with the browser; public OpenID Connect clients are no longer recommended for web apps. YARP is a common way to build the BFF proxy in .NET.\n- A BFF brings cookies back, so it needs CSRF protection (`SameSite` plus an anti-forgery token or a required custom header on its API routes).\n\n**Detail**\nA BFF also makes refresh simpler (done server-side, with no tab races), hides tokens from browser extensions, and lets\nthe backend use confidential-client authentication such as `private_key_jwt`. The cost is an extra hop and server-side\nsession state shared across instances. In-memory storage in the browser limits theft, but it doesn't stop injected\nscript from calling your API *as* the user while the page is open.",
+   "pitfalls": [
+    "Keeping refresh tokens in `localStorage` because the SPA library allows it.",
+    "Building a BFF and forgetting CSRF protection on its proxy endpoints.",
+    "Assuming in-memory token storage makes the app XSS-proof."
+   ],
+   "followUps": [
+    "How does a BFF protect itself against CSRF?",
+    "What changes when the SPA and the API are on different sites?",
+    "How does a token-mediating backend differ from a full BFF?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc10017",
+     "title": "RFC 10017: OAuth 2.0 for Browser-Based Applications",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication",
+     "title": "Configure JWT bearer authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-oidc-web-authentication",
+     "title": "Configure OpenID Connect Web (UI) authentication in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html",
+     "title": "OWASP HTML5 Security Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "auth-server-concepts",
+    "refresh-tokens"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "auth-servers-api-keys",
+   "topic": "auth",
+   "subtopic": "auth-servers",
+   "difficulty": "junior",
+   "question": "When are API keys an acceptable way to authenticate API clients, and how should you implement them?",
+   "shortAnswer": "An API key identifies a calling application, not a user, so it suits server-to-server integrations, public data APIs and usage metering, but OWASP warns not to rely on keys alone for sensitive, critical or high-value resources. Implement them as long random secrets sent in a header, stored hashed, scoped and rate-limited per key, rotatable, and validated by a custom authentication handler so normal authorization policies still apply.",
+   "answer": "**Key points**\n- Send the key in a header (for example `X-Api-Key`), never in the URL; OWASP notes URLs end up in server logs.\n- Generate it with a cryptographic random generator (say 32 bytes), show it once, store only a hash plus a short prefix for lookup.\n- Attach metadata to each key: owner, scopes, expiry and rate limit; answer 429 when a client goes over its limit.\n- Support rotation (two active keys per client) and revocation.\n- In ASP.NET Core, an `AuthenticationHandler<TOptions>` validates the key and builds a `ClaimsPrincipal` (client id, scopes); then `[Authorize]` and policies work as usual.\n- For anything acting on behalf of a user, or with high value, use OAuth client credentials or mutual TLS instead.\n\n**Detail**\nKeys are bearer secrets that usually never expire and aren't bound to the client, so leaks are common (committed to\nGit, pasted into tickets). Secret scanning in CI and expiring keys help. Unlike a JWT, a key carries no claims; the\nserver looks everything up.",
+   "code": {
+    "lang": "csharp",
+    "source": "public sealed class ApiKeyHandler(IOptionsMonitor<AuthenticationSchemeOptions> options,\n    ILoggerFactory logger, UrlEncoder encoder, IApiKeyStore store)\n    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)\n{\n    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()\n    {\n        if (!Request.Headers.TryGetValue(\"X-Api-Key\", out var key))\n            return AuthenticateResult.NoResult();\n\n        var client = await store.FindByHashAsync(Sha256Hex(key.ToString()));   // compare hashes, not raw keys\n        if (client is null) return AuthenticateResult.Fail(\"Invalid API key\");\n\n        var identity = new ClaimsIdentity(new[]\n        {\n            new Claim(\"client_id\", client.Id),\n            new Claim(\"scope\", client.Scopes)\n        }, Scheme.Name);\n        return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));\n    }\n\n    private static string Sha256Hex(string value) =>\n        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));\n}"
+   },
+   "pitfalls": [
+    "Accepting keys in the query string.",
+    "Storing keys in plain text in the database.",
+    "One shared key for all clients, so you can't revoke one client without breaking everyone.",
+    "Treating any valid key as permission to do everything instead of applying scopes."
+   ],
+   "followUps": [
+    "How would you rotate a client's key without downtime?",
+    "Why are client credentials or mutual TLS better for high-value APIs?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html",
+     "title": "OWASP REST Security Cheat Sheet",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/breaking-changes/8/isystemclock-obsolete",
+     "title": "Breaking change: ISystemClock is obsolete (ASP.NET Core 8)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authn-and-authz-basics"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "The `AuthenticationHandler` constructor without `ISystemClock` shown here is the .NET 8+ signature.",
+   "reviewed": false
+  }
+ ]
+}

@@ -1,0 +1,175 @@
+id: dotnet-cli
+title: '.NET CLI'
+summary: 'Everyday `dotnet` commands: create from templates, build and run, packages, solutions and references, tests, NuGet packing, publishing, and running a single .cs file.'
+groups:
+  - title: Environment and templates
+    items:
+      - term: '`dotnet --info`'
+        desc: 'Installed SDKs and runtimes, OS and PATH info: confirms the installation and the active SDK.'
+        from: { lesson: dotnet-cli, section: 'Quick checks & environment' }
+      - term: '`dotnet new list`'
+        desc: 'Lists available templates. `dotnet new --list` is deprecated.'
+        from: { lesson: dotnet-cli, section: 'Create a project (templates)' }
+      - term: '`dotnet new console -n MyApp`'
+        desc: 'Scaffolds a project from a template into a new `MyApp` folder. `--language "C#"` (default), `"F#"` or `"VB"` picks the language.'
+        from: { lesson: dotnet-cli, section: 'Create a project (templates)' }
+
+  - title: Project templates
+    table:
+      columns: [Project type, Command]
+      from: { lesson: project-types, section: '.NET Project Types with Details and Usage' }
+      rows:
+        - ['Console app (CLI tools, background jobs)', '`dotnet new console -n MyConsoleApp`']
+        - ['Class library (reusable code)', '`dotnet new classlib -n MyLibrary`']
+        - ['ASP.NET Core web app (MVC / Razor Pages)', '`dotnet new mvc -n MyWebApp` · `dotnet new razor -n MyRazorApp`']
+        - ['ASP.NET Core Web API', '`dotnet new webapi -n MyApi`']
+        - ['Blazor (WebAssembly / Server)', '`dotnet new blazorwasm -n MyBlazorApp` · `dotnet new blazorserver -n MyBlazorServerApp`']
+        - cells: ['Blazor Web App (.NET 8+ SDK)', '`dotnet new blazor`']
+          docs: { url: 'https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-new-sdk-templates', title: ".NET default templates for 'dotnet new' - .NET CLI", accessed: '2026-10-22' }
+        - ['Windows Forms', '`dotnet new winforms -n MyWinFormsApp`']
+        - ['WPF', '`dotnet new wpf -n MyWpfApp`']
+        - ['Worker Service (background services)', '`dotnet new worker -n MyWorkerService`']
+        - ['.NET MAUI (desktop + mobile)', '`dotnet new maui -n MyMauiApp`']
+        - ['Unit tests (xUnit / NUnit / MSTest)', '`dotnet new xunit -n MyTestProject`']
+        - ['Azure Functions', '`func init MyFunctionApp --worker-runtime dotnet`']
+        - cells: ['Solution file', '`dotnet new sln -n MySolution`']
+          from: { lesson: dotnet-cli, section: 'Solutions & multiple projects' }
+
+  - title: Build, run, restore
+    items:
+      - term: '`dotnet run`'
+        desc: 'Builds implicitly, then runs: the quick loop for development.'
+        from: { lesson: dotnet-cli, section: 'Run & Build' }
+      - term: '`dotnet build -c Release`'
+        desc: 'Builds explicitly; binaries go to `bin/`.'
+        from: { lesson: dotnet-cli, section: 'Run & Build' }
+      - term: '`dotnet restore`'
+        desc: 'Restores NuGet packages. `build`, `run`, `test` and `publish` restore implicitly; run it explicitly in CI or when troubleshooting.'
+        from: { lesson: dotnet-cli, section: 'Restore dependencies' }
+      - term: '`dotnet run --launch-profile <name>`'
+        desc: 'Runs with a profile from `Properties/launchSettings.json` (a local-development file, not used in production).'
+        from: { lesson: environment-and-launchsettings, section: 'What launchSettings.json is — short' }
+      - term: '`dotnet run -- --DOTNET_ENVIRONMENT=QA`'
+        desc: 'Everything after `--` is passed to your app as arguments; setting the environment variable is preferred.'
+        from: { lesson: configuration, section: 'How to set the environment locally' }
+      - term: '`dotnet watch`'
+        desc: 'File watcher: on a source change it hot reloads the running app, or restarts it when the change can''t be hot reloaded. `dotnet watch test` reruns tests instead.'
+        docs: { url: 'https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-watch', title: 'dotnet watch command - .NET CLI', accessed: '2026-10-22' }
+
+  - title: NuGet packages
+    table:
+      columns: [Command, Does]
+      from: { lesson: dotnet-cli, section: 'Add a package' }
+      rows:
+        - ['`dotnet add package Newtonsoft.Json`', 'Adds a `<PackageReference>` to the project file']
+        - ['`dotnet add package Newtonsoft.Json --version 13.0.3`', 'Pins a version (`-v` for short)']
+        - ['`dotnet list package`', 'Packages in the project']
+        - ['`dotnet list package --outdated`', 'Packages with newer versions']
+        - cells: ['`dotnet add package MyLibrary --source ./bin/Release`', 'Installs from a local folder of `.nupkg` files (to test your own package)']
+          from: { lesson: dotnet-cli, section: 'Install Locally (for testing)' }
+
+  - title: Solutions, references and tests
+    items:
+      - term: 'Solution with two projects'
+        code: |
+          dotnet new sln -n MySolution
+          dotnet new classlib -n MyLib
+          dotnet new console -n MyApp
+          dotnet sln MySolution.sln add MyLib/MyLib.csproj
+          dotnet sln MySolution.sln add MyApp/MyApp.csproj
+        lang: bash
+        from: { lesson: dotnet-cli, section: 'Solutions & multiple projects' }
+      - term: 'Project reference'
+        code: |
+          cd MyApp
+          dotnet add reference ../MyLib/MyLib.csproj
+        lang: bash
+        from: { lesson: dotnet-cli, section: 'Solutions & multiple projects' }
+      - term: 'Test project'
+        desc: '`xunit`, `mstest` or `nunit`; add it to the solution and reference the project under test.'
+        code: |
+          dotnet new xunit -n MyApp.Tests
+          dotnet sln add MyApp.Tests/MyApp.Tests.csproj
+          dotnet add MyApp.Tests/MyApp.Tests.csproj reference MyApp/MyApp.csproj
+        lang: bash
+        from: { lesson: dotnet-cli, section: 'Testing' }
+      - term: '`dotnet test`'
+        desc: 'Builds the solution and runs its tests (VSTest by default; Microsoft Testing Platform can be selected from the .NET 10 SDK).'
+        docs: { url: 'https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test', title: 'dotnet test command - .NET CLI', accessed: '2026-10-22' }
+
+  - title: Packing and publishing to NuGet
+    items:
+      - term: '`dotnet pack -c Release`'
+        desc: 'Creates `.nupkg` files in `bin/Release`.'
+        from: { lesson: dotnet-cli, section: 'Create a package from a project' }
+      - term: '`dotnet nuget push`'
+        desc: 'Publishes to NuGet.org with an API key from your NuGet.org account.'
+        code: |
+          dotnet nuget push bin/Release/MyLibrary.1.0.0.nupkg \
+            --api-key <YOUR_API_KEY> \
+            --source https://api.nuget.org/v3/index.json
+        lang: bash
+        from: { lesson: dotnet-cli, section: 'Publish to NuGet.org' }
+
+  - title: Publishing an app
+    note: 'Publishing compiles, copies dependencies, prepares the runtime and produces deployable output.'
+    table:
+      columns: [Model, Runtime included?, Target needs .NET?, Size, Best for]
+      from: { lesson: dotnet-cli, section: 'Types of Publish' }
+      rows:
+        - ['Framework-dependent (FDD)', '❌ No', '✅ Yes', 'Smaller', 'Servers you control, Docker base images, cloud platforms']
+        - ['Self-contained (SCD)', '✅ Yes', '❌ No', 'Bigger', 'Client machines, restricted environments']
+    items:
+      - term: 'Framework-dependent'
+        desc: 'Output lands in `bin/Release/<tfm>/publish/`.'
+        code: |
+          dotnet publish -c Release
+        lang: bash
+        from: { lesson: dotnet-cli, section: '1️⃣ Framework-Dependent Deployment (FDD)' }
+      - term: 'Self-contained EXE'
+        desc: 'Runs on a machine without .NET installed.'
+        code: |
+          dotnet publish -c Release -r win-x64 --self-contained true
+        lang: bash
+        from: { lesson: dotnet-cli, section: '2️⃣ Self-Contained Deployment (SCD)' }
+      - term: 'Single-file EXE'
+        desc: 'Everything bundled into one executable.'
+        code: |
+          dotnet publish -c Release -r win-x64 \
+            /p:PublishSingleFile=true \
+            --self-contained true
+        lang: bash
+        from: { lesson: dotnet-cli, section: '✅ Option 2 — Single File EXE (Cleaner)' }
+      - term: 'Framework-dependent EXE'
+        desc: 'Smaller download when the user already has .NET.'
+        code: |
+          dotnet publish -c Release -r win-x64 --self-contained false
+        lang: bash
+        from: { lesson: dotnet-cli, section: '✅ Option 3 — Framework Dependent EXE (Small size)' }
+      - term: 'CI/CD flow'
+        desc: '`git push` → CI build → `dotnet publish` → artifact → deploy → restart service.'
+        from: { lesson: dotnet-cli, section: 'Industry CI/CD Publish Flow' }
+
+  - title: Running a single .cs file
+    items:
+      - term: '`dotnet run program.cs`'
+        desc: '.NET 10 and later: runs a file with no project.'
+        from: { lesson: dotnet-cli, section: '.NET 10 and later' }
+      - term: '`dotnet script <filename>`'
+        desc: '.NET 6 to 9: a community global tool, not part of the SDK. Install once with `dotnet tool install -g dotnet-script`.'
+        from: { lesson: dotnet-cli, section: 'Earlier .NET versions (6 to 9): dotnet script' }
+      - term: '`csc program.cs`'
+        desc: 'The .NET Framework / Mono compiler; run the result with `./program.exe` (Windows) or `mono program.exe`.'
+        from: { lesson: dotnet-cli, section: 'Steps to run a .cs file without creating any project' }
+
+  - title: EF Core tool commands
+    note: 'The full list is on the EF Core & migrations sheet.'
+    table:
+      columns: [Command, Does]
+      from: { lesson: ef-core-migrations-and-scaffolding, section: '7. Useful Commands' }
+      rows:
+        - ['`dotnet ef migrations add MigrationName`', 'Create a migration']
+        - ['`dotnet ef migrations list`', 'List migrations']
+        - ['`dotnet ef migrations remove`', 'Remove the last migration']
+        - ['`dotnet ef migrations script --idempotent -o migration.sql`', 'Generate a production SQL script']
+        - ['`dotnet ef database update`', 'Update the local database (local development only)']

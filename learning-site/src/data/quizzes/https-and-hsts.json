@@ -1,0 +1,107 @@
+{
+  "lesson": "https-and-hsts",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "A browser visits the API over `http://` for the first time and later comes back. Put the events in order.",
+      "steps": [
+        "The browser sends `GET http://yourapi.com/api/tasks`",
+        "`UseHttpsRedirection` answers `308 Permanent Redirect` with an `https://` `Location`",
+        "The browser repeats the request over HTTPS",
+        "The HTTPS response carries the `Strict-Transport-Security` header from `UseHsts`",
+        "On the next visit, the browser rewrites `http://` to `https://` before sending anything"
+      ],
+      "explanation": "The redirect is the safety net for the first contact; the HSTS header, once seen, makes the browser skip plain HTTP entirely on later visits.",
+      "source": {
+        "section": "Force HTTPS — reject/redirect plain HTTP"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why is `UseHttpsRedirection` on its own not fully secure?",
+      "options": [
+        "It only redirects `POST` requests",
+        "It disables TLS for the redirected request",
+        "The first request has already travelled over plain HTTP, so its URL, headers and part of a body could be intercepted",
+        "Browsers ignore `308` redirects"
+      ],
+      "answer": 2,
+      "explanation": "The redirect itself is harmless, but the original request was sent over an insecure channel before the client was told to switch to HTTPS.",
+      "source": {
+        "section": "UseHttpsRedirection — server-side redirect, per request"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "HSTS is set with `MaxAge = 365 days`, and users visit every week. When does a browser stop enforcing HTTPS-only?",
+      "options": [
+        "Effectively never, because each HTTPS response resets the countdown; to clear it you serve `max-age=0`",
+        "Exactly 365 days after the first visit",
+        "As soon as the server stops accepting HTTPS",
+        "When the browser is restarted"
+      ],
+      "answer": 0,
+      "explanation": "`max-age` is a rolling window: every time the browser sees the header, the full 365 days start again. An HSTS header with `max-age=0` tells browsers to forget the policy.",
+      "source": {
+        "section": "MaxAge"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What is the risk of turning on `IncludeSubDomains` carelessly?",
+      "options": [
+        "Subdomains stop receiving the HSTS header",
+        "It doubles the `max-age` for every subdomain",
+        "The main domain falls back to HTTP",
+        "Any subdomain that can't serve HTTPS, such as an old internal tool or a staging site without a valid cert, breaks for browsers that cached the policy"
+      ],
+      "answer": 3,
+      "explanation": "With `includeSubDomains` the policy covers every subdomain, even ones not created yet, so those without working HTTPS become unreachable for affected browsers.",
+      "source": {
+        "section": "IncludeSubDomains"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does the template call `app.UseHsts()` only when the environment is **not** Development?",
+      "options": [
+        "HSTS headers are not supported by Kestrel in Development",
+        "Once a browser caches HSTS for `localhost`, it refuses plain HTTP to `localhost` for the whole `MaxAge`, breaking other local HTTP projects",
+        "Development certificates already include HSTS",
+        "`UseHttpsRedirection` stops working when HSTS is on"
+      ],
+      "answer": 1,
+      "explanation": "Local development uses a self-signed dev certificate, and an aggressive HSTS policy cached for `localhost` would affect every other local tool; keeping it production-only avoids that.",
+      "source": {
+        "section": "Avoid HSTS in Development"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "The app runs behind Nginx, which terminates TLS and forwards plain HTTP to Kestrel. What can go wrong without `app.UseForwardedHeaders()` before `UseHttpsRedirection()`?",
+      "options": [
+        "The app sees every request as HTTP and may keep redirecting requests that were already secure, causing a redirect loop",
+        "Nothing; Kestrel always knows the original scheme",
+        "Nginx stops sending the `Host` header",
+        "HSTS headers get sent over plain HTTP to the client"
+      ],
+      "answer": 0,
+      "explanation": "The proxy sends the original scheme in `X-Forwarded-Proto`; only `UseForwardedHeaders()` makes `Request.Scheme`/`IsHttps` reflect it, so it must come before the redirect middleware.",
+      "source": {
+        "section": "3. Your app must trust and read those forwarded headers"
+      },
+      "reviewed": false
+    }
+  ]
+}

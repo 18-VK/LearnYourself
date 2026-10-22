@@ -1,0 +1,99 @@
+{
+  "topic": "aspnet-core",
+  "questions": [
+    {
+      "id": "aspnet-core-iactionresult-vs-actionresult",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "junior",
+      "question": "What is `IActionResult`, and how do `ActionResult` and `ActionResult<T>` relate to it?",
+      "shortAnswer": "`IActionResult` is an interface that represents the result of an action method. … `ActionResult` is a concrete class that implements `IActionResult` and provides additional flexibility. … `ActionResult<T>` … Combines: Strong typing … HTTP responses",
+      "answerFrom": {
+        "file": "InterviewQuestion.md",
+        "section": "# IActionResult"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public ActionResult<User> GetUser(int id)\n{\n    if (id == 0)\n        return BadRequest();\n\n    return new User();\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "InterviewQuestion.md",
+          "section": "# IActionResult"
+        }
+      ],
+      "relatedLessons": [
+        "return-types",
+        "controllers"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-common-rest-api-questions",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "junior",
+      "question": "Which REST API questions come up most often in interviews?",
+      "shortAnswer": "What is REST? … Difference between REST and SOAP … What makes REST stateless? … Difference between PUT and PATCH … What are idempotent methods? … What is HATEOAS? … What is API versioning? … What are common HTTP status codes?",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/ASP.Net Core/2.RestAPI_N_HTTPBasics.md",
+        "section": "# Common REST API Interview Questions"
+      },
+      "pitfalls": [],
+      "followUps": [
+        "What is REST?",
+        "Difference between REST and SOAP",
+        "What makes REST stateless?",
+        "Difference between PUT and PATCH",
+        "What are idempotent methods?",
+        "What is HATEOAS?",
+        "What is API versioning?",
+        "What are common HTTP status codes?"
+      ],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/ASP.Net Core/2.RestAPI_N_HTTPBasics.md",
+          "section": "# Common REST API Interview Questions"
+        }
+      ],
+      "relatedLessons": [
+        "rest-and-http-basics",
+        "api-versioning"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-remembering-status-codes",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "junior",
+      "question": "How do you remember which status code (and helper result) an action should return?",
+      "shortAnswer": "200 = success with data, 201 = created, 202 = accepted for later work, 204 = success with nothing to return, 400 = bad request, 401 = not authenticated, 403 = authenticated but not allowed, 404 = missing resource, 409 = conflict, 422 = business rule failure, and `Problem()` / `ValidationProblem()` give you standardized error payloads.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/ASP.Net Core/3.ASP_ReturnTypesNMore_2.md",
+        "section": "# How to remember this in interviews"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/ASP.Net Core/3.ASP_ReturnTypesNMore_2.md",
+          "section": "# How to remember this in interviews"
+        }
+      ],
+      "relatedLessons": [
+        "return-types",
+        "rest-and-http-basics"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    }
+  ]
+}

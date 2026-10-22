@@ -1,0 +1,209 @@
+{
+  "topic": "wpf-mvvm",
+  "questions": [
+    {
+      "id": "wpf-mvvm-controltemplate-without-key-in-app-xaml",
+      "topic": "wpf-mvvm",
+      "subtopic": "templates-and-styles",
+      "difficulty": "mid",
+      "question": "What happens if you put a ControlTemplate without x:Key in App.xaml?",
+      "shortAnswer": "Putting a ControlTemplate without x:Key in App.xaml overrides the default control template globally.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md",
+        "section": "## Note : Very Important Warning (Interview Favorite)"
+      },
+      "pitfalls": [
+        "Break third-party controls",
+        "Remove accessibility features",
+        "Break keyboard focus visuals"
+      ],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md",
+          "section": "## Note : Very Important Warning (Interview Favorite)"
+        }
+      ],
+      "relatedLessons": [
+        "control-and-data-templates",
+        "styles-and-resources"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "wpf-mvvm-viewmodel-vs-model",
+      "topic": "wpf-mvvm",
+      "subtopic": "mvvm-architecture",
+      "difficulty": "junior",
+      "question": "What is the difference between a ViewModel and a Model?",
+      "shortAnswer": "Aspect | Model | ViewModel … Purpose | Business data | UI behavior",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/4.MVVMandDataBindings.md",
+        "section": "## ViewModel vs Model (interview favorite)"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/4.MVVMandDataBindings.md",
+          "section": "## ViewModel vs Model (interview favorite)"
+        }
+      ],
+      "relatedLessons": [
+        "mvvm"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "wpf-mvvm-mvvm-in-one-line",
+      "topic": "wpf-mvvm",
+      "subtopic": "mvvm-architecture",
+      "difficulty": "junior",
+      "question": "How would you summarize MVVM in an interview?",
+      "shortAnswer": "Model holds data, View displays it, ViewModel controls behavior. They communicate via bindings and commands, not references.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/4.MVVMandDataBindings.md",
+        "section": "## Interview-ready summary ⭐"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/4.MVVMandDataBindings.md",
+          "section": "## Interview-ready summary ⭐"
+        }
+      ],
+      "relatedLessons": [
+        "mvvm",
+        "data-binding",
+        "commands"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "wpf-mvvm-selecteditem-vs-commandparameter",
+      "topic": "wpf-mvvm",
+      "subtopic": "commands",
+      "difficulty": "mid",
+      "question": "Should a row action use SelectedItem or CommandParameter?",
+      "shortAnswer": "Row actions should use `CommandParameter`",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/5.RelayCommandNOther.md",
+        "section": "### SelectedItem vs CommandParameter (INTERVIEW FAVORITE)"
+      },
+      "pitfalls": [
+        "Using SelectedItem … Depends on selection … One global delete"
+      ],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/5.RelayCommandNOther.md",
+          "section": "### SelectedItem vs CommandParameter (INTERVIEW FAVORITE)"
+        }
+      ],
+      "relatedLessons": [
+        "command-parameter-and-async-commands",
+        "commands"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "wpf-mvvm-what-templatebinding-does",
+      "topic": "wpf-mvvm",
+      "subtopic": "templates-and-styles",
+      "difficulty": "mid",
+      "question": "What does TemplateBinding do?",
+      "shortAnswer": "TemplateBinding is a lightweight binding mechanism used only inside a ControlTemplate. It binds a property of an element inside the template to a property of the control the template is applied to (the \"templated parent\").",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.AdvanceTopics.md",
+        "section": "# But let's cover what TemplateBinding actually does, since it's a classic interview topic."
+      },
+      "code": {
+        "lang": "xml",
+        "source": "<ControlTemplate TargetType=\"local:NumericUpDown\">\n    <Border BorderBrush=\"Gray\" BorderThickness=\"1\">\n        <TextBlock Text=\"{TemplateBinding Value}\" />\n    </Border>\n</ControlTemplate>"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.AdvanceTopics.md",
+          "section": "# But let's cover what TemplateBinding actually does, since it's a classic interview topic."
+        }
+      ],
+      "relatedLessons": [
+        "templatebinding-and-custom-controls",
+        "control-and-data-templates"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "wpf-mvvm-coordinate-multiple-viewmodels",
+      "topic": "wpf-mvvm",
+      "subtopic": "mvvm-architecture",
+      "difficulty": "senior",
+      "question": "How do you coordinate multiple ViewModels?",
+      "shortAnswer": "In production systems we typically avoid direct ViewModel references and instead use either a shared application state container or a parent orchestrator.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.Tips.md",
+        "section": "## 🧪 Interview answer (very strong)"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.Tips.md",
+          "section": "## 🧪 Interview answer (very strong)"
+        }
+      ],
+      "relatedLessons": [
+        "app-state-and-communication",
+        "dialog-service-and-message-bus"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "wpf-mvvm-interview-readiness-topics",
+      "topic": "wpf-mvvm",
+      "subtopic": "mvvm-architecture",
+      "difficulty": "mid",
+      "question": "Which WPF topics should you be able to explain in an interview?",
+      "shortAnswer": "Explain MVVM confidently … Explain DependencyProperty … Style vs ControlTemplate … ControlTemplate vs DataTemplate … ObservableCollection vs List … ICommand lifecycle … ResourceDictionary lookup order",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/WPF_Job_Ready_Roadmap_Checklist.md",
+        "section": "## 🎯 Interview Readiness"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/WPF_Job_Ready_Roadmap_Checklist.md",
+          "section": "## 🎯 Interview Readiness"
+        }
+      ],
+      "relatedLessons": [
+        "wpf-job-ready-checklist",
+        "mvvm",
+        "dependency-properties",
+        "styles-and-resources",
+        "control-and-data-templates",
+        "observablecollection-and-validation",
+        "commands"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    }
+  ]
+}

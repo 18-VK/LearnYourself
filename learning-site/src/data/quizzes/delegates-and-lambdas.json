@@ -1,0 +1,88 @@
+{
+  "lesson": "delegates-and-lambdas",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "Action a = () => Console.WriteLine(\"A\");\na += () => Console.WriteLine(\"B\");\na();"
+      },
+      "options": [
+        "Only `B`, because `+=` replaced the first handler",
+        "Only `A`, because a delegate calls one method",
+        "`A` then `B`",
+        "`B` then `A`"
+      ],
+      "answer": 2,
+      "explanation": "`Action` is multicast-capable: `+=` adds a second handler, and for a void delegate all handlers are invoked in order, so it prints A then B.",
+      "source": { "section": "Multicast behavior (`+=` / `-=`)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A `Func<int>` has three handlers attached with `+=`. What does the caller get back when it invokes it?",
+      "options": [
+        "The return value of the first handler only; the others are skipped",
+        "An array with all three return values",
+        "The sum of the three return values",
+        "All three run, but only the last handler's return value is returned"
+      ],
+      "answer": 3,
+      "explanation": "For a multicast `Func`, all handlers are invoked but only the last return value is provided to the caller, which is why multicast `Func` is rarely useful for combining results.",
+      "source": { "section": "Multicast behavior (`+=` / `-=`)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which method signature does `Func<int,int,string>` represent?",
+      "options": [
+        "`(int, int) => string`",
+        "`(string) => (int, int)`",
+        "`(int, int, string) => void`",
+        "`(int) => (int, string)`"
+      ],
+      "answer": 0,
+      "explanation": "In `Func<..., TResult>` the last generic parameter is the return type and the earlier ones are argument types.",
+      "source": { "section": "Built-in delegate types" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "How do `Func<bool>` and `Action<bool>` differ?",
+      "options": [
+        "Both take a `bool` and return `void`; only their names differ",
+        "`Func<bool>` takes no parameters and returns a `bool`; `Action<bool>` takes one `bool` and returns nothing",
+        "`Func<bool>` takes one `bool` and returns nothing; `Action<bool>` takes no parameters and returns a `bool`",
+        "Both take no parameters and return a `bool`"
+      ],
+      "answer": 1,
+      "explanation": "For `Func` the type parameter is the return type, so `Func<bool>` is a question/condition; for `Action` it is a parameter type, so `Action<bool>` is an operation that takes a `bool`.",
+      "source": { "section": "1. Definitions (core difference)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "predict-output",
+      "prompt": "What does this program print?",
+      "code": {
+        "lang": "csharp",
+        "source": "class Program\n{\n    static void Main()\n    {\n        DoWork(3, r => Console.WriteLine($\"Got: {r}\")); // lambda callback\n        DoWork(3,PrintResult); // function callback\n    }\n    \n    static void PrintResult(int r)\n    {\n        Console.WriteLine($\"Got: {r}\");\n    }\n    static void DoWork(int x, Action<int> callback)\n    {\n        var result = x + 10;\n        callback?.Invoke(result);   // null-safe invoke\n    }\n}"
+      },
+      "options": [
+        "`Got: 3` then `Got: 13`",
+        "`Got: 13` once",
+        "`Got: 3` twice",
+        "`Got: 13` twice"
+      ],
+      "answer": 3,
+      "explanation": "Both calls pass 3 to `DoWork`, which computes `3 + 10` and calls back with 13. The lambda and `PrintResult` print the same message, so `Got: 13` appears twice.",
+      "source": { "section": "2) Using built-in `Action` / `Func` (preferred)" },
+      "reviewed": false
+    }
+  ]
+}

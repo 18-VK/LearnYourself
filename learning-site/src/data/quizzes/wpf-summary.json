@@ -1,0 +1,73 @@
+{
+  "lesson": "wpf-summary",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In the recommended MVVM + Clean Architecture solution layout, which project holds EF Core, logging and API clients?",
+      "options": [
+        "`MyApp.Domain`",
+        "`MyApp.Application`",
+        "`MyApp.Presentation`",
+        "`MyApp.Infrastructure`"
+      ],
+      "answer": 3,
+      "explanation": "Domain holds entities and value objects, Application holds use cases and interfaces, Presentation holds WPF Views and ViewModels, and Infrastructure holds EF Core, logging and API clients.",
+      "source": {
+        "section": "Practical Recommendations for You (Aman)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Where does the summary recommend integrating the Generic Host for DI, logging and configuration?",
+      "options": [
+        "In `App.xaml.cs`, as in ASP.NET Core startup",
+        "In each ViewModel's constructor",
+        "In `MainWindow.xaml.cs`",
+        "In a ResourceDictionary merged into App.xaml"
+      ],
+      "answer": 0,
+      "explanation": "The recommendation is to integrate the Generic Host in `App.xaml.cs` for DI, logging and configuration, like ASP.NET Core.",
+      "source": {
+        "section": "Practical Recommendations for You (Aman)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Among the basic pieces every real WPF MVVM app needs, what should a ViewModel expose for a list so the UI updates when items are added or removed?",
+      "options": [
+        "A `List<T>` that is reassigned after every change",
+        "An `ObservableCollection<T>`",
+        "An array refreshed by a timer",
+        "A `DependencyProperty` on the ViewModel"
+      ],
+      "answer": 1,
+      "explanation": "The basic pieces are a ViewModel implementing `INotifyPropertyChanged`, `ObservableCollection<T>` for lists so the UI updates on add/remove, `ICommand` for actions, a `DataContext`, and XAML bindings.",
+      "source": {
+        "section": "Basic pieces you need in real apps"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which of these is on the summary's list of async RelayCommand mistakes?",
+      "options": [
+        "Disabling the button while async work runs",
+        "Awaiting the async work inside the command",
+        "Using `Task.Run` for I/O",
+        "Raising `CanExecuteChanged` when the work finishes"
+      ],
+      "answer": 2,
+      "explanation": "The async-command mistakes are `async void` ViewModel methods, not disabling the button during async work, using `Task.Run` for I/O, calling `MessageBox` inside the ViewModel and using `CommandManager` with async commands.",
+      "source": {
+        "section": "Common mistakes - Async relayCommand ❌"
+      },
+      "reviewed": false
+    }
+  ]
+}

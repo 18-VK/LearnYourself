@@ -1,0 +1,237 @@
+id: async-multithreading
+title: 'Async & multithreading'
+summary: 'async/await, cancellation, the Task and ThreadPool APIs, continuations and ConfigureAwait, ValueTask, threads, locking primitives and concurrent collections.'
+groups:
+  - title: async and await
+    items:
+      - term: '`async`'
+        desc: 'Declares an asynchronous method that can contain `await`. Return `Task` when there is no value, `Task<T>` when there is one.'
+        from: { lesson: async-await, section: 'async Keyword' }
+      - term: '`await`'
+        desc: 'Yields control back to the caller, so the calling thread can do other work instead of waiting.'
+        from: { lesson: async-await, section: 'await Keyword' }
+      - term: 'What happens at an `await`'
+        desc: 'The method becomes a state machine. If the awaited task is already complete it continues synchronously; otherwise it registers the rest of the method as a continuation and returns immediately.'
+        from: { lesson: continuations-configureawait-valuetask, section: '1) Setting the stage' }
+      - term: 'Returning data'
+        code: |
+          public async Task<string> GetDataAsync()
+          {
+              // simulate a task like fetching data from a database
+              await Task.Delay(1000);
+
+              return "Sample Data";
+          }
+        lang: csharp
+        from: { lesson: async-await, section: 'How to Return Data with Async Programming' }
+      - term: '`async void`'
+        desc: 'Only for event handlers, which require a `void` return. It can''t be awaited and callers can''t catch its exceptions; everything else should return `Task`.'
+        docs: { url: 'https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-return-types', title: 'Async return types - C#', accessed: '2026-10-22' }
+      - term: 'Where async helps'
+        desc: 'UI apps (stay responsive during I/O or long work) and servers (many concurrent connections without tying up threads).'
+        from: { lesson: async-await, section: 'Where is Asynchronous Programming helpful?' }
+
+  - title: Cancellation
+    items:
+      - term: '`CancellationTokenSource` / `CancellationToken`'
+        desc: 'The source raises the flag (`Cancel()`, `CancelAfter(ms)`, or a timeout in the constructor); the token is passed into the work, which cancels cooperatively.'
+        from: { lesson: async-await, section: 'Cancel async request / Cancelling an Async Call' }
+      - term: 'Checking the token'
+        desc: '`token.ThrowIfCancellationRequested()` throws; `token.IsCancellationRequested` lets you clean up first. Catch `OperationCanceledException` around the `await`.'
+        from: { lesson: threadpool-and-task, section: '5) Cancellation' }
+      - term: 'Timeout with a token'
+        code: |
+          using var http = new HttpClient();
+          using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3)); // 3s timeout
+
+          try
+          {
+              var response = await http.GetAsync("https://example.com/large", cts.Token);
+              response.EnsureSuccessStatusCode();
+          }
+          catch (OperationCanceledException)
+          {
+              Console.WriteLine("Request was canceled (timeout or explicit).");
+          }
+        lang: csharp
+        from: { lesson: async-await, section: 'Cancel async request / Cancelling an Async Call' }
+
+  - title: Task API
+    table:
+      columns: [API, Use]
+      from: { lesson: threadpool-and-task, section: 'Task methods' }
+      rows:
+        - cells: ['`Task.Run(...)`', 'Schedule work on the thread pool and get a `Task` to await (the usual choice)']
+          from: { lesson: threadpool-and-task, section: '1) Creation / starting' }
+        - cells: ['`Task.Factory.StartNew(action, TaskCreationOptions.LongRunning)`', 'Older API; use only when you need options such as `LongRunning` (hint: dedicated thread)']
+          from: { lesson: threadpool-and-task, section: '4) Task.Factory.StartNew vs Task.Run (and LongRunning)' }
+        - cells: ['`new Task(action)` + `Start()`', 'Manual start']
+          from: { lesson: threadpool-and-task, section: '1) Creation / starting' }
+        - cells: ['`await task`', 'Preferred, non-blocking wait; exceptions are unwrapped']
+          from: { lesson: threadpool-and-task, section: '2) Waiting / composition' }
+        - cells: ['`task.Wait()` / `Task.WaitAll(...)`', 'Blocking wait']
+          from: { lesson: threadpool-and-task, section: '2) Waiting / composition' }
+        - cells: ['`Task.WhenAll(...)` / `Task.WhenAny(...)`', 'Non-blocking composition returning a task you can await']
+          from: { lesson: threadpool-and-task, section: '2) Waiting / composition' }
+        - cells: ['`task.ContinueWith(...)`', 'Run when a task completes; prefer async/await in new code']
+          from: { lesson: threadpool-and-task, section: '3) Continuation' }
+        - cells: ['`.Result` / `.Status` / `.Exception`', 'Value (blocks) / `RanToCompletion`, `Faulted`, `Canceled` / `AggregateException`']
+          from: { lesson: threadpool-and-task, section: '4) Results / status' }
+        - cells: ['`TaskCompletionSource<T>`', 'Create a task and complete it from outside (bridge callback APIs to tasks)']
+          from: { lesson: threadpool-and-task, section: '6) TaskCompletionSource<T>' }
+        - cells: ['`TaskCreationOptions`', '`LongRunning`, `PreferFairness`, `DenyChildAttach`…']
+          from: { lesson: threadpool-and-task, section: '7) TaskCreationOptions' }
+        - cells: ['`TaskScheduler`', 'Controls how tasks are scheduled (default: the thread pool scheduler)']
+          from: { lesson: threadpool-and-task, section: '8) TaskScheduler' }
+    items:
+      - term: '`.Result` caveats'
+        desc: 'Blocks the calling thread; a fault surfaces as an `AggregateException` wrapping the original. Prefer `await`, and use `.Result` only where you can guarantee no deadlock.'
+        from: { lesson: threadpool-and-task, section: 'Task<TResult> and .Result' }
+
+  - title: Continuations and ConfigureAwait
+    table:
+      columns: [Where you awaited, Thread that runs the continuation]
+      from: { lesson: continuations-configureawait-valuetask, section: '2) How continuation thread selection works' }
+      rows:
+        - ['WPF/WinForms UI thread', 'The same UI thread (message loop)']
+        - ['ASP.NET (classic)', 'The request context (similar to a UI context)']
+        - ['ASP.NET Core / console / library code', 'A thread-pool thread, maybe a different one']
+        - ['`ConfigureAwait(false)` used', 'No context captured: a thread-pool thread, even in UI or ASP.NET']
+    items:
+      - term: '`await task.ConfigureAwait(false)`'
+        desc: 'Don''t capture the current context. Use in library/server code: capturing adds overhead and can deadlock when a caller blocks on `.Result` or `.Wait()`. `true` is the default.'
+        from: { lesson: continuations-configureawait-valuetask, section: 'ConfigureAwait method' }
+      - term: 'Sync-over-async deadlock'
+        desc: 'Blocking the UI thread on `.Result` while the continuation waits for that same thread. Fix: `await` all the way, or `ConfigureAwait(false)` in the library.'
+        code: |
+          // UI thread
+          var result = GetDataAsync().Result; // blocks
+
+          async Task<string> GetDataAsync()
+          {
+              await Task.Delay(1000);   // captures UI context by default
+              return "done";            // can't resume, UI thread is blocked -> deadlock
+          }
+        lang: csharp
+        from: { lesson: continuations-configureawait-valuetask, section: 'Deadlock Example (classic ASP.NET or WinForms)' }
+
+  - title: ValueTask
+    items:
+      - term: '`Task` vs `ValueTask`'
+        desc: '`Task` is a class and always allocates; `ValueTask` is a struct that can wrap a ready result (no allocation) or a `Task`.'
+        from: { lesson: continuations-configureawait-valuetask, section: 'What is ValueTask?' }
+      - term: 'When to use `ValueTask`'
+        desc: 'Methods that often complete synchronously (e.g. a cache hit) in hot paths. If the method is always async, return `Task`.'
+        from: { lesson: continuations-configureawait-valuetask, section: 'Things to Watch Out For' }
+      - term: 'Await a `ValueTask` only once'
+        desc: 'Awaiting it twice is undefined behaviour; a `Task` can be awaited many times.'
+        from: { lesson: continuations-configureawait-valuetask, section: 'Things to Watch Out For' }
+
+  - title: Threads and the ThreadPool
+    table:
+      columns: [Member, Does]
+      from: { lesson: threads, section: 'Thread class commonly use methods' }
+      rows:
+        - cells: ['`new Thread(Method)` + `Start()`', '`ThreadStart` (no args), `ParameterizedThreadStart` (one `object` arg), or a lambda for typed args']
+          from: { lesson: threads, section: 'Passing methods (delegate) to thread' }
+        - ['`t.Join()`', 'Blocks the caller until the thread ends']
+        - ['`Thread.Sleep(ms)`', 'Suspends the current thread; don''t use it for coordination']
+        - ['`t.Interrupt()`', 'Throws `ThreadInterruptedException` in the thread when it is (or next is) in `Sleep`/`Join`/wait']
+        - ['`t.Abort()`', 'Obsolete: throws `PlatformNotSupportedException` on .NET Core / .NET 5+; use cooperative cancellation']
+        - ['`IsBackground`', '`false` (default) keeps the process alive; `true` is killed abruptly when foreground threads end']
+        - ['`Name`, `IsAlive`, `ThreadState`, `ManagedThreadId`, `Priority`', 'Thread information']
+        - ['`Thread.CurrentThread`', 'The executing thread']
+        - cells: ['`ThreadPool.QueueUserWorkItem(callback, state?)`', 'Fire-and-forget work on a pool thread, no return value (use `Task.Run` for one)']
+          from: { lesson: threadpool-and-task, section: 'ThreadPool methods' }
+        - cells: ['`ThreadPool.GetMax/MinThreads`, `GetAvailableThreads`, `SetMinThreads`', 'Read pool caps; raise the minimum so threads are pre-created']
+          from: { lesson: threadpool-and-task, section: 'ThreadPool methods' }
+        - cells: ['`ThreadPool.RegisterWaitForSingleObject(...)`', 'Callback on a pool thread when a wait handle is signaled or times out']
+          from: { lesson: threadpool-and-task, section: 'ThreadPool methods' }
+    items:
+      - term: 'Pool threads are background threads'
+        desc: 'Tasks, `QueueUserWorkItem` and async continuations run on reused background threads, so the process can exit while they run. Don''t block them for long.'
+        from: { lesson: threadpool-and-task, section: 'ThreadPool' }
+      - term: 'Prefer Task over raw threads'
+        desc: '`Task<TResult>` gives a built-in result, captured exceptions and async/await integration; a `Thread` has no return value (share a variable and `Join`).'
+        from: { lesson: threads, section: 'Returning value from Thread delegate' }
+      - term: 'Pause and resume'
+        desc: '`Suspend` is unsafe; pause cooperatively with `ManualResetEventSlim`: the worker calls `Wait()`, `Reset()` pauses it, `Set()` resumes it.'
+        from: { lesson: threads, section: 'Pause the thread' }
+
+  - title: Locking and signaling primitives
+    table:
+      columns: [Primitive, Scope, Use when]
+      from: { lesson: locking-primitives, section: 'lock (keyword) – Syntactic sugar for Monitor' }
+      rows:
+        - ['`lock (obj)`', 'In-process', 'Protecting an in-memory critical section. Sugar for `Monitor.Enter/Exit` in try/finally; blocks and cannot contain `await`']
+        - cells: ['`Monitor`', 'In-process', 'You need a timeout (`TryEnter`) or signaling (`Wait`/`Pulse`)']
+          from: { lesson: locking-primitives, section: 'Monitor – More control than lock' }
+        - cells: ['`Mutex`', 'Cross-process (named)', 'One thread/process at a time, e.g. single-instance apps. `ReleaseMutex` once per `WaitOne`; an abandoned mutex raises `AbandonedMutexException`']
+          from: { lesson: locking-primitives, section: 'Mutex' }
+        - cells: ['`Semaphore`', 'Cross-process (named, kernel)', 'Allow N processes/threads into a section; a `WaitHandle`']
+          from: { lesson: locking-primitives, section: 'Semaphore — definition & use cases' }
+        - cells: ['`SemaphoreSlim`', 'In-process', 'Throttling concurrent tasks; `WaitAsync` for async code; much faster than `Semaphore`']
+          from: { lesson: locking-primitives, section: 'SemaphoreSlim — definition & use cases' }
+        - cells: ['`Interlocked`', 'In-process', 'Simple atomic operations: `Interlocked.Increment(ref counter)`']
+          from: { lesson: race-conditions-and-deadlocks, section: 'Fix B — Interlocked (fast, atomic)' }
+    items:
+      - term: 'Async throttling with `SemaphoreSlim`'
+        desc: 'It limits how many enter; it does not stop those inside from interfering with each other.'
+        code: |
+          static SemaphoreSlim sem = new SemaphoreSlim(2); // allow 2 concurrent
+
+          static async Task Worker(int id)
+          {
+              await sem.WaitAsync();
+              try
+              {
+                  await Task.Delay(1000); // simulate async work while inside
+              }
+              finally
+              {
+                  int prev = sem.Release();
+              }
+          }
+        lang: csharp
+        from: { lesson: locking-primitives, section: 'SemaphoreSlim — definition & use cases' }
+
+  - title: Race conditions and deadlocks
+    items:
+      - term: 'Race condition'
+        desc: 'Threads read and write shared data concurrently, at least one writing: lost updates (`counter++` is not atomic). Fix with `lock` or `Interlocked`.'
+        from: { lesson: race-conditions-and-deadlocks, section: 'Race Conditions' }
+      - term: 'Deadlock'
+        desc: 'Two or more threads each wait for a resource the other holds, forever.'
+        from: { lesson: race-conditions-and-deadlocks, section: 'Deadlocks' }
+      - term: 'Deadlock fixes'
+        desc: 'Acquire locks in one global order; use `Monitor.TryEnter` with a timeout; use a single lock, concurrent collections or immutable data.'
+        from: { lesson: race-conditions-and-deadlocks, section: 'Classic deadlock: inconsistent lock ordering' }
+
+  - title: Concurrent collections
+    note: 'Thread-safe containers using fine-grained locking or lock-free algorithms, so you don''t wrap every access in `lock`.'
+    table:
+      columns: [Collection, Use case, Key members]
+      from: { lesson: concurrent-collections, section: 'Concurrent collections' }
+      rows:
+        - cells: ['`ConcurrentDictionary<TKey,TValue>`', 'Shared cache, memoization, counters', '`GetOrAdd`, `AddOrUpdate`, `TryGetValue`, `TryRemove`, `TryUpdate`']
+          from: { lesson: concurrent-collections, section: '1) ConcurrentDictionary<TKey,TValue>' }
+        - cells: ['`ConcurrentQueue<T>`', 'Non-blocking FIFO producer/consumer', '`Enqueue`, `TryDequeue`, `TryPeek`, `IsEmpty` (`Count` is approximate)']
+          from: { lesson: concurrent-collections, section: '2) ConcurrentQueue<T>' }
+        - cells: ['`ConcurrentStack<T>`', 'LIFO, e.g. object pools', '`Push`, `TryPop`, `TryPeek`, `ToArray`']
+          from: { lesson: concurrent-collections, section: '3) ConcurrentStack<T>' }
+        - cells: ['`ConcurrentBag<T>`', 'Unordered; threads mostly reuse their own items. The only one with per-thread bags and work stealing', '`Add`, `TryTake`']
+          from: { lesson: concurrent-collections, section: '4) ConcurrentBag<T>' }
+        - cells: ['`BlockingCollection<T>`', 'Bounded producer/consumer pipelines: `Add` blocks when full, `Take` blocks when empty', '`Add`, `Take`, `CompleteAdding`, `GetConsumingEnumerable`']
+          from: { lesson: concurrent-collections, section: '5) BlockingCollection<T>' }
+    items:
+      - term: 'Atomic add-or-increment'
+        code: |
+          var cache = new ConcurrentDictionary<string, int>();
+
+          Parallel.For(0, 10, i =>
+          {
+              // atomic add-or-increment
+              cache.AddOrUpdate("count", 1, (k, old) => old + 1);
+          });
+        lang: csharp
+        from: { lesson: concurrent-collections, section: '1) ConcurrentDictionary<TKey,TValue>' }

@@ -1,0 +1,285 @@
+id: ef-core-migrations
+title: 'EF Core & migrations'
+summary: 'EF Core building blocks, CRUD, relationships and loading, tracking and concurrency, bulk operations, scaffolding, and the migration commands and deployment workflow.'
+groups:
+  - title: Building blocks
+    table:
+      columns: [Term, Meaning]
+      from: { lesson: ef-core-basics, section: 'ORM (Object–Relational Mapping)' }
+      rows:
+        - ['**Entity**', 'A C# class mapped to a database table (class → table, object → row, property → column)']
+        - ['**`DbContext`**', 'Manages the connection, querying and saving; you inherit from it']
+        - ['**`DbSet<TEntity>`**', 'Represents a table; only types with a `DbSet` property are in the model']
+        - ['**Migration**', 'A versioned schema change generated from C# model changes']
+        - ['**Change tracking**', 'Tracks which entities were added, modified or deleted']
+        - ['**Eager loading**', 'Loads related data immediately with `.Include()`']
+        - ['**Lazy loading**', 'Loads related data only when it is accessed']
+    items:
+      - term: 'Packages'
+        desc: '`Microsoft.EntityFrameworkCore` plus a provider (`Microsoft.EntityFrameworkCore.SqlServer`, `…Sqlite`), which pulls in the core package. `Microsoft.EntityFrameworkCore.Tools` adds the Package Manager Console commands (and installs `…Design`).'
+        from: { lesson: ef-core-basics, section: 'Install EF Core to use in Application' }
+      - term: 'Configure the provider'
+        code: |
+          protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+          {
+              optionsBuilder.UseSqlServer(connectionString);
+          }
+          public DbSet<Product> Products { get; set; }
+        lang: csharp
+        from: { lesson: ef-core-basics, section: 'The DBContext class' }
+      - term: 'When not to use an ORM'
+        desc: 'Extremely performance-critical code, highly optimized or database-specific queries (stored procedures, heavy reporting), or when you need fine-grained SQL control: use Dapper or raw ADO.NET.'
+        from: { lesson: ef-core-basics, section: 'When NOT to use ORM' }
+
+  - title: Migration commands
+    table:
+      columns: [Package Manager Console, .NET CLI, Does]
+      from: { lesson: ef-core-migrations-and-scaffolding, section: 'EF Core Migrations' }
+      rows:
+        - ['`Add-Migration`', '`dotnet ef migrations add <Name>`', 'Adds a new migration']
+        - ['`Remove-Migration`', '`dotnet ef migrations remove`', 'Removes the last migration']
+        - ['`Update-Database`', '`dotnet ef database update`', 'Updates the database to the latest (or a specified) migration']
+        - ['`Script-Migration`', '`dotnet ef migrations script`', 'Generates a SQL script from migrations']
+        - ['`Drop-Database`', '`dotnet ef database drop`', 'Drops the database']
+        - ['`Get-DbContext`', '`dotnet ef dbcontext info`', 'Information about a `DbContext` type']
+        - ['`Scaffold-DbContext`', '`dotnet ef dbcontext scaffold`', 'Scaffolds a `DbContext` and entities from an existing database']
+        - ['—', '`dotnet ef dbcontext list`', 'Lists available `DbContext` types']
+        - ['—', '`dotnet ef migrations list`', 'Lists all migrations']
+        - cells: ['—', '`dotnet tool install --global dotnet-ef`', 'Installs the CLI tools (once per machine); update with `dotnet tool update --global dotnet-ef`']
+          docs: { url: 'https://learn.microsoft.com/en-us/ef/core/cli/dotnet', title: 'EF Core tools reference (.NET CLI) - EF Core', accessed: '2026-10-22' }
+        - cells: ['—', '`dotnet add package Microsoft.EntityFrameworkCore.Design`', 'Required in the project before the CLI tools can be used on it']
+          docs: { url: 'https://learn.microsoft.com/en-us/ef/core/cli/dotnet', title: 'EF Core tools reference (.NET CLI) - EF Core', accessed: '2026-10-22' }
+        - cells: ['—', '`dotnet ef database update <Migration>` · `dotnet ef database update 0`', 'Moves the database to that migration, running `Down` for every newer one; `0` reverts all migrations']
+          docs: { url: 'https://learn.microsoft.com/en-us/ef/core/cli/dotnet', title: 'EF Core tools reference (.NET CLI) - EF Core', accessed: '2026-10-22' }
+    items:
+      - term: '`Up()` / `Down()`'
+        desc: '`Up()` creates tables, columns and constraints; `Down()` removes them when rolling back. `Update-Database` creates the database if it doesn''t exist.'
+        from: { lesson: ef-core-basics, section: '2) Create the database using the Migrations from the previous step' }
+      - term: 'Separate projects (Clean Architecture)'
+        code: |
+          dotnet ef migrations add AddOrders \
+              --project Infrastructure \
+              --startup-project Api
+        lang: bash
+        from: { lesson: ef-core-migrations-and-scaffolding, section: '8. Clean Architecture Example' }
+
+  - title: SQL scripts and idempotency
+    items:
+      - term: '`Script-Migration`'
+        desc: 'Generates the SQL EF would run, instead of updating the database. Run `Add-Migration` first: there is nothing to script otherwise.'
+        code: |
+          Script-Migration [-From <MIGRATION>] [-To <MIGRATION>] [-Output <FILE_PATH>] [-Idempotent]
+        lang: powershell
+        from: { lesson: ef-core-migrations-and-scaffolding, section: 'Script-Migration' }
+      - term: 'Between two migrations'
+        code: |
+          Script-Migration -From InitialCreate -To AddStudentsTable
+        lang: powershell
+        from: { lesson: ef-core-migrations-and-scaffolding, section: 'Example 2: Generate SQL between two specific migrations' }
+      - term: 'Idempotent script'
+        desc: 'Safe to run many times and on any environment: it checks `__EFMigrationsHistory` and applies only the missing migrations. Use it for production releases.'
+        code: |
+          dotnet ef migrations script --idempotent -o migration.sql
+        lang: bash
+        from: { lesson: ef-core-migrations-and-scaffolding, section: 'Idempotent (in database migrations) means:' }
+
+  - title: Production deployment
+    items:
+      - term: 'Workflow'
+        code: |
+          Entity Change
+                ↓
+          Add Migration
+                ↓
+          Commit Migration Files
+                ↓
+          Generate migration.sql
+                ↓
+          Test in Staging
+                ↓
+          Backup Production DB
+                ↓
+          Run migration.sql
+                ↓
+          Deploy API
+                ↓
+          Verify Application
+        lang: text
+        from: { lesson: ef-core-migrations-and-scaffolding, section: 'Production Workflow' }
+      - term: 'Do'
+        desc: 'Keep migrations in source control, generate SQL scripts for releases, review every script, back up first, test in staging, deploy database changes before the API, use idempotent scripts.'
+        from: { lesson: ef-core-migrations-and-scaffolding, section: '6. Best Practices' }
+      - term: 'Don''t call `db.Database.Migrate()` at startup in production'
+        desc: 'Several instances may migrate at once, startup slows down, the app needs elevated DB permissions, and it is harder to audit. `dotnet ef database update` is for local development.'
+        from: { lesson: ef-core-migrations-and-scaffolding, section: '6. Best Practices' }
+      - term: 'Verify'
+        code: |
+          SELECT *
+          FROM __EFMigrationsHistory;
+        lang: sql
+        from: { lesson: ef-core-migrations-and-scaffolding, section: '5. Execute the Script' }
+
+  - title: CRUD and bulk operations
+    table:
+      columns: [Task, How]
+      from: { lesson: ef-core-crud-and-relationships, section: 'CRUD Operations' }
+      rows:
+        - cells: ['Insert', '`db.Products.Add(product)` (or `db.Add`), then `db.SaveChanges()` / `SaveChangesAsync()`']
+          from: { lesson: ef-core-crud-and-relationships, section: 'Inserting Data' }
+        - cells: ['Read', '`db.Products.ToList()` sends the SELECT and materializes the list']
+          from: { lesson: ef-core-crud-and-relationships, section: 'Querying the Data' }
+        - cells: ['Update', '`Find(id)` the entity, change properties, `SaveChanges()`']
+          from: { lesson: ef-core-crud-and-relationships, section: 'Update the Record' }
+        - cells: ['Delete', 'Load the entity first, then `Remove(entity)` and `SaveChanges()`']
+          from: { lesson: ef-core-crud-and-relationships, section: 'Delete the Record' }
+        - cells: ['Bulk delete (EF Core 7+)', '`.Where(...).ExecuteDeleteAsync()`: one SQL DELETE, nothing loaded or tracked']
+          from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: '2. EF Core 7+ — Best Method (ExecuteDelete)' }
+        - cells: ['Bulk delete (EF Core 6 or below)', 'Load with `.ToList()`, then `RemoveRange(items)` and `SaveChangesAsync()`']
+          from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: '3. EF Core 6 or below — Standard Method' }
+        - cells: ['Bulk update (EF Core 7+)', '`.Where(...).ExecuteUpdateAsync(s => s.SetProperty(...))`']
+          from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: '1. EF Core — Update Multiple Rows (Correct way)' }
+        - cells: ['10K+ rows', '`EFCore.BulkExtensions`: `BulkInsertAsync`, `BulkUpdateAsync`, `BulkDeleteAsync`']
+          from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: '2. Best & fastest: Bulk Create + Bulk Update' }
+    items:
+      - term: '`ExecuteUpdateAsync`'
+        code: |
+          await db.Transactions
+              .Where(t => t.Type == "Income")
+              .ExecuteUpdateAsync(setters => setters
+                  .SetProperty(t => t.Amount, t => t.Amount + 100)
+                  .SetProperty(t => t.UpdatedAt, t => DateTime.Now)
+              );
+        lang: csharp
+        from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: '1. EF Core — Update Multiple Rows (Correct way)' }
+      - term: 'Tracked update vs `ExecuteUpdateAsync`'
+        desc: 'Find-then-update with `SaveChangesAsync` checks concurrency tokens and suits business logic. `ExecuteUpdateAsync` is fast and bulk but skips tracking, `SaveChanges` hooks and `RowVersion` checks (add the token to `Where` yourself).'
+        from: { lesson: ef-core-raw-sql-iqueryable-concurrency, section: 'Key Difference' }
+      - term: 'Raw SQL, parameterized'
+        desc: '`FromSqlInterpolated` turns interpolated values into SQL parameters; `FromSqlRaw` takes explicit `DbParameter`s. Both avoid SQL injection.'
+        code: |
+          var products = await ctx.Products
+              .FromSqlInterpolated($@"
+                  SELECT Id, Name, Price
+                  FROM Products
+                  WHERE Price > {minPrice}
+              ")
+              .ToListAsync();
+        lang: csharp
+        from: { lesson: ef-core-raw-sql-iqueryable-concurrency, section: 'SQL Raw Query' }
+
+  - title: Keys, relationships and indexes
+    items:
+      - term: 'Primary key convention'
+        desc: 'A property named `Id` or `<ClassName>Id` (if both exist, `Id` wins). A table without a primary key makes `add-migration` fail.'
+        from: { lesson: ef-core-crud-and-relationships, section: 'Primary Key Convention' }
+      - term: 'Foreign keys'
+        desc: 'A navigation property without an FK gets a shadow FK named navigation + principal key (`DepartmentDepartmentID`). Best practice: declare it explicitly (`public int DepartmentID { get; set; }`).'
+        from: { lesson: ef-core-crud-and-relationships, section: 'What is the Foreign Key?' }
+      - term: 'Many-to-many: implicit join table (EF Core 5+)'
+        desc: 'Collection navigations on both sides; EF creates the join table. Concise, but it can''t hold extra columns. Rename with `.UsingEntity(j => j.ToTable("Enrollments"))`.'
+        from: { lesson: ef-core-crud-and-relationships, section: 'Implicit Join Table (EF Core 5+)' }
+      - term: 'Many-to-many: explicit join entity'
+        desc: 'Use when the relationship has payload (`EnrolledOn`, `Grade`) or needs auditing; configure a composite key.'
+        code: |
+          modelBuilder.Entity<Enrollment>()
+              .HasKey(e => new { e.StudentId, e.CourseId }); // composite PK
+
+          modelBuilder.Entity<Enrollment>()
+              .HasOne(e => e.Student)
+              .WithMany(s => s.Enrollments)
+              .HasForeignKey(e => e.StudentId);
+        lang: csharp
+        from: { lesson: ef-core-crud-and-relationships, section: 'Explicit join table (explicit join entity class)' }
+      - term: 'Indexes'
+        desc: 'EF creates indexes for foreign keys. Add others with the Fluent API (recommended) or `[Index(nameof(Email))]` / `[Index(nameof(EmployeeCode), IsUnique = true)]` (EF Core 5+).'
+        code: |
+          modelBuilder.Entity<Employee>()
+              .HasIndex(e => e.EmployeeCode)
+              .IsUnique();
+
+          modelBuilder.Entity<Employee>()
+              .HasIndex(e => new { e.EmployeeCode, e.Email });
+        lang: csharp
+        from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: 'Indexes' }
+      - term: 'Ways to configure the model'
+        desc: 'Conventions (inferred from names and types) → Data Annotations (attributes, override conventions) → Fluent API in `OnModelCreating`.'
+        from: { lesson: ef-core-model-config-and-loading, section: 'Configuring the Model' }
+
+  - title: Loading related data
+    table:
+      columns: [Strategy, How, Use when, Avoid when]
+      from: { lesson: ef-core-model-config-and-loading, section: 'Navigation Data loading in EF Core' }
+      rows:
+        - cells: ['Eager', '`.Include(s => s.Courses).ThenInclude(c => c.Teacher)`: one query with JOINs', 'You know you need the related data now', 'Related data is large and not always needed']
+          from: { lesson: ef-core-model-config-and-loading, section: '1. Eager loading' }
+        - cells: ['Lazy', '`Microsoft.EntityFrameworkCore.Proxies`, `.UseLazyLoadingProxies()`, `virtual` navigations: a query on first access', 'Related data is often not needed', 'Loops over many entities: N+1 queries']
+          from: { lesson: ef-core-model-config-and-loading, section: '2. Lazy Loading' }
+        - cells: ['Explicit', '`context.Entry(student).Collection(s => s.Courses).Load()` (or `.Reference(...)`)', 'Fine-grained control for selected entities', 'You need it for all entities: use eager']
+          from: { lesson: ef-core-model-config-and-loading, section: '3. Explicit Loading' }
+
+  - title: Change tracking and cascade delete
+    items:
+      - term: 'Entity states'
+        desc: '`Added` (after `Add`), `Unchanged` (after a query), `Modified` (after a change), `Deleted`, `Detached`. `SaveChanges` turns them into INSERT/UPDATE/DELETE. `ChangeTracker` keeps an `EntityEntry` (state, original and current values) per entity.'
+        from: { lesson: ef-core-change-tracking-and-cascade, section: 'Change tracking in EF Core' }
+      - term: '`AsNoTracking()`'
+        desc: 'Read-only query: lower memory, but changes to the results are not saved by `SaveChanges()`.'
+        from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: 'What is AsNoTracking()?' }
+    table:
+      columns: ['`DeleteBehavior`', Effect, Migration generates]
+      from: { lesson: ef-core-change-tracking-and-cascade, section: 'Delete behaviors' }
+      rows:
+        - ['`Cascade`', 'Delete child rows in the client and the database', '`ON DELETE CASCADE`']
+        - ['`SetNull`', 'Set the FK to NULL in the client and the database', '`ON DELETE SET NULL`']
+        - ['`NoAction`', 'Default client behaviour, no database action', '`ON DELETE NO ACTION`']
+        - ['`Restrict`', 'Same as `NoAction`', '`ON DELETE RESTRICT` (not supported by SQL Server)']
+        - ['`ClientCascade` / `ClientSetNull` / `ClientNoAction`', 'Client-side only', 'No referential action']
+
+  - title: Optimistic concurrency
+    items:
+      - term: 'How a conflict is detected'
+        desc: 'EF adds the concurrency token to the UPDATE/DELETE `WHERE`. If the row changed, 0 rows are affected and EF throws `DbUpdateConcurrencyException`. With no token, the last write silently wins.'
+        from: { lesson: ef-core-raw-sql-iqueryable-concurrency, section: 'How EF Core Detects Concurrency' }
+      - term: '`RowVersion` (recommended)'
+        desc: 'A `byte[]` marked `[Timestamp]` or `.IsRowVersion()`: SQL Server `rowversion`, updated automatically on every change. `IsConcurrencyToken()` on a normal property only detects changes to that property.'
+        code: |
+          [Timestamp]
+          public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+          builder.Property(x => x.RowVersion)
+                  .IsRowVersion();
+        lang: csharp
+        from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: 'Implement' }
+      - term: 'Handling the exception'
+        desc: 'Recommended: catch `DbUpdateConcurrencyException` and return 409 Conflict so the client decides. Auto-merge (`GetDatabaseValuesAsync`, reset original values, save again) only when users edited different fields.'
+        from: { lesson: ef-core-indexes-tracking-bulk-concurrency, section: 'If you want real optimistic concurrency' }
+
+  - title: Database first (scaffolding)
+    table:
+      columns: ['`Scaffold-DbContext` option', Does]
+      from: { lesson: ef-core-migrations-and-scaffolding, section: 'scaffold-dbcontext' }
+      rows:
+        - ['`-Connection`', '**Required.** Connection string of the database to reverse-engineer']
+        - ['`-Provider`', '**Required.** Provider, e.g. `Microsoft.EntityFrameworkCore.SqlServer`']
+        - ['`-OutputDir` / `-ContextDir`', 'Folders for the entity classes / the `DbContext`']
+        - ['`-Context`', 'Name of the generated `DbContext` (default `<DatabaseName>Context`)']
+        - ['`-Schemas` / `-Tables`', 'Restrict scaffolding to some schemas or tables']
+        - ['`-DataAnnotations`', 'Use attributes instead of only the Fluent API']
+        - ['`-UseDatabaseNames`', 'Keep the database''s table and column names']
+        - ['`-Force`', 'Overwrite existing files']
+    items:
+      - term: 'Common example'
+        code: |
+          Scaffold-DbContext "Server=.;Database=SchoolDB;Trusted_Connection=True;" `
+          Microsoft.EntityFrameworkCore.SqlServer `
+          -OutputDir Models `
+          -ContextDir Data `
+          -Context SchoolDbContext `
+          -DataAnnotations `
+          -UseDatabaseNames `
+          -Force
+        lang: powershell
+        from: { lesson: ef-core-migrations-and-scaffolding, section: 'Common Example' }
+      - term: 'Moving a scaffolded model to migrations'
+        desc: '`add-migration`, then `script-migration`; run only the `CREATE TABLE [__EFMigrationsHistory]` and `INSERT INTO [__EFMigrationsHistory]` parts against the existing database.'
+        from: { lesson: ef-core-migrations-and-scaffolding, section: 'What if Model changes' }

@@ -1,0 +1,2091 @@
+{
+ "topic": "backend-design",
+ "questions": [
+  {
+   "id": "backend-design-perf-slow-endpoint-investigation",
+   "topic": "backend-design",
+   "subtopic": "performance",
+   "difficulty": "mid",
+   "question": "An endpoint that used to be fast is now slow in production. How do you investigate?",
+   "shortAnswer": "Start from data, not guesses: confirm which percentile got slower, for which requests, on which instances and since when (a deploy, a config change, data growth or a traffic change). Then look at a trace of a slow request to see where the time goes (database, an outbound call, waiting for a thread, CPU or GC), reproduce it under realistic load, fix the biggest contributor and check the same metrics again.",
+   "answer": "**Key points**\n- **Scope the problem first.** Compare p50 with p95/p99, successful with failed requests, one endpoint with all of them, one instance with all of them. A slowdown on every endpoint of one instance points at the host; one endpoint everywhere points at its code or its queries.\n- **Correlate with change.** Deploys, configuration, feature flags, data volume and traffic mix explain most regressions.\n- **Break the request down.** A distributed trace shows the time spent in each database and HTTP call. Runtime counters show thread pool queue length, thread count and GC activity.\n- **Usual suspects in ASP.NET Core:** blocking calls (`.Result`, `.Wait()`) causing thread pool starvation, queries that return more data than needed or run N+1 times, a missing index or changed plan, unbounded result sets, a slow dependency with no timeout, and many large allocations on a hot path.\n- **Reproduce, fix, verify.** Load-test the suspected path with realistic data, change one thing, and confirm with the same percentile you started from.\n\n**Detail**\nThe Google SRE book stresses white-box measurements: to know whether the database is slow or the network to it is, you need both how fast the web server sees the database and how fast the database thinks it is. In practice that means app-side spans *and* database-side evidence (execution plans, wait statistics).\n\nMicrosoft's ASP.NET Core best-practices page is a good checklist for the code side: avoid blocking calls, make hot paths async, paginate large results, don't fetch more data than the request needs, and don't create `HttpClient` instances per call.",
+   "code": {
+    "lang": "bash",
+    "source": "# Live runtime counters for the process (thread pool, GC, exceptions, ...)\ndotnet-counters monitor -n MyApi\n\n# Snapshot of every managed thread's stack: look for many threads parked in Task.Wait / .Result\ndotnet-stack report -n MyApi"
+   },
+   "pitfalls": [
+    "Looking only at average latency, which hides a slow tail.",
+    "Mixing fast failures (for example quick 500s) into the latency of successful requests.",
+    "Adding a cache to hide a slow query before understanding why it became slow.",
+    "Reproducing with a tiny local database whose plans and timings don't resemble production."
+   ],
+   "followUps": [
+    "How would you tell thread pool starvation apart from a slow database?",
+    "Which metrics would you put on a dashboard for this endpoint?",
+    "How do you reproduce a production-only slowdown safely?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+     "title": "Site Reliability Engineering, chapter 6: Monitoring Distributed Systems",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+     "title": "ASP.NET Core best practices",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/debug-threadpool-starvation",
+     "title": "Debug ThreadPool starvation (.NET)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel",
+     "title": ".NET observability with OpenTelemetry",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "execution-plans-and-sargability"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-perf-does-async-make-it-faster",
+   "topic": "backend-design",
+   "subtopic": "performance",
+   "difficulty": "junior",
+   "question": "Will making an ASP.NET Core endpoint async make it faster?",
+   "shortAnswer": "Usually not for a single request: async mainly improves scalability, not latency. While a request awaits I/O such as a database or HTTP call, its thread returns to the thread pool and serves other requests, so the server handles far more concurrent requests with the same threads; CPU-bound work gains nothing.",
+   "answer": "**Key points**\n- The request still waits just as long for the database; async changes **what the thread does while it waits**.\n- Microsoft: asynchronous APIs let a small pool of threads handle thousands of concurrent requests by not waiting on blocking calls.\n- Blocking on async code (`Task.Wait`, `Task<T>.Result`) is a common cause of **thread pool starvation** and degraded response times.\n- Don't call `Task.Run` and immediately await it in ASP.NET Core: the code already runs on a pool thread, so it only adds scheduling, and it doesn't stop the inner code from blocking.\n- Go async all the way: `ToListAsync`, `SaveChangesAsync`, `HttpClient` async methods, and pass the `CancellationToken` down.\n\n**Detail**\nUnder light load a synchronous and an asynchronous endpoint can look identical. Under heavy load the synchronous version holds one thread per waiting request; the thread pool has to grow to keep up, and while it grows queued requests wait. That is where async makes the *system* faster: lower and more stable latency at high concurrency.\n\nReturning `IEnumerable<T>` from an action also counts as hidden blocking: the serializer enumerates it synchronously. Materialize with `ToListAsync` first.",
+   "code": {
+    "lang": "csharp",
+    "source": "// ❌ Blocks a thread-pool thread for the whole query\n[HttpGet(\"{id:int}\")]\npublic IActionResult Get(int id)\n{\n    var order = _db.Orders.FirstOrDefaultAsync(o => o.Id == id).Result;\n    return order is null ? NotFound() : Ok(order);\n}\n\n// ✅ The thread is free while SQL Server works\n[HttpGet(\"{id:int}\")]\npublic async Task<IActionResult> Get(int id, CancellationToken ct)\n{\n    var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);\n    return order is null ? NotFound() : Ok(order);\n}"
+   },
+   "pitfalls": [
+    "Wrapping synchronous code in Task.Run inside a controller to make it look async.",
+    "Mixing .Result or .Wait() into an otherwise async call chain.",
+    "Expecting CPU-bound work such as hashing or image resizing to get faster.",
+    "Returning IEnumerable<T> from an action instead of a materialized list."
+   ],
+   "followUps": [
+    "What is thread pool starvation, and how does blocking cause it?",
+    "When does async give no benefit at all?",
+    "Why should the CancellationToken be passed down to EF Core and HttpClient?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+     "title": "ASP.NET Core best practices",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/debug-threadpool-starvation",
+     "title": "Debug ThreadPool starvation (.NET)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "async-await",
+    "threadpool-and-task"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-perf-connection-pool-exhaustion",
+   "topic": "backend-design",
+   "subtopic": "performance",
+   "difficulty": "senior",
+   "question": "Under load, database calls start timing out while waiting for a connection from the pool. What is happening, and what do you check?",
+   "shortAnswer": "Every connection in the ADO.NET pool for that connection string (100 by default) is checked out, so new requests queue for a connection and fail when the connection timeout (15 seconds by default) runs out. The usual causes are connections held too long or never returned: undisposed connections or contexts, long transactions, slow queries, or more concurrent work than the pool and the database can serve.",
+   "answer": "**Key points**\n- A pool exists **per process and per exact connection string**; connections go back to it on `Close`/`Dispose`. Connections that aren't explicitly closed might not be returned.\n- When the maximum is reached the request is **queued** until the timeout, then it fails.\n- Check, in this order:\n  1. **Leaks:** a connection or `DbContext` not disposed, a context registered with the wrong lifetime, or a scoped context captured by a background service.\n  2. **Hold time:** long transactions, blocking and deadlocks, slow queries, and transactions kept open across an outbound HTTP call.\n  3. **Thread pool starvation:** blocked threads hold their connections longer.\n  4. **Pool fragmentation:** connection strings that differ slightly (for example per user) create separate pools.\n  5. **Concurrency:** bursts that the database can't serve anyway.\n- Prefer reducing hold time and **bounding concurrency** (a bulkhead) over just raising `Max Pool Size`, which moves the pressure onto the database.\n\n**Detail**\nEF Core's `AddDbContextPool` is a different mechanism: it reuses `DbContext` instances to save setup cost, and Microsoft notes it is orthogonal to database connection pooling, which the driver manages underneath. Pooling contexts won't fix a connection leak.\n\nA good diagnostic pairing is the app's dependency spans (how long each command took) with the database's view of active sessions and blocking, which tells you whether connections are busy running queries or idle inside open transactions.",
+   "code": {
+    "lang": "csharp",
+    "source": "// ❌ Leaks a pooled connection if anything throws before Close()\nvar conn = new SqlConnection(cs);\nawait conn.OpenAsync(ct);\nvar total = await conn.ExecuteScalarAsync<decimal>(\"SELECT SUM(Amount) FROM Orders\");\nconn.Close();\n\n// ✅ Returned to the pool on every path, and held only as long as needed\nawait using (var connection = new SqlConnection(cs))\n{\n    await connection.OpenAsync(ct);\n    total = await connection.ExecuteScalarAsync<decimal>(\"SELECT SUM(Amount) FROM Orders\");\n}"
+   },
+   "pitfalls": [
+    "Raising Max Pool Size as the first and only fix.",
+    "Holding a connection or transaction open while calling another service.",
+    "Building connection strings dynamically so every variant creates its own pool.",
+    "Assuming AddDbContextPool pools database connections."
+   ],
+   "followUps": [
+    "How does the pooler decide which connections can be shared?",
+    "How would you cap concurrent database work for one expensive endpoint?",
+    "What does the connection timeout in the connection string control?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/framework/data/adonet/sql-server-connection-pooling",
+     "title": "SQL Server connection pooling (ADO.NET)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/ef/core/performance/advanced-performance-topics",
+     "title": "Advanced performance topics - EF Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/bulkhead",
+     "title": "Bulkhead pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+     "title": "ASP.NET Core best practices",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "dispose-and-using",
+    "dbcontext-options-and-concurrency",
+    "transactions-and-concurrency",
+    "dapper"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-perf-load-testing-percentiles",
+   "topic": "backend-design",
+   "subtopic": "performance",
+   "difficulty": "mid",
+   "question": "Why report p95 and p99 latency instead of the average, and how do you load-test an API meaningfully?",
+   "shortAnswer": "Averages hide the slow tail: a service can have a healthy mean while 1 request in 100 is very slow, and a page or a user session makes many requests, so many users hit that tail. A useful load test uses realistic data volumes, request mixes and concurrency, ramps up until something saturates, and reports latency percentiles from histograms together with throughput and error rate.",
+   "answer": "**Key points**\n- The Google SRE book warns against designing monitoring around the mean, and suggests counting requests in **latency buckets** (a histogram) to tell a slow average from a slow tail.\n- Track latency of successful and failed requests separately: a fast 500 makes the average look better.\n- ASP.NET Core publishes `http.server.request.duration` as a histogram, so percentiles can be computed per route and status code.\n- Look for **saturation**: which resource runs out first (CPU, thread pool, database connections, a downstream rate limit). That's your real capacity limit.\n- If the platform autoscales, test the **scaling delay** too; capacity doesn't appear instantly.\n\n**Detail**\nMake the test representative: production-sized data (query plans change with volume), a realistic mix of reads and writes, authenticated traffic if production is authenticated, and a ramp from normal to beyond peak. Watch throughput, p95/p99 and error rate together; the point where latency rises sharply while throughput flattens is the knee you plan capacity around.\n\nPercentiles don't average: the p99 of a fleet is not the mean of each instance's p99, so aggregate the histograms, not the computed percentiles.",
+   "pitfalls": [
+    "Load-testing against an almost empty database.",
+    "Averaging per-instance p99 values instead of merging histograms.",
+    "Running the load generator on the same machine as the API, so they compete for CPU.",
+    "Reporting throughput without the error rate at that throughput."
+   ],
+   "followUps": [
+    "What is saturation, and how would you measure it for this API?",
+    "How would you set a latency objective for this endpoint?",
+    "What changes in the results when the service autoscales during the test?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+     "title": "Site Reliability Engineering, chapter 6: Monitoring Distributed Systems",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/metrics/built-in",
+     "title": "ASP.NET Core built-in metrics",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/scale-partition",
+     "title": "Recommendations for optimizing scaling and partitioning - Azure Well-Architected Framework",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-perf-intermittent-latency-spikes",
+   "topic": "backend-design",
+   "subtopic": "performance",
+   "difficulty": "senior",
+   "question": "p99 latency spikes every few minutes while the averages look fine. How do you track down intermittent latency?",
+   "shortAnswer": "Treat it as a tail problem: find out which requests are slow and whether the spikes line up with something periodic, using latency histograms and traces of the slow requests rather than averages. Typical culprits are GC pauses, short bursts of thread-pool starvation, lock or database blocking, waits for pooled connections, many cache entries expiring at once, background jobs competing for resources, and slow dependencies without timeouts.",
+   "answer": "**Key points**\n- **Characterise the tail.** The SRE book recommends counting requests in latency buckets so a slow tail stands out from a normal average. Split by route, instance and status code.\n- **Look for a rhythm.** Spikes every N minutes point at something scheduled: a timer or `BackgroundService`, cache entries created together with the same lifetime, a cron job, log or metrics flushing, or GC.\n- **Line up runtime metrics** with the spikes: `dotnet.gc.pause.time` and `dotnet.gc.collections` for GC, `dotnet.thread_pool.queue.length` for starvation, connection-pool waits, CPU throttling in containers.\n- **Read slow traces.** Did one span (a query, an HTTP call) grow, or are there gaps between spans? Gaps usually mean the request was waiting for a thread, a lock or a connection rather than doing work.\n- **Pick tools for intermittent problems.** Microsoft notes `dotnet-stack` only helps when blocking is consistent; for sporadic blocking, collect a `dotnet-trace` over a window (on .NET 9+ with wait-handle events that reveal sync-over-async and lock waits).\n- **Fix one cause, re-measure p99.** Averages won't tell you whether it worked.\n\n**Detail**\nCache-driven spikes are easy to miss: entries loaded together at startup with the same absolute expiration all expire together, and every request that misses runs the expensive query at once. Single-flight loading (HybridCache allows one factory call per key per instance) and background refresh smooth this out.",
+   "code": {
+    "lang": "bash",
+    "source": "# Watch GC pauses and thread pool queueing while the spikes happen\ndotnet-counters monitor -n MyApi --counters System.Runtime\n\n# Record wait events over five minutes to catch sporadic blocking (.NET 9+)\ndotnet trace collect -n MyApi --clrevents waithandle --clreventlevel verbose --duration 00:05:00"
+   },
+   "pitfalls": [
+    "Dashboards that average latency and hide the spikes.",
+    "Using one-off stack snapshots for a problem that lasts seconds every few minutes.",
+    "Creating many cache entries at once with identical lifetimes.",
+    "Overlooking timers and background jobs running in the same process."
+   ],
+   "followUps": [
+    "How would you prove that GC pauses cause the spikes?",
+    "What does a gap between two spans in a trace usually mean?",
+    "How would you stop many cache entries from expiring at the same moment?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+     "title": "Site Reliability Engineering, chapter 6: Monitoring Distributed Systems",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/debug-threadpool-starvation",
+     "title": "Debug ThreadPool starvation (.NET)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/debug-memory-leak",
+     "title": "Debug a memory leak in .NET",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/hybrid",
+     "title": "HybridCache library in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "threadpool-and-task",
+    "hosted-services"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-caching-memory-vs-distributed-vs-hybrid",
+   "topic": "backend-design",
+   "subtopic": "caching",
+   "difficulty": "junior",
+   "question": "IMemoryCache, IDistributedCache or HybridCache: what is the difference, and when do you use each?",
+   "shortAnswer": "`IMemoryCache` keeps objects in the web server's own memory: fastest, but each instance has its own copy and loses it on restart. `IDistributedCache` (Redis, SQL Server and others) is shared by all instances, but it stores `byte[]`, so you serialize and pay a network hop; `HybridCache` combines an in-process primary cache with an optional distributed secondary cache and adds stampede protection and tag-based invalidation.",
+   "answer": "**Key points**\n- **`IMemoryCache`**: stores any object in process. Microsoft notes that apps on several servers need sticky sessions with it, and that non-sticky web farms need a distributed cache to avoid consistency problems.\n- **`IDistributedCache`**: an external store shared by every instance; the interface works with `byte[]`, and it offloads cache memory from the web servers.\n- **`HybridCache`** (package `Microsoft.Extensions.Caching.Hybrid`):\n  - `GetOrCreateAsync` checks the primary (in-memory) cache, then the secondary cache if one is configured, and only then calls your factory; the result is stored in both.\n  - Only **one concurrent caller per key** runs the factory on an instance; the others wait for it.\n  - `RemoveAsync` removes from both layers; **tags** let you invalidate groups of entries.\n  - Serialization defaults to `System.Text.Json` (plus built-in `string`/`byte[]` handling).\n- **Choosing:** a single instance with small, cheap-to-rebuild data can use `IMemoryCache`; several instances that must agree need a shared cache; new ASP.NET Core code usually gets the best of both from `HybridCache` with Redis as the secondary.\n\n**Detail**\n`HybridCache` doesn't use the `AddDistributedMemoryCache` implementation as its secondary cache, because that would only duplicate the in-process cache. If that is the only `IDistributedCache` registered, nothing is shared between servers; register Redis, SQL Server or Postgres for that.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddStackExchangeRedisCache(o =>\n    o.Configuration = builder.Configuration.GetConnectionString(\"Redis\"));   // secondary (shared)\n\nbuilder.Services.AddHybridCache(o =>\n{\n    o.DefaultEntryOptions = new HybridCacheEntryOptions\n    {\n        Expiration = TimeSpan.FromMinutes(5),          // lifetime of the entry\n        LocalCacheExpiration = TimeSpan.FromMinutes(1) // lifetime of each server's in-memory copy\n    };\n});"
+   },
+   "pitfalls": [
+    "Using IMemoryCache behind a load balancer and expecting every instance to see the same data.",
+    "Registering AddDistributedMemoryCache and believing the cache is now shared.",
+    "Caching objects that can't round-trip through the configured serializer.",
+    "Treating any of these caches as the source of truth."
+   ],
+   "followUps": [
+    "What exactly does HybridCache's stampede protection guarantee?",
+    "How do you invalidate an entry on every instance?",
+    "When is IMemoryCache alone the right choice?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory",
+     "title": "Cache in-memory in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/hybrid",
+     "title": "HybridCache library in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "versionNote": "HybridCache arrived with .NET 9 (its docs start at ASP.NET Core 9.0); the package also supports older targets down to .NET Framework 4.7.2 and .NET Standard 2.0.",
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-caching-cache-aside",
+   "topic": "backend-design",
+   "subtopic": "caching",
+   "difficulty": "mid",
+   "question": "Explain the cache-aside pattern. In what order should a write update the database and the cache?",
+   "shortAnswer": "With cache-aside the application reads from the cache and, on a miss, loads the item from the data store, adds it to the cache and returns it. On a write, update the data store first and then invalidate (remove) the cached item so the next read reloads it; removing the cache entry first leaves a window in which a reader can put the old value back.",
+   "answer": "**Key points**\n- **Read path:** try cache → miss → load from store → add to cache with an expiration → return.\n- **Write path:** write to the store → remove the cache entry. Azure's guidance is explicit that the order matters: delete first and a concurrent reader can miss, read the not-yet-updated row and re-cache stale data.\n- **Expiration:** match it to the access pattern. Too short and you keep reloading; too long and data goes stale. Relatively static or frequently read data benefits most.\n- **Consistency isn't guaranteed:** another process can change the store at any time, and the cache only notices when the item reloads.\n- **Staleness after writes:** between the write and the next read, readers can miss or briefly see stale data. If read-after-write freshness matters, consider write-through.\n\n**Detail**\nAzure lists cases where cache-aside is a poor fit: sensitive or security-related data (especially in a shared cache), a static data set that fits in cache (prime it at startup instead), workloads where most requests miss anyway, and session state in a web farm.\n\nA local in-memory cache works with cache-aside too, but every instance has its own copy, so copies drift apart; expire them sooner or use a shared cache.",
+   "code": {
+    "lang": "csharp",
+    "source": "public async Task<ProductDto?> GetAsync(int id, CancellationToken ct) =>\n    await _cache.GetOrCreateAsync(                       // HybridCache: read path of cache-aside\n        $\"product:{id}\",\n        async token => await _db.Products.AsNoTracking()\n            .Where(p => p.Id == id)\n            .Select(p => new ProductDto(p.Id, p.Name, p.Price))\n            .FirstOrDefaultAsync(token),\n        cancellationToken: ct);\n\npublic async Task UpdatePriceAsync(int id, decimal price, CancellationToken ct)\n{\n    await _db.Products.Where(p => p.Id == id)\n        .ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, price), ct);   // 1. data store\n    await _cache.RemoveAsync($\"product:{id}\", ct);                          // 2. then invalidate\n}"
+   },
+   "pitfalls": [
+    "Deleting the cache entry before updating the database.",
+    "Expecting cache-aside to give read-after-write consistency.",
+    "Picking one TTL for everything without looking at how often each item changes and is read.",
+    "Caching sensitive data in a cache shared by several apps or users."
+   ],
+   "followUps": [
+    "How is cache-aside different from write-through?",
+    "What happens if the cache delete fails after the database update?",
+    "When would you prime the cache at startup instead?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside",
+     "title": "Cache-Aside pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/hybrid",
+     "title": "HybridCache library in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-caching-invalidation-and-staleness",
+   "topic": "backend-design",
+   "subtopic": "caching",
+   "difficulty": "mid",
+   "question": "How do you keep cached data from going stale when the API runs on several instances?",
+   "shortAnswer": "Decide how stale each kind of data may be, then combine expirations as the safety net with explicit invalidation when your code changes the data. Prefer a shared cache for data that must agree across instances; per-instance in-memory copies, including HybridCache's local layer, aren't cleared on other servers by a remove call, so give them short lifetimes.",
+   "answer": "**Key points**\n- **Set a staleness budget per data type.** Prices and permissions may need seconds; product descriptions can tolerate minutes.\n- **Expirations:** an absolute expiration caps an entry's age. A sliding expiration alone can keep a hot entry alive forever, so combine the two.\n- **Explicit invalidation on write:** `HybridCache.RemoveAsync` removes the entry from the current server's memory and from the secondary cache. Microsoft notes the in-memory caches on **other** servers aren't affected.\n- **Tags:** `RemoveByTagAsync` invalidates a group (for example everything for one tenant). It is a *logical* invalidation: old values are treated as misses and stay in memory until they expire. `RemoveByTagAsync(\"*\")` invalidates everything.\n- **Changes made outside your app** (another service, a script, a DBA) never trigger your invalidation code; only expiration catches those.\n\n**Detail**\nThe practical recipe: shared cache (Redis) as the place where invalidation is visible to everyone, short `LocalCacheExpiration` to bound how long another instance can serve its old in-memory copy, a longer `Expiration` for the shared entry, and invalidation calls in the write paths you own.",
+   "code": {
+    "lang": "csharp",
+    "source": "var options = new HybridCacheEntryOptions\n{\n    Expiration = TimeSpan.FromMinutes(10),\n    LocalCacheExpiration = TimeSpan.FromSeconds(30)   // bounds staleness on other instances\n};\n\nvar page = await _cache.GetOrCreateAsync(\n    $\"t:{tenantId}:products:p:{pageNo}\",\n    async token => await LoadProductPageAsync(tenantId, pageNo, token),\n    options,\n    tags: [$\"t:{tenantId}:products\"],\n    cancellationToken: ct);\n\n// After any product change for this tenant:\nawait _cache.RemoveByTagAsync($\"t:{tenantId}:products\", ct);"
+   },
+   "pitfalls": [
+    "Relying only on explicit invalidation, so changes made by other systems are never picked up.",
+    "Using only a sliding expiration for frequently read entries.",
+    "Assuming RemoveAsync clears the in-memory copy on every server.",
+    "Expecting RemoveByTagAsync to free memory immediately."
+   ],
+   "followUps": [
+    "How could you make an invalidation take effect on all instances at once?",
+    "What staleness is acceptable for prices versus product descriptions?",
+    "How does HybridCache implement tags when the underlying caches have none?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/hybrid",
+     "title": "HybridCache library in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory",
+     "title": "Cache in-memory in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside",
+     "title": "Cache-Aside pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-caching-stampede",
+   "topic": "backend-design",
+   "subtopic": "caching",
+   "difficulty": "senior",
+   "question": "What is a cache stampede, and how do you prevent one in .NET?",
+   "shortAnswer": "A stampede happens when a hot entry expires, or the cache is cold or down, and many concurrent requests miss at once and all run the same expensive query against the database. Prevent it by letting only one caller per key rebuild the value while the others wait (HybridCache does this per instance), by refreshing hot or expensive entries in the background before they expire, and by protecting the data store when the cache itself is unavailable.",
+   "answer": "**Key points**\n- `IMemoryCache.GetOrCreate` is not a lock. Microsoft notes that while a repopulating callback runs, other requests can find the key empty, so **several threads may repopulate** the same item.\n- `HybridCache` ensures **only one concurrent caller per key** runs the factory and the rest await its result. The coordination is per `HybridCache` instance: it doesn't extend to other servers, even when they share the same Redis, so N servers can still run the factory up to N times.\n- **Background refresh:** a hosted service can recompute expensive entries and swap them into the cache only when they are ready, so users never wait on the rebuild.\n- **Cache outage:** if the shared cache disappears and every request falls back to the database, the database can be swamped. Azure suggests a circuit breaker for the cache and a local in-memory cache as a buffer.\n- **Seeding** a large cache at startup can itself cause a sudden load spike; seed selectively.\n\n**Detail**\nIn interviews, show that you know the three triggers (expiry of a hot key, cold start, cache failure) and match a defence to each: single-flight for expiry, gradual or partial warm-up for cold start, and a breaker plus a local layer for failure. For data where slightly old values are acceptable, refreshing in the background is usually better than making users wait for a rebuild.",
+   "code": {
+    "lang": "csharp",
+    "source": "// IMemoryCache: under load, several requests may run BuildReportAsync for the same key.\nvar a = await _memoryCache.GetOrCreateAsync(\"daily-report\", _ => BuildReportAsync(ct));\n\n// HybridCache: concurrent callers on this instance share one factory call.\nvar b = await _hybridCache.GetOrCreateAsync(\n    \"daily-report\",\n    async token => await BuildReportAsync(token),\n    cancellationToken: ct);"
+   },
+   "pitfalls": [
+    "Assuming IMemoryCache.GetOrCreate runs the factory only once.",
+    "Assuming HybridCache coordinates rebuilds across servers.",
+    "Seeding a huge cache at startup and overloading the database.",
+    "Letting every request fall through to the database while the shared cache is down."
+   ],
+   "followUps": [
+    "How would you coordinate a rebuild across several instances?",
+    "What are the trade-offs of serving stale data while refreshing?",
+    "How do you protect the database when Redis goes down?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/hybrid",
+     "title": "HybridCache library in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory",
+     "title": "Cache in-memory in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/caching",
+     "title": "Caching guidance - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "hosted-services"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-caching-keys-and-data-leaks",
+   "topic": "backend-design",
+   "subtopic": "caching",
+   "difficulty": "senior",
+   "question": "How do you design cache keys, and how can a bad key leak one user's data to another?",
+   "shortAnswer": "A key must include every input that changes the result, such as tenant, user or permission scope, culture, filters and page, joined with delimiters so two different inputs can't produce the same string. Cache a per-tenant or per-user result under a key that leaves that part out and the next caller receives someone else's data; put raw user input into keys and attackers can flood the cache.",
+   "answer": "**Key points**\n- Microsoft's HybridCache guidance: a key must be unique both for the identifiers used to fetch the data and relative to everything else in the cache, and **it's the caller's responsibility** to make the scheme unambiguous.\n- **Delimiters matter:** `$\"order{customerId}{orderId}\"` gives `order42123` for customer 42/order 123 and for customer 421/order 23.\n- **Don't put raw user input in keys.** It risks unauthorized access and denial of service by flooding the cache with random keys, and the in-memory cache docs warn it can consume unpredictable memory. Use internal ids and values from known lists.\n- **Limits and backends:** default HybridCache keys are limited to 1024 characters (longer keys bypass the cache); some distributed backends compare keys case-insensitively, which can make different keys collide.\n- **Sensitive data:** Azure's cache-aside guidance says sensitive or security-related data may not belong in a cache at all, especially one shared by several users or apps.\n\n**Detail**\nThe classic incident is caching an authorized response under a key built only from the URL: the first user's data, filtered by their permissions, is then served to everyone. If the output depends on who is asking, the key needs the tenant and either the user or a stable description of the permission set; often it is better to cache the unfiltered reference data and apply authorization after reading from the cache.",
+   "code": {
+    "lang": "csharp",
+    "source": "// ❌ Same key for every tenant: tenant B can receive tenant A's invoices\nvar bad = await _cache.GetOrCreateAsync($\"invoices:{page}\",\n    async t => await LoadInvoicesAsync(tenantId, page, t), cancellationToken: ct);\n\n// ✅ Every input that changes the result, trusted ids, explicit delimiters\nvar good = await _cache.GetOrCreateAsync($\"t:{tenantId}:invoices:p:{page}:s:{pageSize}\",\n    async t => await LoadInvoicesAsync(tenantId, page, t), cancellationToken: ct);"
+   },
+   "pitfalls": [
+    "Caching a response filtered by the caller's permissions under a key that ignores the caller.",
+    "Building keys from raw query strings or other user input.",
+    "Concatenating ids without delimiters.",
+    "Caching personal or security-sensitive data in a shared cache."
+   ],
+   "followUps": [
+    "How would you cache data whose content depends on the caller's roles?",
+    "How do you invalidate all entries for one tenant?",
+    "What would you do with keys longer than the limit?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/hybrid",
+     "title": "HybridCache library in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory",
+     "title": "Cache in-memory in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside",
+     "title": "Cache-Aside pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-caching-what-to-cache",
+   "topic": "backend-design",
+   "subtopic": "caching",
+   "difficulty": "junior",
+   "question": "What data is worth caching, and what must you never rely on the cache for?",
+   "shortAnswer": "Cache data that is read often, changes rarely and is expensive to produce, such as reference data, lookups and computed summaries. Never treat the cache as the source of truth: entries expire, get evicted or vanish with the process, so code must always be able to load from the real store, and the cache's size must be bounded.",
+   "answer": "**Key points**\n- Microsoft: caching works best with data that changes infrequently **and** is expensive to generate, and apps should be written and tested to **never depend** on cached data.\n- Azure: don't use the cache as the authoritative store of critical information; save important changes to the persistent store.\n- Caching gives little when most requests miss: the check-and-fill overhead can outweigh the benefit.\n- **Bound it.** ASP.NET Core doesn't limit `IMemoryCache` by memory pressure; without `SizeLimit` it grows without bound. Use expirations, avoid user input as keys, and set `SizeLimit`.\n- `SizeLimit` has **no unit**: you choose one (entries, bytes, string length) and every entry must then set `Size`. Don't set it on the shared `IMemoryCache` from DI, because other libraries' entries won't set a size; create your own singleton cache instead.\n\n**Detail**\nGood candidates: categories, country lists, feature configuration, permission lookups with a short TTL, expensive aggregates. Poor candidates: data that must be exactly current (balances, stock reservations), per-request one-off data, and anything sensitive in a shared cache. Measure hit rate before and after; a cache nobody hits only costs memory.",
+   "code": {
+    "lang": "csharp",
+    "source": "public sealed class LookupCache\n{\n    // Unit chosen here: one per entry, so the limit is an entry count\n    public MemoryCache Cache { get; } = new(new MemoryCacheOptions { SizeLimit = 1_000 });\n}\nbuilder.Services.AddSingleton<LookupCache>();\n\n// Once SizeLimit is set, every entry must declare a Size\nlookups.Cache.Set(key, value, new MemoryCacheEntryOptions()\n    .SetSize(1)\n    .SetSlidingExpiration(TimeSpan.FromMinutes(5))\n    .SetAbsoluteExpiration(TimeSpan.FromHours(1)));   // caps age even for hot entries"
+   },
+   "pitfalls": [
+    "Caching data that is rarely read again, so the hit rate stays low.",
+    "Setting SizeLimit on the shared IMemoryCache registered in DI.",
+    "Using only a sliding expiration, so hot entries never refresh.",
+    "Writing important changes only to the cache."
+   ],
+   "followUps": [
+    "How do you tell whether a cache is actually helping?",
+    "What should the API do when the cache is unavailable?",
+    "Why doesn't ASP.NET Core trim IMemoryCache when memory runs low?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory",
+     "title": "Cache in-memory in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/caching",
+     "title": "Caching guidance - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside",
+     "title": "Cache-Aside pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-resilience-transient-faults-and-retries",
+   "topic": "backend-design",
+   "subtopic": "resilience",
+   "difficulty": "mid",
+   "question": "Which failures should a client retry, and how do you retry without making things worse?",
+   "shortAnswer": "Retry only transient failures, such as network errors, timeouts, 408, 429 and most 5xx responses, and only operations that are safe to repeat (idempotent, or protected by an idempotency key). Use a small number of attempts with exponential backoff and jitter, honour `Retry-After`, keep the total time inside the caller's own deadline, and retry at one layer only.",
+   "answer": "**Key points**\n- Azure's Retry pattern describes three reactions to a fault: **cancel** when it isn't transient or won't succeed if repeated, **retry immediately** for rare one-off faults, and **retry after a delay** that grows with each attempt up to a maximum number of attempts.\n- Retrying a 400, 401, 403, 404, 409 or 422 changes nothing; the request itself is the problem. Microsoft's HTTP resilience strategies treat 5xx, 408 and 429 plus `HttpRequestException` and Polly's `TimeoutRejectedException` as transient.\n- **Idempotency:** a request can succeed on the server and fail on the way back. Retrying a non-idempotent operation (charging a card, creating an order) can do it twice. The standard resilience handler retries **all** methods by default; `DisableForUnsafeHttpMethods()` turns retries off for POST, PATCH, PUT, DELETE and CONNECT.\n- **Tune to the caller:** for interactive requests fail fast after a couple of short retries; background work can afford more patience.\n- **One layer:** if a component with retries calls another component with retries, the delays and the load multiply. Retry where the full context is known and let lower layers fail fast.\n- If a fault looks long-lasting, stop retrying and let a **circuit breaker** fail fast.\n\n**Detail**\nExponential backoff gives a struggling dependency time to recover; jitter (randomised delays, on by default in the standard handler) stops thousands of clients from retrying in lockstep. When a service tells you when to come back with `Retry-After`, wait at least that long. Log every retry with the attempt number, because a rising retry rate is often the first sign of trouble downstream.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddHttpClient<InventoryClient>(c => c.BaseAddress = new(\"https://inventory.internal\"))\n    .AddStandardResilienceHandler(o =>\n    {\n        o.Retry.MaxRetryAttempts = 2;          // interactive path: fail fast\n        o.Retry.DisableForUnsafeHttpMethods(); // no automatic retries for POST/PUT/PATCH/DELETE\n    });"
+   },
+   "pitfalls": [
+    "Retrying 4xx responses that will fail the same way every time.",
+    "Automatically retrying non-idempotent POSTs.",
+    "Fixed delays without jitter, so every client retries at the same moment.",
+    "Retries that run longer than the caller's own timeout."
+   ],
+   "followUps": [
+    "Why add jitter to exponential backoff?",
+    "How do you make a POST safe to retry?",
+    "Where should retries live when service A calls B, which calls C?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/retry",
+     "title": "Retry pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience",
+     "title": "Build resilient HTTP apps: key development patterns (.NET)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/",
+     "title": "Retry Storm antipattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "client-calling-web-api",
+    "httpclient"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-resilience-circuit-breaker",
+   "topic": "backend-design",
+   "subtopic": "resilience",
+   "difficulty": "mid",
+   "question": "What does a circuit breaker do, and how is it different from a retry?",
+   "shortAnswer": "A circuit breaker stops calling a dependency that keeps failing: once failures cross a threshold it opens and fails calls immediately, after a break period it lets a few trial calls through (half-open), and it closes again if they succeed. Retry assumes the next attempt will probably work, while the breaker assumes it probably won't, so it protects both your resources and the struggling service; the two are normally combined.",
+   "answer": "**Key points**\n- **Closed:** calls flow; a time-based failure counter resets periodically, so occasional errors don't trip it.\n- **Open:** calls fail immediately without touching the dependency, until a timer expires.\n- **Half-Open:** a limited number of trial calls go through. Success closes the breaker; any failure reopens it. This keeps a recovering service from being flooded.\n- Failing fast is the point: instead of every request waiting for a timeout, callers get an immediate answer and can **fall back** (cached data, a default, a degraded response, a clear 503).\n- Use a breaker **per dependency** (or per endpoint), so one failing service doesn't block calls to healthy ones.\n- Microsoft's standard resilience handler includes one: failure ratio 10%, minimum throughput 100, sampling duration 30 s, break duration 5 s, reacting to 5xx, 408, 429 and timeout/connection exceptions.\n\n**Detail**\nIn the standard pipeline the order is rate limiter → total timeout → retry → circuit breaker → attempt timeout, so each retry attempt passes through the breaker, and an open breaker cuts retries short. Azure also suggests emitting an event on every state change, which makes breaker transitions a useful alert signal, and lengthening the open period if failures persist.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddHttpClient<PricingClient>()\n    .AddResilienceHandler(\"pricing\", pipeline =>\n    {\n        pipeline.AddRetry(new HttpRetryStrategyOptions\n        {\n            MaxRetryAttempts = 3,\n            BackoffType = DelayBackoffType.Exponential,\n            UseJitter = true\n        });\n        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions\n        {\n            FailureRatio = 0.2,                          // open when 20% of calls fail,\n            MinimumThroughput = 20,                      // given at least 20 calls\n            SamplingDuration = TimeSpan.FromSeconds(30), // in a 30 s window\n            BreakDuration = TimeSpan.FromSeconds(15)\n        });\n        pipeline.AddTimeout(TimeSpan.FromSeconds(5));    // per attempt\n    });"
+   },
+   "pitfalls": [
+    "Sharing one breaker across unrelated dependencies.",
+    "Thresholds so sensitive that normal background errors open the circuit.",
+    "Having no fallback or clear error for callers while the circuit is open.",
+    "Counting client errors such as 400 or 404 as dependency failures."
+   ],
+   "followUps": [
+    "What would you return to the user while the breaker is open?",
+    "Why does the standard pipeline put the breaker inside the retry?",
+    "How would you monitor breaker state changes?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker",
+     "title": "Circuit Breaker pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience",
+     "title": "Build resilient HTTP apps: key development patterns (.NET)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-resilience-timeouts",
+   "topic": "backend-design",
+   "subtopic": "resilience",
+   "difficulty": "mid",
+   "question": "Why does every outbound call need a timeout, and how do you choose the values?",
+   "shortAnswer": "Without a timeout a slow dependency holds your request, its thread or connection, and the user, for as long as it likes, and the slowness spreads to everything that waits on you. Give each call a per-attempt timeout well inside the caller's overall deadline, keep the total including retries within that budget, and pass cancellation through so abandoned work stops.",
+   "answer": "**Key points**\n- `HttpClient.Timeout` defaults to **100 seconds**, far longer than most API callers will wait.\n- The standard resilience handler has two timeouts: a **total** request timeout (30 s by default) that covers all retries, and an **attempt** timeout (10 s by default) for each try.\n- **Budget backwards** from what your endpoint promises: if you must answer in 2 s, a downstream call can't use 10 s attempts with three retries.\n- **Propagate cancellation:** accept a `CancellationToken` in the action (bound to the request being aborted) and pass it to EF Core and `HttpClient`, so work stops when the client goes away or the deadline passes.\n- Polly's timeout strategy throws `TimeoutRejectedException`, not `TimeoutException`; handle the right type if you customise `ShouldHandle`.\n- Timeouts feed the circuit breaker: calls that time out count as failures.\n\n**Detail**\nChoose values from measured latency: a per-attempt timeout a little above the dependency's normal p99, so healthy-but-slow calls succeed and stuck ones are cut off. Then check the arithmetic: attempts × attempt timeout + backoff delays must fit inside the total timeout, and the total must fit inside your own SLO. Database calls need the same thinking through command timeouts.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddHttpClient<ShippingClient>()\n    .AddStandardResilienceHandler(o =>\n    {\n        o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2);      // each try\n        o.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(6); // all tries plus backoff\n    });\n\n// In the endpoint, pass the request's token all the way down\napp.MapGet(\"/orders/{id:int}/eta\", async (int id, ShippingClient shipping, CancellationToken ct) =>\n    await shipping.GetEtaAsync(id, ct));"
+   },
+   "pitfalls": [
+    "Relying on HttpClient's 100-second default.",
+    "An attempt timeout so long that retries can never fit in the total timeout.",
+    "Not passing the request's CancellationToken to downstream calls.",
+    "Catching TimeoutException and missing Polly's TimeoutRejectedException."
+   ],
+   "followUps": [
+    "How do you derive downstream timeouts from your own latency objective?",
+    "What happens to work the dependency already started when you give up?",
+    "How do timeouts interact with the circuit breaker?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httpclient.timeout",
+     "title": "HttpClient.Timeout property",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience",
+     "title": "Build resilient HTTP apps: key development patterns (.NET)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/retry",
+     "title": "Retry pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "httpclient",
+    "async-await"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-resilience-retry-storm",
+   "topic": "backend-design",
+   "subtopic": "resilience",
+   "difficulty": "senior",
+   "question": "What is a retry storm, and how do layered retries turn a small outage into a big one?",
+   "shortAnswer": "A retry storm is when clients retry a busy or failing service so often that the extra traffic stops it from recovering. With retries at several layers the load multiplies (three attempts at each of three layers is up to 27 calls to the bottom service for one user action), so retry at one layer with capped, backed-off attempts, add circuit breakers, and honour and send `Retry-After`.",
+   "answer": "**Key points**\n- Azure's Retry Storm antipattern: retrying indefinitely is ineffective, because requests are only valid for a limited time, and frequent retries keep a service from recovering.\n- **Limit attempts and total duration**; most applications only need to retry for a few seconds or minutes.\n- **Back off**: increase the wait between attempts, for example exponentially.\n- **Circuit breakers** are designed specifically to stop retry storms.\n- **Honour `Retry-After`** as a client, and **send it** when your service throttles.\n- **Don't stack:** the Retry pattern recommends retrying where the full context is known and letting lower layers fail fast; Microsoft's HTTP resilience docs say to add one resilience handler per client and avoid stacking handlers.\n\n**Detail**\nCount every retry source on a request path: the browser or mobile client, an API gateway, your `HttpClient` pipeline, a message broker's redelivery, and EF Core's execution strategy. Each looks reasonable alone; together they multiply. The same logic applies to autoscaling queue consumers: Azure warns that scaling consumers without bounding their total downstream rate just moves the overload to the dependencies.\n\nA good answer also covers detection: watch the ratio of attempts to logical requests, and the downstream service's request rate during an incident. If the rate rises while user traffic is flat, retries are the cause.",
+   "pitfalls": [
+    "while(true) retry loops.",
+    "Every layer adding its own retries.",
+    "Ignoring Retry-After from a throttling service.",
+    "Autoscaling consumers without capping what they send downstream."
+   ],
+   "followUps": [
+    "How would you spot a retry storm in your metrics?",
+    "What should a service that is shedding load return to clients?",
+    "Where in this call chain would you keep retries, and why?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/",
+     "title": "Retry Storm antipattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/retry",
+     "title": "Retry pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience",
+     "title": "Build resilient HTTP apps: key development patterns (.NET)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling",
+     "title": "Queue-Based Load Leveling pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "http-headers",
+    "rate-limiting"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-resilience-bulkhead",
+   "topic": "backend-design",
+   "subtopic": "resilience",
+   "difficulty": "senior",
+   "question": "What is the bulkhead pattern, and how would you apply it in an ASP.NET Core service?",
+   "shortAnswer": "Bulkheads split resources into separate pools so a failing or overloaded part can only exhaust its own pool instead of taking down the whole service. In a .NET service that means, for example, a separate HTTP client and concurrency cap per downstream dependency, separate workers or queues per kind of workload, and separate instances for critical and bulk consumers.",
+   "answer": "**Key points**\n- Named after a ship's watertight compartments; Azure also calls it a **cell-based architecture**.\n- **Consumer side:** if all outbound calls share one pool, an unresponsive dependency can tie it up and starve calls to healthy services. Give each dependency its own pool, so only work that needs the failing service is affected.\n- **Service side:** partition instances into groups by consumer load and availability needs, so heavy consumers can't starve critical ones; this also lets you offer different quality-of-service levels.\n- **In .NET:** typed `HttpClient`s each get their own handler pipeline; the standard resilience handler includes a concurrency rate limiter (1,000 permits, queue 0 by default) that you can size per dependency; long-running background work belongs in a separate worker so it can't compete with request threads and database connections.\n\n**Detail**\nThe trade-off is efficiency: dedicated pools waste some capacity at quiet times and add configuration to tune. Decide per dependency what happens when its compartment is full (reject quickly, queue briefly, fall back) and alert on rejections. Remember shared resources you didn't split: two isolated services that share one database still fail together.",
+   "code": {
+    "lang": "csharp",
+    "source": "// Each dependency gets its own client, pipeline and concurrency cap\nbuilder.Services.AddHttpClient<PaymentsClient>()\n    .AddStandardResilienceHandler(o => o.RateLimiter.DefaultRateLimiterOptions.PermitLimit = 50);\n\nbuilder.Services.AddHttpClient<RecommendationsClient>()\n    .AddStandardResilienceHandler(o => o.RateLimiter.DefaultRateLimiterOptions.PermitLimit = 10);"
+   },
+   "pitfalls": [
+    "Sending every outbound call through one shared client and pipeline.",
+    "Running heavy batch jobs in the same process as latency-sensitive requests.",
+    "Making compartments so small that normal traffic is throttled.",
+    "Isolating services but leaving one shared database as the common point of failure."
+   ],
+   "followUps": [
+    "How is a bulkhead different from rate limiting?",
+    "What should happen to a request when its compartment is full?",
+    "How would you isolate a noisy tenant?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/bulkhead",
+     "title": "Bulkhead pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience",
+     "title": "Build resilient HTTP apps: key development patterns (.NET)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-resilience-graceful-degradation",
+   "topic": "backend-design",
+   "subtopic": "resilience",
+   "difficulty": "mid",
+   "question": "A non-critical dependency, such as recommendations or reviews, is down. How do you keep the main endpoint working?",
+   "shortAnswer": "Decide up front which dependencies are optional, call them with tight timeouts behind a circuit breaker, and when they fail return a degraded but useful response (cached or default data, or the page without that section) instead of failing the whole request. Isolate them so their failures can't use up shared resources, and make the degradation visible in your metrics and, where it helps, to the user.",
+   "answer": "**Key points**\n- Azure's Retry pattern: when a fault is long-lasting, log it and continue by calling an alternative service or **offering degraded functionality**.\n- Azure's Circuit Breaker pattern: instead of raising an exception, the open state can **return a default value** that is meaningful to the application, and it fails fast rather than waiting for timeouts.\n- **Last known good data:** Azure's caching guidance suggests a local cache as a buffer when a shared service is unreachable; slightly stale data often beats an error.\n- **Bulkheads** keep the optional dependency from exhausting connections or threads that critical paths need.\n- **Kill switches:** a feature flag lets you turn the feature off quickly while the dependency is unhealthy.\n- **Be explicit:** count fallbacks in a metric, alert when the rate is high, and tell the client the response is partial if that changes what it should show.\n\n**Detail**\nClassify dependencies per endpoint: critical ones (the database for the product itself, the payment provider at checkout) can't be faked, so fail clearly, for example with 503 and `Retry-After`; optional ones get timeouts, breakers and fallbacks. Test the fallback deliberately, by injecting failures, since a fallback path that never runs in normal operation is often broken when you need it.",
+   "code": {
+    "lang": "csharp",
+    "source": "public async Task<ProductPage> GetPageAsync(int id, CancellationToken ct)\n{\n    var product = await _catalog.GetAsync(id, ct);                  // critical: let failures surface\n\n    IReadOnlyList<ProductSummary> recs = [];\n    var recsAvailable = true;\n    try\n    {\n        recs = await _recommendations.GetForAsync(id, ct);           // short timeouts + breaker on this client\n    }\n    catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException or BrokenCircuitException)\n    {\n        recsAvailable = false;                                       // degrade: page without the section\n        _log.LogWarning(ex, \"Recommendations unavailable for product {ProductId}\", id);\n    }\n\n    return new ProductPage(product, recs, recsAvailable);\n}"
+   },
+   "pitfalls": [
+    "Treating every dependency as critical, so any outage fails the whole page.",
+    "Catching all exceptions in the fallback and hiding real bugs.",
+    "Silent fallbacks with no metric or alert.",
+    "A fallback that calls another service that is just as likely to be overloaded."
+   ],
+   "followUps": [
+    "Which dependencies of your API are truly critical?",
+    "How would you tell the client that a response is partial or stale?",
+    "How would you test that the fallback really works?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/retry",
+     "title": "Retry pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker",
+     "title": "Circuit Breaker pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/caching",
+     "title": "Caching guidance - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/bulkhead",
+     "title": "Bulkhead pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments",
+     "title": "Recommendations for safe deployment practices - Azure Well-Architected Framework",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-observability-three-pillars",
+   "topic": "backend-design",
+   "subtopic": "observability",
+   "difficulty": "junior",
+   "question": "What are logs, metrics and traces, and what does each one tell you?",
+   "shortAnswer": "Logs are timestamped records of individual events, metrics are numbers aggregated over time (request rate, error rate, latency histograms), and traces follow one request through components and services as a tree of timed spans. Metrics tell you that something is wrong, traces show where in the request the time or the error is, and logs give the detailed context of what happened.",
+   "answer": "**Key points**\n- Microsoft's .NET observability guide calls logs, metrics and distributed tracing the **three pillars of observability**.\n- .NET APIs: `ILogger` for logs, `System.Diagnostics.Metrics.Meter` for metrics, and `ActivitySource`/`Activity` for traces.\n- **OpenTelemetry** collects telemetry from those APIs (and from instrumentation libraries for ASP.NET Core, `HttpClient` and others) and sends it through **exporters** to a backend; OTLP is the vendor-neutral protocol most tools accept.\n- Each pillar answers a different question:\n  - metrics: *is it healthy, and how much?* cheap to keep, good for dashboards and alerts;\n  - traces: *where did this request spend its time, and which call failed?*\n  - logs: *what exactly happened here?* the detail, ideally structured.\n\n**Detail**\nThe pillars are most useful linked: a latency alert (metric) leads to slow traces for that route, and a slow span leads to the logs written during it, which carry the same trace id. That's why it pays to send all three through the same pipeline instead of wiring three unrelated tools.",
+   "code": {
+    "lang": "csharp",
+    "source": "var otel = builder.Services.AddOpenTelemetry();\notel.WithTracing(t => t\n    .AddAspNetCoreInstrumentation()\n    .AddHttpClientInstrumentation()\n    .AddOtlpExporter());\notel.WithMetrics(m => m\n    .AddAspNetCoreInstrumentation()\n    .AddOtlpExporter());\n\nbuilder.Logging.AddOpenTelemetry(o =>\n{\n    o.IncludeFormattedMessage = true;\n    o.AddOtlpExporter();\n});"
+   },
+   "pitfalls": [
+    "Using logs to count requests or measure latency instead of metrics.",
+    "Collecting all three pillars but never correlating logs with trace ids.",
+    "Instrumenting only the API and not its outbound calls, so traces stop at your boundary.",
+    "Tying the code to one vendor's SDK when OpenTelemetry would do."
+   ],
+   "followUps": [
+    "Which pillar would you open first after a latency alert?",
+    "What is OTLP, and why does vendor neutrality matter?",
+    "How do logs pick up the current trace id?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel",
+     "title": ".NET observability with OpenTelemetry",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-otlp-example",
+     "title": "Use OpenTelemetry with OTLP and the Aspire Dashboard (.NET)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "logging"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-observability-structured-logging",
+   "topic": "backend-design",
+   "subtopic": "observability",
+   "difficulty": "mid",
+   "question": "What is structured logging, and what should and shouldn't go into your logs?",
+   "shortAnswer": "Structured logging writes each event as a message template plus named properties (such as `{OrderId}`), so the log store can filter and aggregate on fields instead of parsing text. Log what helps you operate and audit the system (failures, security events, important state changes) with correlation ids, and never log passwords, access tokens, session ids, connection strings, encryption keys or payment card data.",
+   "answer": "**Key points**\n- Use **constant message templates**: `logger.LogWarning(\"Order {OrderId} rejected\", id)`. Analyzer **CA2254** flags templates that aren't static expressions, such as interpolated strings, because the property names and values are lost.\n- The **`[LoggerMessage]` source generator** produces strongly typed, compile-time logging methods that are considerably faster than the older approaches and give compile-time diagnostics.\n- **Scopes** (`BeginScope`) attach properties such as a tenant or job id to every log written inside them.\n- **Levels** control volume; check what the minimum level really is per environment. In the learner's Task API, `MinimumLevel:Default` is `Error`, so `LogInformation` calls write nothing.\n- **OWASP's \"Data to exclude\" list:** session identification values (hash them if you must track sessions), access tokens, authentication passwords, database connection strings, encryption keys and other primary secrets, bank account or payment card holder data, plus sensitive personal data.\n\n**Detail**\nGood events are specific: what happened, to which entity, by whom (a user id, not an email if you can avoid it), with what outcome, and the trace id. Logging whole request or response bodies is the usual way secrets and personal data end up in logs; log selected fields instead. Treat logs as sensitive data in their own right: control who can read them and how long they're kept.",
+   "code": {
+    "lang": "csharp",
+    "source": "public static partial class Log\n{\n    [LoggerMessage(EventId = 1001, Level = LogLevel.Warning,\n        Message = \"Payment {PaymentId} declined for order {OrderId} with code {DeclineCode}\")]\n    public static partial void PaymentDeclined(ILogger logger, Guid paymentId, int orderId, string declineCode);\n}\n\n// ❌ CA2254: interpolation bakes the values into the text; no PaymentId property to query\n// _logger.LogWarning($\"Payment {paymentId} declined\");\n\n// ✅ Structured, cheap, and no card number or token in sight\nLog.PaymentDeclined(_logger, paymentId, order.Id, result.DeclineCode);"
+   },
+   "pitfalls": [
+    "Passing interpolated strings to ILogger methods.",
+    "Logging full request bodies, headers or tokens.",
+    "Forgetting that a high minimum level silently drops your Information logs.",
+    "Inconsistent property names for the same thing across services."
+   ],
+   "followUps": [
+    "Why is the LoggerMessage generator faster than calling LogInformation directly?",
+    "How would you log enough to debug a payment failure without logging card data?",
+    "What would you put in a logging scope for a background job?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2254",
+     "title": "CA2254: Template should be a static expression",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging/source-generation",
+     "title": "Compile-time logging source generation (.NET)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",
+     "title": "OWASP Logging Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "logging"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-observability-distributed-tracing",
+   "topic": "backend-design",
+   "subtopic": "observability",
+   "difficulty": "mid",
+   "question": "How does distributed tracing work across services, and how is a trace id different from a home-made correlation id?",
+   "shortAnswer": "Each unit of work is a span (an `Activity` in .NET) carrying the trace id shared by the whole request, its own span id and its parent's id, and the caller passes them on in the W3C `traceparent` header. ASP.NET Core and `HttpClient` read and send these headers automatically, so a standard trace id gives you the same correlation as a custom `X-Correlation-Id` header but works with every OpenTelemetry-compatible tool.",
+   "answer": "**Key points**\n- A trace is a **tree of Activities** (spans): the first one for an incoming request is the root, and every database call or outbound request becomes a child with its own timing.\n- **W3C Trace Context** is the default ID format in .NET 5 and later: a 16-byte trace id plus an 8-byte span id, carried in the `traceparent` header (`version-traceid-parentid-flags`); `tracestate` carries vendor-specific data.\n- Microsoft: the ASP.NET Core server and `System.Net.Http` natively decode and encode these IDs, and the runtime flows the current Activity through sync and async calls, so HTTP services take part in tracing **with no special code**.\n- Other transports (message queues) need a library or your own code to carry the context in message headers.\n- For your own spans, create an `ActivitySource`; `StartActivity` returns **null** when nobody is listening, so use `activity?.SetTag(...)`, and register the source with OpenTelemetry.\n\n**Detail**\nA custom `X-Correlation-Id` middleware (like the one in the learner's HTTP headers notes) still helps when a partner system only understands that header, and returning the id to clients helps support teams. But inside your own system, prefer the trace id: logs written inside an Activity can carry it, and tracing backends already know how to use it.",
+   "code": {
+    "lang": "csharp",
+    "source": "public sealed class OrderService(AppDbContext db)\n{\n    private static readonly ActivitySource Source = new(\"Shop.Orders\");\n\n    public async Task<int> PlaceAsync(PlaceOrder cmd, CancellationToken ct)\n    {\n        using var activity = Source.StartActivity(\"PlaceOrder\");   // child of the incoming request span\n        activity?.SetTag(\"order.lines\", cmd.Lines.Count);\n\n        var order = Order.From(cmd);\n        db.Orders.Add(order);\n        await db.SaveChangesAsync(ct);\n        return order.Id;\n    }\n}\n\n// Program.cs: tell OpenTelemetry to listen to the custom source\nbuilder.Services.AddOpenTelemetry().WithTracing(t => t.AddSource(\"Shop.Orders\"));"
+   },
+   "pitfalls": [
+    "Generating a new correlation id in every service instead of propagating the incoming one.",
+    "Creating custom spans from a source nobody listens to, then wondering why they never appear.",
+    "Assuming messages on a queue carry the trace context automatically.",
+    "Putting personal data into span tags."
+   ],
+   "followUps": [
+    "What does each part of a traceparent header mean?",
+    "How would you continue a trace through a message queue?",
+    "When would you still add your own correlation id header?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://www.w3.org/TR/trace-context/",
+     "title": "W3C Trace Context",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/distributed-tracing-concepts",
+     "title": ".NET distributed tracing concepts",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/distributed-tracing-instrumentation-walkthroughs",
+     "title": "Add distributed tracing instrumentation (.NET)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "http-headers",
+    "logging"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-observability-health-checks",
+   "topic": "backend-design",
+   "subtopic": "observability",
+   "difficulty": "mid",
+   "question": "What is the difference between liveness, readiness and startup probes, and how do you expose them from ASP.NET Core?",
+   "shortAnswer": "Liveness asks whether the process should be restarted, readiness asks whether it should receive traffic right now, and a startup probe holds the other two off until a slow-starting app has initialised. In ASP.NET Core you map separate health endpoints filtered by tags: liveness with no dependency checks, readiness with the database and other required dependencies, returning 503 when unhealthy.",
+   "answer": "**Key points**\n- **Kubernetes:** a failed liveness probe restarts the container, a failed readiness probe removes the pod from service endpoints, and while a startup probe is configured the other probes don't run until it succeeds.\n- Kubernetes warns that liveness probes must indicate **unrecoverable** failure (such as a deadlock); a wrong liveness check can cause cascading failures.\n- **ASP.NET Core:** `AddHealthChecks()` registers checks, `MapHealthChecks` exposes them, and `HealthCheckOptions.Predicate` filters checks by **tag**. Microsoft's sample uses `/health/live` with no checks and `/health/ready` with checks tagged `ready`.\n- By default **Healthy and Degraded return 200 and Unhealthy returns 503**; `ResultStatusCodes` changes the mapping.\n- `AddDbContextCheck<TContext>()` (package `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`) checks that EF Core can reach the database; the community `AspNetCore.Diagnostics.HealthChecks` packages cover Redis, queues and more.\n- Restrict who can call them: `RequireHost` (for example a management port) and, when they must be protected, `RequireAuthorization`.\n\n**Detail**\nIn an app with a global fallback authorization policy, like the learner's Task API, every endpoint requires an authenticated user, health endpoints included, and probes don't send tokens. Mark the health endpoints `AllowAnonymous()` and restrict them by host or port instead, and keep the response minimal so it doesn't advertise internals.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddHealthChecks()\n    .AddDbContextCheck<AppDbContext>(tags: [\"ready\"]);\n\n// Liveness: the process answers; no dependency checks\napp.MapHealthChecks(\"/health/live\", new HealthCheckOptions { Predicate = _ => false })\n   .AllowAnonymous();\n\n// Readiness: required dependencies; Unhealthy => 503\napp.MapHealthChecks(\"/health/ready\", new HealthCheckOptions { Predicate = c => c.Tags.Contains(\"ready\") })\n   .AllowAnonymous()\n   .RequireHost(\"*:8081\");   // only on the management port the app also listens on"
+   },
+   "pitfalls": [
+    "Putting database checks in liveness, so a database blip restarts every pod.",
+    "Health endpoints rejected with 401 by a global fallback authorization policy.",
+    "Running expensive checks on every probe.",
+    "Publishing detailed health output on the public endpoint."
+   ],
+   "followUps": [
+    "Should readiness fail when an optional dependency is down?",
+    "How would you report Degraded, and what should the orchestrator do with it?",
+    "How does readiness help during a graceful shutdown?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks",
+     "title": "Health checks in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://kubernetes.io/docs/concepts/workloads/pods/probes/",
+     "title": "Liveness, Readiness, and Startup Probes - Kubernetes",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-observability-what-to-alert-on",
+   "topic": "backend-design",
+   "subtopic": "observability",
+   "difficulty": "senior",
+   "question": "What should page an on-call engineer for a backend API, and what should only be a dashboard or a ticket?",
+   "shortAnswer": "Page on user-visible symptoms that need action now, usually the four golden signals of the user-facing service (latency, traffic, errors and saturation) measured against your objectives. Causes such as high CPU on one node, a disk filling up over weeks or one failed dependency check belong on dashboards or in tickets unless they are about to hurt users, because noisy pages get ignored.",
+   "answer": "**Key points**\n- Google's SRE book: if you can only measure four metrics of a user-facing system, measure **latency, traffic, errors and saturation**.\n- **Symptoms versus causes:** *what's broken* (users get errors, pages are slow) is the symptom; *why* (a database is overloaded) is the cause. Page on symptoms; use cause metrics to diagnose.\n- Pages are expensive. When they come too often, people skim or ignore them, and a real page gets lost. Rules that page should be **simple, robust and represent a clear failure**.\n- Measure latency with **histograms and percentiles**, and keep failed-request latency separate from successful latency.\n- **Saturation** is about headroom: how close the service is to its limit, whether it could handle double the traffic.\n- Non-urgent issues go to **tickets or email**, not the pager.\n\n**Detail**\nFor an ASP.NET Core API, the built-in `http.server.request.duration` histogram (with route and status-code attributes) gives you latency, traffic and errors per endpoint; saturation comes from thread pool queue length, connection pool usage, CPU and memory, and queue depth for background work. Tie page thresholds to service level objectives (for example \"p99 above 800 ms for 10 minutes\" or \"error rate above 2%\") rather than to raw resource numbers.",
+   "pitfalls": [
+    "Paging on CPU or memory thresholds that don't affect users.",
+    "Alerting on average latency.",
+    "Complex alert rules with dependency logic nobody can reason about at 3 a.m.",
+    "Never pruning alerts that fire without anyone acting on them."
+   ],
+   "followUps": [
+    "How would you define saturation for this API?",
+    "What is the difference between a page, a ticket and a dashboard?",
+    "How do service level objectives change what you alert on?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+     "title": "Site Reliability Engineering, chapter 6: Monitoring Distributed Systems",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/metrics/built-in",
+     "title": "ASP.NET Core built-in metrics",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-scalability-horizontal-vs-vertical",
+   "topic": "backend-design",
+   "subtopic": "scalability",
+   "difficulty": "junior",
+   "question": "What is the difference between vertical and horizontal scaling, and what does an API need in order to scale horizontally?",
+   "shortAnswer": "Vertical scaling (scaling up) gives one server more CPU, memory or I/O; horizontal scaling (scaling out) adds more instances behind a load balancer. Scaling up is simple but hits a ceiling, while scaling out can keep growing but only works if instances are interchangeable: no session state, caches or files kept only in one server's memory or disk.",
+   "answer": "**Key points**\n- **Vertical:** no code changes, but there is an upper limit to a single machine, and Azure's sharding guidance describes it as postponing limits rather than removing them.\n- **Horizontal:** more instances share the load and give redundancy, which suits stateless components.\n- Azure's Well-Architected guidance for scaling: design to be **stateless** where possible, keep session state in an external store, avoid singletons that become bottlenecks, and decouple components so each can scale on its own.\n- **Client (session) affinity** routes a user to the same instance; it works around state but weakens even load distribution and failover.\n- Scaling takes time to complete, so test the effect of scaling delays.\n\n**Detail**\nIn practice the web tier scales out easily once it is stateless; the hard part is the data tier, which is why database scaling (replicas, partitioning, sharding) is its own topic. A common interview follow-up is the list of things that break when you go from one instance to two: in-memory caches, Data Protection keys, local files, in-process rate limits and background jobs.",
+   "pitfalls": [
+    "Assuming adding instances scales the database too.",
+    "Relying on sticky sessions instead of removing server-side state.",
+    "Forgetting that scale-out takes minutes, not seconds.",
+    "Scaling up forever and discovering the hardware ceiling during a peak."
+   ],
+   "followUps": [
+    "What breaks when an API goes from one instance to two?",
+    "When is scaling up the better choice?",
+    "What would you autoscale on?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/scale-partition",
+     "title": "Recommendations for optimizing scaling and partitioning - Azure Well-Architected Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/sharding",
+     "title": "Sharding pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "database-design-roadmap"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-scalability-what-breaks-on-scale-out",
+   "topic": "backend-design",
+   "subtopic": "scalability",
+   "difficulty": "mid",
+   "question": "Your API works on one server. What breaks when you run it on several instances behind a load balancer?",
+   "shortAnswer": "Anything that lives in one process's memory or disk stops being shared: Data Protection keys (so cookies, antiforgery tokens and protected payloads from one instance can't be read by another), in-memory caches and session state, files saved locally, and per-instance limits. Background jobs also run once per instance, so share the key ring, move state to shared stores, and make scheduled work run once or be safe to run concurrently.",
+   "answer": "**Key points**\n- **Data Protection:** by default each node stores its own key ring, so a node can't decrypt data protected by another. Persist keys to a shared location (Redis, a blob store, a shared file share) and protect them at rest.\n- **Caching:** `IMemoryCache` copies drift apart; Microsoft says non-sticky web farms need a distributed cache to avoid consistency problems.\n- **Session and transient state:** share it through `IDistributedCache`, and persistent state through a database.\n- **Local files:** uploads written to one instance's disk aren't on the next one; use shared storage.\n- **In-process limits:** the built-in rate limiters are objects created and cached inside each process, so each instance counts on its own and five instances allow roughly five times the configured rate.\n- **Hosted services:** a `BackgroundService` starts in every instance, so a nightly job runs N times unless you add a lock, a leader, or a separate worker.\n\n**Detail**\nThe learner's auth notes already meet the Data Protection case: refresh tokens protected with Data Protection fail across instances without a shared key ring. Startup work deserves the same thought: seeding or migrations that run on startup now run on every instance at once.",
+   "pitfalls": [
+    "Leaving Data Protection keys on local disk or in memory in a farm.",
+    "Relying on IMemoryCache for data that must agree across instances.",
+    "Saving uploads to the local file system.",
+    "Running scheduled jobs in a BackgroundService on every instance."
+   ],
+   "followUps": [
+    "Where would you store the Data Protection key ring, and how would you protect it?",
+    "How do you make a scheduled job run exactly once across instances?",
+    "Is sticky session routing a fix or a workaround?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/web-farm",
+     "title": "Host ASP.NET Core in a web farm",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/default-settings",
+     "title": "Data Protection key management and lifetime in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory",
+     "title": "Cache in-memory in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://devblogs.microsoft.com/dotnet/announcing-rate-limiting-for-dotnet/",
+     "title": "Announcing rate limiting for .NET (.NET Blog)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "hosted-services",
+    "refresh-tokens",
+    "rate-limiting"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-scalability-queues-load-leveling",
+   "topic": "backend-design",
+   "subtopic": "scalability",
+   "difficulty": "mid",
+   "question": "When would you put a message queue between your API and the work it triggers, and what new problems does that create?",
+   "shortAnswer": "Use a queue when work doesn't need to finish inside the request and the backend can't absorb traffic spikes: the API enqueues a message and returns, and consumers process messages at a rate the backend can handle. In exchange you get eventual results instead of immediate ones, duplicate deliveries to handle (most brokers deliver at least once), and queue depth to monitor.",
+   "answer": "**Key points**\n- Azure's **Queue-Based Load Leveling**: the queue is a buffer that smooths intermittent heavy loads which might otherwise make the service fail or the caller time out.\n- Queues are **one-way**: if the caller needs a result, add a reply mechanism (a status endpoint, a callback, a reply queue).\n- Not suitable when the caller needs a **low-latency synchronous** response.\n- If producers outpace consumers on average, the queue grows and latency rises: monitor depth, scale consumers within safe limits, or shed work at the producer. Autoscaling consumers without bounding their downstream rate just moves the overload.\n- **Duplicates:** Service Bus, Event Hubs, Kafka and RabbitMQ provide at-least-once delivery, so consumers must be **idempotent**. Azure's Idempotent Consumer pattern records a stable deduplication key (a producer-assigned message id or business key, not a correlation id) in the **same transaction** as the side effect, the so-called inbox.\n\n**Detail**\nIn .NET the consumer is often a `BackgroundService` or a separate worker using the broker's SDK or a framework such as MassTransit or NServiceBus, which Azure recommends because they handle routing, retries, durability and workflow patterns for you. Pair the queue with the asynchronous request-reply pattern on the API side (202 plus a status URL) when clients need to find out how the work ended.",
+   "pitfalls": [
+    "Assuming each message is delivered exactly once.",
+    "Deduplicating on a correlation id that several messages share.",
+    "Scaling consumers until they overload the database the queue was meant to protect.",
+    "Not alerting on queue depth or on messages moved to the dead-letter queue."
+   ],
+   "followUps": [
+    "How would you make a consumer idempotent?",
+    "What happens to a message that keeps failing?",
+    "How does the client learn the result of queued work?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling",
+     "title": "Queue-Based Load Leveling pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/idempotent-consumer",
+     "title": "Idempotent Consumer pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/microservices",
+     "title": "Microservices architecture style - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "hosted-services"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-scalability-transactional-outbox",
+   "topic": "backend-design",
+   "subtopic": "scalability",
+   "difficulty": "senior",
+   "question": "Your service saves an order and then publishes an OrderCreated event. What can go wrong, and how does the transactional outbox fix it?",
+   "shortAnswer": "Saving and publishing are two separate systems, so a crash or broker outage between them leaves an order with no event, and other services never learn about it (publishing first risks the opposite). The outbox writes the event as a row in an outbox table in the same database transaction as the order, and a separate relay publishes pending rows and marks them sent; delivery becomes at-least-once, so consumers must be idempotent.",
+   "answer": "**Key points**\n- The **dual-write problem**: the order commit succeeds, the publish fails (broker down, network error, process killed), and the event is lost. Azure's outbox article walks through exactly this ordering-service case.\n- **Outbox:** store the event in an outbox table inside the **same transaction** as the business change; the transaction either commits both or neither, so no event is lost.\n- A **relay** (a background worker polling the table, or a change feed) reads unsent events, publishes them, and marks them as sent.\n- If the relay crashes after publishing but before marking, it publishes again: **at-least-once**, so consumers deduplicate (Idempotent Consumer / inbox).\n- Include a stable message id in each outbox row; consumers use it as the deduplication key.\n\n**Detail**\nOrdering needs care: if consumers depend on the order of events for one entity, publish per entity in sequence (or include a version number consumers can check). Clean up or archive sent rows so the table doesn't grow forever. Before hand-building the relay, look at what your messaging framework offers: Azure's microservices guidance recommends frameworks such as MassTransit or NServiceBus over custom messaging logic, because they handle routing, retries and durability.",
+   "code": {
+    "lang": "csharp",
+    "source": "// Same DbContext, same SaveChanges => same transaction\nvar order = Order.Create(cmd);\ndb.Orders.Add(order);\ndb.OutboxMessages.Add(new OutboxMessage\n{\n    Id = Guid.NewGuid(),                       // stable id: consumers dedupe on it\n    Type = nameof(OrderCreated),\n    Payload = JsonSerializer.Serialize(new OrderCreated(order.Id, order.Total)),\n    OccurredUtc = DateTime.UtcNow\n});\nawait db.SaveChangesAsync(ct);                 // order and event commit together\n\n// A BackgroundService relay later: read unsent rows -> publish -> set SentUtc"
+   },
+   "pitfalls": [
+    "Publishing inside the database transaction and assuming the broker call is rolled back with it.",
+    "Assuming the relay delivers each event exactly once.",
+    "Letting the outbox table grow forever.",
+    "Ignoring per-entity ordering when consumers depend on it."
+   ],
+   "followUps": [
+    "How does the consumer side stay idempotent?",
+    "How would you scale the relay without publishing events out of order?",
+    "When would change data capture be a better relay than polling?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/databases/guide/transactional-out-box-cosmos",
+     "title": "Implement the Transactional Outbox pattern by using Azure Cosmos DB",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/idempotent-consumer",
+     "title": "Idempotent Consumer pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/microservices",
+     "title": "Microservices architecture style - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "hosted-services"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-scalability-cqrs",
+   "topic": "backend-design",
+   "subtopic": "scalability",
+   "difficulty": "senior",
+   "question": "What is CQRS, when is it worth it, and what does it cost?",
+   "shortAnswer": "CQRS separates the model that handles writes (commands) from the model that serves reads (queries), so each can be designed, optimised and scaled for its job. It pays off when reads and writes have very different shapes or loads; with separate read stores you accept eventual consistency and extra moving parts, so it is overkill for simple CRUD.",
+   "answer": "**Key points**\n- **Same store, separate models:** the basic form. Commands go through the domain model and its rules; queries use lean projections or DTOs built for the screen.\n- **Separate stores:** the read side can be a materialized view, a read replica or a different database shaped for queries, kept in sync by events the write side publishes.\n- Benefits Azure lists include independent scaling, optimised schemas, security (only some code may write), separation of concerns and simpler queries.\n- **Costs:** more complexity, and with separate stores **eventual consistency**: the read side can lag, and you must handle users acting on stale data. Messaging adds its own failure modes (see the outbox).\n- Azure says it might not suit cases where the domain or business rules are simple, or where a simple CRUD-style UI and data access are enough.\n\n**Detail**\nThe learner's notes already show a light version: EF Core for writes and Dapper for read-heavy queries. That is CQRS in a single store, and for many APIs it is all you need. Go further (separate read database, event-driven projection) only when read load or query shapes justify it, and design the UI for the lag, for example by returning the created resource from the command instead of re-reading it.",
+   "pitfalls": [
+    "Introducing separate read and write databases for a simple CRUD app.",
+    "Ignoring read-model lag in the UI, so users don't see their own changes.",
+    "Assuming CQRS requires event sourcing.",
+    "Synchronising the read store with dual writes instead of reliable events."
+   ],
+   "followUps": [
+    "How would you handle a user who doesn't see their own update yet?",
+    "How is CQRS related to event sourcing?",
+    "How would you rebuild a read model from scratch?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs",
+     "title": "CQRS pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "ef-core-plus-dapper",
+    "clean-architecture"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-scalability-database-scaling",
+   "topic": "backend-design",
+   "subtopic": "scalability",
+   "difficulty": "senior",
+   "question": "The database is the bottleneck. What options do you have, in what order, and when do you shard?",
+   "shortAnswer": "First make each request cheaper (better queries and indexes, less data, caching), then scale the existing server up, then offload reads to replicas and caches, and use partitioning inside one server for very large tables. Shard (split data across several databases by a shard key) only when data size or write throughput really exceeds one server, because it permanently complicates cross-shard queries, transactions and operations.",
+   "answer": "**Key points**\n- **Cheaper requests first:** query plans, indexes, projections instead of whole entities, pagination, caching.\n- **Vertical scaling** keeps query simplicity and transactional integrity; Azure says to prefer it while data and throughput fit one instance, even with projected growth.\n- **Read volume** is better handled with read replicas and caching than with sharding (stale reads are the trade-off).\n- **Table partitioning** inside one engine may meet the need without multiple servers or routing logic.\n- **Sharding** fits when data volume exceeds one instance's storage, writes exceed what one instance can sustain, data residency requires it, or tenants need physical isolation.\n- **Shard key:** the most critical decision and expensive to change. It should be immutable, high-cardinality, evenly distributed and aligned with the main queries. Avoid auto-increment ids and timestamps (hotspots) and low-cardinality values.\n- **Strategies:** lookup (directory, flexible), range (good for range queries, prone to hotspots), hash (even spread, hard to rebalance without consistent hashing), geographic (residency).\n\n**Detail**\nSharding multiplies operational work: monitoring, backups and schema changes across every shard, cross-shard queries that fan out and run as slow as the slowest shard, and distributed transactions most systems avoid in favour of eventual consistency. Azure's advice is also to check what the platform already handles: Cosmos DB manages partitioning for you, while Azure SQL offers elastic database tools but leaves the shard key and splits to you.",
+   "pitfalls": [
+    "Sharding before fixing expensive queries and missing indexes.",
+    "Choosing an auto-increment id or timestamp as the shard key.",
+    "Planning on cross-shard joins and transactions as if they were cheap.",
+    "Reading from replicas in flows that need read-your-writes."
+   ],
+   "followUps": [
+    "How would you choose a shard key for a multi-tenant SaaS?",
+    "What problems do read replicas introduce?",
+    "How would you move a tenant from one shard to another?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/sharding",
+     "title": "Sharding pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/scale-partition",
+     "title": "Recommendations for optimizing scaling and partitioning - Azure Well-Architected Framework",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/caching",
+     "title": "Caching guidance - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "database-design-roadmap",
+    "indexes-and-keys",
+    "execution-plans-and-sargability"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-scalability-microservices-trade-offs",
+   "topic": "backend-design",
+   "subtopic": "scalability",
+   "difficulty": "mid",
+   "question": "When are microservices the wrong choice, and what would you build instead?",
+   "shortAnswer": "Microservices buy independent deployment, scaling and fault isolation at the price of a distributed system: network latency, data consistency across services, versioning, correlated logging and a need for mature DevOps. For a small team or a domain that isn't well understood yet, a well-structured monolith with clear module boundaries usually delivers faster and can be split later along the boundaries that prove real.",
+   "answer": "**Key points**\n- Azure's benefits: agility through independent deployments, small focused teams, small code bases, mixed technologies, fault isolation, independent scaling and data isolation.\n- Azure's challenges: overall complexity, harder development and testing across service dependencies, lack of governance, network congestion and latency, **data integrity** (no ACID across services, embrace eventual consistency), management and correlated logging, versioning, and the skill set needed.\n- Each service **owns its data**; shared database schemas are named as a cause of coupling.\n- Antipatterns Azure lists include building services without understanding the domain, overly granular services, and sharing common libraries that couple services.\n- **Boundaries** should follow the business domain (bounded contexts); chatty traffic between two services is a sign they belong together.\n\n**Detail**\nThe learner's Task API is a useful example: Clean Architecture inside a single project, layered by folder. That's a monolith with clear internal boundaries, which keeps refactoring cheap. If one area later needs independent scaling or a separate team, its boundary already exists; extracting it is easier than fixing a premature split with shared data and synchronous call chains.",
+   "pitfalls": [
+    "Splitting by technical layer (a 'data service', a 'validation service') instead of by business capability.",
+    "Sharing one database between services.",
+    "Long synchronous call chains between services.",
+    "Adopting microservices without CI/CD, centralised logging and tracing."
+   ],
+   "followUps": [
+    "How would you decide where to draw service boundaries?",
+    "How do you keep data consistent across services without distributed transactions?",
+    "What signals tell you a module is ready to become a service?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/microservices",
+     "title": "Microservices architecture style - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "clean-architecture"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-api-uri-design",
+   "topic": "backend-design",
+   "subtopic": "api-design",
+   "difficulty": "junior",
+   "question": "How do you name resources and design URIs for a REST API?",
+   "shortAnswer": "Build URIs around business resources using nouns, not verbs: plural collections such as `/orders` and items such as `/orders/42`, with the HTTP method expressing the action. Keep hierarchies shallow (no deeper than collection/item/collection) and don't mirror database tables or other internal structure in the URI space.",
+   "answer": "**Key points**\n- **Nouns, not verbs:** `/orders`, not `/create-order`; GET, POST, PUT, PATCH and DELETE already say what happens.\n- **Plural collections, items beneath them:** `/customers` and `/customers/5`.\n- **Shallow relationships:** `/customers/5/orders` is fine; Azure recommends avoiding anything more complex than *collection/item/collection*, because deep paths are hard to maintain and break when relationships change.\n- **Model the business, not the database:** a client shouldn't have to know your tables.\n- **Creation:** POST to the collection and let the server assign the new URI; RFC 9110 defines `201 Created` with a `Location` header identifying the new resource.\n\n**Detail**\nOperations that aren't plain CRUD (\"cancel this order\") are usually modelled as a sub-resource or a POST that submits data for processing to an existing resource, such as `POST /orders/42/cancellation`, rather than a verb endpoint. Filtering, sorting and paging belong in the query string, not in extra path segments. Whatever you choose, be consistent across the API; consistency matters more to client developers than any single convention.",
+   "code": {
+    "lang": "http",
+    "source": "GET    /orders?status=open&limit=25    # collection, filtered\nGET    /orders/42                      # one item\nPOST   /orders                         # server assigns /orders/43 -> 201 Created + Location\nGET    /customers/7/orders             # collection/item/collection: as deep as it should go\nPOST   /orders/42/cancellation         # non-CRUD operation as a sub-resource\n\n# Avoid: /getOrders, /orders/create, /customers/7/orders/42/lines/3/products"
+   },
+   "pitfalls": [
+    "Verbs in paths such as /getOrders or /orders/delete/42.",
+    "Deeply nested URIs that encode every relationship.",
+    "Exposing table names and internal structure as the resource model.",
+    "Mixing singular and plural collection names."
+   ],
+   "followUps": [
+    "How would you model an 'approve' action that isn't CRUD?",
+    "Should the ids in your URIs be database keys?",
+    "Where do filtering and sorting parameters belong?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design",
+     "title": "Web API design best practices - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9110",
+     "title": "RFC 9110: HTTP Semantics",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "rest-and-http-basics",
+    "routing"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-api-pagination-contract",
+   "topic": "backend-design",
+   "subtopic": "api-design",
+   "difficulty": "mid",
+   "question": "How should a list endpoint expose pagination to API clients: page numbers, cursors, links or totals?",
+   "shortAnswer": "For large or frequently changing collections, return an opaque cursor (an encoded form of the last item's sort key) and a `next` link, because page numbers map to offset queries that get slower with depth and skip or repeat items when data changes. Keep page numbers only where users really need to jump to a page, always cap the page size, use a unique sort order, and return totals only when clients need them, since counting a large table on every request is expensive.",
+   "answer": "**Key points**\n- **Page numbers** (`?page=7&pageSize=25`) are easy to understand and allow random access, but they are offset queries underneath; EF Core's docs note the database still processes all skipped rows, and concurrent inserts or deletes shift results so items are skipped or shown twice.\n- **Cursors** (`?after=eyJ...`) map to keyset queries: fast with an index and stable under changes, but only next/previous navigation. EF Core's docs call keyset pagination the recommended alternative and suggest questioning whether random access is really needed.\n- Make the cursor **opaque** (for example base64-encoded JSON of the sort key values) so you can change its contents without breaking clients, and reject cursors that don't decode.\n- Return **links**, not instructions: a `next` URL in the body, or the `Link` header with `rel=\"next\"` defined by RFC 8288 (which obsoleted RFC 5988).\n- **Cap the page size** server-side; Azure's API guidance suggests an upper limit to help prevent denial-of-service, and meaningful defaults.\n- **Unique ordering** in every sort, with `Id` as the tiebreaker.\n\n**Detail**\nTotals are a product decision: an exact `COUNT(*)` over a big filtered table on every page request can cost more than the page itself. Offer `hasMore` (fetch `pageSize + 1` rows) for infinite scrolling, and an exact or approximate total only on screens that display one. Keep the response shape the same for every list endpoint so clients can share paging code.",
+   "code": {
+    "lang": "http",
+    "source": "GET /api/orders?limit=25&after=eyJjIjoiMjAyNi0xMC0yMlQwOTozMDowMFoiLCJpZCI6NDIxfQ HTTP/1.1\n\nHTTP/1.1 200 OK\nContent-Type: application/json\nLink: <https://api.example.com/api/orders?limit=25&after=eyJjIjoiMjAyNi0xMC0yMlQwOToxNTowMFoiLCJpZCI6Mzk4fQ>; rel=\"next\"\n\n{\n  \"items\": [ { \"id\": 420, \"createdUtc\": \"2026-10-22T09:29:41Z\", \"total\": 59.90 } ],\n  \"nextCursor\": \"eyJjIjoiMjAyNi0xMC0yMlQwOToxNTowMFoiLCJpZCI6Mzk4fQ\",\n  \"hasMore\": true\n}"
+   },
+   "pitfalls": [
+    "Exposing raw offsets or database keys as the paging contract, so it can never change.",
+    "Ordering by a non-unique column, so items are skipped or repeated across pages.",
+    "Letting clients request any page size.",
+    "Running an exact COUNT over a huge table on every page request."
+   ],
+   "followUps": [
+    "How would you encode a cursor for a multi-column sort?",
+    "How do you support 'previous page' with cursors?",
+    "When are page numbers still the right choice?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/ef/core/querying/pagination",
+     "title": "Pagination - EF Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design",
+     "title": "Web API design best practices - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8288",
+     "title": "RFC 8288: Web Linking",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "crud-filtering-sorting",
+    "personal-finance-tracker-notes",
+    "http-headers"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-api-filtering-and-sorting",
+   "topic": "backend-design",
+   "subtopic": "api-design",
+   "difficulty": "mid",
+   "question": "How do you let clients filter and sort a list endpoint without creating performance or security problems?",
+   "shortAnswer": "Accept a small, documented set of filter and sort parameters, map each allowed sort name to a known column or expression, and ignore or reject anything else; never paste client input into SQL. Apply defaults and a maximum page size, and make sure the supported filters are backed by indexes, because every combination you allow is a query you must be able to serve quickly.",
+   "answer": "**Key points**\n- Azure's API guidance: filter with query-string parameters (`/orders?minCost=100&status=shipped`), paginate with sensible defaults, and impose an upper limit on items returned.\n- **Sorting can't be parameterised in SQL.** OWASP notes that column names and sort direction can't use bind variables, so map user values to the legal names in code (or convert direction to a boolean) instead of concatenating input.\n- In EF Core, translate the allowed values into strongly typed `OrderBy` expressions; this avoids both injection and runtime errors from unknown fields.\n- **Resource limits are a security control:** OWASP API4 (Unrestricted Resource Consumption) lists maximum sizes for parameters and the number of records per page among its mitigations.\n- Keep a stable tiebreaker in every sort so paging stays consistent.\n\n**Detail**\nEvery filter and sort you expose is a promise about performance. Start with what the UI needs, check the query plans, add indexes for the common combinations, and resist \"filter by anything\" APIs unless a search engine sits behind them.",
+   "code": {
+    "lang": "csharp",
+    "source": "public static IQueryable<Order> ApplySort(this IQueryable<Order> q, string? sort, bool desc) =>\n    (sort?.ToLowerInvariant(), desc) switch\n    {\n        (\"total\", false)   => q.OrderBy(o => o.Total).ThenBy(o => o.Id),\n        (\"total\", true)    => q.OrderByDescending(o => o.Total).ThenBy(o => o.Id),\n        (\"created\", true)  => q.OrderByDescending(o => o.CreatedUtc).ThenBy(o => o.Id),\n        _                  => q.OrderBy(o => o.CreatedUtc).ThenBy(o => o.Id)   // default and unknown values\n    };\n\nvar pageSize = Math.Clamp(request.PageSize ?? 25, 1, 100);   // default 25, never above 100"
+   },
+   "pitfalls": [
+    "Building ORDER BY clauses by concatenating the client's sort parameter.",
+    "Using reflection or string-based dynamic sorting over any property, including ones you never meant to expose.",
+    "Offering filters that can only run as full table scans.",
+    "No maximum page size."
+   ],
+   "followUps": [
+    "How would you support sorting by several fields?",
+    "When would you move search to a dedicated search engine?",
+    "Should an unknown sort field be ignored or rejected with 400?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design",
+     "title": "Web API design best practices - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+     "title": "OWASP SQL Injection Prevention Cheat Sheet",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption",
+     "title": "OWASP API Security Top 10 2023 - API4: Unrestricted Resource Consumption",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/ef/core/querying/pagination",
+     "title": "Pagination - EF Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "crud-filtering-sorting",
+    "execution-plans-and-sargability"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-api-long-running-operations",
+   "topic": "backend-design",
+   "subtopic": "api-design",
+   "difficulty": "mid",
+   "question": "An endpoint starts work that takes minutes. How do you design the API?",
+   "shortAnswer": "Don't hold the HTTP request open: validate the request, hand the work to a queue or background worker, and reply 202 Accepted with a `Location` header pointing to a status endpoint (optionally with `Retry-After`). The client polls the status endpoint, which returns 200 with the current state while the work runs and, when it finishes, points to the result, for example with 303 See Other to the created resource.",
+   "answer": "**Key points**\n- This is Azure's **Asynchronous Request-Reply** pattern: respond as quickly as possible with **202**, include where to poll and how often, and keep the status resource informative.\n- The status endpoint returns **200** while work is pending, with enough information for the client to understand the state; on completion it returns a completion state or redirects (**303**) to the result.\n- HTTP polling is a good fit when clients can't receive callbacks; callbacks or push notifications are alternatives when they can.\n- Do the work outside the request: a queue plus a worker (`BackgroundService` or a separate service), so restarts and scale-out don't lose jobs.\n- The initial POST can be retried by clients, so make job creation idempotent (an idempotency key or a deduplicating job id).\n\n**Detail**\nReturn errors that the client can act on: validation failures immediately with 400 instead of accepting a doomed job, and failed jobs as a terminal \"Failed\" status with a reason. Decide how long completed status records live, and protect status URLs like any other resource, since a job id in a URL is not an authorization check.",
+   "code": {
+    "lang": "csharp",
+    "source": "app.MapPost(\"/reports\", async (ReportRequest req, IReportQueue queue, CancellationToken ct) =>\n{\n    var jobId = await queue.EnqueueAsync(req, ct);                    // validated, then handed off\n    return Results.Accepted($\"/reports/status/{jobId}\", new { jobId, status = \"Queued\" });\n});\n\napp.MapGet(\"/reports/status/{jobId:guid}\", async (Guid jobId, IReportJobs jobs, HttpResponse response, CancellationToken ct) =>\n{\n    var job = await jobs.FindAsync(jobId, ct);\n    if (job is null) return Results.NotFound();\n\n    if (job.Status == JobStatus.Succeeded)\n    {\n        response.Headers.Location = $\"/reports/{job.ReportId}\";\n        return Results.StatusCode(StatusCodes.Status303SeeOther);      // go to the result\n    }\n\n    response.Headers.RetryAfter = \"10\";                               // poll again in ~10 s\n    return Results.Ok(new { job.Status, job.Progress });\n});"
+   },
+   "pitfalls": [
+    "Keeping the HTTP request open for minutes and hitting proxy or client timeouts.",
+    "Running the job in a fire-and-forget Task inside the request, so a restart loses it.",
+    "Accepting with 202 and only discovering invalid input inside the job.",
+    "Treating an unguessable job id as authorization."
+   ],
+   "followUps": [
+    "How would you let the client cancel a running job?",
+    "When would you use webhooks instead of polling?",
+    "How do you stop a retried POST from starting the same job twice?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/asynchronous-request-reply",
+     "title": "Asynchronous Request-Reply pattern - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9110",
+     "title": "RFC 9110: HTTP Semantics",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "hosted-services",
+    "rest-and-http-basics"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-api-breaking-changes",
+   "topic": "backend-design",
+   "subtopic": "api-design",
+   "difficulty": "mid",
+   "question": "Which API changes break existing clients, and how do you evolve a contract without releasing a new version?",
+   "shortAnswer": "A change is breaking if a correctly written existing client can fail after it: removing or renaming fields or endpoints, changing a type or meaning, making optional input required, tightening validation, or changing status codes or authentication. Additive changes (new optional fields, new endpoints) are usually safe as long as clients ignore fields they don't know, so evolve by adding, keep old behaviour working, and version only when you must break.",
+   "answer": "**Key points**\n- Azure's API guidance: adding content to a resource might not be a breaking change because clients that don't expect it ignore it; removing or renaming fields, or changing relationships, can break existing clients, which is when you need a versioning scheme.\n- The learner's versioning notes draw the same line: new optional fields and endpoints are non-breaking; removing or renaming fields, changing types, status codes or auth requirements are breaking.\n- **Subtle breaks to watch for:** a new enum value that clients switch on, a changed default (page size, sort order), a stricter validation rule, a field that becomes nullable, a different error format, or a slower endpoint that now times out clients.\n- **Evolve with expand and contract:** add the new field or endpoint alongside the old one, migrate clients, and remove the old shape only when nobody uses it. Martin Fowler calls this *parallel change*.\n\n**Detail**\nMake clients tolerant (ignore unknown fields, treat unknown enum values gracefully) and make the server conservative (never repurpose a field). Detect breaks before release by diffing the OpenAPI document in CI and running consumer contract tests. Track who calls what, so \"nobody uses it\" is a measurement rather than a guess.",
+   "pitfalls": [
+    "Treating a renamed field as harmless because the data is the same.",
+    "Adding a required request field to an existing endpoint.",
+    "Adding enum values without checking how clients deserialize unknown values.",
+    "Removing the old shape before measuring that no client still uses it."
+   ],
+   "followUps": [
+    "How would you rename a field without breaking clients?",
+    "How do you detect breaking changes in CI?",
+    "When is a new API version unavoidable?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design",
+     "title": "Web API design best practices - Azure Architecture Center",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://martinfowler.com/bliki/ParallelChange.html",
+     "title": "Parallel Change (Martin Fowler)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "api-versioning"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-api-rest-vs-grpc",
+   "topic": "backend-design",
+   "subtopic": "api-design",
+   "difficulty": "mid",
+   "question": "When would you choose gRPC over a JSON HTTP API in .NET?",
+   "shortAnswer": "gRPC uses HTTP/2 and Protobuf contracts to give small, fast binary messages, generated strongly typed clients and first-class streaming, which suits internal service-to-service calls. JSON HTTP APIs are human-readable and work directly from browsers and every tool, so they suit public APIs and browser clients; gRPC needs gRPC-Web to be called from a browser.",
+   "answer": "**Key points**\n- Microsoft's comparison: gRPC uses **HTTP/2**, **Protobuf** (small, binary), a **required** `.proto` contract, and supports client, server and bidirectional **streaming**; HTTP APIs typically use JSON (larger, human-readable) and optional OpenAPI contracts.\n- **Browser support:** no direct support; it requires gRPC-Web.\n- Protobuf serialises quickly and gives small payloads, which matters on limited-bandwidth networks such as mobile.\n- HTTP/2 multiplexing lets many calls share one TCP connection; HTTP/2 itself isn't exclusive to gRPC.\n- Contract-first code generation keeps client and server in sync across languages.\n\n**Detail**\nTypical split: JSON HTTP APIs at the edge for browsers, partners and anything that benefits from curl-ability; gRPC between internal services where you own both ends and care about latency, payload size or streaming. The costs are tooling and visibility: binary payloads are harder to inspect, and every proxy and load balancer on the path must handle HTTP/2 correctly.",
+   "code": {
+    "lang": "text",
+    "source": "// orders.proto: the contract both sides generate code from\nsyntax = \"proto3\";\noption csharp_namespace = \"Shop.Orders\";\n\nservice OrderService {\n  rpc GetOrder (GetOrderRequest) returns (OrderReply);\n  rpc WatchOrder (GetOrderRequest) returns (stream OrderStatusUpdate); // server streaming\n}\n\nmessage GetOrderRequest { int32 id = 1; }\nmessage OrderReply { int32 id = 1; string status = 2; }\nmessage OrderStatusUpdate { string status = 1; }"
+   },
+   "pitfalls": [
+    "Exposing gRPC to browsers without planning for gRPC-Web.",
+    "Choosing gRPC for a public API whose consumers expect JSON and OpenAPI.",
+    "Forgetting that proxies and load balancers on the path must support HTTP/2.",
+    "Reusing or renumbering Protobuf field numbers, which breaks existing clients."
+   ],
+   "followUps": [
+    "How do Protobuf field numbers affect backward compatibility?",
+    "What is gRPC-Web and what does it give up?",
+    "How do deadlines work in gRPC?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/grpc/comparison",
+     "title": "Compare gRPC services with HTTP APIs",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "rest-and-http-basics"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-security-owasp-api-top-10",
+   "topic": "backend-design",
+   "subtopic": "security",
+   "difficulty": "mid",
+   "question": "Which OWASP API Security Top 10 risks matter most for a typical .NET Web API, and how do you address them?",
+   "shortAnswer": "The 2023 list starts with broken object level authorization (reaching other users' records by changing an id), broken authentication, and broken object property level authorization (reading or writing fields the caller shouldn't). In a .NET API that means ownership checks on every object access, standard token validation, separate request and response DTOs, limits on resource use, safe outbound calls, secure configuration and an inventory of every deployed API version.",
+   "answer": "**Key points** (OWASP API Security Top 10, 2023)\n- **API1 Broken Object Level Authorization:** check that the caller may access *this* object, on every endpoint that takes an id. Scope queries by owner or tenant, or use resource-based authorization.\n- **API2 Broken Authentication:** standard, fully validated tokens; lockout and rate limits on login; no home-made crypto.\n- **API3 Broken Object Property Level Authorization:** covers both exposing too many properties and letting clients set ones they shouldn't (mass assignment). Use response DTOs and input DTOs per use case.\n- **API4 Unrestricted Resource Consumption:** limits on payload size, page size, timeouts and rate.\n- **API5 Broken Function Level Authorization:** admin operations behind policies; deny by default (a fallback policy).\n- **API6 Unrestricted Access to Sensitive Business Flows:** protect flows like checkout or sign-up against automated abuse.\n- **API7 Server Side Request Forgery:** validate and restrict URLs your server fetches.\n- **API8 Security Misconfiguration:** HTTPS only, no detailed errors in production, tight CORS, secure headers.\n- **API9 Improper Inventory Management:** know and retire old versions and test endpoints.\n- **API10 Unsafe Consumption of APIs:** treat third-party responses as untrusted input, with timeouts and validation.\n\n**Detail**\nFor mass assignment in JSON APIs, DTOs are the real control. Microsoft's model binding docs state that `[Bind]`, `[BindRequired]` and `[BindNever]` affect only form-data binding and **do not affect input formatters**, which handle JSON and XML bodies; so with `[ApiController]` and `[FromBody]`, `[BindNever]` on an entity won't stop a client from setting that property.",
+   "code": {
+    "lang": "csharp",
+    "source": "// API1 + API3: scope by owner, and return a DTO, not the entity\nvar order = await db.Orders\n    .Where(o => o.Id == id && o.OwnerId == currentUser.Id)       // another user's id is simply \"not found\"\n    .Select(o => new OrderResponse(o.Id, o.Status, o.Total))     // no internal or sensitive fields\n    .FirstOrDefaultAsync(ct);\n\nreturn order is null ? Results.NotFound() : Results.Ok(order);"
+   },
+   "pitfalls": [
+    "Checking that the caller is authenticated but not that they own the object.",
+    "Relying on [Bind] or [BindNever] to prevent mass assignment in a JSON API.",
+    "Returning EF entities directly and leaking internal fields.",
+    "Leaving old API versions and test endpoints deployed and unmonitored."
+   ],
+   "followUps": [
+    "How would you enforce object-level authorization consistently across many endpoints?",
+    "What is the difference between BOLA and BFLA?",
+    "How would you find forgotten API versions in production?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://api-security.owasp.org/editions/2023/en/0x11-t10",
+     "title": "OWASP API Security Top 10 2023",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization",
+     "title": "OWASP API Security Top 10 2023 - API1: Broken Object Level Authorization",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization",
+     "title": "OWASP API Security Top 10 2023 - API3: Broken Object Property Level Authorization",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/model-binding",
+     "title": "Model binding in ASP.NET Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "authorization-policies",
+    "model-binding"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-security-cors-vs-csrf",
+   "topic": "backend-design",
+   "subtopic": "security",
+   "difficulty": "mid",
+   "question": "Does CORS protect your API from CSRF? When does a Web API need antiforgery tokens?",
+   "shortAnswer": "No: CORS only decides which origins a browser lets read your responses, and simple requests such as a form POST are still sent cross-site, so CORS is not a CSRF defence. CSRF matters whenever the browser attaches credentials automatically (auth cookies, Basic or Digest authentication); an API that only accepts bearer tokens the client adds itself isn't exposed, while a cookie-authenticated API (including a BFF) needs antiforgery tokens or equivalent checks.",
+   "answer": "**Key points**\n- Microsoft: CORS **is not a security feature; it relaxes security**. The same-origin policy stops pages from reading other sites' responses, and CORS lets you selectively allow that.\n- OWASP: an HTML form sends a \"simple\" request that browsers don't preflight and permit to any origin, so if anything accepts such requests with cookies, it still needs token-based protection.\n- CSRF works because browsers send a site's cookies with every request to it, whoever triggered the request; Basic and Digest credentials are sent automatically too.\n- Microsoft's antiforgery docs: a token sent in the `Authorization` header isn't sent automatically, so CSRF isn't a concern when the token is kept out of cookies; it **is** a concern when the token lives in a cookie.\n- Defences for cookie-authenticated APIs: the **synchronizer token** pattern (ASP.NET Core antiforgery), custom request headers that force a preflight, **SameSite** cookies as defence in depth, and checking `Origin` or Fetch Metadata headers.\n- Never combine `AllowAnyOrigin` with `AllowCredentials`: Microsoft calls it insecure and the CORS service returns an invalid response; `SetIsOriginAllowed(_ => true)` with credentials is just as bad.\n\n**Detail**\nThe two mechanisms answer different questions: CORS is \"may this other site read what I return?\", CSRF protection is \"did my own front end really send this state-changing request?\". A cookie-based BFF needs both: a strict CORS policy (often none at all, because front end and BFF share an origin) and antiforgery validation on unsafe methods.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddAntiforgery(o => o.HeaderName = \"X-XSRF-TOKEN\");   // SPA echoes the token in a header\n\napp.MapPost(\"/api/transfers\", async (TransferRequest req, IAntiforgery antiforgery,\n                                     HttpContext http, ITransferService transfers) =>\n{\n    await antiforgery.ValidateRequestAsync(http);   // throws if the token is missing or invalid\n    var id = await transfers.CreateAsync(req, http.RequestAborted);\n    return Results.Created($\"/api/transfers/{id}\", new { id });\n}).RequireAuthorization();                          // cookie-authenticated endpoint"
+   },
+   "pitfalls": [
+    "Treating a strict CORS policy as CSRF protection.",
+    "Moving tokens into cookies for safety from XSS and forgetting that this brings CSRF back.",
+    "AllowAnyOrigin or SetIsOriginAllowed(_ => true) together with AllowCredentials.",
+    "Relying on SameSite alone without checking its limitations."
+   ],
+   "followUps": [
+    "Why does a custom request header help against CSRF?",
+    "How do SameSite=Lax and SameSite=Strict differ for an API?",
+    "Does a BFF on the same origin need CORS at all?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/cors",
+     "title": "Enable Cross-Origin Requests (CORS) in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery",
+     "title": "Prevent Cross-Site Request Forgery (XSRF/CSRF) attacks in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+     "title": "OWASP Cross-Site Request Forgery Prevention Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "http-headers",
+    "middleware"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-security-secrets-management",
+   "topic": "backend-design",
+   "subtopic": "security",
+   "difficulty": "junior",
+   "question": "Where should an ASP.NET Core app keep secrets such as connection strings and API keys?",
+   "shortAnswer": "Never in source code or committed configuration files: use the Secret Manager (user secrets) on developer machines and a managed secret store such as Azure Key Vault in deployed environments, ideally reached with a managed identity so no credential is stored at all. Environment variables are better than files in the repo but are plain text, so treat them as a fallback, and keep production secrets out of development and test.",
+   "answer": "**Key points**\n- Microsoft: never store passwords or other sensitive data in source code or configuration files; production secrets shouldn't be used for development or test, and shouldn't be deployed with the app.\n- **Secret Manager** stores values in a JSON file in your user profile. It is **not encrypted** and is meant for development only.\n- **Environment variables** override earlier configuration sources, but are commonly stored as plain, unencrypted text and are readable if the machine or process is compromised.\n- **Azure Key Vault configuration provider** loads secrets into `IConfiguration`; `--` in a secret name becomes `:` (a configuration section). Microsoft recommends **managed identities** for apps hosted in Azure rather than certificates or client secrets.\n- Because all of these feed `IConfiguration`, the code reads `builder.Configuration[\"Payments:ApiKey\"]` the same way everywhere.\n\n**Detail**\nOWASP's Secrets Management Cheat Sheet adds the lifecycle view: centralise secrets, grant least-privilege access, rotate them, audit who reads them, and detect secrets committed to repositories. The learner's own project is a good example of what to fix: connection strings and PEM key paths are checked in, while the admin password already comes from an environment variable.",
+   "code": {
+    "lang": "bash",
+    "source": "# Development: user secrets (kept outside the repo, not encrypted)\ndotnet user-secrets init\ndotnet user-secrets set \"ConnectionStrings:Default\" \"Server=(localdb)\\\\MSSQLLocalDB;Database=Dev;Trusted_Connection=True\"\n\n# Azure Key Vault: hierarchical keys use -- instead of :\naz keyvault secret set --vault-name my-vault --name \"Payments--ApiKey\" --value \"<secret>\""
+   },
+   "pitfalls": [
+    "Committing appsettings.Production.json with real connection strings.",
+    "Treating user secrets as a secure production store.",
+    "Logging configuration values at startup and leaking secrets into logs.",
+    "Never rotating secrets because nobody knows where they are used."
+   ],
+   "followUps": [
+    "How does a managed identity remove the need for a stored credential?",
+    "How would you rotate a database password without downtime?",
+    "What would you do after discovering a secret in Git history?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets",
+     "title": "Safe storage of app secrets in development in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/key-vault-configuration",
+     "title": "Azure Key Vault configuration provider in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
+     "title": "OWASP Secrets Management Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "configuration",
+    "environment-and-launchsettings"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-security-https-and-hsts-for-apis",
+   "topic": "backend-design",
+   "subtopic": "security",
+   "difficulty": "mid",
+   "question": "Should a Web API redirect HTTP to HTTPS and send HSTS headers?",
+   "shortAnswer": "For an API, Microsoft recommends not serving HTTP at all: don't listen on HTTP, or reject plain-HTTP requests with 400 instead of redirecting, because clients may already have sent credentials in clear text and many API clients don't follow redirects. HSTS is essentially a browser instruction, so the API templates leave it out; it matters for browser-facing apps, and even there it doesn't protect a user's very first visit unless the domain is preloaded.",
+   "answer": "**Key points**\n- Microsoft's guidance for **API projects**: either don't listen on HTTP, or close the connection with **400** and don't serve the request. Don't use `RequireHttpsAttribute` on APIs that receive sensitive information.\n- A redirect still means the first request, with its token, crossed the network unencrypted. Redirects also fail on CORS preflight requests (`ERR_INVALID_REDIRECT`).\n- **HSTS** tells a *browser* to use HTTPS for the host from then on. The default API projects don't include it because phone, desktop and server clients don't obey it.\n- RFC 6797's **bootstrap MITM** caveat: the browser must first receive the header over HTTPS, so the very first visit is unprotected unless the domain is on a preload list.\n- Other headers worth sending from APIs: `X-Content-Type-Options: nosniff` with correct `Content-Type`, `Cache-Control: no-store` on sensitive responses, and no technology-revealing headers such as `X-Powered-By`.\n\n**Detail**\nEnforce HTTPS at every layer you control: TLS on the load balancer or gateway, HTTPS-only bindings for the app, and certificates that are rotated automatically. If the API sits behind a proxy that terminates TLS, the app sees HTTP from the proxy, so configure forwarded headers before anything that depends on the scheme.",
+   "code": {
+    "lang": "json",
+    "source": "{\n  \"Kestrel\": {\n    \"Endpoints\": {\n      \"Https\": { \"Url\": \"https://*:8443\" }\n    }\n  }\n}"
+   },
+   "pitfalls": [
+    "Redirecting API calls from HTTP to HTTPS and assuming the token stayed secret.",
+    "Expecting HSTS to protect mobile or server-to-server clients.",
+    "Believing HSTS protects the first-ever visit without preload.",
+    "Setting long HSTS max-age values with includeSubDomains before every subdomain supports HTTPS."
+   ],
+   "followUps": [
+    "What is HSTS preload, and what does it commit you to?",
+    "How do you enforce HTTPS when TLS ends at a load balancer?",
+    "Which security headers matter for a JSON-only API?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/security/enforcing-ssl",
+     "title": "Enforce HTTPS in ASP.NET Core",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6797",
+     "title": "RFC 6797: HTTP Strict Transport Security (HSTS)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
+     "title": "OWASP HTTP Security Response Headers Cheat Sheet",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "https-and-hsts",
+    "http-headers"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-security-ssrf",
+   "topic": "backend-design",
+   "subtopic": "security",
+   "difficulty": "senior",
+   "question": "Your API fetches a URL that the client supplies (a webhook target or an image to import). How do you prevent SSRF?",
+   "shortAnswer": "Server-side request forgery is when an attacker makes your server send requests to places it can reach and they can't, such as internal services or cloud metadata endpoints. Prefer an allowlist of permitted hosts; if you must accept arbitrary URLs, validate scheme and host, resolve the name and reject private, loopback and link-local addresses, disable automatic redirects, and back it all up with network rules that limit where the service can connect.",
+   "answer": "**Key points**\n- OWASP separates two cases: the app calls only **identified, trusted** applications (use an **allowlist**), or it must call **any** external address (validation plus network-layer protection).\n- **Allowlist:** compare the requested domain or IP against the known list; validate IP formats with a library and compare its normalised output, since parsers can be tricked.\n- **Arbitrary URLs:** reject IPv4 and IPv6 private ranges, localhost and link-local addresses, which OWASP notes not every SDK checks for you.\n- **Redirects:** disable following redirects in the HTTP client, or a validated URL can bounce to an internal one.\n- **DNS:** validating a hostname by resolving it can be abused (DNS pinning/rebinding), so check the address you actually connect to.\n- **Network layer:** firewall rules and segmentation so the service can only reach what it needs; in the cloud, protect metadata services (for example AWS IMDSv2).\n\n**Detail**\nOWASP lists SSRF as API7 in the 2023 API Top 10. In .NET, put outbound fetching of user-supplied URLs in a dedicated `HttpClient` with `AllowAutoRedirect = false`, short timeouts and a response size cap, and run the address checks in a `SocketsHttpHandler.ConnectCallback` so the IP that is validated is the IP that is connected to.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddHttpClient(\"webhooks\")\n    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler\n    {\n        AllowAutoRedirect = false,                  // a redirect could point inside the network\n        ConnectCallback = async (ctx, ct) =>\n        {\n            var addresses = await Dns.GetHostAddressesAsync(ctx.DnsEndPoint.Host, ct);\n            var ip = addresses.First();\n            if (IPAddress.IsLoopback(ip) || IsPrivateOrLinkLocal(ip))   // your helper: RFC 1918, fc00::/7, 169.254/16, fe80::/10\n                throw new HttpRequestException(\"Destination not allowed\");\n\n            var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };\n            await socket.ConnectAsync(ip, ctx.DnsEndPoint.Port, ct);   // connect to the IP we checked\n            return new NetworkStream(socket, ownsSocket: true);\n        }\n    });"
+   },
+   "pitfalls": [
+    "Validating the URL string but letting the HTTP client follow redirects.",
+    "Checking the hostname's IP and then letting the client resolve it again.",
+    "Forgetting IPv6 and link-local ranges in a denylist.",
+    "Returning the fetched response body or detailed errors to the caller."
+   ],
+   "followUps": [
+    "Why is an allowlist stronger than a denylist here?",
+    "What is DNS rebinding?",
+    "How would network segmentation limit the damage of an SSRF bug?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html",
+     "title": "OWASP Server-Side Request Forgery Prevention Cheat Sheet",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://api-security.owasp.org/editions/2023/en/0x11-t10",
+     "title": "OWASP API Security Top 10 2023",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-security-resource-consumption-limits",
+   "topic": "backend-design",
+   "subtopic": "security",
+   "difficulty": "mid",
+   "question": "How do you stop a single client from exhausting your API's resources?",
+   "shortAnswer": "Put limits on everything a request can make the server do: request body and upload size, page size and array lengths, execution time, concurrent work, and request rate per client. ASP.NET Core gives you most of these (Kestrel limits, `[RequestSizeLimit]`, the rate limiting middleware, timeouts and cancellation), and OWASP lists missing limits as API4, Unrestricted Resource Consumption.",
+   "answer": "**Key points**\n- OWASP API4 mitigations include execution timeouts, memory and process limits, maximum sizes for all incoming parameters and payloads (string lengths, array sizes, upload size), **rate limiting**, a cap on records per page, and spending limits or billing alerts for paid third-party APIs your API calls.\n- **Kestrel** defaults: `MaxRequestBodySize` 30,000,000 bytes (about 28.6 MB), `RequestHeadersTimeout` 30 seconds, and **no limit** on concurrent connections unless you set one. Lower the body limit globally or per endpoint (`[RequestSizeLimit]`), and raise it only where large uploads are expected.\n- **Validation as a limit:** maximum lengths on strings and collections in request DTOs.\n- **Rate limiting** per user or API key protects against bursts; a concurrency limiter protects expensive endpoints.\n- **Downstream costs:** a cheap request can trigger an expensive one (an SMS, a report, a call to a paid API), so limit the business operation, not just HTTP.\n\n**Detail**\nThink in terms of the most expensive request an attacker can craft: the largest page, the widest filter, the biggest upload, the deepest JSON. Put a bound on each, test with those worst cases, and return clear 413/429 responses so legitimate clients can adapt.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.WebHost.ConfigureKestrel(k =>\n{\n    k.Limits.MaxRequestBodySize = 1_000_000;                  // 1 MB default for this API\n    k.Limits.MaxConcurrentConnections = 2_000;               // default is unlimited\n});\n\n[HttpPost(\"imports\")]\n[RequestSizeLimit(50_000_000)]                               // bigger limit only where needed\npublic Task<IActionResult> Import(IFormFile file, CancellationToken ct) => _importer.RunAsync(file, ct);\n\npublic sealed record CreateNoteRequest(\n    [property: MaxLength(200)] string Title,\n    [property: MaxLength(10_000)] string Body,\n    [property: MaxLength(20)] string[] Tags);"
+   },
+   "pitfalls": [
+    "Keeping the 28.6 MB default body limit on endpoints that only accept small JSON.",
+    "Accepting unbounded arrays or strings in request DTOs.",
+    "Rate limiting only by IP when many clients share one.",
+    "Forgetting the cost of downstream calls a request can trigger."
+   ],
+   "followUps": [
+    "How would you limit an endpoint that streams a large upload?",
+    "What should a client receive when it hits each limit?",
+    "How do you rate limit per API key across several instances?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption",
+     "title": "OWASP API Security Top 10 2023 - API4: Unrestricted Resource Consumption",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel/options",
+     "title": "Configure options for the ASP.NET Core Kestrel web server",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "rate-limiting",
+    "model-validation"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-deployment-blue-green-and-canary",
+   "topic": "backend-design",
+   "subtopic": "deployment",
+   "difficulty": "mid",
+   "question": "What are blue-green and canary deployments, and how do they reduce deployment risk?",
+   "shortAnswer": "Blue-green runs two full production environments: the new version is deployed to the idle one, tested, then traffic is switched over, and switching back is the rollback. A canary releases the new version to a small slice of users or servers first and widens the rollout in stages while health metrics stay good; both are forms of progressive exposure that limit the blast radius of a bad release.",
+   "answer": "**Key points**\n- Azure Well-Architected: prefer **small, frequent, automated** deployments; every deployment carries risk, including configuration and feature-flag changes.\n- **Progressive exposure:** roll out in phases (canary, then larger rings), each phase gated by health checks.\n- **Blue-green:** two identical pools that can each carry the full load; update the idle pool, test it, then move a subset or all users to it.\n- **Bake time** between phases, long enough for real usage across regions and tasks to reveal problems.\n- **Health model:** if an alert relates to end users during a rollout, halt the rollout and investigate.\n- Version build artifacts so you can roll back *and* roll forward; use feature flags to switch new behaviour off without redeploying.\n\n**Detail**\nBoth strategies assume the old and new versions can run at the same time against the same database and the same message contracts. That's the hard part in practice: schema changes and API changes must be backward compatible during the overlap (expand and contract). Sessions and in-flight work need thought too: drain the old instances gracefully instead of cutting them off.",
+   "pitfalls": [
+    "Deploying schema changes that the old version can't work with during the overlap.",
+    "Promoting a canary after minutes instead of a real bake time.",
+    "Watching only infrastructure health, not user-facing error rate and latency.",
+    "No tested rollback path for configuration changes."
+   ],
+   "followUps": [
+    "What metrics would gate each rollout phase?",
+    "How do database migrations fit into a blue-green deployment?",
+    "How do feature flags complement canary releases?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments",
+     "title": "Recommendations for safe deployment practices - Azure Well-Architected Framework",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [],
+   "notCoveredYet": true,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-deployment-zero-downtime-schema-changes",
+   "topic": "backend-design",
+   "subtopic": "deployment",
+   "difficulty": "senior",
+   "question": "How do you rename a column or change a schema without downtime while old and new app versions run side by side?",
+   "shortAnswer": "Split the change into backward-compatible steps (expand, migrate, contract): first add the new column or table while keeping the old one, deploy code that writes both and reads the new one, backfill existing data, and only drop the old column once no running version uses it. Every individual migration must work with both the previous and the next version of the application, which a single rename or drop never does.",
+   "answer": "**Key points**\n- **Parallel change** (Martin Fowler) breaks a backward-incompatible change into **expand**, **migrate** and **contract** phases, so the system can be released in any of them.\n- Example, renaming `Customer.Name` to `FullName`:\n  1. *Expand:* add nullable `FullName`.\n  2. Deploy code that writes both columns and reads `FullName` falling back to `Name`.\n  3. *Migrate:* backfill `FullName` in batches.\n  4. Deploy code that uses only `FullName`.\n  5. *Contract:* make `FullName` required and drop `Name` in a later migration.\n- The learner's database roadmap describes the same idea: add the new column nullable, backfill, then make it required in a later migration.\n- EF Core may scaffold a rename as drop-and-add; always **review the generated migration**, because Microsoft warns a migration may drop a column when the intent was to rename it.\n- Apply schema changes as a **separate deployment step** (idempotent script or migration bundle), with a deployment identity that has schema permissions while the app's identity doesn't.\n\n**Detail**\nThe same reasoning covers removing a column (stop using it first, drop it later), adding a NOT NULL column (add it nullable or with a default, backfill, then tighten) and splitting a table. Large backfills should run in batches to avoid long locks. The learner's migration notes deploy database changes before the API; that ordering is only safe when the change is additive, which is exactly what expand-and-contract guarantees.",
+   "code": {
+    "lang": "sql",
+    "source": "-- Release 1 (expand): additive and safe for the old version\nALTER TABLE dbo.Customers ADD FullName nvarchar(200) NULL;\n\n-- Backfill in batches between releases\nUPDATE TOP (5000) dbo.Customers SET FullName = Name WHERE FullName IS NULL;\n\n-- Release 3 (contract): only after no running version reads or writes Name\nALTER TABLE dbo.Customers ALTER COLUMN FullName nvarchar(200) NOT NULL;\nALTER TABLE dbo.Customers DROP COLUMN Name;"
+   },
+   "pitfalls": [
+    "Shipping a rename or drop in the same release as the code that stops using the column.",
+    "Trusting a generated migration without reading it.",
+    "Backfilling millions of rows in one transaction.",
+    "Forgetting that the previous app version keeps running during a rolling or blue-green deployment."
+   ],
+   "followUps": [
+    "How would you add a NOT NULL column to a large table?",
+    "How do you roll back after the contract step?",
+    "What changes if other services read the same table?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://martinfowler.com/bliki/ParallelChange.html",
+     "title": "Parallel Change (Martin Fowler)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying",
+     "title": "Applying migrations - EF Core",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "ef-core-migrations-and-scaffolding",
+    "database-design-roadmap",
+    "alter"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-deployment-graceful-shutdown",
+   "topic": "backend-design",
+   "subtopic": "deployment",
+   "difficulty": "mid",
+   "question": "What happens when an ASP.NET Core app is stopped during a deployment, and how do you make shutdown graceful?",
+   "shortAnswer": "On SIGTERM (Ctrl+C, `docker stop`, Kubernetes deleting a pod) the host raises `ApplicationStopping`, Kestrel stops accepting new connections, in-flight requests get until the shutdown timeout (30 seconds by default) to finish, and hosted services are stopped. Make it graceful by taking the instance out of the load balancer first, honouring cancellation tokens in background work, and making sure the host's shutdown timeout fits inside the platform's grace period.",
+   "answer": "**Key points**\n- Since .NET 6 the console lifetime handles **SIGTERM** gracefully (along with SIGINT and SIGQUIT).\n- Shutdown order per Microsoft: `ApplicationStopping` is signalled, then the host calls `IServer.StopAsync` with the shutdown timeout (**default 30 s**). Kestrel closes its bindings and stops accepting connections; HTTP/2 and HTTP/3 clients get a GOAWAY. Requests still running when the timeout expires are aborted.\n- Hosted services are stopped too: a `BackgroundService` sees its `stoppingToken` cancelled, so loops must observe it.\n- **Kubernetes:** a pod gets a termination grace period (default **30 seconds**), runs any `preStop` hook, sends the stop signal, and kills remaining processes with SIGKILL when the period expires. Endpoint removal happens around the same time, so a short `preStop` delay helps traffic drain before the app stops listening.\n- **Load balancers:** Microsoft's recommended order is to bring up the new instance, remove the old one from the load balancer, then signal it to shut down.\n\n**Detail**\nTwo numbers have to agree: the platform's grace period must be longer than any `preStop` delay plus the host's shutdown timeout, or the process is killed mid-drain. Use `IHostApplicationLifetime.StopApplication()` rather than `Environment.Exit` for a programmatic stop; Microsoft notes that `Environment.Exit` isn't a graceful shutdown in the hosting model.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromSeconds(25)); // inside the pod's grace period\n\npublic sealed class OutboxRelay(ILogger<OutboxRelay> log) : BackgroundService\n{\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        while (!stoppingToken.IsCancellationRequested)\n        {\n            await PublishPendingAsync(stoppingToken);                   // pass the token down\n            await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);\n        }\n        log.LogInformation(\"Outbox relay stopped cleanly\");\n    }\n\n    private Task PublishPendingAsync(CancellationToken ct) => Task.CompletedTask; // real work here\n}"
+   },
+   "pitfalls": [
+    "A host shutdown timeout longer than the platform's grace period.",
+    "Background loops that ignore the stopping token.",
+    "Stopping the process before the load balancer stops sending it traffic.",
+    "Calling Environment.Exit to stop the app."
+   ],
+   "followUps": [
+    "How does a readiness probe help during shutdown?",
+    "What happens to a long-running request when the timeout expires?",
+    "How would you make a background job resumable after a forced stop?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host",
+     "title": ".NET Generic Host",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+     "title": "Pod Lifecycle - Kubernetes",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "hosted-services"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-deployment-containerizing-dotnet",
+   "topic": "backend-design",
+   "subtopic": "deployment",
+   "difficulty": "junior",
+   "question": "How do you containerize an ASP.NET Core API, and what defaults changed in .NET 8 images?",
+   "shortAnswer": "Either write a multi-stage Dockerfile (build with the SDK image, run on the smaller ASP.NET runtime image) or let the SDK build the image directly with `dotnet publish /t:PublishContainer`, no Dockerfile needed. Since .NET 8 the images listen on port 8080 instead of 80 and include a non-root `app` user, and SDK-built images for .NET 8 and later run as that user by default on Linux.",
+   "answer": "**Key points**\n- **SDK container publishing:** `dotnet publish --os linux --arch x64 /t:PublishContainer`; the image name defaults to the assembly name (override with `ContainerRepository`).\n- **Port:** the default ASP.NET Core port in .NET container images changed from **80 to 8080**; the new `ASPNETCORE_HTTP_PORTS` variable is a simpler alternative to `ASPNETCORE_URLS`.\n- **User:** .NET 8 Linux images define a non-root user named **`app`** you can opt into (`USER app` in a Dockerfile). When publishing with the SDK for .NET 8+ on Microsoft's runtime images, the rootless `app` user is used by default on Linux.\n- Configuration comes from environment variables (`ConnectionStrings__Default`), and secrets from the platform's secret store, never baked into the image.\n\n**Detail**\nRunning as non-root is a security best practice, and the port change is what makes it possible, since unprivileged users can't bind ports below 1024. Remember to map the right port (`-p 8000:8080`), and update health probe ports in orchestrator manifests copied from older examples that still use 80.",
+   "code": {
+    "lang": "bash",
+    "source": "# No Dockerfile: the SDK builds and loads the image\ndotnet publish --os linux --arch x64 /t:PublishContainer\n\n# Run it: the app listens on 8080 inside the container\ndocker run --rm -p 8000:8080 \\\n  -e ConnectionStrings__Default=\"$DB_CONNECTION\" \\\n  my-api:latest"
+   },
+   "pitfalls": [
+    "Mapping host port to container port 80 for a .NET 8+ image.",
+    "Copying secrets or appsettings.Production.json with credentials into the image.",
+    "Running as root in a custom Dockerfile because it was the old default.",
+    "Shipping the full SDK image to production instead of the runtime image."
+   ],
+   "followUps": [
+    "What does a multi-stage Dockerfile buy you?",
+    "How do you pass configuration and secrets to a container?",
+    "What is a chiseled image, and why is it smaller?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/containers/sdk-publish",
+     "title": "Containerize a .NET app with dotnet publish",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/8.0/aspnet-port",
+     "title": "Breaking change: default ASP.NET Core port changed from 80 to 8080",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/8.0/app-user",
+     "title": "Breaking change: new non-root app user in Linux images",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/containers/publish-configuration",
+     "title": "Containerize a .NET app reference (publish configuration)",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "dotnet-cli",
+    "environment-and-launchsettings"
+   ],
+   "notCoveredYet": false,
+   "versionNote": "Port 8080, ASPNETCORE_HTTP_PORTS and the non-root app user arrived with the .NET 8 container images; the SDK uses the rootless user by default when targeting .NET 8 or later with Microsoft runtime images.",
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-deployment-feature-flags",
+   "topic": "backend-design",
+   "subtopic": "deployment",
+   "difficulty": "mid",
+   "question": "What are feature flags for, and how do you use them in ASP.NET Core without creating a mess?",
+   "shortAnswer": "Feature flags separate deploying code from releasing a feature: the code ships switched off and is turned on, for some users or everyone, by configuration, and turned off again without a redeploy if it misbehaves. In .NET, `Microsoft.FeatureManagement` reads flags from configuration (appsettings or Azure App Configuration) and offers `IsEnabledAsync`, `[FeatureGate]` and filters for percentages, time windows and targeted users; remove each flag once the rollout is done.",
+   "answer": "**Key points**\n- Azure's safe-deployment guidance: feature flags let you control the exposure of new code and quickly roll back if issues arise.\n- **Microsoft.FeatureManagement** is built on `IConfiguration`, so any configuration provider can hold flags; by default it reads the `feature_management` (or `FeatureManagement`) section.\n- Check in code with `IVariantFeatureManager.IsEnabledAsync(\"Name\")`; gate controllers or actions with `[FeatureGate(\"Name\")]`, which by default returns **404** when the feature is off.\n- Built-in filters: `Microsoft.Percentage`, `Microsoft.TimeWindow`, and `Microsoft.Targeting` (named users, groups with percentages, exclusions and a default rollout percentage).\n- Flag values can change while a request runs; `IVariantFeatureManagerSnapshot` keeps a feature's state consistent for the rest of the request.\n\n**Detail**\nFlags are code paths, so they need the same care: name them clearly, test both states, keep the number small, and give each a removal date. Release toggles should live for days or weeks; permanent switches are configuration, and should be modelled as such. Remember that a flag change is a production change too, which Azure explicitly counts as deployment risk.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.AddFeatureManagement();   // reads the feature_management section by default\n\napp.MapGet(\"/checkout/quote\", async (IVariantFeatureManager features, CancellationToken ct) =>\n    await features.IsEnabledAsync(\"NewPricingEngine\", ct)\n        ? Results.Ok(NewPricing.Quote())\n        : Results.Ok(LegacyPricing.Quote()));\n\n// appsettings.json\n// \"feature_management\": { \"feature_flags\": [\n//   { \"id\": \"NewPricingEngine\", \"enabled\": true,\n//     \"conditions\": { \"client_filters\": [ { \"name\": \"Microsoft.Percentage\", \"parameters\": { \"Value\": 10 } } ] } } ] }"
+   },
+   "pitfalls": [
+    "Never removing flags after a rollout, until nobody knows which paths are live.",
+    "Testing only the flag-on path.",
+    "Treating a flag flip as risk-free and skipping change control.",
+    "Evaluating a flag several times in one request and getting different answers."
+   ],
+   "followUps": [
+    "How would you roll a feature out to 10% of users consistently?",
+    "What is the difference between a release toggle and a permanent configuration switch?",
+    "How would you audit who changed a flag?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/azure-app-configuration/feature-management-dotnet-reference",
+     "title": ".NET feature flag management (Microsoft.FeatureManagement)",
+     "accessed": "2026-10-22"
+    },
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments",
+     "title": "Recommendations for safe deployment practices - Azure Well-Architected Framework",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "configuration"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  },
+  {
+   "id": "backend-design-deployment-forwarded-headers",
+   "topic": "backend-design",
+   "subtopic": "deployment",
+   "difficulty": "mid",
+   "question": "Behind a reverse proxy or load balancer, the app sees the wrong client IP and thinks requests are HTTP. How do you fix it safely?",
+   "shortAnswer": "The proxy terminates the original connection, so the app sees the proxy's IP and scheme; the proxy reports the originals in `X-Forwarded-For` and `X-Forwarded-Proto`, and the forwarded headers middleware copies them into `RemoteIpAddress` and `Request.Scheme`. Enable only the headers you need, run the middleware before anything that uses the scheme or IP, and accept the headers only from known proxies, or any client can spoof its IP.",
+   "answer": "**Key points**\n- `UseForwardedHeaders` sets `HttpContext.Connection.RemoteIpAddress` from `X-Forwarded-For` and `HttpContext.Request.Scheme` from `X-Forwarded-Proto` (and the host from `X-Forwarded-Host`).\n- The default `ForwardedHeaders` value is **None**: you must choose which headers to forward.\n- **Order:** it should run before other middleware; it can run after diagnostics and error handling but **must run before `UseHsts`**.\n- **Trust:** forwarded headers are accepted only when the request comes from an address in `KnownProxies` or `KnownNetworks` (loopback by default), so add your proxy or its network.\n- **ForwardLimit** defaults to 1: only the rightmost value is processed, which is right for a single proxy; raise it deliberately for proxy chains.\n- `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` turns the middleware on with cloud-style settings, but Microsoft warns it doesn't restrict which IPs forwarders are accepted from.\n- IIS out-of-process hosting enables forwarded headers for you.\n\n**Detail**\nGetting this wrong has visible effects: HTTPS redirects that loop, absolute links and OAuth redirect URIs generated with `http://`, rate limits and audit logs keyed on the proxy's IP, and, if every source is trusted, attackers choosing their own `X-Forwarded-For` to dodge IP-based limits.",
+   "code": {
+    "lang": "csharp",
+    "source": "builder.Services.Configure<ForwardedHeadersOptions>(o =>\n{\n    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;\n    o.KnownProxies.Add(IPAddress.Parse(\"10.0.0.100\"));   // only trust our load balancer\n});\n\nvar app = builder.Build();\napp.UseForwardedHeaders();     // first, so later middleware sees the real scheme and client IP\napp.UseExceptionHandler(\"/error\");\napp.UseHsts();"
+   },
+   "pitfalls": [
+    "Calling UseForwardedHeaders after UseHsts, authentication or the rate limiter.",
+    "Trusting forwarded headers from any address.",
+    "Relying on ASPNETCORE_FORWARDEDHEADERS_ENABLED and assuming it restricts proxies.",
+    "Leaving ForwardLimit at 1 behind a chain of two proxies, or raising it without trusting each hop."
+   ],
+   "followUps": [
+    "Why does the middleware read X-Forwarded-For from right to left?",
+    "How do forwarded headers affect OAuth redirect URIs?",
+    "What should you key rate limits on behind a CDN?"
+   ],
+   "origin": "web",
+   "sources": [
+    {
+     "url": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer",
+     "title": "Configure ASP.NET Core to work with proxy servers and load balancers",
+     "accessed": "2026-10-22"
+    }
+   ],
+   "relatedLessons": [
+    "middleware",
+    "https-and-hsts"
+   ],
+   "notCoveredYet": false,
+   "reviewed": false
+  }
+ ]
+}

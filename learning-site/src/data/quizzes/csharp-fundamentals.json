@@ -1,0 +1,84 @@
+{
+  "lesson": "csharp-fundamentals",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which floating point type does the note recommend for financial and monetary calculations?",
+      "options": [
+        "`float`, because it is the smallest at 32 bits",
+        "`double`, because it has 14-15 digit precision",
+        "`decimal`, a 128-bit type with 28-29 digit precision",
+        "`long`, because money should never have decimals"
+      ],
+      "answer": 2,
+      "explanation": "`decimal` is the 128-bit high precision type with 28-29 digit precision, and the summary says to use `decimal` for financial calculations.",
+      "source": { "section": "1.2 Floating Point Types" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Strings are immutable. What happens when you run `string name = \"Aman\";` and then `name = \"Rahul\";`?",
+      "options": [
+        "The characters of the existing \"Aman\" object are overwritten with \"Rahul\"",
+        "A new string object \"Rahul\" is created and `name` now points to it; \"Aman\" stays in memory until garbage collected",
+        "The compiler rejects the second line because a string variable cannot be reassigned",
+        "Both values are stored in the same object, one after the other"
+      ],
+      "answer": 1,
+      "explanation": "Immutability means the existing string object can't change. Reassigning creates a new string object and overwrites the variable's reference, not the original string.",
+      "source": { "section": "2.1 String" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does `result = left ?? right;` assign to `result`?",
+      "options": [
+        "`left` if `left` is not null, otherwise `right`",
+        "`right` if `right` is not null, otherwise `left`",
+        "`true` if both values are null, otherwise `false`",
+        "`left` and `right` joined together"
+      ],
+      "answer": 0,
+      "explanation": "The null-coalescing operator returns the left-hand value if it is not null; otherwise it returns the right-hand value.",
+      "source": { "section": "3. Nullable Types" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "`SquarePtrParam(int* p)` runs `*p *= *p;`. Inside an `unsafe` block, what does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "int i = 5;\nSquarePtrParam(&i); // using address-of operator\nConsole.WriteLine(i);"
+      },
+      "options": [
+        "5",
+        "10",
+        "25",
+        "The memory address of `i`"
+      ],
+      "answer": 2,
+      "explanation": "`&i` passes the address of `i`, so `*p *= *p` squares the value stored in `i` itself. The note's example shows the output `25`.",
+      "source": { "section": "Unsafe block" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "When working with pointers in `unsafe` code, when must you free memory yourself?",
+      "options": [
+        "When the pointer points into a managed array pinned with `fixed`",
+        "When the memory came from `stackalloc`",
+        "When the memory was allocated as unmanaged memory, for example with `Marshal.AllocHGlobal`",
+        "Always, because the garbage collector ignores every pointer"
+      ],
+      "answer": 2,
+      "explanation": "Unmanaged memory from `Marshal.AllocHGlobal` or `Marshal.AllocCoTaskMem` must be freed with `Marshal.FreeHGlobal` or `Marshal.FreeCoTaskMem`, or it leaks. The GC owns managed arrays, and stack memory is reclaimed when the method scope ends.",
+      "source": { "section": "3. Pointer to Unmanaged Memory (Marshal / native allocation)" },
+      "reviewed": false
+    }
+  ]
+}

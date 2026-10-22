@@ -1,0 +1,85 @@
+{
+  "lesson": "crud-filtering-sorting",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "An employee in the `Finance` department has `Salary = 45000`. What is their salary after this runs?",
+      "code": {
+        "lang": "sql",
+        "source": "UPDATE Employees\nSET Salary = CASE \n                WHEN Department = 'IT' THEN Salary + 5000\n                WHEN Department = 'HR' THEN Salary + 3000\n             END;"
+      },
+      "options": [
+        "`45000`, unchanged",
+        "`NULL`",
+        "`48000`",
+        "`50000`"
+      ],
+      "answer": 1,
+      "explanation": "Without an `ELSE`, rows that match no `WHEN` get `NULL`. Adding `ELSE Salary` keeps other departments' salaries unchanged.",
+      "source": { "section": "Update Using CASE (Different Values for Different Rows)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`Employees` holds the three rows inserted earlier: Aman Kumar (50000.00), Rahul (60000.00) and Priya (45000.00). Which names does this return?",
+      "code": { "lang": "sql", "source": "SELECT *\nFROM Employees\nWHERE Salary > 50000;" },
+      "options": [
+        "Aman Kumar and Rahul",
+        "Rahul only",
+        "Aman Kumar, Rahul and Priya",
+        "Priya only"
+      ],
+      "answer": 1,
+      "explanation": "`>` is strictly greater than, so Aman's 50000.00 is excluded and only Rahul's 60000.00 qualifies.",
+      "source": { "section": "WHERE" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which statement about `TRUNCATE TABLE Employees` compared with `DELETE FROM Employees` is correct?",
+      "options": [
+        "`TRUNCATE` resets the identity and doesn't fire triggers; `DELETE` keeps the identity and fires triggers",
+        "`TRUNCATE` removes the table structure; `DELETE` keeps it",
+        "`TRUNCATE` accepts a `WHERE` clause; `DELETE` doesn't",
+        "`TRUNCATE` logs row by row; `DELETE` uses minimal logging"
+      ],
+      "answer": 0,
+      "explanation": "Both remove all rows and keep the table. `TRUNCATE` is minimally logged, faster, resets identity, takes a table lock and doesn't fire triggers. Only `DROP` removes the structure.",
+      "source": { "section": "DROP" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which rows does `WHERE Salary BETWEEN 40000 AND 80000` include?",
+      "options": [
+        "Salaries greater than 40000 and less than 80000, excluding both ends",
+        "Salaries from 40000 up to but not including 80000",
+        "Salaries from 40000 to 80000, including both ends",
+        "Salaries outside the 40000–80000 range"
+      ],
+      "answer": 2,
+      "explanation": "`BETWEEN` is inclusive: it is equivalent to `Salary >= 40000 AND Salary <= 80000`.",
+      "source": { "section": "BETWEEN" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A grid shows 5 employees per page, ordered by `Id`. Which clause returns page 3?",
+      "options": [
+        "`SELECT TOP 15 * FROM Employees ORDER BY Id`",
+        "`ORDER BY Id OFFSET 15 ROWS FETCH NEXT 5 ROWS ONLY`",
+        "`OFFSET 10 ROWS FETCH NEXT 5 ROWS ONLY` without an `ORDER BY`",
+        "`ORDER BY Id OFFSET 10 ROWS FETCH NEXT 5 ROWS ONLY`"
+      ],
+      "answer": 3,
+      "explanation": "`OFFSET` skips the first two pages (10 rows) and `FETCH NEXT` returns 5. `ORDER BY` is mandatory with `OFFSET`, and `TOP` can't skip rows.",
+      "source": { "section": "OFFSET + FETCH (Pagination)" },
+      "reviewed": false
+    }
+  ]
+}

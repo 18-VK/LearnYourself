@@ -1,0 +1,95 @@
+{
+  "lesson": "execution-plans-and-sargability",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In which direction do you read a graphical execution plan?",
+      "options": [
+        "Left to right; the leftmost operator runs first",
+        "Bottom to top",
+        "Right to left, top to bottom; the rightmost operator runs first",
+        "In order of cost percentage, highest first"
+      ],
+      "answer": 2,
+      "explanation": "Execution flows right to left and top to bottom, so you start reading at the rightmost operator.",
+      "source": { "section": "1️⃣ Read From Right to Left" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A plan shows an Index Seek on a non-clustered index followed by a Key Lookup on many rows. What causes this, and what is the fix?",
+      "options": [
+        "The index is missing columns the query needs, so SQL goes back to the clustered index; add them with a covering index (`INCLUDE`)",
+        "The statistics are out of date; rebuild the table",
+        "The query uses a leading wildcard; remove the `%`",
+        "The table has no clustered index; drop the non-clustered index"
+      ],
+      "answer": 0,
+      "explanation": "A Key Lookup fetches the remaining columns from the clustered index, which is expensive for many rows. Including those columns in the index removes it.",
+      "source": { "section": "🔹 Key Lookup (Important!)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "An operator's Estimated Rows is 10 but its Actual Rows is 500,000. What does the lesson say this points to?",
+      "options": [
+        "The query is SARGABLE",
+        "The plan is cached correctly",
+        "The index is covering",
+        "Bad statistics, parameter sniffing or a poor cardinality estimate, which leads to the wrong plan"
+      ],
+      "answer": 3,
+      "explanation": "A large gap between estimated and actual rows means the optimizer chose the plan from wrong numbers. It is one of the common red flags.",
+      "source": { "section": "3️⃣ Estimated vs Actual Rows (Very Important)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`JoinDate` is indexed. Which rewrite of `WHERE YEAR(JoinDate) = 2026` lets SQL Server use an index seek?",
+      "options": [
+        "`WHERE YEAR(JoinDate) >= 2026 AND YEAR(JoinDate) < 2027`",
+        "`WHERE JoinDate >= '2026-01-01' AND JoinDate < '2027-01-01'`",
+        "`WHERE CONVERT(VARCHAR(4), JoinDate, 112) = '2026'`",
+        "`WHERE DATEPART(YEAR, JoinDate) = 2026`"
+      ],
+      "answer": 1,
+      "explanation": "Any function on the indexed column must be computed for every row, which forces a scan. A range on the bare column keeps it untouched, so the index can seek.",
+      "source": { "section": "🔥 Fix It (Make It SARGABLE)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which of these predicates can use an index seek on `Name`?",
+      "options": [
+        "`WHERE Name LIKE 'Aman%'`",
+        "`WHERE Name LIKE '%man'`",
+        "`WHERE UPPER(Name) = 'AMAN'`",
+        "`WHERE LEN(Name) = 4`"
+      ],
+      "answer": 0,
+      "explanation": "With the leading characters known, the index range can be sought. A leading wildcard, or any function on the column, makes the predicate non-SARGABLE.",
+      "source": { "section": "SARGABLE vs Non-SARGABLE Comparison" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "order-steps",
+      "prompt": "Put the lesson's steps for systematically analysing a slow query in order.",
+      "steps": [
+        "Check the execution plan",
+        "Look for table scans, key lookups, hash matches or a missing index suggestion",
+        "Compare estimated vs actual rows",
+        "Check `STATISTICS IO` logical reads",
+        "Apply an index improvement or a query rewrite"
+      ],
+      "explanation": "Diagnose from the plan and the measurements first, then change indexes or rewrite the query, comparing logical reads before and after.",
+      "source": { "section": "How to Systematically Analyze a Slow Query" },
+      "reviewed": false
+    }
+  ]
+}

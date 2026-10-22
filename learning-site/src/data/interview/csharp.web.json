@@ -1,0 +1,1823 @@
+{
+  "topic": "csharp",
+  "questions": [
+    {
+      "id": "csharp-ref-out-in-parameters",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "What is the difference between `ref`, `out` and `in` parameters?",
+      "shortAnswer": "All three pass an argument by reference instead of by value. `ref` means the method may read and change the caller's variable, `out` means the method must assign it before returning, and `in` means the method can only read it.",
+      "answer": "**Key points**\n- C# passes arguments **by value** by default: a struct is copied, and for a class the *reference* is copied.\n- `ref`: the argument must be initialized before the call; the method can read it and may (but need not) assign it. The call site must write `ref`.\n- `out`: the argument doesn't need to be initialized; the method **must** assign it before it returns. The call site must write `out` (and can declare the variable inline: `out int n`).\n- `in`: the argument must be initialized; the method **can't** assign it. Writing `in` at the call site is optional, and without it the compiler may pass a temporary copy (for a literal, a property value or an implicit conversion).\n- `ref readonly` (C# 12) is like `in`, but says the API really expects a variable to be passed by reference, so the compiler warns if you pass an expression.\n\n**Detail**\nPassing a class instance by value already lets the method change the object's members, because both\nvariables point at the same object. What `ref` adds for a reference type is the ability to **reassign** the\ncaller's variable to a different object. For structs, `ref` lets the method change the caller's copy, and `in`\navoids copying a large struct while promising not to change it.\n\nYou can't use these modifiers in `async` methods or iterators (methods with `yield`), and you can't overload two\nmethods that differ only by `ref` vs `out` vs `in`.",
+      "code": {
+        "lang": "csharp",
+        "source": "static void Reset(ref int counter) => counter = 0;          // may read and write\nstatic bool TryHalf(int value, out int half)                // must assign 'half'\n{\n    half = value / 2;\n    return value % 2 == 0;\n}\nstatic double Length(in Vector3 v) => Math.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z); // read-only\n\nint c = 5;\nReset(ref c);                       // c == 0\nif (TryHalf(10, out int h)) Console.WriteLine(h);   // 5\n\nreadonly record struct Vector3(double X, double Y, double Z);"
+      },
+      "pitfalls": [
+        "Thinking a reference type needs `ref` for the method to change its properties; it only needs `ref` to replace the whole object.",
+        "Forgetting that an `out` parameter is unassigned inside the method until you set it, even if the caller initialized it.",
+        "Using `in` for small types like `int`; there's no benefit, because a reference is no smaller than the value.",
+        "Passing a property as a `ref` or `out` argument; properties are methods, not variables, so it doesn't compile."
+      ],
+      "followUps": [
+        "Why can't async methods have `ref` or `out` parameters?",
+        "When would you return a value tuple instead of using `out` parameters?",
+        "What does passing a reference type by `ref` let the method do that passing it by value doesn't?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/method-parameters",
+          "title": "Method parameters and modifiers - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-version-history",
+          "title": "The history of C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "keywords"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`in` parameters arrived in C# 7.2; `ref readonly` parameters in C# 12; inline `out var` declarations in C# 7.0.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-const-vs-readonly",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "What is the difference between `const` and `readonly`?",
+      "shortAnswer": "A `const` is a compile-time constant whose value is baked into every place that uses it; a `readonly` field is assigned at run time, either in its declaration or in a constructor, and can't change after the constructor finishes.",
+      "answer": "**Key points**\n- `const`: value fixed at compile time; only numbers, `bool`, `char`, strings or `null` (enums too). It is implicitly static, and you can't add `static`.\n- `readonly`: assigned in the field declaration or in a constructor of the same class (static constructor for a `static readonly` field); can hold any type, including a value computed at run time like `DateTime.Now`.\n- Different constructors can give a `readonly` field different values; a `const` has exactly one.\n- Since C# 10, a `const string` can be built with interpolation if every part is itself a constant string.\n\n**Detail**\nThe compiler copies a `const` value into the IL of every assembly that uses it. If a library changes a public\n`const` and a caller isn't recompiled, the caller keeps the old value. That's why the docs advise against `const`\nfor things that change over time (prices, version numbers, brand names); use `static readonly` for those.\n\n`readonly` on a reference-type field only freezes the **reference**: you can't point the field at a different\nobject, but you can still change the object it refers to (for example, add items to a `readonly List<T>`).",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Settings\n{\n    public const int MaxRetries = 3;                         // compiled into callers\n    public static readonly DateTime StartedAt = DateTime.Now; // computed at run time\n    public readonly List<string> Tags = new();               // reference is fixed, contents aren't\n\n    private readonly string _name;\n    public Settings(string name) => _name = name;            // allowed: constructor\n}\n\nvar s = new Settings(\"app\");\ns.Tags.Add(\"ok\");        // compiles: the list itself is mutable\n// s.Tags = new();       // error: readonly field"
+      },
+      "pitfalls": [
+        "Exposing a public `const` from a library for a value that may change; callers keep the old value until rebuilt.",
+        "Assuming `readonly` makes an object immutable; it only stops the field from being reassigned.",
+        "Trying to declare `static const`; constants are already static."
+      ],
+      "followUps": [
+        "What is a `readonly struct`, and how does it differ from a `readonly` field?",
+        "Why does CA2104 warn about public readonly fields of mutable reference types?",
+        "Can you assign a `readonly` field in an `init` accessor or a method?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/const",
+          "title": "The const keyword - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/readonly",
+          "title": "readonly keyword - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "keywords"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Constant interpolated strings need C# 10 or later.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-var-dynamic-object",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "How do `var`, `dynamic` and `object` differ?",
+      "shortAnswer": "`var` is static typing with the type inferred by the compiler; `object` is a real static type that every value converts to, so you must cast to use it; `dynamic` is compiled as `object` but tells the compiler to skip checks and resolve members at run time.",
+      "answer": "**Key points**\n- `var`: the compiler infers the exact type from the initializer, and the variable is then as strongly typed as if you had written the type. It is not \"variant\" or late-bound. Only for locals (including `for`, `foreach` and `using` variables).\n- `object`: a static type. You can store anything (value types get boxed), but you can only call `object` members until you cast.\n- `dynamic` (C# 4): the compiler assumes any operation is valid and records what you asked for; the runtime binder (part of the Dynamic Language Runtime) resolves it at run time. An invalid call compiles but throws at run time.\n- Most operations on a `dynamic` value produce `dynamic` too, so the lack of checking spreads unless you convert back to a static type.\n\n**When to use which**\n- `var` whenever the type is obvious or unnameable (anonymous types, LINQ projections).\n- `object` for truly heterogeneous storage, though generics usually do this better.\n- `dynamic` for COM/Office interop, dynamic languages or loosely shaped data, where the static alternative is reflection-heavy code.",
+      "code": {
+        "lang": "csharp",
+        "source": "var count = 10;        // int, checked at compile time\n// count = \"ten\";      // compile error\n\nobject boxed = 10;     // int boxed into object\nint n = (int)boxed + 1; // cast needed\n\ndynamic d = 10;\nd = \"ten\";             // fine: type decided at run time\nConsole.WriteLine(d.Length);   // 3, bound at run time\n// d.NoSuchMethod();   // compiles, but throws RuntimeBinderException when it runs"
+      },
+      "pitfalls": [
+        "Saying `var` is dynamically typed; once inferred, the type can never change.",
+        "Forgetting that `dynamic` errors show up only at run time, often far from where the value was created.",
+        "Letting `dynamic` leak through return types, so callers lose IntelliSense and compile-time checks too."
+      ],
+      "followUps": [
+        "Can you use `var` for a field or a method return type?",
+        "What is the Dynamic Language Runtime, and what does it cache?",
+        "Why are anonymous types usually declared with `var`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/implicitly-typed-local-variables",
+          "title": "Implicitly typed local variables - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/interop/using-type-dynamic",
+          "title": "Using type dynamic - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "var-and-dynamic",
+        "keywords"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-hidden-boxing",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "mid",
+      "question": "Where does boxing happen without you noticing, and how do you avoid it?",
+      "shortAnswer": "Boxing happens whenever a value type is converted to `object` or to an interface it implements: storing it in non-generic collections, passing it to `object` or `params object[]` parameters, or casting a struct to an interface. Generics and strongly typed overloads avoid it.",
+      "answer": "**Key points**\n- Boxing allocates a new object on the managed heap and copies the value into it; unboxing checks the type and copies the value back out. Both cost far more than a plain assignment.\n- Boxing is **implicit**, so it hides in ordinary-looking code:\n  - non-generic collections (`ArrayList`, `Hashtable`) and `List<object>`;\n  - methods taking `object` or `params object[]`, such as the `String.Concat(object, object, object)` overload;\n  - converting a struct to an interface type it implements (`IComparable c = 5;`);\n  - assigning a struct to an `object` field or property.\n- Unboxing to the wrong type throws `InvalidCastException`; unboxing `null` throws `NullReferenceException`.\n\n**How to avoid it**\n- Prefer generic collections and generic methods (`List<int>`, `Dictionary<int, T>`); the docs list \"no boxing for value types\" as a main benefit of generics.\n- Use a generic constraint (`void Sort<T>(T x) where T : IComparable<T>`) instead of a parameter of interface type, so the struct is used directly.\n- Measure with a profiler or allocation counter before optimizing; a few boxes outside hot paths don't matter.",
+      "code": {
+        "lang": "csharp",
+        "source": "int x = 42;\n\nvar list = new System.Collections.ArrayList();\nlist.Add(x);                      // boxes: Add(object)\n\nIComparable<int> cmp = x;         // boxes: struct -> interface\n\nvar typed = new List<int> { x };  // no boxing: List<int> stores ints directly\n\nstatic bool IsBigger<T>(T a, T b) where T : IComparable<T>\n    => a.CompareTo(b) > 0;        // no boxing when T is a struct\nConsole.WriteLine(IsBigger(5, 3));"
+      },
+      "pitfalls": [
+        "Believing boxing only happens with an explicit `(object)` cast; it's usually implicit.",
+        "Changing the original variable and expecting the boxed copy to change too; they're separate copies.",
+        "Unboxing a boxed `int` as `long` or `short`; you must unbox to the exact type first, then convert."
+      ],
+      "followUps": [
+        "Why does mutating a boxed struct through an interface not change the original variable?",
+        "How do generics avoid boxing at the CLR level?",
+        "How would you find boxing allocations in a hot path?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/types/boxing-and-unboxing",
+          "title": "Boxing and Unboxing - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/types/generics",
+          "title": "Generic types - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class",
+        "generics"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-span-and-ref-struct",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "senior",
+      "question": "What are `Span<T>` and `ref struct`, and why can't a `Span<T>` live on the heap?",
+      "shortAnswer": "`Span<T>` is a `ref struct`: a stack-only view over a contiguous block of memory (an array, `stackalloc` memory or native memory) that lets you slice and process data without copying or allocating. Because it can point into the stack, the compiler forbids anything that would move it to the heap.",
+      "answer": "**Key points**\n- `Span<T>` / `ReadOnlySpan<T>` represent a window over existing memory. Slicing (`Slice`, `AsSpan()`, ranges) only adjusts a reference and a length; no data is copied.\n- A `ref struct` must stay on the stack. The compiler therefore rejects:\n  - fields of that type in a class or ordinary struct;\n  - arrays of it, or boxing it to `object` / `ValueType`;\n  - capturing it in a lambda or local function;\n  - using it in the same block as an `await` (before C# 13, async methods and iterators couldn't use ref structs at all).\n- `Memory<T>` / `ReadOnlyMemory<T>` are the heap-friendly counterparts: you can store them in fields and pass them through `async` code, then call `.Span` when you need to work on the data synchronously.\n\n**Why the restrictions exist**\nA span can point at `stackalloc` memory or into the middle of an array. If it could escape to the heap, it could\noutlive the stack frame it points into, or race with other threads. Keeping it stack-only lets the compiler prove\nevery span is used only while its memory is valid.\n\n**Typical uses**: parsing text without `Substring` allocations, working with buffers in I/O and serialization,\nand small temporary buffers with `stackalloc`.",
+      "code": {
+        "lang": "csharp",
+        "source": "ReadOnlySpan<char> line = \"2026-10-22\";\nint year  = int.Parse(line[..4]);      // slices are views, no new strings\nint month = int.Parse(line.Slice(5, 2));\n\nSpan<int> buffer = stackalloc int[4];   // stack memory, no GC allocation\nbuffer.Fill(7);\n\nclass Holder\n{\n    // Span<int> _bad;        // error: a ref struct can't be a field of a class\n    public Memory<int> Data;  // fine: Memory<T> can live on the heap\n}"
+      },
+      "pitfalls": [
+        "Trying to keep a `Span<T>` in a class field or use it after an `await`; use `Memory<T>` there.",
+        "Allocating large or unbounded `stackalloc` buffers, which can overflow the stack.",
+        "Returning a span over `stackalloc` memory from the method that allocated it; the compiler blocks it because the memory dies with the frame."
+      ],
+      "followUps": [
+        "When would you choose `Memory<T>` over `Span<T>`?",
+        "What did C# 13 change about `ref struct` types and generics (`allows ref struct`)?",
+        "How does `ArrayPool<T>` complement spans in high-throughput code?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/ref-struct",
+          "title": "ref structure types - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/memory-and-spans/",
+          "title": "Memory-related and span types",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/memory-and-spans/memory-t-usage-guidelines",
+          "title": "Memory<T> and Span<T> usage guidelines",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "`ref struct` types arrived in C# 7.2; the span and memory types ship in .NET Core 2.1 and later. C# 13 (.NET 9) lets ref structs implement interfaces, be used in async methods and iterators away from `await`/`yield`, and be generic arguments with `allows ref struct`.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-four-pillars-of-oop",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "What are the four pillars of object-oriented programming, and how does C# support each one?",
+      "shortAnswer": "Abstraction, encapsulation, inheritance and polymorphism. C# expresses them with classes and interfaces (abstraction), access modifiers and properties (encapsulation), base classes (inheritance) and virtual/override members plus interfaces (polymorphism).",
+      "answer": "**Key points**\n- **Abstraction**: model only what matters about an entity. In C#: classes, `abstract` classes and interfaces that expose *what* an object does, not *how*.\n- **Encapsulation**: hide internal state and allow access only through a controlled public surface. In C#: `private` fields, properties with validation, `internal` types, and the other access modifiers.\n- **Inheritance**: build a new type from an existing one and reuse its members. In C#: a class has exactly **one** direct base class (inheritance is transitive); structs can't inherit, but any type can implement many interfaces.\n- **Polymorphism**: one call, many behaviours. In C#: `virtual`/`abstract` members overridden in derived classes are dispatched on the object's **run-time** type; overloading picks a method by the arguments at **compile time**.\n\n**Detail**\nSome Microsoft pages call encapsulation, inheritance and polymorphism the \"three primary characteristics\" and\ntreat abstraction as part of class design; the C# OOP tutorial lists all four, and interviewers usually expect\nall four. Give one concrete example per pillar rather than definitions only: e.g. a `BankAccount` with a private\nbalance (encapsulation), a `SavingsAccount` deriving from it (inheritance), an overridden `MonthEnd()`\n(polymorphism), and code that works with `BankAccount` without knowing the concrete type (abstraction).",
+      "code": {
+        "lang": "csharp",
+        "source": "public abstract class Shape                     // abstraction\n{\n    public abstract double Area();              // polymorphic member\n}\n\npublic class Circle : Shape                      // inheritance\n{\n    private readonly double _radius;            // encapsulation\n    public Circle(double radius) => _radius = radius;\n    public override double Area() => Math.PI * _radius * _radius;\n}\n\npublic class Square(double side) : Shape\n{\n    public override double Area() => side * side;\n}\n\n// Callers only know about Shape; the run-time type decides which Area() runs.\n// Shape[] shapes = [new Circle(1), new Square(2)];\n// foreach (var s in shapes) Console.WriteLine(s.Area());"
+      },
+      "pitfalls": [
+        "Defining the pillars without a C# example; interviewers want to hear the language features behind each one.",
+        "Saying C# supports multiple class inheritance; it supports one base class plus many interfaces.",
+        "Confusing abstraction (what to expose) with encapsulation (how to protect the internals)."
+      ],
+      "followUps": [
+        "What is the difference between compile-time and run-time polymorphism?",
+        "When would you prefer composition over inheritance?",
+        "Can a struct take part in polymorphism?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/tutorials/oop",
+          "title": "Object-Oriented programming (C#)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/object-oriented/inheritance",
+          "title": "Inheritance - derive types to create more specialized behavior",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/object-oriented/polymorphism",
+          "title": "Polymorphism - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-overloading-vs-overriding",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "What is the difference between method overloading and method overriding?",
+      "shortAnswer": "Overloading means several methods with the same name but different parameter lists, chosen by the compiler from the arguments. Overriding means a derived class replaces a `virtual` or `abstract` base member with the same signature, chosen at run time from the object's actual type.",
+      "answer": "**Key points**\n\n| | Overloading | Overriding |\n|---|---|---|\n| Where | Same type (or added in a derived type) | Derived class |\n| Signature | Same name, **different** parameters | **Same** signature |\n| Keywords | none | base: `virtual`/`abstract`; derived: `override` |\n| Resolved | Compile time (static types of the arguments) | Run time (actual type of the object) |\n| Polymorphism kind | Compile-time (\"static\") | Run-time (\"dynamic\") |\n\n- Only members with parameters can be overloaded: methods, constructors, indexers (and operators).\n- The return type alone doesn't distinguish overloads, and neither does `ref` vs `out` vs `in`.\n- You can only override a member marked `virtual`, `abstract` or `override` in the base class; fields can't be virtual.\n\n**Detail**\nWith overriding, calling the method through a base-class reference still runs the derived version. With\noverloading, the compiler binds to the best match for the **declared** argument types, so passing an `object`\nvariable that holds a string calls the `object` overload, not the `string` one.",
+      "code": {
+        "lang": "csharp",
+        "source": "class Printer\n{\n    public void Print(int value)    => Console.WriteLine($\"int {value}\");\n    public void Print(string value) => Console.WriteLine($\"string {value}\");   // overload\n    public virtual void Header()    => Console.WriteLine(\"Printer\");\n}\n\nclass ColorPrinter : Printer\n{\n    public override void Header()   => Console.WriteLine(\"ColorPrinter\");     // override\n}\n\n// Printer p = new ColorPrinter();\n// p.Header();      // \"ColorPrinter\": decided at run time\n// p.Print(5);      // \"int 5\": decided at compile time"
+      },
+      "pitfalls": [
+        "Trying to overload by return type only; it doesn't compile.",
+        "Expecting overload resolution to look at the run-time type of an argument; it uses the compile-time type.",
+        "Forgetting `virtual` on the base member and then writing a same-named method in the derived class, which hides instead of overriding."
+      ],
+      "followUps": [
+        "What happens if you leave out `override` in the derived class?",
+        "Why do the design guidelines say not to overload on `ref` or `out`?",
+        "How do optional parameters interact with overloads?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/object-oriented/polymorphism",
+          "title": "Polymorphism - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/member-overloading",
+          "title": "Member overloading - Framework design guidelines",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-override-vs-new-hiding",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "mid",
+      "question": "What is the difference between `override` and `new` on a derived-class method?",
+      "shortAnswer": "`override` extends a virtual base method, so the derived version runs even when called through a base-class reference. `new` hides the base method: which one runs depends on the compile-time type of the variable, not on the object.",
+      "answer": "**Key points**\n- `override` takes part in virtual dispatch: the CLR looks at the object's run-time type.\n- `new` declares a separate member that happens to have the same name; a `Base` variable still calls the base version.\n- Without either keyword, a same-named member **hides** the base member and the compiler warns; adding `new` only silences the warning and documents intent.\n- Hiding works on non-virtual members too; overriding needs `virtual`, `abstract` or `override` on the base member.\n\n**Why `new` exists**\nIt's mainly a versioning tool. If a library you derive from later adds a method with the same name as yours,\nyour method shouldn't silently start overriding theirs; it hides it, and `new` makes that explicit. In everyday\ndesign, hiding is a code smell because the same object behaves differently depending on how it's referenced.",
+      "code": {
+        "lang": "csharp",
+        "source": "class Base\n{\n    public virtual string Who() => \"Base.Who\";\n    public string Name() => \"Base.Name\";\n}\n\nclass Derived : Base\n{\n    public override string Who() => \"Derived.Who\";\n    public new string Name() => \"Derived.Name\";\n}\n\n// Base b = new Derived();\n// b.Who();                // \"Derived.Who\"  (override: run-time type)\n// b.Name();               // \"Base.Name\"    (new: compile-time type)\n// ((Derived)b).Name();    // \"Derived.Name\""
+      },
+      "pitfalls": [
+        "Using `new` and expecting polymorphic behaviour through base-class references.",
+        "Ignoring the \"hides inherited member\" warning; it usually means you meant `override` or need a different name.",
+        "Thinking the `new` modifier and the `new` operator are related; they only share a keyword."
+      ],
+      "followUps": [
+        "Can you hide a static member or a property with `new`?",
+        "How does `sealed override` stop further overriding?",
+        "What does `base.Who()` call inside an override?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/knowing-when-to-use-override-and-new-keywords",
+          "title": "Knowing when to use override and new keywords - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/new-modifier",
+          "title": "new modifier - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/object-oriented/polymorphism",
+          "title": "Polymorphism - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-access-modifiers",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Explain the C# access modifiers, including `protected internal` and `private protected`.",
+      "shortAnswer": "`public` is visible everywhere, `private` only inside the type, `protected` inside the type and derived types, and `internal` inside the same assembly. `protected internal` is the union (same assembly **or** derived), and `private protected` is the intersection (derived **and** same assembly).",
+      "answer": "**Key points**\n\n| Caller | public | protected internal | protected | internal | private protected | private |\n|---|:-:|:-:|:-:|:-:|:-:|:-:|\n| Same class | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |\n| Derived, same assembly | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ |\n| Non-derived, same assembly | ✔ | ✔ | ✘ | ✔ | ✘ | ✘ |\n| Derived, other assembly | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |\n| Non-derived, other assembly | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ |\n\n**Defaults**\n- Top-level classes, structs, interfaces and delegates default to `internal` (top-level types can only be `public`, `internal`, or `file`).\n- Class and struct **members**, including nested types, default to `private`.\n- Interface members default to `public`.\n\n**Detail**\n- An assembly is one compiled `.dll` or `.exe`. `InternalsVisibleTo` lets chosen assemblies (often test projects) see `internal` members.\n- A derived class can't be more accessible than its base: `public class B : A` where `A` is internal doesn't compile.\n- Struct members can only be `public`, `internal` or `private`, because structs can't be inherited.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Account\n{\n    private decimal _balance;                 // only Account\n    protected void Audit() { }                // Account and subclasses anywhere\n    internal void Sync() { }                  // anything in this assembly\n    protected internal void Log() { }         // this assembly OR subclasses elsewhere\n    private protected void Reconcile() { }    // subclasses in THIS assembly only\n}"
+      },
+      "pitfalls": [
+        "Mixing up `protected internal` (either condition) with `private protected` (both conditions).",
+        "Assuming a class without a modifier is `public`; top-level types default to `internal`.",
+        "Treating `internal` as a security boundary; reflection can still reach it."
+      ],
+      "followUps": [
+        "What does the `file` access modifier do, and why was it added?",
+        "How does `InternalsVisibleTo` help with unit testing?",
+        "Why can't a public method expose an internal type in its signature?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/access-modifiers",
+          "title": "Access modifiers - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-version-history",
+          "title": "The history of C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "oop",
+        "keywords"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`private protected` needs C# 7.2; the `file` modifier for top-level types needs C# 11.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-sealed-classes-and-members",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "mid",
+      "question": "What does `sealed` do, and why would you seal a class or method?",
+      "shortAnswer": "A `sealed` class can't be inherited, and a `sealed override` member can't be overridden further down the hierarchy. You seal to protect a design that subclasses could break, and it can also help performance.",
+      "answer": "**Key points**\n- `sealed class B : A {}`: nothing can derive from `B`.\n- `public sealed override void F()`: derived classes still inherit `F` but can't override it again. `sealed` on a member is only valid together with `override`.\n- Structs are implicitly sealed.\n- `abstract` and `sealed` together on a class is an error, because an abstract class exists to be inherited.\n\n**Why seal**\n- **Correctness**: an unsealed public class is an extension point you must support; a subclass can break invariants by overriding members. The docs suggest weighing what derived classes would gain against how they could make your class misbehave.\n- **Performance**: the .NET analyzer rule **CA1852** (\"Seal internal types\", category *Performance*, added in .NET 7) flags internal types with no subtypes, noting that sealing can improve performance. The runtime proposal behind that rule lists the reasons: calls to overrides can be made directly (and inlined) instead of through virtual dispatch, `is`/`as` checks only compare one type, and arrays of the type need no covariance checks.\n\n**Trade-off**\nSealing a public class in a later version breaks anyone who derived from it, while unsealing is not breaking, so\nlibraries often start sealed and open up when there's a real need.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Report\n{\n    public virtual string Render() => \"base\";\n}\n\npublic class PdfReport : Report\n{\n    public sealed override string Render() => \"pdf\";   // no further overrides\n}\n\npublic sealed class Money { }     // nothing can derive from Money\n\n// class SignedPdf : PdfReport { public override string Render() => \"x\"; }  // error: Render is sealed\n// class FakeMoney : Money { }                                              // error: cannot derive from sealed type"
+      },
+      "pitfalls": [
+        "Writing `sealed` on a method that isn't an `override`; it doesn't compile.",
+        "Sealing a public library class in a later version; that breaks anyone who derived from it.",
+        "Thinking `sealed` stops a type from being extended with extension methods; it doesn't."
+      ],
+      "followUps": [
+        "How would you unit-test code that depends on a sealed class?",
+        "What is the difference between a sealed class and a static class?",
+        "Why is `string` sealed?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/sealed",
+          "title": "sealed modifier - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1852",
+          "title": "CA1852: Seal internal types",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/runtime/issues/49944",
+          "title": "Analyzer proposal: Seal internal/private types (dotnet/runtime #49944)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-static-constructor",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "mid",
+      "question": "What is a static constructor, when does it run, and what happens if it throws?",
+      "shortAnswer": "A static constructor initializes a type's static state. The runtime calls it automatically, at most once, before the first instance is created or any static member of that type is used. If it throws, the type stays uninitialized and later uses throw `TypeInitializationException`.",
+      "answer": "**Key points**\n- No access modifier, no parameters, only one per type; it can't be called directly, inherited or overloaded.\n- You don't control when it runs, only that it runs before first use. Static field initializers run (in textual order) just before it.\n- The runtime runs it inside a lock for that type, so the body needs no extra locking.\n- If it throws, the runtime doesn't call it again and the type remains uninitialized for the lifetime of the application domain; failures typically surface as `TypeInitializationException` (the original error is the `InnerException`).\n\n**Detail**\n- An explicit static constructor prevents the `beforefieldinit` flag, which limits runtime optimizations; if you only need to set static fields, prefer field initializers.\n- Don't block inside a static constructor (waiting on tasks, taking locks, `Parallel` loops); the docs warn this risks deadlocks.\n- Exception to \"runs before any instance\": if a static field initializer creates an instance of the same type (common in singletons), that instance constructor runs before the static constructor.\n- Typical uses: one-time setup such as loading a native library, writing a log header, or run-time checks on a generic type parameter.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Catalog\n{\n    public static readonly IReadOnlyDictionary<string, decimal> Prices;\n\n    static Catalog()      // runs once, before Catalog is first used\n    {\n        Prices = new Dictionary<string, decimal> { [\"apple\"] = 0.5m };\n        Console.WriteLine(\"Catalog initialized\");\n    }\n\n    public Catalog() => Console.WriteLine(\"instance created\");\n}\n\n// new Catalog(); new Catalog();\n// Output: Catalog initialized / instance created / instance created"
+      },
+      "pitfalls": [
+        "Putting code that can fail (file or network access) in a static constructor; one failure makes the type unusable until the process restarts.",
+        "Expecting it to run at application start; it runs lazily, just before first use.",
+        "Blocking or waiting on async work inside it and causing deadlocks."
+      ],
+      "followUps": [
+        "How would you implement a thread-safe singleton, and how does `Lazy<T>` help?",
+        "What is `beforefieldinit`, and how does it change initialization timing?",
+        "Does a base class's static constructor run when you touch a derived class's static member?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/static-constructors",
+          "title": "Static constructors - C# programming guide",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-why-generics",
+      "topic": "csharp",
+      "subtopic": "generics",
+      "difficulty": "junior",
+      "question": "Why use generics instead of `object` or non-generic collections like `ArrayList`?",
+      "shortAnswer": "Generics give you one reusable implementation that stays type-safe: type errors are caught at compile time, you don't need casts, and value types are stored without boxing.",
+      "answer": "**Key points**\n- **Type safety**: `List<int>` only accepts `int`; with `ArrayList` you can add a string by mistake and find out only when a cast fails at run time.\n- **No casts**: items come out already typed, so code is shorter and clearer.\n- **Performance**: generic collections store value types directly, so there's no boxing on add and no unboxing on read.\n- **Reuse**: one `Repository<T>` or `Result<T>` works for many types without copy-pasting a class per type.\n\n**Detail**\nGenerics arrived in C# 2.0 / .NET Framework 2.0, and the non-generic `System.Collections` types are kept mainly\nfor backward compatibility. Use `System.Collections.Generic` (or `System.Collections.Concurrent` /\n`System.Collections.Immutable`) in new code. Generic **methods** (`T Max<T>(T a, T b)`) give the same benefits for\nsingle operations, and the compiler usually infers `T` from the arguments.",
+      "code": {
+        "lang": "csharp",
+        "source": "var untyped = new System.Collections.ArrayList();\nuntyped.Add(1);\nuntyped.Add(\"two\");                 // compiles: anything goes\n// int sum = (int)untyped[1];       // InvalidCastException at run time\n\nvar typed = new List<int> { 1, 2 };\n// typed.Add(\"two\");                // compile-time error\nint total = typed[0] + typed[1];    // no casts, no boxing\n\nstatic T Max<T>(T a, T b) where T : IComparable<T> => a.CompareTo(b) >= 0 ? a : b;\nConsole.WriteLine(Max(3, 7));       // T inferred as int"
+      },
+      "pitfalls": [
+        "Using `List<object>` and calling it generic; you lose type safety and box value types just like `ArrayList`.",
+        "Adding a type parameter when only one type is ever used; generics add value only when the code really varies by type."
+      ],
+      "followUps": [
+        "How does the CLR avoid boxing for `List<int>`?",
+        "What are generic constraints and why do you need them?",
+        "When would you write a generic method instead of a generic class?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/types/generics",
+          "title": "Generic types - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/generics/",
+          "title": "Generics in .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "generics",
+        "arrays-and-arraylist",
+        "collections"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-generic-constraints",
+      "topic": "csharp",
+      "subtopic": "generics",
+      "difficulty": "mid",
+      "question": "What generic constraints does C# support, and why would you use them?",
+      "shortAnswer": "A constraint (`where T : ...`) tells the compiler what a type argument must be able to do, such as being a reference or value type, deriving from a base class, implementing an interface or having a parameterless constructor. In exchange, you can use those capabilities inside the generic code.",
+      "answer": "**Key points**\nWithout constraints the compiler only lets you use `System.Object` members on `T`. The main constraints:\n\n| Constraint | Meaning |\n|---|---|\n| `where T : struct` | non-nullable value type (implies `new()`) |\n| `where T : class` / `class?` | reference type (non-nullable / nullable in a nullable context) |\n| `where T : notnull` | any non-nullable type, value or reference |\n| `where T : unmanaged` | non-nullable unmanaged type (no references inside); implies `struct` |\n| `where T : new()` | public parameterless constructor; must come last |\n| `where T : BaseClass` | is or derives from that class |\n| `where T : IInterface` | implements the interface (several allowed) |\n| `where T : U` | derives from another type parameter |\n| `where T : allows ref struct` | an *anti*-constraint: `T` may be a `ref struct` (C# 13) |\n\n**Rules worth knowing**\n- At most one of `struct`, `class`, `class?`, `notnull`, `unmanaged`, and it comes first; at most one base class.\n- `new()` can't be combined with `struct` or `unmanaged`.\n- `default(T)` (or the `default` literal) gives `null` for reference types and the zero value for value types, which is why it's the usual \"no value\" for an unconstrained `T`.\n\n**Why use them**\nThey move errors to compile time and let you call members: `where T : IComparable<T>` lets you call\n`CompareTo`, `where T : Entity` lets you read `Id`, `where T : new()` lets you write `new T()`.",
+      "code": {
+        "lang": "csharp",
+        "source": "public interface IEntity { int Id { get; } }\n\npublic class Repository<T> where T : class, IEntity, new()\n{\n    private readonly List<T> _items = new();\n\n    public T Create()\n    {\n        var item = new T();                    // allowed by new()\n        _items.Add(item);\n        return item;\n    }\n\n    public T? Find(int id) => _items.FirstOrDefault(x => x.Id == id);  // Id allowed by IEntity\n}\n\npublic static class Num\n{\n    public static T Clamp<T>(T value, T min, T max) where T : IComparable<T>\n        => value.CompareTo(min) < 0 ? min : value.CompareTo(max) > 0 ? max : value;\n}"
+      },
+      "pitfalls": [
+        "Using `==` on a `T` constrained to `class`; it compares references even if the actual type overloads `==` (for example `string`).",
+        "Putting `new()` anywhere but last in the constraint list.",
+        "Over-constraining a public API, which makes it unusable for types that would otherwise work.",
+        "Expecting `notnull` to be enforced like the others; violating it only produces a warning, and only in a nullable-enabled context."
+      ],
+      "followUps": [
+        "What does the `unmanaged` constraint enable that `struct` doesn't?",
+        "How do static abstract interface members (generic math) change what constraints can express?",
+        "What is `default(T)` for a `T` constrained to `notnull`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/generics/constraints-on-type-parameters",
+          "title": "Constraints on type parameters - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/default",
+          "title": "Default value expressions - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/where-generic-type-constraint",
+          "title": "where (generic type constraint) - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "generics"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`unmanaged` arrived in C# 7.3, `notnull` with nullable reference types (C# 8), `allows ref struct` in C# 13.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-covariance-contravariance",
+      "topic": "csharp",
+      "subtopic": "generics",
+      "difficulty": "senior",
+      "question": "What are covariance and contravariance in generics (`out` and `in`)?",
+      "shortAnswer": "Variance controls which conversions exist between generic types whose type arguments are related by inheritance. A covariant parameter (`out T`) lets `IEnumerable<Derived>` be used as `IEnumerable<Base>`; a contravariant parameter (`in T`) lets `Action<Base>` be used as `Action<Derived>`.",
+      "answer": "**Key points**\n- Generic type parameters are **invariant** by default: `List<Derived>` is not a `List<Base>`.\n- **Covariant (`out T`)**: `T` only appears as an output (return values). Safe to treat a producer of `Derived` as a producer of `Base`. Examples: `IEnumerable<out T>`, `IEnumerator<out T>`, `IReadOnlyList<out T>`, `Func<out TResult>`.\n- **Contravariant (`in T`)**: `T` only appears as an input (parameters). Safe to treat a consumer of `Base` as a consumer of `Derived`. Examples: `IComparer<in T>`, `IEqualityComparer<in T>`, `Action<in T>`, the `T` parameters of `Func<in T, out TResult>`.\n- Variance applies only to **generic interfaces and delegates**, and only for **reference types**: `IEnumerable<int>` is not convertible to `IEnumerable<object>`.\n\n**Why `List<T>` is invariant**\n`List<T>` both accepts and returns `T`. If `List<Cat>` could be used as `List<Animal>`, you could add a `Dog`\nto a list of cats. Arrays allow exactly this (array covariance) and catch it only at run time with\n`ArrayTypeMismatchException`, which is why generic variance is restricted to safe positions.\n\n**Related**: C# 9 added *covariant return types* for overrides (an override may return a more derived type).",
+      "code": {
+        "lang": "csharp",
+        "source": "IEnumerable<string> names = new List<string> { \"a\", \"b\" };\nIEnumerable<object> objects = names;            // covariance: out T\n\nAction<object> logAny = o => Console.WriteLine(o);\nAction<string> logString = logAny;              // contravariance: in T\n\n// List<object> list = new List<string>();      // error: List<T> is invariant\n\npublic interface IProducer<out T> { T Produce(); }\npublic interface IConsumer<in T> { void Consume(T item); }"
+      },
+      "pitfalls": [
+        "Expecting variance to work for value types; `IEnumerable<int>` won't convert to `IEnumerable<object>`.",
+        "Declaring `out T` and then using `T` as a method parameter; the compiler rejects it.",
+        "Relying on array covariance (`object[] arr = new string[1]`), which fails at run time on a bad write."
+      ],
+      "followUps": [
+        "Why is `IReadOnlyList<T>` covariant but `IList<T>` isn't?",
+        "Can a class declare variant type parameters?",
+        "How does variance interact with delegate combination?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/generics/covariance-and-contravariance",
+          "title": "Covariance and contravariance in generics",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/covariance-contravariance/",
+          "title": "Covariance and contravariance (C#)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1",
+          "title": "IReadOnlyList<T> Interface - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Generic variance on interfaces and delegates arrived in C# 4 / .NET Framework 4; covariant return types for overrides in C# 9.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-generics-in-the-clr",
+      "topic": "csharp",
+      "subtopic": "generics",
+      "difficulty": "senior",
+      "question": "How does the CLR implement generics, and how is that different from type erasure?",
+      "shortAnswer": ".NET generics are kept in the compiled IL and metadata and are made concrete by the runtime. Each value-type argument gets its own specialized code, while all reference-type arguments share one copy, and the real type arguments stay visible at run time, unlike Java-style erasure.",
+      "answer": "**Key points**\n- The compiler emits IL plus metadata that marks the type or method as generic; specialization happens when the runtime first uses a constructed type.\n- **Value types**: the runtime creates a specialized version per distinct value type (`Stack<int>`, `Stack<long>`, `Stack<MyStruct>`), so values are stored and handled natively with no boxing.\n- **Reference types**: one specialized version, with object references in place of the type parameter, is shared by every reference-type argument (`Stack<Customer>` and `Stack<Order>` share code). That works because every reference has the same size.\n- The type arguments are **reified**: `typeof(List<string>)` and reflection report the actual arguments, and `obj is List<string>` is checked at run time.\n\n**Contrast with type erasure**\nIn an erasure model (Java), the generic type information is removed at compile time and every instantiation is\nthe same run-time class working on `Object`. That forces boxing of primitives and means a list of strings and a\nlist of integers can't be told apart at run time. .NET avoids both problems.\n\n**Consequences**\n- `List<int>` is genuinely efficient for value types.\n- Static fields exist per closed constructed type (see the separate question).\n- The normal runtime creates value-type instantiations on demand, but Native AOT must generate all of them ahead of time, which can noticeably increase binary size.",
+      "code": {
+        "lang": "csharp",
+        "source": "var ints = new List<int>();\nvar names = new List<string>();\n\nConsole.WriteLine(ints.GetType());                       // System.Collections.Generic.List`1[System.Int32]\nConsole.WriteLine(names.GetType().GetGenericArguments()[0]); // System.String\nConsole.WriteLine(names is List<string>);                // True: checked at run time"
+      },
+      "pitfalls": [
+        "Saying .NET generics are \"just compile-time sugar\"; the runtime knows the exact type arguments.",
+        "Assuming every instantiation gets its own machine code; reference-type instantiations share one."
+      ],
+      "followUps": [
+        "Why do value-type instantiations get separate code?",
+        "How do generics interact with reflection, for example `MakeGenericType`?",
+        "Why does `List<int>` avoid boxing while `ArrayList` can't?",
+        "Why can generic code make a Native AOT binary bigger?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/generics/generics-in-the-run-time",
+          "title": "Generics in the runtime - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/generics/",
+          "title": "Generics in .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/",
+          "title": "Native AOT deployment overview - .NET (limitations)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-static-fields-in-generic-types",
+      "topic": "csharp",
+      "subtopic": "generics",
+      "difficulty": "mid",
+      "question": "If a generic class has a static field, is it shared between `Cache<int>` and `Cache<string>`?",
+      "shortAnswer": "No. Each closed constructed type (`Cache<int>`, `Cache<string>`, ...) has its own set of static fields, so the two never see each other's values. All instances of the *same* closed type share them.",
+      "answer": "**Key points**\n- The C# specification says a static field in a non-generic class has one storage location, while each distinct closed constructed type has its own set of static fields.\n- The static constructor also runs once **per closed constructed type**, so `Cache<int>` and `Cache<string>` each initialize separately (the spec suggests it as a place for run-time checks on the type argument).\n- This enables a handy pattern: a static generic class used as a type-keyed cache (`TypeCache<T>.Value`), which avoids a dictionary lookup.\n\n**Detail**\nIt surprises people who expect \"static means one per program\". If you need state shared across all\ninstantiations, put it in a non-generic base class or a separate non-generic static class. The .NET analyzer\nrule CA1000 also advises against static members on generic types in public APIs, because callers must spell\nout the type argument (`Cache<int>.Count`), which is awkward.",
+      "code": {
+        "lang": "csharp",
+        "source": "public static class Counter<T>\n{\n    public static int Count;\n}\n\nCounter<int>.Count++;\nCounter<int>.Count++;\nCounter<string>.Count++;\n\nConsole.WriteLine(Counter<int>.Count);     // 2\nConsole.WriteLine(Counter<string>.Count);  // 1"
+      },
+      "pitfalls": [
+        "Storing a \"global\" counter or lock object in a generic class and getting one per type argument.",
+        "Expecting a generic type's static constructor to run only once in total; it runs once per closed type."
+      ],
+      "followUps": [
+        "How would you share one value across all instantiations of a generic type?",
+        "What is a closed versus an open constructed type?",
+        "How can a static generic class act as a fast per-type cache?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/classes",
+          "title": "Classes - C# language specification (static and instance members)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1000",
+          "title": "CA1000: Do not declare static members on generic types",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-delegate-func-action-predicate",
+      "topic": "csharp",
+      "subtopic": "delegates-and-events",
+      "difficulty": "junior",
+      "question": "What is a delegate, and when do you use `Func`, `Action` and `Predicate`?",
+      "shortAnswer": "A delegate is a type-safe reference to a method with a specific parameter list and return type, so you can store a method in a variable and pass it around. `Action<...>` is the built-in delegate for methods that return nothing, `Func<..., TResult>` for methods that return a value, and `Predicate<T>` for a yes/no test on one value.",
+      "answer": "**Key points**\n- Declaring `delegate string Reverse(string s);` makes the compiler generate a class (derived from `System.MulticastDelegate`) for that signature.\n- Any static or instance method, lambda or anonymous method with a matching signature can be assigned to it and invoked later.\n- The built-in generic delegates mean you rarely need your own:\n  - `Action`, `Action<T1..T16>`: performs an operation, returns `void`.\n  - `Func<TResult>`, `Func<T1..T16, TResult>`: the **last** type argument is the return type; typical for projections and calculations.\n  - `Predicate<T>`: takes a `T`, returns `bool`; equivalent in shape to `Func<T, bool>` and used by APIs such as `List<T>.FindAll`.\n\n**Where delegates show up**\nCallbacks, LINQ (`Where(Func<T,bool>)`), `List<T>.Sort(Comparison<T>)`, `Task.Run(Action)`, strategy-style code,\nand as the foundation of events.\n\n**Custom delegate types** are still worth it when the name documents intent, when you need `ref`/`out`\nparameters, or for event handler types.",
+      "code": {
+        "lang": "csharp",
+        "source": "Action<string> log = msg => Console.WriteLine($\"[log] {msg}\");\nFunc<int, int, int> add = (a, b) => a + b;\nPredicate<int> isEven = n => n % 2 == 0;\n\nlog(\"start\");\nConsole.WriteLine(add(2, 3));                    // 5\n\nvar numbers = new List<int> { 1, 2, 3, 4 };\nList<int> evens = numbers.FindAll(isEven);       // Predicate<T>\nIEnumerable<int> doubled = numbers.Select(n => n * 2);   // Func<T, TResult>"
+      },
+      "pitfalls": [
+        "Mixing up the order of `Func` type arguments; the return type is always the last one.",
+        "Assuming `Predicate<T>` and `Func<T, bool>` are interchangeable types; they have the same shape but are different delegate types, so one can't be assigned to the other without a lambda.",
+        "Invoking a delegate variable that may be `null` without `?.Invoke`."
+      ],
+      "followUps": [
+        "What does the compiler generate for a delegate declaration?",
+        "What is a multicast delegate?",
+        "How is a delegate different from an interface with one method?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/delegates-lambdas",
+          "title": "Delegates and lambdas - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/delegate-class",
+          "title": "System.Delegate and the delegate keyword - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "delegates-and-lambdas"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-delegate-vs-event",
+      "topic": "csharp",
+      "subtopic": "delegates-and-events",
+      "difficulty": "mid",
+      "question": "What is the difference between a delegate field and an `event`? Why does the `event` keyword exist?",
+      "shortAnswer": "An event is a delegate wrapped so that outside code can only subscribe (`+=`) and unsubscribe (`-=`); only the declaring class can raise it or replace its handlers. A public delegate field would let any caller invoke it or wipe out everyone else's handlers with `=`.",
+      "answer": "**Key points**\n- Events are built on delegates: an event declaration names a delegate type (usually `EventHandler` / `EventHandler<TEventArgs>`).\n- The `event` keyword gives **encapsulation**: other classes get only `add`/`remove`; invoking the event and assigning to it are private to the declaring class.\n- For a field-like event, the compiler generates a private backing delegate field plus `add` and `remove` accessors; you can write custom accessors, much like a property.\n\n**Choosing between them (from the .NET guidance)**\n- Use a **delegate** when your code *needs* the callback to do its job (a comparer for `Sort`, a predicate for LINQ), or when you need a return value.\n- Use an **event** when listening is optional and the source works fine with zero subscribers (progress updates, UI clicks, \"file found\" notifications). Event handlers return `void`.\n- Events usually live as public members for a long time; delegates are often just method parameters used during one call.\n\n**Conventions**\nRaise events with `Changed?.Invoke(this, args)`, put the raise in a `protected virtual OnChanged(...)` method,\nand derive argument types from `EventArgs`.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Thermostat\n{\n    public event EventHandler<int>? TemperatureChanged;   // outside: += and -= only\n    public Action<int>? RawCallback;                      // outside: anything goes\n\n    public void Set(int value)\n    {\n        OnTemperatureChanged(value);\n        RawCallback?.Invoke(value);\n    }\n\n    protected virtual void OnTemperatureChanged(int value)\n        => TemperatureChanged?.Invoke(this, value);\n}\n\n// var t = new Thermostat();\n// t.TemperatureChanged += (s, v) => Console.WriteLine(v);\n// t.TemperatureChanged = null;          // compile error outside the class\n// t.TemperatureChanged?.Invoke(t, 1);   // compile error outside the class\n// t.RawCallback = null;                 // compiles, silently removes all handlers"
+      },
+      "pitfalls": [
+        "Exposing a public `Action` field \"as an event\"; any caller can raise it or overwrite all subscribers.",
+        "Raising an event without the null-conditional call when there are no subscribers.",
+        "Expecting a useful return value from an event; event handlers are `void` by convention."
+      ],
+      "followUps": [
+        "What do custom `add`/`remove` accessors let you do?",
+        "Why is `sender` an `object` in the standard event pattern?",
+        "How would you make raising an event safe when handlers are added from other threads?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/distinguish-delegates-events",
+          "title": "Distinguishing delegates and events - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/event-pattern",
+          "title": "Standard .NET event patterns - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/events/",
+          "title": "Handling and raising events - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "events",
+        "delegates-and-lambdas"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-multicast-delegate-behavior",
+      "topic": "csharp",
+      "subtopic": "delegates-and-events",
+      "difficulty": "mid",
+      "question": "When a multicast delegate has several methods, what happens to return values and exceptions?",
+      "shortAnswer": "The methods run in the order they were added. If the delegate returns a value, the caller gets only the last method's result; if any method throws, the exception goes to the caller and the remaining methods are not called.",
+      "answer": "**Key points**\n- Every C# delegate derives from `System.MulticastDelegate` and can hold an **invocation list**; `+`/`+=` adds, `-`/`-=` removes.\n- Invocation calls each method **in order**. Duplicates are allowed and each copy runs; removing takes out the rightmost matching entry.\n- **Return value / `out` parameters**: only those of the **last** method invoked come back. Earlier results are lost.\n- **`ref` parameters**: passed along the chain, so each method sees the previous one's changes.\n- **Exceptions**: an uncaught exception stops the chain; later methods never run.\n- Delegates are **immutable**: `+=` creates a new delegate instance, leaving the original unchanged.\n\n**Getting every result or isolating failures**\nIterate `GetInvocationList()` yourself, cast each entry to the delegate type, and call it inside its own\n`try/catch` or collect each return value.",
+      "code": {
+        "lang": "csharp",
+        "source": "Func<int> numbers = () => 1;\nnumbers += () => 2;\nnumbers += () => 3;\n\nConsole.WriteLine(numbers());          // 3: only the last result\n\nvar all = numbers.GetInvocationList()\n                 .Cast<Func<int>>()\n                 .Select(f => f())\n                 .ToList();            // [1, 2, 3]\n\nAction steps = () => Console.WriteLine(\"A\");\nsteps += () => throw new InvalidOperationException();\nsteps += () => Console.WriteLine(\"C\");   // never runs if the second one throws"
+      },
+      "pitfalls": [
+        "Combining `Func<T>` delegates and expecting to see all results.",
+        "Letting one faulty event handler stop the rest; isolate handlers if they come from untrusted or independent code.",
+        "Removing a lambda with `-=` by writing the same lambda again; it is a different delegate instance, so nothing is removed."
+      ],
+      "followUps": [
+        "How would you invoke every handler even if one throws?",
+        "Why can you only combine delegates of exactly the same type?",
+        "Are delegates thread-safe to combine from several threads?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/delegates/using-delegates",
+          "title": "Using delegates - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/delegates/how-to-combine-delegates-multicast-delegates",
+          "title": "How to combine delegates (multicast delegates) - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/events-overview",
+          "title": "Introduction to events - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "delegates-and-lambdas",
+        "events"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-event-handler-memory-leaks",
+      "topic": "csharp",
+      "subtopic": "delegates-and-events",
+      "difficulty": "mid",
+      "question": "How can event subscriptions cause memory leaks, and how do you prevent them?",
+      "shortAnswer": "The publisher's event holds a delegate that references the subscriber, so as long as the publisher is alive the subscriber can't be garbage-collected. A long-lived publisher (a static event, a singleton service) therefore keeps every short-lived subscriber alive until it unsubscribes.",
+      "answer": "**Key points**\n- Subscribing with `+=` stores a delegate in the publisher; that delegate's `Target` is the subscriber instance.\n- The GC can't collect the subscriber while it's reachable through the publisher. The docs: until you unsubscribe, the publisher's multicast delegate holds a reference to the handler, and the subscriber won't be collected.\n- The leak only matters when the **publisher outlives the subscriber**: static events, singletons, app-wide message buses, long-lived services subscribed to by views or view models.\n\n**Prevention**\n- Unsubscribe with `-=` when the subscriber is done, typically in `Dispose()` (make the subscriber `IDisposable`).\n- Keep a reference to the handler you subscribed with; you can't remove a lambda by writing it again.\n- Prefer scoped lifetimes so publisher and subscriber die together, or use weak-reference based patterns (weak events, `WeakReferenceMessenger`-style buses) when explicit unsubscription is impractical.\n- Diagnose with a memory profiler or `dotnet-gcdump`: look for subscriber objects rooted through an event's delegate.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class PriceFeed                    // long-lived (for example, a singleton)\n{\n    public event EventHandler<decimal>? PriceChanged;\n    public void Publish(decimal p) => PriceChanged?.Invoke(this, p);\n}\n\npublic sealed class PriceWidget : IDisposable   // short-lived\n{\n    private readonly PriceFeed _feed;\n    public PriceWidget(PriceFeed feed)\n    {\n        _feed = feed;\n        _feed.PriceChanged += OnPriceChanged;   // feed now references this widget\n    }\n\n    private void OnPriceChanged(object? sender, decimal price) => Console.WriteLine(price);\n\n    public void Dispose() => _feed.PriceChanged -= OnPriceChanged;   // breaks the reference\n}"
+      },
+      "pitfalls": [
+        "Subscribing to a static or singleton event from a short-lived object and never unsubscribing.",
+        "Subscribing with an inline lambda and later trying to remove it with another identical-looking lambda.",
+        "Assuming the GC will \"see\" that the subscriber is no longer used elsewhere; the event reference still counts."
+      ],
+      "followUps": [
+        "What is the weak event pattern, and what does it cost?",
+        "Does a short-lived publisher with a long-lived subscriber leak?",
+        "How would you find this leak in a running service?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/events/how-to-subscribe-to-and-unsubscribe-from-events",
+          "title": "How to subscribe to and unsubscribe from events - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/events-overview",
+          "title": "Introduction to events - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "events"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-closures-captured-variables",
+      "topic": "csharp",
+      "subtopic": "delegates-and-events",
+      "difficulty": "senior",
+      "question": "What is a closure in C#, and why do lambdas created in a `for` loop sometimes all see the same value?",
+      "shortAnswer": "A lambda that uses an outer local variable *captures the variable itself*, not a copy of its value, so it sees later changes and keeps the variable alive. A `for` loop has one loop variable shared by all iterations, so every lambda sees its final value; `foreach` creates a fresh variable per iteration.",
+      "answer": "**Key points**\n- Lambdas (and anonymous methods, local functions) can use outer variables. The compiler moves captured locals into a hidden class instance shared by the method and the lambda.\n- Capture is **by reference to the variable**: if the variable changes after the lambda is created, the lambda sees the new value.\n- A captured variable lives as long as the delegate that references it; it isn't collected when the method returns.\n- A lambda can't capture `ref`, `out` or `in` parameters of the enclosing method.\n\n**The loop trap**\n- In `for (int i = 0; i < 3; i++)` there is **one** `i` for the whole loop, so lambdas created inside all print `3` once the loop has finished.\n- `foreach` declares its iteration variable **inside** the loop body, so each iteration has its own variable. The C# spec points out that earlier versions of C# declared it outside the loop, which caused the same trap.\n- Fix for `for`: copy to a local inside the loop body (`int copy = i;`) and capture `copy`.\n\n**Controlling capture**\nA `static` lambda (C# 9) can't capture locals or instance state, which prevents accidental captures and the\nhidden allocation that comes with them.",
+      "code": {
+        "lang": "csharp",
+        "source": "var actions = new List<Action>();\n\nfor (int i = 0; i < 3; i++)\n    actions.Add(() => Console.Write(i));      // all share one i\nactions.ForEach(a => a());                    // 333\n\nactions.Clear();\nfor (int i = 0; i < 3; i++)\n{\n    int copy = i;                             // new variable each iteration\n    actions.Add(() => Console.Write(copy));\n}\nactions.ForEach(a => a());                    // 012\n\nFunc<int, int> square = static x => x * x;    // static: can't capture anything"
+      },
+      "pitfalls": [
+        "Assuming a lambda copies the value at creation time.",
+        "Capturing a large object or `this` in a long-lived callback and keeping it alive unintentionally.",
+        "Capturing variables in hot paths, which adds a heap allocation per call."
+      ],
+      "followUps": [
+        "What does the compiler generate for a captured local variable?",
+        "How do static lambdas help performance?",
+        "Why can't a lambda capture a `ref` parameter?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/lambda-expressions",
+          "title": "Lambda expressions and anonymous functions - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/statements",
+          "title": "Statements - C# language specification (the foreach statement)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-2012/hh678682(v=vs.110)",
+          "title": "Visual C# breaking changes in Visual Studio 2012",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "delegates-and-lambdas"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "The per-iteration `foreach` variable is the rule since C# 5 / Visual Studio 2012 (the 2010 compiler shared one variable); `for` loops were not changed. Static lambdas need C# 9.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-delegate-vs-expression-tree",
+      "topic": "csharp",
+      "subtopic": "delegates-and-events",
+      "difficulty": "senior",
+      "question": "What is the difference between assigning a lambda to `Func<T, bool>` and to `Expression<Func<T, bool>>`?",
+      "shortAnswer": "As a `Func`, the lambda is compiled to executable code you can call. As an `Expression<Func<...>>`, the compiler builds an expression tree: a data structure describing the code, which a library can inspect, translate (for example into SQL) or compile later.",
+      "answer": "**Key points**\n- Same lambda syntax, different target type, different result:\n  - `Func<int, bool> f = n => n < 5;` gives a delegate; calling `f(3)` runs IL.\n  - `Expression<Func<int, bool>> e = n => n < 5;` gives a tree of nodes (`LessThan(Parameter n, Constant 5)`); nothing runs until someone interprets it or calls `e.Compile()`.\n- This is why `Enumerable.Where` takes a `Func` (runs in memory) while `Queryable.Where` takes an `Expression` (EF Core translates it to SQL).\n- Expression trees are **immutable**; to change one you build a new tree (usually with an `ExpressionVisitor`).\n\n**Limitations**\n- Only *expression* lambdas convert to expression trees, not statement lambdas with `{ }` bodies.\n- They can't contain `await`, assignments, `?.`, `dynamic` operations or local function calls, and many newer C# features appear in their older equivalent form.\n- A query provider can only translate methods it knows; an unknown method call can't become SQL.\n\n**Uses**: ORMs and query providers, mocking libraries, building dynamic filters at run time, and compiling\nfast accessors once and reusing them.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Linq.Expressions;\n\nFunc<int, bool> asDelegate = n => n < 5;\nExpression<Func<int, bool>> asTree = n => n < 5;\n\nConsole.WriteLine(asDelegate(3));              // True: runs compiled code\nConsole.WriteLine(asTree.Body);                // (n < 5): inspectable data\nConsole.WriteLine(asTree.Body.NodeType);       // LessThan\n\nFunc<int, bool> compiled = asTree.Compile();   // turn the tree into a delegate\nConsole.WriteLine(compiled(7));                // False\n\n// Expression<Func<int, bool>> bad = n => { return n < 5; };  // error: statement lambda"
+      },
+      "pitfalls": [
+        "Passing a `Func` where an `IQueryable` expected an expression, which silently switches to in-memory filtering.",
+        "Calling `Compile()` repeatedly in a hot path; compile once and cache the delegate.",
+        "Using custom C# methods inside an EF Core query expression and expecting them to translate to SQL."
+      ],
+      "followUps": [
+        "How does EF Core use expression trees to generate SQL?",
+        "How would you combine two filter expressions at run time?",
+        "What does an `ExpressionVisitor` do?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/",
+          "title": "Expression trees - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/lambda-expressions",
+          "title": "Lambda expressions and anonymous functions - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "delegates-and-lambdas",
+        "ef-core-raw-sql-iqueryable-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-record-vs-class",
+      "topic": "csharp",
+      "subtopic": "records-and-pattern-matching",
+      "difficulty": "junior",
+      "question": "What is a `record`, and what does the compiler generate for it that a normal class doesn't get?",
+      "shortAnswer": "A record is a type built for data: the compiler generates value-based equality (`Equals`, `GetHashCode`, `==`, `!=`), a readable `ToString`, support for `with` copies and, for positional records, a constructor, properties and `Deconstruct`. A plain class compares by reference and gets none of that.",
+      "answer": "**Key points**\n- `record` / `record class` is a **reference type**; `record struct` (C# 10) is a value type.\n- **Value equality**: two record instances are equal when they have the same run-time type and the same member values. For classes, `==` is reference equality by default.\n- Synthesized members: `Equals(object)`, `Equals(R?)` (implements `IEquatable<R>`), `GetHashCode`, `operator ==`/`!=`, `ToString` (via a `PrintMembers` method), a copy constructor used by `with`, and `EqualityContract` for inheritance-aware equality.\n- **Positional syntax** `record Person(string First, string Last);` also gives a primary constructor, a public property per parameter (init-only for `record class`) and a `Deconstruct` method.\n- `with` performs **nondestructive mutation**: it copies the record and changes the listed members.\n\n**When to use**\nDTOs, messages, value objects, configuration snapshots and query results: data you compare by content and\nusually don't mutate. Avoid records for EF Core entities; the docs note EF Core relies on reference equality\nto track one instance per entity.",
+      "code": {
+        "lang": "csharp",
+        "source": "public record Person(string First, string Last);\n\nvar a = new Person(\"Aman\", \"Kumar\");\nvar b = new Person(\"Aman\", \"Kumar\");\n\nConsole.WriteLine(a == b);                 // True: value equality\nConsole.WriteLine(ReferenceEquals(a, b));  // False: two objects\nConsole.WriteLine(a);                      // Person { First = Aman, Last = Kumar }\n\nvar c = a with { Last = \"Singh\" };         // copy with one change\nvar (first, last) = c;                     // Deconstruct"
+      },
+      "pitfalls": [
+        "Using records as EF Core entities; value equality conflicts with how EF tracks entities.",
+        "Assuming `==` on records compares references; it compares values.",
+        "Declaring your own `Equals(object)` or `==` in a record; the compiler reports an error because those are synthesized."
+      ],
+      "followUps": [
+        "What is the difference between `record class` and `record struct`?",
+        "Are records really immutable?",
+        "How does equality work when one record inherits from another?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/record",
+          "title": "Records - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "records-equality-partial"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Records need C# 9 (.NET 5+); `record struct` and `readonly record struct` need C# 10.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-record-class-vs-record-struct",
+      "topic": "csharp",
+      "subtopic": "records-and-pattern-matching",
+      "difficulty": "mid",
+      "question": "How do `record class`, `record struct` and `readonly record struct` differ?",
+      "shortAnswer": "`record class` is a reference type with init-only positional properties; `record struct` is a value type whose positional properties are read-write; `readonly record struct` is a value type with init-only positional properties. All three get value equality, `ToString` and `with`.",
+      "answer": "**Key points**\n\n| | `record` / `record class` | `record struct` | `readonly record struct` |\n|---|---|---|---|\n| Kind | reference type | value type | value type |\n| Positional properties | `init`-only | read-write (`get; set;`) | `init`-only |\n| Inheritance | can inherit from another record | none (structs are sealed) | none |\n| `with` | uses a synthesized copy constructor | copies the value | copies the value |\n| Parameterless constructor | not generated | sets fields to defaults | sets fields to defaults |\n\n- All record kinds synthesize value equality. For a plain `struct`, `ValueType.Equals` uses reflection; a `record struct` gets compiler-generated equality over its declared members, which is faster.\n- Choose between `record class` and `record struct` the same way you choose between `class` and `struct`: size, copy cost, need for inheritance or `null`.\n\n**Rule of thumb**\nSmall, immutable value objects (money, coordinates, IDs) fit `readonly record struct`. Larger DTOs, messages or\nanything in a hierarchy fit `record class`.",
+      "code": {
+        "lang": "csharp",
+        "source": "public record class Customer(int Id, string Name);        // reference type, init-only\npublic record struct Point(int X, int Y);                  // value type, mutable\npublic readonly record struct Money(decimal Amount, string Currency); // value type, init-only\n\nvar p = new Point(1, 2);\np.X = 10;                       // allowed: record struct properties are read-write\n\nvar m = new Money(5m, \"EUR\");\n// m.Amount = 6m;               // error: init-only\nvar more = m with { Amount = 6m };"
+      },
+      "pitfalls": [
+        "Assuming `record struct` is immutable like `record class`; its positional properties are settable unless it's `readonly`.",
+        "Choosing a large `record struct` and paying for copies on every assignment and method call."
+      ],
+      "followUps": [
+        "Why is `ValueType.Equals` slower than a record struct's equality?",
+        "When would you add your own copy constructor to a record class?",
+        "Can a record struct implement interfaces?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/record",
+          "title": "Records - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "records-equality-partial",
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`record struct` and `readonly record struct` need C# 10 (.NET 6+).",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-record-immutability-is-shallow",
+      "topic": "csharp",
+      "subtopic": "records-and-pattern-matching",
+      "difficulty": "senior",
+      "question": "Are records immutable? What are the traps with `with` and with collections inside a record?",
+      "shortAnswer": "Only shallowly, and only by default for `record class` and `readonly record struct`. Init-only properties stop you from replacing a member, but an array or list inside a record can still be modified, `with` copies that reference rather than the collection, and equality compares the collection by reference.",
+      "answer": "**Key points**\n- Positional `record class` and `readonly record struct` properties are `init`-only; a `record struct`'s are settable; and any record can declare `set` properties or mutable fields.\n- The docs call init-only properties **shallowly immutable**: you can't change a value-type member or swap a reference, but the object a reference points to can still change.\n- `with` makes a **shallow copy**: for a reference property, the original and the copy share the same instance.\n- Synthesized equality compares each member with its type's default equality. For `List<T>` or arrays that means **reference** equality, so two records holding equal-looking lists are not equal.\n\n**What to do**\n- Use immutable collection types (`ImmutableArray<T>`, `ImmutableList<T>`, `IReadOnlyList<T>` over a private copy) for record members.\n- If you need structural equality over a sequence, implement `Equals(R? other)` and `GetHashCode` yourself (for example with `SequenceEqual`).\n- If you need a deep copy, write your own copy constructor (the compiler then doesn't synthesize one); `with` will use it for `record class`.\n- Never use a mutable member in `GetHashCode` while the record is a key in a `Dictionary` or `HashSet`.",
+      "code": {
+        "lang": "csharp",
+        "source": "public record Order(string Id, List<string> Lines);\n\nvar o1 = new Order(\"A1\", new List<string> { \"pen\" });\nvar o2 = o1 with { };                 // shallow copy\n\no2.Lines.Add(\"ink\");                   // also changes o1.Lines\nConsole.WriteLine(o1.Lines.Count);     // 2\n\nvar o3 = new Order(\"A1\", new List<string> { \"pen\", \"ink\" });\nConsole.WriteLine(o1 == o3);           // False: lists compared by reference"
+      },
+      "pitfalls": [
+        "Calling a record immutable in an interview without saying \"shallow\".",
+        "Expecting `with` to deep-clone nested objects or collections.",
+        "Expecting two records with equal list contents to be equal."
+      ],
+      "followUps": [
+        "How would you give a record structural equality over a collection member?",
+        "What does a custom copy constructor change about `with`?",
+        "Why does immutability matter for hash-based collections and thread safety?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/record",
+          "title": "Records - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/with-expression",
+          "title": "with expression - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "records-equality-partial"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-is-as-and-cast",
+      "topic": "csharp",
+      "subtopic": "records-and-pattern-matching",
+      "difficulty": "junior",
+      "question": "What is the difference between a cast, the `as` operator and an `is` type pattern?",
+      "shortAnswer": "A cast `(T)x` converts or throws `InvalidCastException` if it can't; `x as T` returns `null` instead of throwing and only works for reference and nullable types; `x is T t` tests the type and, if it matches, gives you a typed variable in one step.",
+      "answer": "**Key points**\n- **Cast `(T)x`**: can use any explicit conversion, including numeric and user-defined ones. Fails at run time with an exception.\n- **`as`**: `x as T` behaves like `x is T ? (T)x : null`, evaluating `x` once. It considers only reference, nullable, boxing and unboxing conversions, so it can't target a non-nullable value type and never runs user-defined conversions. You must null-check the result.\n- **`is` with a declaration pattern** (C# 7): `if (x is Customer c)` tests and assigns. The variable is definitely assigned only where the match is known to be true. `is` doesn't consider user-defined conversions either.\n- **Null checks**: `x is null` / `x is not null` never call an overloaded `==`, which makes them reliable even when a type overloads equality.\n\n**Which to use**\n- Expect the type to be correct, and a wrong type is a bug: cast.\n- The type may vary: `is` pattern (cleaner than `as` plus a null check).\n- Many cases: a `switch` expression over type patterns.",
+      "code": {
+        "lang": "csharp",
+        "source": "object value = \"hello\";\n\nstring s1 = (string)value;            // fine; would throw for a non-string\nstring? s2 = value as string;         // null if not a string\nif (value is string s3 && s3.Length > 3)\n    Console.WriteLine(s3.ToUpper());  // typed variable, no second cast\n\nobject number = 42;\n// int n = number as int;             // error: as needs a reference or nullable type\nint? maybe = number as int?;          // 42\nif (number is int n) Console.WriteLine(n + 1);\n\nif (value is not null) Console.WriteLine(\"has a value\");"
+      },
+      "pitfalls": [
+        "Using `as` and then dereferencing without a null check, which turns a clear `InvalidCastException` into a vague `NullReferenceException`.",
+        "Expecting `as` or `is` to apply a user-defined `implicit`/`explicit` conversion operator.",
+        "Writing `x == null` on a type with a custom `==` and getting the overload's behaviour; `is null` avoids that."
+      ],
+      "followUps": [
+        "How do you test for \"not this type\" with patterns?",
+        "What does `is var x` match?",
+        "Why can't `as` be used with `int`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/type-testing-and-cast",
+          "title": "Type-testing operators and cast expressions - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/patterns",
+          "title": "Patterns - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "pattern-matching"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-switch-expression-and-patterns",
+      "topic": "csharp",
+      "subtopic": "records-and-pattern-matching",
+      "difficulty": "mid",
+      "question": "How does a `switch` expression work, and what happens if no arm matches?",
+      "shortAnswer": "A `switch` expression evaluates its arms in order and returns the value of the first arm whose pattern (and optional `when` guard) matches. The compiler warns if the arms don't cover every input; if nothing matches at run time it throws `SwitchExpressionException` (.NET Core 3.0+).",
+      "answer": "**Key points**\n- Syntax: `input switch { pattern [when condition] => result, ... }`. It is an *expression*, so it produces a value.\n- Arms are checked **top to bottom**; the compiler errors if an arm can never be reached because an earlier one already covers it.\n- Patterns you can combine in arms:\n  - type and declaration: `Circle c`\n  - constant: `0`, `null`, `\"admin\"`\n  - relational (C# 9): `< 0`, `>= 18`\n  - logical (C# 9): `and`, `or`, `not`\n  - property: `{ Status: \"Active\", Age: >= 18 }` (extended form `{ Address.City: \"Pune\" }` in C# 10)\n  - positional: `(0, 0)` via `Deconstruct`\n  - list (C# 11): `[1, .., 9]`\n  - discard `_` as the catch-all.\n- **Exhaustiveness**: the compiler usually warns when some input isn't handled. At run time an unmatched input throws `SwitchExpressionException` on .NET Core 3.0+ (`InvalidOperationException` on .NET Framework). List patterns are an exception: they don't produce a warning when not every input is covered.\n\n**Good practice**\nEnd with `_ =>` (or explicit `null` handling) unless you deliberately want the compiler to flag new cases;\nput the most specific arms first.",
+      "code": {
+        "lang": "csharp",
+        "source": "public record Order(decimal Total, string Country, bool IsVip);\n\npublic static class Shipping\n{\n    public static decimal Cost(Order order) => order switch\n    {\n        { IsVip: true }                       => 0m,\n        { Country: \"IN\", Total: >= 500m }     => 0m,\n        { Country: \"IN\" }                     => 40m,\n        { Total: > 1000m and <= 5000m }       => 15m,\n        _                                     => 25m,\n    };\n\n    public static string Describe(int[] values) => values switch\n    {\n        []            => \"empty\",\n        [var single]  => $\"one item: {single}\",\n        [1, .., 1]    => \"starts and ends with 1\",\n        _             => \"something else\",\n    };\n}"
+      },
+      "pitfalls": [
+        "Putting a broad arm before a specific one; the compiler rejects unreachable arms, but overlapping arms in a different order can silently change results.",
+        "Leaving out a discard or `null` arm and getting `SwitchExpressionException` in production.",
+        "Relying on list patterns being checked for exhaustiveness; they aren't flagged."
+      ],
+      "followUps": [
+        "What is the difference between a `switch` statement and a `switch` expression?",
+        "How would you match on two values at once (tuple patterns)?",
+        "How do `and`/`or`/`not` patterns combine, and what is their precedence?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/switch-expression",
+          "title": "switch expression - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/patterns",
+          "title": "Patterns - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "pattern-matching"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Switch expressions and property/positional patterns: C# 8. Relational and logical patterns: C# 9. Extended property patterns: C# 10. List patterns: C# 11. `SwitchExpressionException` exists on .NET Core 3.0+; .NET Framework throws `InvalidOperationException`.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-closed-set-of-cases",
+      "topic": "csharp",
+      "subtopic": "records-and-pattern-matching",
+      "difficulty": "senior",
+      "question": "How would you model \"one of a fixed set of cases\" (for example Success / NotFound / Invalid) in C#, and make the compiler help you handle every case?",
+      "shortAnswer": "In current C#, use an abstract base record with one sealed record per case and switch over them with type patterns; because the base isn't closed, you still need a discard arm. C# 15 (preview with .NET 11) adds `closed` classes and `union` types, which let the compiler check that every case is handled without a default arm.",
+      "answer": "**Key points**\n- **Today (C# 9-14)**: an `abstract record Result` with `sealed record` cases. Each case carries its own data, and a `switch` expression with type/property patterns handles them. The compiler can't know the hierarchy is complete (another assembly could derive a new case), so a `_` arm is required to avoid the non-exhaustive warning. A private constructor on the base makes it hard for code outside the base type to add new cases.\n- **C# 15 `closed` modifier** (preview): direct subclasses of a `closed` class can only be declared in the same assembly, so a `switch` that handles every direct descendant is exhaustive and needs no default arm. Nullable inputs still need a `null` arm.\n- **C# 15 `union` types** (preview): a `union` declares a closed set of existing *case types* (for example `union Result(Success, Error)`), gives implicit conversions from each case type, and makes switches exhaustive when all case types are handled.\n\n**Why it matters**\nWith exhaustive switches, adding a new case produces compiler warnings at every place that doesn't handle it\nyet, instead of a run-time fallthrough. It's a type-safe alternative to returning `null`, magic status codes or\nthrowing for expected outcomes (the same idea as a `Result<T>` type).",
+      "code": {
+        "lang": "csharp",
+        "source": "public abstract record LookupResult\n{\n    private LookupResult() { }                       // nested cases can call it; outside code can't\n    public sealed record Found(string Name) : LookupResult;\n    public sealed record NotFound : LookupResult;\n    public sealed record Invalid(string Reason) : LookupResult;\n}\n\npublic static class Api\n{\n    public static int ToStatusCode(LookupResult result) => result switch\n    {\n        LookupResult.Found            => 200,\n        LookupResult.NotFound         => 404,\n        LookupResult.Invalid          => 400,\n        _ => throw new ArgumentOutOfRangeException(nameof(result)),  // still needed before C# 15\n    };\n}"
+      },
+      "pitfalls": [
+        "Forgetting that, before C# 15, the compiler can't prove a class hierarchy is complete, so the discard arm is still required.",
+        "Adding a new case and missing a handler because a `_` arm silently absorbs it; log or throw in the discard arm.",
+        "Presenting C# 15 `closed`/`union` as production-ready; they're preview features with .NET 11 previews at the time of writing."
+      ],
+      "followUps": [
+        "How does this compare with throwing exceptions for expected outcomes?",
+        "How would a `Result<T>` type with `IsSuccess`/`Error` differ from a record hierarchy?",
+        "What problems do union types solve that inheritance doesn't?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/patterns",
+          "title": "Patterns - C# reference (closed hierarchy patterns)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/closed",
+          "title": "closed modifier - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/union",
+          "title": "Union types - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-15",
+          "title": "What's new in C# 15",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "pattern-matching",
+        "records-equality-partial"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Record hierarchies with switch expressions work from C# 9. `closed` classes and `union` types are C# 15 features, in preview with the .NET 11 SDK as of October 2026.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-nullable-reference-types",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "mid",
+      "question": "What are nullable reference types, and do they change how your program runs?",
+      "shortAnswer": "Nullable reference types (C# 8) let you declare which references may be `null` (`string?`) and which shouldn't (`string`), and the compiler warns when the code doesn't match. They are purely a compile-time analysis: the runtime behaviour and the actual types don't change.",
+      "answer": "**Key points**\n- Turned on per project with `<Nullable>enable</Nullable>` (current .NET templates do this) or per file with `#nullable enable`.\n- In an enabled context, a plain reference type is **non-nullable**; append `?` to allow `null`.\n- The compiler tracks a *null-state* (not-null / maybe-null) for every expression, updated by assignments and null checks, and warns on:\n  - assigning a maybe-null value to a non-nullable variable;\n  - dereferencing a maybe-null variable without a check;\n  - a constructor that leaves a non-nullable member uninitialized.\n- `string` and `string?` are the same run-time type (`System.String`); nothing stops `null` at run time, which is why these are **warnings**, not errors (unless you treat warnings as errors).\n- The null-forgiving operator `!` tells the compiler \"trust me, it's not null\"; use it sparingly.\n- Attributes such as `[NotNullWhen(true)]` describe null behaviour of APIs; .NET's own libraries are annotated since .NET 5.\n\n**Known gaps**\n`default` structs and arrays of structs can hold `null` in non-nullable reference fields without a warning.\nData coming from deserialization, reflection or older non-annotated libraries can also bypass the analysis.",
+      "code": {
+        "lang": "csharp",
+        "source": "#nullable enable\npublic class Customer\n{\n    public required string Name { get; init; }   // never null by design\n    public string? MiddleName { get; init; }      // may be null\n\n    public string Display()\n        => MiddleName is null ? Name : $\"{Name} {MiddleName[0]}.\";   // checked before use\n}\n\n// string s = null;          // warning: converting null to non-nullable type\n// int n = new Customer { Name = \"A\" }.MiddleName.Length;   // warning: possible null dereference"
+      },
+      "pitfalls": [
+        "Thinking `string` (non-nullable) guarantees no `null` at run time; it only changes compiler warnings.",
+        "Sprinkling `!` to silence warnings, which hides the bugs the feature is meant to catch.",
+        "Ignoring nullable warnings in a project that enabled the feature, so the annotations become misleading."
+      ],
+      "followUps": [
+        "How would you migrate a large existing codebase to nullable reference types?",
+        "What do `[NotNull]`, `[MaybeNull]` and `[NotNullWhen]` do?",
+        "How do nullable reference types differ from `Nullable<T>`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/null-safety/nullable-reference-types",
+          "title": "Nullable reference types - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/nullable-reference-types",
+          "title": "Nullable reference types - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "C# 8 and later. Recent .NET project templates enable the nullable context by default; older projects must opt in.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-init-vs-required",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "mid",
+      "question": "What is the difference between an `init` accessor and a `required` member? Does setting a required property in a constructor satisfy it?",
+      "shortAnswer": "`init` controls *when* a property can be set (only during object creation); `required` controls *whether* it must be set (every `new` expression must set it in an object initializer). Setting it in a constructor doesn't count unless that constructor is marked `[SetsRequiredMembers]`.",
+      "answer": "**Key points**\n- **`init` (C# 9)**: an init-only setter can be called in an object initializer, a `with` expression, or inside a constructor/`init` accessor of the type, and then never again. It makes a property immutable after construction but does **not** force callers to set it.\n- **`required` (C# 11)**: on a field or property; any expression creating the type must initialize it in an **object initializer**, otherwise it's a compile error. It says nothing about mutability: `required ... { get; set; }` stays mutable.\n- Combined, `public required string Name { get; init; }` means \"must be set at creation, and can't change afterwards\".\n\n**Constructors and `[SetsRequiredMembers]`**\n- The compiler checks the object initializer, not the constructor body. A caller writing `new User(\"a\", \"b\")` still gets an error if `User` has required members, even if the constructor assigns them.\n- To tell the compiler a constructor sets everything, add `[System.Diagnostics.CodeAnalysis.SetsRequiredMembers]` to it. The compiler doesn't verify the claim, so use it carefully.\n- Positional records that declare required properties get the attribute on their primary constructor automatically.\n\n**Other rules**: required members must be at least as visible as their type; a type with required members can't be used for a `new()` generic constraint; derived classes can't drop or hide a base class's `required`.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Diagnostics.CodeAnalysis;\n\npublic class User\n{\n    public required string Name { get; init; }\n    public required string Email { get; set; }\n\n    public User() { }\n\n    [SetsRequiredMembers]                   // without this, callers can't use this constructor alone\n    public User(string name, string email)\n    {\n        Name = name;\n        Email = email;\n    }\n}\n\nvar a = new User { Name = \"Aman\", Email = \"a@example.com\" };   // OK: initializer sets both\nvar b = new User(\"Aman\", \"a@example.com\");                    // OK only because of [SetsRequiredMembers]\n// var c = new User { Name = \"Aman\" };                          // error: Email not set\n// a.Name = \"Other\";                                            // error: init-only"
+      },
+      "pitfalls": [
+        "Assuming assigning required members in a constructor is enough; callers still get an error without `[SetsRequiredMembers]`.",
+        "Adding `[SetsRequiredMembers]` to a constructor that forgets a member; the compiler trusts the attribute.",
+        "Thinking `required` makes a property immutable; pair it with `init` for that."
+      ],
+      "followUps": [
+        "How do `required` members interact with JSON deserialization?",
+        "Why can't a type with required members satisfy a `new()` constraint?",
+        "When would you choose a constructor over required properties?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/required",
+          "title": "required modifier - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/init",
+          "title": "init keyword - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "modern-csharp-syntax",
+        "records-equality-partial"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`init` accessors need C# 9; `required` members and `[SetsRequiredMembers]` need C# 11 (.NET 7+).",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-primary-constructors",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "mid",
+      "question": "What are primary constructors on classes (C# 12), and how do they differ from a positional record?",
+      "shortAnswer": "A primary constructor puts constructor parameters right after the class name (`class OrderService(ILogger log)`), and those parameters are in scope throughout the class body. Unlike in a record, they are just parameters: no public properties are generated, and the compiler only stores them in a hidden field if members use them.",
+      "answer": "**Key points**\n- Works for any `class` or `struct` from C# 12; records have had positional parameters since C# 9.\n- The parameters can initialize fields and properties, be passed to a base constructor, or be used directly in methods.\n- They are **parameters, not members**: you can't write `this.param`, and the compiler captures a parameter in a private field only when an instance member uses it.\n- They are **mutable**: a method can reassign a primary constructor parameter. If you need read-only state, copy it into a `readonly` field or a get-only property.\n- Every other constructor must chain to the primary constructor with `this(...)`. For a class, no implicit parameterless constructor is generated.\n- In a `record`, the same syntax also generates a public property per parameter (plus equality, `Deconstruct`); in a plain class it doesn't.\n\n**Typical use**: dependency injection in services and controllers, removing the\n\"declare field + assign in constructor\" boilerplate.",
+      "code": {
+        "lang": "csharp",
+        "source": "public interface IClock { DateTime UtcNow { get; } }\n\npublic class InvoiceService(IClock clock, ILogger<InvoiceService> logger)\n{\n    private readonly IClock _clock = clock;            // explicit readonly copy\n\n    public DateTime Due(int days)\n    {\n        logger.LogInformation(\"Computing due date\");   // parameter captured automatically\n        return _clock.UtcNow.AddDays(days);\n    }\n}\n\npublic record Point(int X, int Y);   // record: X and Y become public properties\npublic class Size(int w, int h)      // class: w and h stay parameters\n{\n    public int Area => w * h;\n}"
+      },
+      "pitfalls": [
+        "Expecting primary constructor parameters to become properties in a normal class.",
+        "Assuming the captured parameter is read-only; any method can reassign it.",
+        "Passing a primary constructor parameter to a base constructor and also using it in the derived class; the derived class stores its own copy, which can drift from the base property (the compiler warns)."
+      ],
+      "followUps": [
+        "When would you still write a classic constructor?",
+        "How do primary constructors work with inheritance (`class B(int x) : A(x)`)?",
+        "What does a positional record generate that a primary-constructor class doesn't?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/instance-constructors",
+          "title": "Instance constructors - C# programming guide (primary constructors)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/tutorials/primary-constructors",
+          "title": "Declare primary constructors for classes and structs",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Primary constructors on classes and structs need C# 12 (.NET 8+); records have positional parameters since C# 9.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-top-level-statements-and-global-usings",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "junior",
+      "question": "What are top-level statements, global usings and implicit usings?",
+      "shortAnswer": "Top-level statements (C# 9) let a program's entry file contain statements without a `Program` class or `Main` method; the compiler generates the entry point. `global using` (C# 10) applies a `using` to every file in the project, and implicit usings (.NET 6 SDK) add a standard set of global usings for you.",
+      "answer": "**Top-level statements**\n- Only **one file** per project can contain them, and that project then has no other entry point.\n- The compiler generates the entry method; its signature depends on the code: with `await` it's `async Task Main`, with `return` it returns `int`, and `args` is available as the command-line arguments.\n- You can still declare methods (local functions) and types after the statements, and other files work normally.\n- `dotnet new console` uses them by default; they compile to the same thing as an explicit `Main`.\n\n**Global and implicit usings**\n- `global using System.Text.Json;` in any file makes that namespace available in every file of the project.\n- With `<ImplicitUsings>enable</ImplicitUsings>`, the SDK generates a file in `obj/` with global usings for common namespaces of that project type (for example `System`, `System.Linq`, `System.Threading.Tasks`; web projects add ASP.NET Core namespaces).\n- Add more implicit ones with `<Using Include=\"...\" />` items in the project file, or turn the feature off with the `ImplicitUsings` property.\n- `using` directives must come first in the file with top-level statements, and any types or namespaces in that file must come after the statements.\n- C# 14 (.NET 10) builds on this with file-based apps: a single `.cs` file run with `dotnet <file.cs>`, no project file needed.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Program.cs: the whole entry point of a console app\nusing System.Text.Json;     // ordinary using (System is already an implicit global using)\n\nvar name = args.Length > 0 ? args[0] : \"world\";\nConsole.WriteLine($\"Hello, {name}!\");\nConsole.WriteLine(JsonSerializer.Serialize(new { name }));\n\nawait Task.Delay(10);       // makes the generated Main async\nreturn 0;                   // makes it return int\n\n// GlobalUsings.cs elsewhere in the project:\n// global using MyCompany.Shared;"
+      },
+      "pitfalls": [
+        "Putting top-level statements in two files; the compiler reports an error.",
+        "Hunting for a missing `using` that is actually supplied implicitly (look in `obj/.../*.GlobalUsings.g.cs`).",
+        "Declaring types *before* the top-level statements in the same file; the statements must come first."
+      ],
+      "followUps": [
+        "How do you access `args` and return an exit code with top-level statements?",
+        "How do you turn off implicit usings in a project?",
+        "Can a test project call code defined in top-level statements?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/program-structure/top-level-statements",
+          "title": "Top-level statements - programs without Main methods",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/using-directive",
+          "title": "using directive - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview",
+          "title": ".NET project SDKs (implicit using directives)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "modern-csharp-syntax"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Top-level statements need C# 9; `global using` C# 10; implicit usings the .NET 6 SDK or later; file-based apps C# 14 / .NET 10.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-extension-methods-and-members",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "mid",
+      "question": "How are extension methods resolved, and what did C# 14 add with extension members?",
+      "shortAnswer": "An extension method is a static method in a static class whose first parameter has `this`; it is bound at compile time and only when its namespace is imported, and a real member with the same signature always wins. C# 14 adds `extension` blocks that can also declare extension properties, static extension members and operators.",
+      "answer": "**Key points**\n- Declared as `public static ReturnType Name(this TargetType value, ...)` inside a top-level, non-generic `static class`.\n- **In scope only with a `using`** for the namespace containing the static class (that's why LINQ needs `using System.Linq`, often supplied by implicit usings).\n- **Compile-time binding**: the compiler first looks for a matching member on the type; only if none fits does it look for extensions. An extension with the same signature as an instance method is never called.\n- No virtual dispatch, and **no access to private members**; the type's normal access rules apply, so encapsulation isn't broken.\n- Callable as a normal static method too: `StringExtensions.Truncate(text, 10)`.\n- For structs, a `ref this` extension can modify the caller's value.\n\n**C# 14 extension members**\n- `extension(Receiver r) { ... }` blocks inside a static class group members for one receiver type.\n- They allow extension **properties**, **static** extension members (called as if they were static members of the type, e.g. `IEnumerable<int>.Identity`) and user-defined **operators**.\n- Old-style `this` extension methods and the new block syntax produce the same IL, so you can migrate without breaking callers.",
+      "code": {
+        "lang": "csharp",
+        "source": "public static class StringExtensions\n{\n    // Classic extension method (C# 3+)\n    public static string Truncate(this string value, int max)\n        => value.Length <= max ? value : value[..max] + \"...\";\n}\n\npublic static class SequenceExtensions\n{\n    // C# 14 extension block: an extension property\n    extension<T>(IEnumerable<T> source)\n    {\n        public bool IsEmpty => !source.Any();\n    }\n}\n\n// using the namespace that contains these classes:\n// \"Hello world\".Truncate(5)   -> \"Hello...\"\n// new List<int>().IsEmpty     -> true"
+      },
+      "pitfalls": [
+        "Expecting an extension method to override or replace an existing instance method; the instance method always wins.",
+        "Forgetting the `using` for the extension's namespace and thinking the method doesn't exist.",
+        "Writing extension methods on `object` or very general types, which clutters IntelliSense everywhere."
+      ],
+      "followUps": [
+        "Can extension methods be called on `null` references?",
+        "Why are LINQ operators implemented as extension methods?",
+        "When would you prefer a wrapper type or inheritance over an extension?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/extension-methods",
+          "title": "Extension members - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/extension",
+          "title": "Extension declaration - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-14",
+          "title": "What's new in C# 14",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "extension-methods"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Extension methods: C# 3. `extension` blocks with extension properties, static extension members and operators: C# 14 (.NET 10).",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-collection-expressions",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "junior",
+      "question": "What are collection expressions and the spread element `..`?",
+      "shortAnswer": "Collection expressions (C# 12) are a single literal syntax, `[a, b, c]`, that creates arrays, lists, spans and many other collection types based on the target type. The spread element `..other` inlines all elements of another collection.",
+      "answer": "**Key points**\n- The **target type** decides what's built: `int[] a = [1, 2];`, `List<int> l = [1, 2];`, `Span<int> s = [1, 2];`, `IEnumerable<int> e = [1, 2];`, `ImmutableArray<int> i = [1, 2];`.\n- `[]` is an empty collection of the target type.\n- `..x` (spread) expands any collection usable in `foreach`: `int[] all = [..first, 0, ..second];`.\n- Works anywhere a collection value is expected: assignments, arguments, return values, field initializers.\n- Can't be used where a compile-time constant is required (a `const`, or a default parameter value).\n- Library types can opt in with `[CollectionBuilder]`, which is how immutable collections support the syntax.\n\n**Why it matters**\nOne consistent syntax replaces `new[] { }`, `new List<T> { }`, `Array.Empty<T>()` and\n`ImmutableArray.Create(...)`, and the compiler can pick efficient construction for the target type.",
+      "code": {
+        "lang": "csharp",
+        "source": "int[] firstHalf = [1, 2, 3];\nList<int> secondHalf = [4, 5];\n\nint[] all = [..firstHalf, ..secondHalf, 6];   // 1..6\nIReadOnlyList<string> none = [];              // empty\n\nReadOnlySpan<char> vowels = ['a', 'e', 'i', 'o', 'u'];\n\nstatic int Sum(IEnumerable<int> values) => values.Sum();\nConsole.WriteLine(Sum([10, 20, 30]));         // 60"
+      },
+      "pitfalls": [
+        "Using `var x = [1, 2];`; there's no target type, so it doesn't compile.",
+        "Trying to use a collection expression as a default parameter value or `const`."
+      ],
+      "followUps": [
+        "How does a custom collection type support collection expressions?",
+        "What does the compiler generate for `[..a, ..b]` into an array?",
+        "How do collection expressions interact with `params` collections in C# 13?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/collection-expressions",
+          "title": "Collection expressions - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-version-history",
+          "title": "The history of C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Collection expressions need C# 12 (.NET 8+). C# 15 (preview) adds collection expression arguments.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-throw-vs-throw-ex",
+      "topic": "csharp",
+      "subtopic": "exceptions",
+      "difficulty": "junior",
+      "question": "What is the difference between `throw;`, `throw ex;` and `throw new SomeException(..., ex)` inside a catch block?",
+      "shortAnswer": "`throw;` rethrows the same exception and keeps its original stack trace. `throw ex;` rethrows it but resets the stack trace to the current line, hiding where the error really started. `throw new X(\"...\", ex)` throws a new, more meaningful exception and keeps the original as `InnerException`.",
+      "answer": "**Key points**\n- `throw;` (no operand) is only valid inside a `catch` block; use it when you log or clean up and then let the error continue.\n- `throw ex;` updates `ex.StackTrace` so it starts at the rethrow; the frames between the original throw and your catch are lost. Analyzer rule **CA2200** flags this.\n- Wrapping (`throw new OrderProcessingException(\"Could not save order 42.\", ex);`) is right when you translate a low-level error into one that makes sense at your layer; always pass the original as the inner exception.\n- To rethrow **outside** the catch block (for example after collecting an exception for later), capture it with `ExceptionDispatchInfo.Capture(ex)` and call `.Throw()`; the original stack trace is preserved and marked with \"End of stack trace from previous location\".\n\n**Rule of thumb**\nCatch only what you can handle. If you can't add value (recover, add context, translate), don't catch at all.",
+      "code": {
+        "lang": "csharp",
+        "source": "try\n{\n    SaveOrder();\n}\ncatch (SqlTimeoutException ex)\n{\n    Log(ex);\n    throw;                         // keeps the full original stack trace\n    // throw ex;                   // resets the stack trace to this line (CA2200)\n}\ncatch (IOException ex)\n{\n    throw new OrderStorageException(\"Could not save the order.\", ex);  // add context, keep cause\n}\n\nstatic void SaveOrder() { }\nstatic void Log(Exception ex) => Console.Error.WriteLine(ex);\n\nclass SqlTimeoutException : Exception { }\nclass OrderStorageException(string message, Exception inner) : Exception(message, inner);"
+      },
+      "pitfalls": [
+        "Writing `throw ex;` out of habit and losing the frames that point to the real failure.",
+        "Wrapping an exception without passing it as `innerException`.",
+        "Catching `Exception` just to log and rethrow at every layer, producing the same error in the log many times."
+      ],
+      "followUps": [
+        "When would you use `ExceptionDispatchInfo`?",
+        "How should exceptions be logged so that each one is recorded once?",
+        "What does the `InnerException` chain look like in a log?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/exception-handling-statements",
+          "title": "Exception-handling statements - throw and try, catch, finally",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/exceptions/best-practices-for-exceptions",
+          "title": "Best practices for exceptions - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "exception-handling"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-exception-filters",
+      "topic": "csharp",
+      "subtopic": "exceptions",
+      "difficulty": "mid",
+      "question": "What is an exception filter (`catch ... when`), and why is it better than catching and checking inside the block?",
+      "shortAnswer": "An exception filter is a boolean condition after `when` that decides whether a `catch` clause handles the exception. It runs before the stack is unwound, so if it returns `false` the exception keeps propagating untouched, with its original stack and debugging state intact.",
+      "answer": "**Key points**\n- Syntax: `catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)`.\n- The filter is evaluated **before** unwinding. If it's `false`, the runtime keeps searching for another handler as if this `catch` didn't exist: no catch-and-rethrow, no stack trace change.\n- Debuggers and crash dumps therefore still show the original throw point and local variables.\n- You can have several `catch` clauses for the same type distinguished by filters; an unfiltered one must come last among them. A filtered `catch (Exception)` doesn't have to be the last clause.\n\n**Common uses**\n- Handle only specific error codes or properties (`SqlException` numbers, HTTP status codes).\n- Treat two exception types the same way: `when (ex is FormatException or OverflowException)`.\n- Log without handling: a filter that calls a logging method and returns `false` records the exception and lets it continue.\n\n**Caution**: keep filters cheap and side-effect free (except deliberate logging), and make sure they can't throw.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Net;\n\nasync Task<string?> GetProfileAsync(HttpClient http, string id)\n{\n    try\n    {\n        return await http.GetStringAsync($\"/profiles/{id}\");\n    }\n    catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)\n    {\n        return null;                               // only 404 is handled here\n    }\n    catch (Exception ex) when (LogAndContinue(ex))\n    {\n        throw;                                     // never reached: the filter returns false\n    }\n}\n\nstatic bool LogAndContinue(Exception ex)\n{\n    Console.Error.WriteLine(ex.Message);\n    return false;                                  // don't handle; let it propagate unchanged\n}"
+      },
+      "pitfalls": [
+        "Putting expensive or failure-prone code in a filter.",
+        "Catching broadly and then rethrowing based on an `if`, which unwinds the stack and loses the filter's benefits."
+      ],
+      "followUps": [
+        "Why does a `false` filter preserve the stack trace while `catch { if (...) throw; }` doesn't fully?",
+        "Can a filter access variables from the `try` block's method?",
+        "How would you use filters for logging in a global error handler?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/exception-handling-statements",
+          "title": "Exception-handling statements - throw and try, catch, finally",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "exception-handling"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Exception filters need C# 6 or later; the `or` pattern inside `when (ex is A or B)` needs C# 9.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-does-finally-always-run",
+      "topic": "csharp",
+      "subtopic": "exceptions",
+      "difficulty": "mid",
+      "question": "Does a `finally` block always run?",
+      "shortAnswer": "Almost always: it runs when the `try` block finishes normally, on `return`/`break`/`continue`/`goto`, and when an exception leaves the block. It doesn't run when the process is torn down immediately, for example by `Environment.FailFast`, `Environment.Exit` called inside the `try`, a `StackOverflowException`, or the process being killed.",
+      "answer": "**When `finally` runs**\n- Normal completion of `try` (and `catch`, if one ran).\n- Jump statements leaving the `try`: `return`, `break`, `continue`, `goto`. The return value is computed first, then `finally` runs.\n- An exception propagating out of `try` or `catch`, as long as the runtime performs the unwind.\n\n**When it doesn't**\n- `Environment.FailFast(...)`: terminates without running `try`/`finally` blocks or finalizers.\n- `Environment.Exit(...)` called from within `try`/`catch`: the pending `finally` blocks don't execute.\n- `StackOverflowException`: can't be caught, and the process is terminated by default.\n- The process is killed externally, the machine loses power, and similar hard terminations.\n- The docs note that whether `finally` runs for an unhandled exception depends on whether an unwind is triggered; only immediate termination skips it.\n\n**Practical consequences**\n- Use `finally` (or `using`, which compiles to `try`/`finally`) for cleanup that must happen on normal and error paths.\n- Don't rely on it for durability (saving critical data); a crash can still skip it.\n- Don't throw from `finally`; an exception there replaces the one already in flight (CA2219).",
+      "code": {
+        "lang": "csharp",
+        "source": "static int Demo()\n{\n    try\n    {\n        Console.WriteLine(\"try\");\n        return 1;                       // return value is captured first\n    }\n    finally\n    {\n        Console.WriteLine(\"finally\");   // runs before the method actually returns\n    }\n}\n\nConsole.WriteLine(Demo());   // try / finally / 1\n\n// try { Environment.FailFast(\"corrupted state\"); }\n// finally { Console.WriteLine(\"never printed\"); }"
+      },
+      "pitfalls": [
+        "Assuming `finally` will save data during a crash or a forced shutdown.",
+        "Throwing from `finally` and hiding the original exception.",
+        "Writing to the returned variable in `finally` and expecting the caller to see the change for a value type; the return value was already computed."
+      ],
+      "followUps": [
+        "What does the compiler turn a `using` statement into?",
+        "Why should you avoid throwing inside `finally`?",
+        "How should a service shut down gracefully so cleanup does run?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/exception-handling-statements",
+          "title": "Exception-handling statements - throw and try, catch, finally",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.environment.failfast",
+          "title": "Environment.FailFast method - .NET API reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.environment.exit",
+          "title": "Environment.Exit method - .NET API reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.stackoverflowexception",
+          "title": "StackOverflowException class - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "exception-handling"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-exceptions-vs-results-and-custom-exceptions",
+      "topic": "csharp",
+      "subtopic": "exceptions",
+      "difficulty": "senior",
+      "question": "When should code throw exceptions versus return a result, and how do you design a good custom exception?",
+      "shortAnswer": "Throw for truly exceptional failures the caller can't reasonably expect; for routine, expected outcomes (not found, validation failed, parse failed) prefer `Try*` methods, `null`/`default` or a result type, because exceptions are expensive and obscure normal control flow. Custom exceptions should be rare, end in `Exception`, derive from `Exception`, and offer the three standard constructors.",
+      "answer": "**Throw or return?**\n- The .NET guidance: use exception handling when the event is rare and indicates an error; check conditions in code when the event happens routinely. Up-front checks avoid most exceptions, though a race can still cause one.\n- Offer `Try*` alternatives when failure is common (`int.TryParse`, `Dictionary.TryGetValue`).\n- Returning `null`/`default` or a result object (`Result<T>` with success/error and a status) keeps expected business outcomes as data; reserve exceptions for bugs, infrastructure failures and broken invariants.\n- In task-returning methods, validate arguments and throw `ArgumentException`s **before** the first `await`; exceptions after that are stored in the task and appear only when it's awaited.\n\n**Throwing well**\n- Prefer existing types: `ArgumentException` (and `ArgumentNullException`, `ArgumentOutOfRangeException`) for bad arguments, `InvalidOperationException` for wrong object state, `OperationCanceledException` for cancellation.\n- Use throw helpers like `ArgumentNullException.ThrowIfNull(x)` and `ArgumentOutOfRangeException.ThrowIfNegative(n)`.\n- Don't throw reserved types (`NullReferenceException`, `IndexOutOfRangeException`, `StackOverflowException`, `AccessViolationException`), and don't throw from `Equals`, `GetHashCode`, `ToString`, static constructors or `finally`.\n\n**Custom exceptions**\n- Only when callers need to catch that specific failure differently.\n- Name ends with `Exception`, derive from `Exception`, provide the parameterless, `(string message)` and `(string message, Exception inner)` constructors.\n- Add properties only when code (not just humans) will use them, like `FileNotFoundException.FileName`.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class InsufficientFundsException : Exception\n{\n    public decimal Shortfall { get; }\n\n    public InsufficientFundsException() { }\n    public InsufficientFundsException(string message) : base(message) { }\n    public InsufficientFundsException(string message, Exception inner) : base(message, inner) { }\n    public InsufficientFundsException(string message, decimal shortfall) : base(message)\n        => Shortfall = shortfall;\n}\n\npublic static class Accounts\n{\n    public static bool TryWithdraw(decimal balance, decimal amount, out decimal remaining)\n    {\n        ArgumentOutOfRangeException.ThrowIfNegative(amount);   // a bug in the caller: throw\n        remaining = balance - amount;\n        return remaining >= 0;                                 // expected outcome: return\n    }\n}"
+      },
+      "pitfalls": [
+        "Using exceptions for normal branching (for example \"user not found\" on every login attempt).",
+        "Creating a custom exception for every error when a built-in type says the same thing.",
+        "Catching `Exception` in library code and swallowing it, hiding real bugs."
+      ],
+      "followUps": [
+        "What does throwing and catching an exception cost compared with returning a value?",
+        "How would you map domain results to HTTP status codes in an API?",
+        "Why should argument validation in async methods happen before the first `await`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/exceptions/best-practices-for-exceptions",
+          "title": "Best practices for exceptions - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/exceptions/how-to-create-user-defined-exceptions",
+          "title": "How to create user-defined exceptions - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "exception-handling",
+        "global-exception-handling"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-string-immutability-and-stringbuilder",
+      "topic": "csharp",
+      "subtopic": "strings",
+      "difficulty": "junior",
+      "question": "Why are strings immutable in .NET, and when should you use `StringBuilder` instead?",
+      "shortAnswer": "A `string` can't change after it's created; every \"modifying\" method or `+=` returns a new string. That makes strings safe to share and thread-safe, but repeated changes allocate many temporary strings, so use `StringBuilder` when you build text with an unknown or large number of appends, typically in a loop.",
+      "answer": "**Key points**\n- `string` is a reference type with **value semantics**: `==` compares contents, and nothing can change a string in place.\n- Immutability lets strings be shared freely: safe as dictionary keys, safe across threads (the type is documented as thread-safe), and eligible for interning.\n- Cost: `s += x` in a loop allocates a new string each time and copies everything built so far, so the cost climbs quickly as the text grows.\n\n**Use `string` when** (from the `StringBuilder` docs)\n- the number of changes is small;\n- you do a fixed number of concatenations, especially of literals (the compiler can combine them into one operation);\n- you need to search the text (`IndexOf`, `StartsWith`) while building it.\n\n**Use `StringBuilder` when**\n- the number of changes is unknown at design time (a loop over user input or rows);\n- you expect a significant number of changes.\n\n**Detail**\n`StringBuilder` keeps a growable buffer. The default capacity is 16 characters; when it fills up, the buffer\ngrows (the docs describe capacity doubling). If you know the rough final size, pass a capacity to the\nconstructor. `string.Join`, `string.Concat` and interpolation are often clearer and just as fast for small,\nfixed cases.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Text;\n\nstring csvSlow = \"\";\nfor (int i = 0; i < 1000; i++)\n    csvSlow += i + \",\";              // a new string on every iteration\n\nvar sb = new StringBuilder(capacity: 4000);\nfor (int i = 0; i < 1000; i++)\n    sb.Append(i).Append(',');        // appends into one buffer\nstring csvFast = sb.ToString();\n\nstring joined = string.Join(\",\", Enumerable.Range(0, 1000));   // simplest for this case"
+      },
+      "pitfalls": [
+        "Using `StringBuilder` for two or three concatenations, which adds noise for no gain.",
+        "Calling `ToString()` on the builder inside the loop, which defeats its purpose.",
+        "Believing `string` methods like `Replace` or `ToUpper` change the original; they return a new string you must assign."
+      ],
+      "followUps": [
+        "What is string interning?",
+        "How does `string.Create` or `Span<char>` help build strings with fewer allocations?",
+        "Why is `string` a reference type yet compared by value?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/",
+          "title": "Strings and string literals - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.text.stringbuilder",
+          "title": "StringBuilder class - .NET API reference (remarks)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/base-types/stringbuilder",
+          "title": "Using the StringBuilder class in .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "strings-and-stringbuilder"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-string-equality-and-interning",
+      "topic": "csharp",
+      "subtopic": "strings",
+      "difficulty": "mid",
+      "question": "How do `==`, `Equals` and `ReferenceEquals` behave for strings, and what is string interning?",
+      "shortAnswer": "For `string`, both `==` and `Equals` compare contents ordinally (case-sensitive, culture-insensitive), while `ReferenceEquals` checks whether two variables point to the same object. Interning is the runtime's pool that keeps a single instance per unique string value, so equal interned strings can share one object.",
+      "answer": "**Equality**\n- `string` overloads `==`: two strings are equal when both are `null` or they have the same length and the same characters at each position.\n- `a.Equals(b)` does the same ordinal comparison; `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)` and friends let you choose rules explicitly.\n- `ReferenceEquals(a, b)`, or `==` after casting both sides to `object`, compares **identity**. Two strings with the same text built at run time are usually different objects.\n\n**Interning**\n- The CLR keeps an *intern pool* with one reference per unique value. `string.Intern(s)` returns the pooled instance (adding `s` if needed); `string.IsInterned(s)` returns it or `null`.\n- The docs say automatic interning of literals **isn't guaranteed**: the C# compiler marks assemblies with `CompilationRelaxations.NoStringInterning` by default, and with Native AOT literals aren't guaranteed to be pooled. Never rely on reference equality between literals.\n- Interned strings are unlikely to be freed until the runtime shuts down, so interning many distinct values to save memory can backfire.\n\n**Interview takeaway**\nCompare strings by value with an explicit `StringComparison`; treat reference identity of strings as an\nimplementation detail.",
+      "code": {
+        "lang": "csharp",
+        "source": "string a = \"hello\";\nstring b = new string(\"hello\".ToCharArray());   // same text, new object\n\nConsole.WriteLine(a == b);                        // True: value comparison\nConsole.WriteLine(a.Equals(b));                   // True\nConsole.WriteLine(ReferenceEquals(a, b));         // False: different objects\nConsole.WriteLine((object)a == (object)b);        // False: object == is reference equality\n\nstring c = string.Intern(b);                      // pooled instance for \"hello\"\nConsole.WriteLine(string.Equals(a, \"HELLO\", StringComparison.OrdinalIgnoreCase));  // True"
+      },
+      "pitfalls": [
+        "Comparing strings through `object` variables or an unconstrained generic `T` with `==`, which silently becomes a reference comparison.",
+        "Relying on two literals being the same object; the docs say literal interning isn't guaranteed.",
+        "Interning large numbers of unique strings and keeping them alive for the life of the process."
+      ],
+      "followUps": [
+        "Why does `==` on a `T` constrained to `class` compare references even for strings?",
+        "When could interning actually help?",
+        "What does `StringComparer.OrdinalIgnoreCase` give you for dictionaries?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/equality-operators",
+          "title": "Equality operators - C# reference (string equality)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.string.intern",
+          "title": "String.Intern(String) method - .NET API reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.string.equals",
+          "title": "String.Equals method - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "strings-and-stringbuilder"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-ordinal-vs-culture-comparison",
+      "topic": "csharp",
+      "subtopic": "strings",
+      "difficulty": "mid",
+      "question": "What is the difference between ordinal and culture-sensitive string comparison, and which should you use?",
+      "shortAnswer": "Ordinal comparison compares the raw UTF-16 code units, so it's fast and gives the same answer everywhere. Culture-sensitive comparison applies a culture's linguistic rules for casing and sorting. Use `Ordinal` or `OrdinalIgnoreCase` for identifiers, keys, paths and protocol values, and the current culture only for text shown to or sorted for users.",
+      "answer": "**Key points**\n- The .NET guidance: always call overloads that take a `StringComparison`, and use `Ordinal`/`OrdinalIgnoreCase` as the safe default for culture-agnostic matching; they're also faster.\n- Use `CurrentCulture` for user-facing sorting and display; avoid `InvariantCulture` comparisons in most cases.\n- Normalize with `ToUpperInvariant` rather than `ToLowerInvariant` when you must, but prefer an ignore-case comparison over changing case at all.\n- Use `Equals` to test equality; use `Compare`/`CompareTo` to sort, not to check for zero.\n\n**Why defaults are dangerous**\n- Overloads without a `StringComparison` mix rules: `IndexOf(char)` is ordinal, but `IndexOf(string)`, `StartsWith(string)` and `EndsWith(string)` are culture-sensitive by default.\n- Results of linguistic comparisons can vary by culture, .NET version and OS, since .NET uses the ICU library for linguistic comparisons on all supported platforms.\n- **Turkish-I problem**: in `tr-TR`, uppercase of `i` is `İ` and lowercase of `I` is `ı`, so `\"file\".ToUpper() == \"FILE\"` can be false and a security check like `cmd.ToLower() == \"admin\"` can misbehave.\n\n**Tooling**: analyzer rules CA1307, CA1309 and CA1310 flag comparisons that use linguistic rules unintentionally.",
+      "code": {
+        "lang": "csharp",
+        "source": "string header = \"Content-Type\";\n\nbool ok1 = header.Equals(\"content-type\", StringComparison.OrdinalIgnoreCase);    // True, culture-proof\nbool ok2 = header.StartsWith(\"content\", StringComparison.OrdinalIgnoreCase);    // explicit rules\n\nvar users = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)\n{\n    [\"Aman\"] = 1,\n};\nConsole.WriteLine(users.ContainsKey(\"AMAN\"));   // True\n\nstring[] names = [\"Zoë\", \"zebra\", \"Ångström\"];\nArray.Sort(names, StringComparer.CurrentCulture);   // linguistic sort for display"
+      },
+      "pitfalls": [
+        "Calling `StartsWith(string)` or `IndexOf(string)` without a comparison and getting culture-sensitive behaviour.",
+        "Using `ToLower()` / `ToUpper()` to compare identifiers; it allocates and is culture-dependent.",
+        "Persisting culture-sorted data and expecting the same order on another machine or .NET version."
+      ],
+      "followUps": [
+        "What is the Turkish-I problem, and how do you avoid it?",
+        "What is the difference between `InvariantCulture` and `Ordinal`?",
+        "How do you make a `Dictionary<string, T>` case-insensitive?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/base-types/best-practices-strings",
+          "title": "Best practices for comparing strings in .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/globalization-icu",
+          "title": ".NET globalization and ICU",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "strings-and-stringbuilder"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Before .NET 5, .NET used NLS on Windows and ICU on Unix. .NET 5+ uses ICU on Windows too (Windows 10 version 1903 or later for .NET 5/6; .NET 7+ can load ICU on older Windows) and falls back to NLS where ICU isn't available, so culture-sensitive results can change when you upgrade from .NET Framework.",
+      "reviewed": false
+    },
+    {
+      "id": "csharp-interpolated-string-handlers",
+      "topic": "csharp",
+      "subtopic": "strings",
+      "difficulty": "senior",
+      "question": "How does string interpolation work under the hood since C# 10, and why shouldn't you pass interpolated strings to `ILogger` methods?",
+      "shortAnswer": "Since C# 10 / .NET 6, the compiler lowers `$\"...\"` to calls on an *interpolated string handler* (`DefaultInterpolatedStringHandler` for `string`), which appends literals and values into a buffer and avoids boxing and intermediate strings. For `ILogger`, though, you should pass a constant message template with arguments, because an interpolated string is formatted eagerly and loses the structured placeholders.",
+      "answer": "**How interpolation is compiled**\n- When an interpolated string is converted to `string`, `System.Runtime.CompilerServices.DefaultInterpolatedStringHandler` processes it: `AppendLiteral` for the text parts, generic `AppendFormatted<T>` for each value, so value types aren't boxed. (The docs note the compiler may still emit `String.Format` or `String.Concat` where that is equivalent.)\n- Any type marked `[InterpolatedStringHandler]` with the required constructor (`literalLength`, `formattedCount`) and `AppendLiteral`/`AppendFormatted` methods can receive an interpolated string. Libraries use this to skip work: a handler can decide not to format at all, so placeholder expressions may **not be evaluated** (side effects may not happen).\n- Constant interpolated strings (no placeholders, or only constant strings) are just constants and bypass handlers.\n- `string.Create(IFormatProvider, ...)` (.NET 6+) formats an interpolated string with a specific culture.\n\n**Logging**\n- `ILogger` APIs expect a **message template**: `logger.LogWarning(\"Order {OrderId} failed\", id)`. The logger keeps `OrderId` as a named property for search in log tooling, and can skip formatting when the level is disabled.\n- Passing `$\"Order {id} failed\"` formats the string even if the level is off and turns the structured data into plain text. Analyzer rule **CA2254** warns about non-constant templates.\n- For hot paths, compile-time logging source generation (`[LoggerMessage]` on `partial` methods) removes boxing, temporary allocations and copies as far as possible.",
+      "code": {
+        "lang": "csharp",
+        "source": "using Microsoft.Extensions.Logging;\n\npublic class OrderProcessor(ILogger<OrderProcessor> logger)\n{\n    public void Fail(int orderId, string reason)\n    {\n        // Preferred: constant template + arguments (structured, lazy formatting)\n        logger.LogWarning(\"Order {OrderId} failed: {Reason}\", orderId, reason);\n\n        // Avoid: formatted eagerly, structure lost (CA2254)\n        // logger.LogWarning($\"Order {orderId} failed: {reason}\");\n    }\n}\n\n// Ordinary interpolation: compiled to DefaultInterpolatedStringHandler, no boxing of the int\n// string text = $\"Order {42} at {DateTime.UtcNow:O}\";"
+      },
+      "pitfalls": [
+        "Putting side effects inside interpolation holes; a custom handler may skip evaluating them.",
+        "Using interpolated strings as log message templates.",
+        "Assuming string interpolation always boxes value types; that was the `string.Format` behaviour before C# 10."
+      ],
+      "followUps": [
+        "How would you write a custom interpolated string handler for an assertion library?",
+        "What does the `LoggerMessage` source generator generate?",
+        "How does `string.Create` with a culture differ from `ToString(CultureInfo)`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/interpolated",
+          "title": "String interpolation using $ - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/performance/interpolated-string-handler",
+          "title": "Tutorial: Write a custom string interpolation handler",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2254",
+          "title": "CA2254: Template should be a static expression",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging/source-generation",
+          "title": "Compile-time logging source generation - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "strings-and-stringbuilder",
+        "logging"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Interpolated string handlers need C# 10 and .NET 6 or later; older versions compile interpolation to `string.Format`/`string.Concat`.",
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "lesson": "logging",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Something unexpected happened, but the app recovered and carried on in a degraded way. Which built-in log level fits?",
+      "options": [
+        "Information",
+        "Warning",
+        "Error",
+        "Critical"
+      ],
+      "answer": 1,
+      "explanation": "Warning is for something unexpected but recoverable (degraded behavior); Error means an operation failed, and Critical is a crash or unrecoverable failure.",
+      "source": { "section": "### Logging levels" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does the lesson prefer `_logger.LogInformation(\"User {UserId} uploaded file {FileName}\", userId, fileName)` over `_logger.LogInformation($\"User {userId} uploaded file {fileName}\")`?",
+      "options": [
+        "Interpolated strings can't be written to the console",
+        "Message templates are required for `LogInformation` to compile",
+        "The template keeps the values as structured data, while interpolation loses structure and may evaluate even when the level is disabled",
+        "Interpolation logs the message twice"
+      ],
+      "answer": 2,
+      "explanation": "Always prefer message templates with placeholders: interpolation loses the structure and may evaluate its expressions (like `ExpensiveSizeCalc()`) even if the log level is disabled.",
+      "source": { "section": "### ILogger and helper methods" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "Serilog is configured with `.MinimumLevel.Information()`. Which messages does this code write?",
+      "code": {
+        "lang": "csharp",
+        "source": "Log.Verbose(\"Very detailed trace\");\nLog.Debug(\"Debugging info\");\nLog.Information(\"App started\");\nLog.Warning(\"Low disk space\");\nLog.Error(\"Database failed\");"
+      },
+      "options": [
+        "All five messages",
+        "Only `Database failed`",
+        "`Very detailed trace` and `Debugging info`",
+        "`App started`, `Low disk space` and `Database failed`"
+      ],
+      "answer": 3,
+      "explanation": "`MinimumLevel` is the lowest severity Serilog records; with Information, the Verbose and Debug events are ignored and Information, Warning and Error are written.",
+      "source": { "section": "### MinimumLevel — What logs are allowed to be written" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "With `\"Default\": \"Information\"` and `\"Override\": { \"Microsoft\": \"Warning\", \"System\": \"Warning\" }`, which logs are written?",
+      "options": [
+        "Your app's Information and above, but only Warning and above from `Microsoft.*` and `System.*`",
+        "Only Warning and above from every source",
+        "Everything from `Microsoft.*`, and only Warning and above from your app",
+        "Only Information logs, from every source"
+      ],
+      "answer": 0,
+      "explanation": "The default level applies to your app (Information+), while the overrides raise the bar for the very noisy framework categories to Warning+, so EF Core, DI and hosting don't spam the logs.",
+      "source": { "section": "#### 1️⃣ MinimumLevel" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why should `OrderService` take `ILogger<OrderService>` in its constructor rather than a plain `ILogger`?",
+      "options": [
+        "`ILogger<T>` writes to files, while `ILogger` only writes to the console",
+        "`ILogger<T>` uses `T` as the log category, and DI can create it automatically; a plain `ILogger` can't be injected automatically",
+        "A plain `ILogger` cannot log exceptions",
+        "`ILogger<T>` is faster because it skips the minimum level check"
+      ],
+      "answer": 1,
+      "explanation": "`ILogger<T>` uses `T` as the category (for example `MyApp.Services.OrderService`), which makes per-class filtering easy. With a plain `ILogger`, DI cannot create it automatically and you'd have to use `loggerFactory.CreateLogger(...)`.",
+      "source": { "section": "#### What if you use ILogger without type?" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Your code calls `_logger.BeginScope(\"Order {OrderId}\", orderId)`, but the scope's properties never appear in Serilog's output. Which enricher does the lesson say you must not skip?",
+      "options": [
+        "`WithMachineName`",
+        "`WithThreadId`",
+        "`FromLogContext`",
+        "None; scopes work without any enricher"
+      ],
+      "answer": 2,
+      "explanation": "`FromLogContext` enables scopes (such as a CorrelationId or UserId); the lesson warns that without it, scopes do nothing.",
+      "source": { "section": "#### 2️⃣ Enrich" },
+      "reviewed": false
+    }
+  ]
+}

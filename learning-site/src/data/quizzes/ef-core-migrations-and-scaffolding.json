@@ -1,0 +1,95 @@
+{
+  "lesson": "ef-core-migrations-and-scaffolding",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How does `Script-Migration` (`dotnet ef migrations script`) differ from `Update-Database`?",
+      "options": [
+        "It creates a new migration file from model changes",
+        "It generates the SQL for your migrations instead of applying them to the database",
+        "It removes the last migration",
+        "It scaffolds entity classes from an existing database"
+      ],
+      "answer": 1,
+      "explanation": "`Script-Migration` converts your migrations into the SQL EF Core would run and writes a script, instead of directly updating the database like `Update-Database` does.",
+      "source": { "section": "### Script-Migration" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why generate the production script with `--idempotent`?",
+      "options": [
+        "It makes the script run faster by skipping indexes",
+        "It removes `DROP COLUMN` statements so no data is lost",
+        "It applies only the migrations not yet applied, so it is safe to run on a database in any migration state",
+        "It runs every migration again from the start to rebuild the schema"
+      ],
+      "answer": 2,
+      "explanation": "An idempotent script can be run multiple times without errors: it checks which migrations already exist and applies only the missing ones, which suits production where the exact DB version may vary.",
+      "source": { "section": "### Idempotent (in database migrations) means:" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put the production deployment flow in order.",
+      "steps": [
+        "Back up the database",
+        "Execute `migration.sql`",
+        "Verify the migration succeeded",
+        "Deploy the API",
+        "Smoke test"
+      ],
+      "explanation": "The database is backed up and migrated (and checked) before the new API version is deployed, followed by a smoke test; database changes go out before the API.",
+      "source": { "section": "### 4. Production Deployment Flow" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which reason does the lesson give for **not** calling `db.Database.Migrate()` at application startup in production?",
+      "options": [
+        "Multiple app instances may run the migrations at the same time",
+        "`Migrate()` only works with SQLite",
+        "`Migrate()` deletes the `__EFMigrationsHistory` table",
+        "It can only apply the first migration"
+      ],
+      "answer": 0,
+      "explanation": "The reasons listed are: multiple instances may run migrations simultaneously, slower startup, elevated DB permissions are needed, and it is harder to audit and control.",
+      "source": { "section": "#### Don't" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which two arguments does `Scaffold-DbContext` require?",
+      "options": [
+        "`-OutputDir` and `-Context`",
+        "`-Tables` and `-Schemas`",
+        "`-DataAnnotations` and `-Force`",
+        "The connection string and the database provider"
+      ],
+      "answer": 3,
+      "explanation": "`-Connection` (the connection string of the database to reverse-engineer) and `-Provider` (such as `Microsoft.EntityFrameworkCore.SqlServer`) are required; the rest are optional.",
+      "source": { "section": "### scaffold-dbcontext" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "You scaffolded models from an existing database and then ran `add-migration`. Why does `update-database` fail for that first migration?",
+      "options": [
+        "Scaffolded models can never be used with migrations",
+        "The tables already exist in the database",
+        "`add-migration` doesn't work on scaffolded models",
+        "The scaffolded context has no `OnModelCreating` method"
+      ],
+      "answer": 1,
+      "explanation": "The first migration tries to create tables that already exist. The fix is to script the migration and run only the `CREATE TABLE [__EFMigrationsHistory]` and `INSERT INTO [__EFMigrationsHistory]` parts against the database.",
+      "source": { "section": "#### What if Model changes" },
+      "reviewed": false
+    }
+  ]
+}

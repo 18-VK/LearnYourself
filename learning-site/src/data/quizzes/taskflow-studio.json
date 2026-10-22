@@ -1,0 +1,107 @@
+{
+  "lesson": "taskflow-studio",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In the Draft vs Final pattern, a background autosave runs and later the user clicks **Save**. What does each one do to the `TaskItem`?",
+      "options": [
+        "Autosave sets `IsDraft = false`; Save sets `IsDraft = true`",
+        "Only Save calls `SaveChangesAsync()`; autosave stays in memory",
+        "Autosave saves with `IsDraft = true`; Save sets `IsDraft = false`",
+        "Both save the same way; `IsDraft` is only used for the UI text"
+      ],
+      "answer": 2,
+      "explanation": "A background save without explicit user intent must be treated as a draft: autosave marks `IsDraft = true` and records `LastAutoSavedAt`, while the explicit Save sets `IsDraft = false`, meaning the user has confirmed the data.",
+      "source": {
+        "section": "🟢 Pattern 1: Draft vs Final (BEST PRACTICE)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does the lesson call `<TextBox Text=\"{Binding Task.Description}\" />` wrong in an app with autosave?",
+      "options": [
+        "It binds the EF entity directly instead of ViewModel state",
+        "A TextBox cannot bind to a nested property path like that",
+        "It silently makes the binding OneTime instead of TwoWay",
+        "EF Core entities cannot be displayed by WPF controls at all"
+      ],
+      "answer": 0,
+      "explanation": "Binding the EF entity directly is dangerous. The production approach binds to ViewModel state (`EditableDescription`), so you edit ViewModel state, not the EF entity.",
+      "source": {
+        "section": "2️⃣ UI editing flow (VERY IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "`IRepository<>` and `AppDbContext` are registered as scoped. Inside a background service you call `_scopeFactory.CreateScope()` and resolve `IRepository<MyEntity>` from it. Why do `GetAllAsync()`, an edit and `SaveChangesAsync()` all work together?",
+      "options": [
+        "Scoped services behave like singletons inside background services",
+        "Each `GetRequiredService` call copies state into a new DbContext",
+        "`SaveChangesAsync()` re-reads entities from the database first",
+        "The scope returns the same repository and the same DbContext"
+      ],
+      "answer": 3,
+      "explanation": "Within one scope the DI container creates a scoped service once and returns that same instance afterwards. The repository and its DbContext are shared, so the entity loaded by `GetAllAsync` is tracked by the same context that `SaveChangesAsync` uses.",
+      "source": {
+        "section": "1️⃣ The lifetime of the instance"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Code after `_host.StartAsync()` never runs, and nothing explains why. What does the lesson call the single most important fix to keep permanently?",
+      "options": [
+        "Commenting out every hosted service and leaving them disabled",
+        "Turning on `ValidateOnBuild` (and `ValidateScopes`) for the host",
+        "Calling `StartAsync()` from a ViewModel instead of `App.xaml.cs`",
+        "Lowering the Serilog minimum level to `Verbose` permanently"
+      ],
+      "answer": 1,
+      "explanation": "Without build-time validation, a missing or broken registration can fail silently when the host starts. With `ValidateOnBuild` you immediately get errors such as \"Unable to resolve service for type 'IMessageBusService' while attempting to activate 'AutoSaveBackgroundService'\".",
+      "source": {
+        "section": "✅ METHOD 1 (BEST): Force DI validation at build time"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "WPF has no automatic request scope like ASP.NET Core. Where does the lesson say is the best place to create a scope for scoped services such as DbContext?",
+      "options": [
+        "In the WindowService: one scope per window, disposed on `Closed`",
+        "In `App.OnStartup`: one scope kept for the app's whole lifetime",
+        "In every property getter that needs to use the DbContext",
+        "Nowhere; register the DbContext as a singleton instead"
+      ],
+      "answer": 0,
+      "explanation": "A window has a clear lifetime, so the WindowService creates a scope per window, resolves the window from it, and disposes the scope on `Closed`: a per-window unit of work with automatic disposal.",
+      "source": {
+        "section": "BEST PLACES to create scopes (in order)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why use `services.AddOptions<ApplicationSettings>().Bind(...)` instead of `services.Configure<ApplicationSettings>(...)`?",
+      "options": [
+        "`Configure<T>` cannot bind a configuration section at all",
+        "`AddOptions<T>` registers the settings class as a scoped service",
+        "It can chain `ValidateDataAnnotations()` and `ValidateOnStart()`",
+        "`AddOptions<T>` reloads the settings file on every read"
+      ],
+      "answer": 2,
+      "explanation": "Both bind the section the same way, but `AddOptions<T>()` returns an `OptionsBuilder<T>` that unlocks validation and `ValidateOnStart()`, so the app fails fast at startup if the config is invalid.",
+      "source": {
+        "section": "services.AddOptions<T>() vs services.Configure<T>()"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "lesson": "middleware",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the lesson's production middleware pipeline in order.",
+      "steps": [
+        "`app.UseExceptionHandler();`",
+        "`app.UseStaticFiles();`",
+        "`app.UseRouting();`",
+        "`app.UseCors(\"AllowFrontend\");`",
+        "`app.UseAuthentication();`",
+        "`app.UseAuthorization();`",
+        "`app.UseRateLimiter();`",
+        "`app.MapControllers();`"
+      ],
+      "explanation": "Errors are caught first, static files are served fast, routing picks the endpoint, CORS runs before the auth checks, authentication identifies the user before authorization checks access, and the endpoint executes last.",
+      "source": {
+        "section": "Final Production Order (VERY IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Middleware A, B and C are added in that order. In what order do they run on the way back out with the response?",
+      "options": [
+        "A, B, C",
+        "Only C runs on the response",
+        "B, A, C",
+        "C, B, A"
+      ],
+      "answer": 3,
+      "explanation": "Each middleware can work before and after `await next(context)`, so the request goes A → B → C → controller and the response comes back C → B → A.",
+      "source": {
+        "section": "How middleware works internally"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does it mean for a middleware to **short-circuit** the pipeline?",
+      "options": [
+        "It calls `next()` twice",
+        "It doesn't call the next component, so the pipeline ends early, for example on an authorization failure",
+        "It skips the response and returns nothing to the client",
+        "It moves itself to the front of the pipeline"
+      ],
+      "answer": 1,
+      "explanation": "A middleware receives a `next` delegate; if it chooses not to call it, later middleware and the controller never run.",
+      "source": {
+        "section": "Key Concepts of Middleware & Pipeline"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why must `UseRouting()` come before `UseAuthentication()` and `UseAuthorization()`?",
+      "options": [
+        "Because the auth middleware needs the endpoint information that routing selects and stores in `HttpContext`",
+        "Because routing executes the controller, which authentication then checks",
+        "Because routing creates `HttpContext.User`",
+        "It doesn't matter; middleware order has no effect"
+      ],
+      "answer": 0,
+      "explanation": "`UseRouting()` only selects the endpoint and stores it in `HttpContext`; authorization uses that endpoint's metadata (such as `[Authorize]`) to decide access.",
+      "source": {
+        "section": "UseRouting()"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is the difference between `UseAuthentication()` and `UseAuthorization()`?",
+      "options": [
+        "Authentication checks access to the endpoint; authorization reads the token",
+        "They are the same middleware registered under two names",
+        "Authentication reads and validates the token to identify **who** the user is; authorization decides whether that user **can** access the endpoint",
+        "Authentication blocks every anonymous request on its own; authorization only logs"
+      ],
+      "answer": 2,
+      "explanation": "`UseAuthentication()` builds `HttpContext.User` from the token and does not block requests by itself; `UseAuthorization()` comes after it and enforces `[Authorize]` rules.",
+      "source": {
+        "section": "UseAuthentication()"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why put logic like request logging or correlation IDs in middleware rather than in each controller action?",
+      "options": [
+        "Middleware runs faster than controller code",
+        "It is cross-cutting logic that applies to many requests; repeating it in every action causes duplication and inconsistent behavior",
+        "Controllers cannot access request headers",
+        "Middleware is the only place where `async` code is allowed"
+      ],
+      "answer": 1,
+      "explanation": "Middleware is for cross-cutting concerns such as logging, exception handling, authentication and tracing, which apply to many or all requests.",
+      "source": {
+        "section": "Why use middleware"
+      },
+      "reviewed": false
+    }
+  ]
+}

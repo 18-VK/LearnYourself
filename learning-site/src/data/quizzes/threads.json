@@ -1,0 +1,84 @@
+{
+  "lesson": "threads",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What does this code print, in order?",
+      "code": {
+        "lang": "csharp",
+        "source": "Thread t = new Thread(() =>\n{\n    Console.WriteLine(\"Worker started\");\n    Thread.Sleep(2000);\n    Console.WriteLine(\"Worker done\");\n});\nt.Start();\nt.Join();  // main waits until t finishes\nConsole.WriteLine(\"Main continues\");"
+      },
+      "options": [
+        "`Main continues`, `Worker started`, `Worker done`",
+        "`Worker started`, `Main continues`, `Worker done`",
+        "`Worker started`, `Worker done`, `Main continues`",
+        "`Main continues` only, because the worker is still sleeping"
+      ],
+      "answer": 2,
+      "explanation": "`Join()` blocks the calling thread until the target thread terminates, so `Main continues` is printed only after the worker has printed both of its lines.",
+      "source": { "section": "#### 2) Controlling Execution" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What happens if you call `Thread.Abort()` in .NET Core / .NET 5+?",
+      "options": [
+        "The target thread stops immediately and safely",
+        "It throws a `PlatformNotSupportedException`",
+        "It pauses the thread until `Interrupt()` is called",
+        "It marks the thread as a background thread"
+      ],
+      "answer": 1,
+      "explanation": "`Abort()` is obsolete and not supported in .NET Core / .NET 5+, where it throws `PlatformNotSupportedException`; use cooperative cancellation instead.",
+      "source": { "section": "### Thread lifecycle methods" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You start a thread with `new Thread(new ParameterizedThreadStart(PrintWithParameter))` and `t2.Start(\"Aman\")`. What must `PrintWithParameter` look like?",
+      "options": [
+        "It must take one `string` parameter",
+        "It must take no parameters and read the value from a field",
+        "It must return the value it was given",
+        "It must take one `object` parameter and cast it if needed"
+      ],
+      "answer": 3,
+      "explanation": "With `ParameterizedThreadStart` the method must accept one `object` parameter; you cast it inside the method if you expect a specific type. A lambda that captures variables avoids the cast.",
+      "source": { "section": "#### 2) Thread Running a Method With Parameters" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "A worker thread has `IsBackground = true` and is still running when `Main` returns. What happens?",
+      "options": [
+        "The CLR ends the process and stops the worker mid-execution",
+        "The process stays alive until the worker finishes",
+        "The worker is moved to the thread pool and keeps running",
+        "`Main` blocks automatically until the worker calls `Join()`"
+      ],
+      "answer": 0,
+      "explanation": "Background threads don't keep the process alive: when all foreground threads end, the CLR terminates the process, so the worker's remaining work or cleanup may be incomplete.",
+      "source": { "section": "### Foreground vs background thread" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You call `t.Interrupt()` while thread `t` is running normally and not blocked. What happens?",
+      "options": [
+        "The thread is killed at once",
+        "Nothing; the call is ignored for running threads",
+        "The request is remembered and the exception is thrown when the thread next blocks",
+        "The thread throws `ThreadInterruptedException` immediately, wherever it is"
+      ],
+      "answer": 2,
+      "explanation": "`Interrupt()` doesn't kill a thread. If the thread isn't blocked, the request is remembered and the exception is thrown the next time it enters a blocking call such as `Sleep` or `Join`.",
+      "source": { "section": "### Interrupt Method" },
+      "reviewed": false
+    }
+  ]
+}

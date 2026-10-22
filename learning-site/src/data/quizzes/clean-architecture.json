@@ -1,0 +1,79 @@
+{
+  "lesson": "clean-architecture",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which dependency breaks the Clean Architecture rule?",
+      "options": [
+        "A controller depending on an application service",
+        "An infrastructure repository implementing an application interface",
+        "An application service calling EF Core directly",
+        "An application service depending on a domain entity"
+      ],
+      "answer": 2,
+      "explanation": "Dependencies always point inward. `Service → EF Core` and `Domain → Controller` are the lesson's examples of what is not allowed.",
+      "source": { "section": "🔁 Dependency Direction (Very Important)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Where do `IOrderRepository` and its EF Core implementation `OrderRepository` live?",
+      "options": [
+        "Both in the Infrastructure layer",
+        "The interface in the Application layer; the implementation in the Infrastructure layer",
+        "The interface in the Infrastructure layer; the implementation in the Application layer",
+        "Both in the Domain layer"
+      ],
+      "answer": 1,
+      "explanation": "The Application layer defines the contracts without knowing how data is stored, and Infrastructure implements them, so Infrastructure depends inward on the interface.",
+      "source": { "section": "Infrastructure" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why does the lesson say pointing dependencies inward matters?",
+      "options": [
+        "Outer things like the database, UI or framework change often, while the business logic stays stable",
+        "It makes the application run faster",
+        "It lets the Domain layer call controllers directly",
+        "It removes the need for interfaces"
+      ],
+      "answer": 0,
+      "explanation": "The database can change (SQL → Mongo) and the UI can change (Web → Mobile), but inner layers don't depend on them, so business logic is unaffected.",
+      "source": { "section": "💡 Why this matters?" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which layer does `CreateOrderRequest { decimal Amount }`, used to receive data in a controller, belong to?",
+      "options": [
+        "Domain, because it holds business data",
+        "Infrastructure, because it maps to a table",
+        "Application, because it is a use case",
+        "Presentation, because it is an API request/response model"
+      ],
+      "answer": 3,
+      "explanation": "\"Model\" depends on what it is for: business data is Domain, database mapping is Infrastructure, and API request/response DTOs are Presentation. Keeping DTOs separate avoids exposing the domain directly.",
+      "source": { "section": "Example" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "Put the models in the order data flows through them in the lesson's flow example.",
+      "steps": [
+        "API model (request DTO)",
+        "Application service",
+        "Domain model (business logic)",
+        "Infrastructure model (DB entity)"
+      ],
+      "explanation": "The request DTO enters through the presentation layer, the application service orchestrates the domain model, and the infrastructure entity is what gets mapped to the database.",
+      "source": { "section": "🔁 Flow Example" },
+      "reviewed": false
+    }
+  ]
+}

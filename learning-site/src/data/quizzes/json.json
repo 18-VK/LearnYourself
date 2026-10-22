@@ -1,0 +1,93 @@
+{
+  "lesson": "json",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Your .NET 6 project needs to serialize objects to JSON without adding any NuGet package. Which library fits?",
+      "options": [
+        "Newtonsoft.Json, because it ships inside the .NET runtime",
+        "System.Text.Json, because it is built in since .NET Core 3.0",
+        "Newtonsoft.Json.Linq, because it is the built-in DOM API",
+        "Neither; every JSON library in .NET needs a NuGet install"
+      ],
+      "answer": 1,
+      "explanation": "`System.Text.Json` is built in (part of .NET Core and .NET 5+), while Newtonsoft.Json is an extra dependency you add through NuGet.",
+      "source": { "section": "### 2) System.Text.Json (modern, built-in since .NET Core 3.0)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "The JSON has a `FullName` field but the class only has `Name`. What does this Json.NET code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "class Person { public string Name { get; set; } }\nstring json = @\"{ \"\"FullName\"\": \"\"Aman\"\" }\";\nvar p = JsonConvert.DeserializeObject<Person>(json);\nConsole.WriteLine(p.Name ?? \"NULL\");"
+      },
+      "options": ["Aman", "NULL", "FullName", "It throws because FullName has no matching property"],
+      "answer": 1,
+      "explanation": "A JSON field that doesn't match any class property is ignored, so `Name` keeps its default value (`null`) and the `??` prints `NULL`.",
+      "source": { "section": "#### When names differ" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In the lesson's `JsonSerializerSettings` example, the output is camel-cased, has no nulls and writes the enum as a string. Which setting produces the **camel-cased** property names (`firstName` instead of `FirstName`)?",
+      "options": [
+        "`NullValueHandling = NullValueHandling.Ignore`",
+        "`Converters = { new StringEnumConverter() }`",
+        "`ContractResolver = new CamelCasePropertyNamesContractResolver()`",
+        "`Formatting = Formatting.Indented`"
+      ],
+      "answer": 2,
+      "explanation": "`CamelCasePropertyNamesContractResolver` camel-cases the names; `NullValueHandling.Ignore` drops nulls, `StringEnumConverter` writes enums as strings and `Formatting.Indented` only pretty-prints.",
+      "source": { "section": "#### 2) Use `JsonSerializerSettings` (common, recommended)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "During deserialization, which of these properties can Json.NET set from the JSON?",
+      "options": [
+        "`public string Name { get; set; }`",
+        "`public string Name { get; private set; }`",
+        "`private string Name { get; set; }`"
+      ],
+      "answer": 0,
+      "explanation": "Only public properties with a public setter can be set during deserialization; a property with a `private set` won't be set.",
+      "source": { "section": "#### 2) Property Must Be Public with Setter" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You receive JSON from a dynamic API whose shape you don't know at compile time. What does the lesson recommend?",
+      "options": [
+        "Deserialize it into a strongly typed class and ignore missing fields",
+        "Parse it with `JObject.Parse` and read values with LINQ-to-JSON",
+        "Write it to a `MemoryStream` and read it back with `Seek`",
+        "Mark every property of a placeholder class with `[JsonIgnore]`"
+      ],
+      "answer": 1,
+      "explanation": "When the structure is unknown you can't deserialize into a typed class, so you use Newtonsoft's LINQ-to-JSON API (`JObject`, `JArray`, `JToken`) to explore and extract values dynamically.",
+      "source": { "section": "### JSON structure is unknown" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "You need exactly the bytes written to a `MemoryStream`, as a new `byte[]`. Which member should you use?",
+      "options": [
+        "`GetBuffer()`",
+        "`Capacity`",
+        "`Position`",
+        "`ToArray()`"
+      ],
+      "answer": 3,
+      "explanation": "`ToArray()` copies the stream content to a new `byte[]`, while `GetBuffer()` returns the underlying buffer, which may include unused bytes.",
+      "source": { "section": "### Properties" },
+      "reviewed": false
+    }
+  ]
+}

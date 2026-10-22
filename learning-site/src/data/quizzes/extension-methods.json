@@ -1,0 +1,80 @@
+{
+  "lesson": "extension-methods",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How is an extension method declared?",
+      "options": [
+        "As an instance method in a class that inherits from the extended type",
+        "As a static method in a static class, with `this` before its first parameter",
+        "As a virtual method marked with `extends`",
+        "As a static method in any class, with `this` before its last parameter"
+      ],
+      "answer": 1,
+      "explanation": "An extension method is a static method in a static class whose first parameter is prefixed with `this`; that parameter is the type being extended, so you can call it like `myObj.MyExt()`.",
+      "source": { "section": "Extension method" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`Person` has an instance method `Print()`, and `PersonExtensions` defines `Print(this Person p)`. Which one does `p.Print()` call?",
+      "options": [
+        "The extension method, because it was declared later",
+        "Both, in declaration order",
+        "The instance method, because an instance method with the same signature wins",
+        "Neither; the call is ambiguous and doesn't compile"
+      ],
+      "answer": 2,
+      "explanation": "If the type already has an instance method with the same signature, the instance method wins, so the output is `Instance Print: Aman`.",
+      "source": { "section": "Rules (must-knows)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Your extension method doesn't appear in IntelliSense on the type it extends. What is the likely cause?",
+      "options": [
+        "The namespace containing the static class isn't imported with `using`",
+        "The extension method isn't marked `virtual`",
+        "The extended type must be `sealed`",
+        "Extension methods never appear in IntelliSense"
+      ],
+      "answer": 0,
+      "explanation": "You must `using` the namespace that contains the static class for the extension method to appear in IntelliSense.",
+      "source": { "section": "Rules (must-knows)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "How is an extension method call resolved?",
+      "options": [
+        "At run time through virtual dispatch on the object's actual type",
+        "By reflection the first time the method is called",
+        "At compile time, with no virtual dispatch",
+        "By the garbage collector when the object is created"
+      ],
+      "answer": 2,
+      "explanation": "Extension methods are resolved at compile time, with no virtual dispatch. You can also call one like a static method: `MyExtensions.MyMethod(obj)`.",
+      "source": { "section": "Rules (must-knows)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`IsValidId(this IEntity entity)` is defined in `EntityExtensions`. Which classes can call `IsValidId()`?",
+      "options": [
+        "Only classes that override `IsValidId`",
+        "Only `Customer`, because it was declared first",
+        "Only classes in the same file as `EntityExtensions`",
+        "Every class that implements `IEntity`, without changing those classes"
+      ],
+      "answer": 3,
+      "explanation": "Extending an interface adds the method to all classes implementing it without touching them, so `Customer` and any other `IEntity` can call `IsValidId()`.",
+      "source": { "section": "2. Work with Interfaces without modifying implementations" },
+      "reviewed": false
+    }
+  ]
+}

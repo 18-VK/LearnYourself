@@ -1,0 +1,94 @@
+{
+  "lesson": "hosted-services",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which two lifecycle methods does `IHostedService` define?",
+      "options": [
+        "`StartAsync(CancellationToken)`, which runs when the app starts, and `StopAsync(CancellationToken)`, which runs during graceful shutdown",
+        "`ExecuteAsync` and `DisposeAsync`",
+        "`Main` and `RunAsync`",
+        "`OnStart` and `OnTick`"
+      ],
+      "answer": 0,
+      "explanation": "A hosted service is any class implementing `IHostedService`, which defines `StartAsync` (app start) and `StopAsync` (graceful shutdown). It is registered with `AddHostedService<T>()`.",
+      "source": { "section": "1. Hosted Services" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "When is `BackgroundService` the better choice than implementing `IHostedService` directly?",
+      "options": [
+        "When you need a custom lifecycle with manual `StartAsync` and `StopAsync`",
+        "When the work should run only once, before the app starts",
+        "When you need a continuous loop, such as a queue consumer, that runs until shutdown; you just override `ExecuteAsync`",
+        "When the service must update the UI directly"
+      ],
+      "answer": 2,
+      "explanation": "`BackgroundService` simplifies `IHostedService`: you override `ExecuteAsync` for continuous or looped work like queue processing and monitoring. `IHostedService` gives more manual control, for example timer-based jobs.",
+      "source": { "section": "Comparison: IHostedService vs BackgroundService" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In `_timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));`, what do the two `TimeSpan` arguments mean?",
+      "options": [
+        "`TimeSpan.Zero` is the timeout and `FromMinutes(5)` is the total run time",
+        "`TimeSpan.Zero` is the due time (start immediately) and `FromMinutes(5)` is the period between runs",
+        "Both are delays before the first run",
+        "`TimeSpan.Zero` disables the timer until `FromMinutes(5)` has passed"
+      ],
+      "answer": 1,
+      "explanation": "The third argument is the due time (initial delay); `TimeSpan.Zero` starts immediately. The fourth is the period, so `DoWork` runs again every 5 minutes.",
+      "source": { "section": "Parameters Explained" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the steps of a `BackgroundService` shutdown in order.",
+      "steps": [
+        "`_host.StopAsync()` is called",
+        "The host cancels `stoppingToken`",
+        "The host waits for the `ExecuteAsync` task to finish",
+        "The host disposes the service"
+      ],
+      "explanation": "On shutdown the host cancels the stopping token, waits for the task to finish and then disposes the service, with no forced thread aborts.",
+      "source": { "section": "Lifecycle explained (IMPORTANT)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why is `while (true)` a mistake inside `ExecuteAsync`?",
+      "options": [
+        "Because `ExecuteAsync` must return within one second",
+        "Because loops are not allowed in a `BackgroundService`",
+        "Because it uses too much memory on the first iteration",
+        "Because it never honors cancellation; loop on `!stoppingToken.IsCancellationRequested` instead"
+      ],
+      "answer": 3,
+      "explanation": "The common mistakes table says `while(true)` has no cancellation. Always honor cancellation tokens for graceful shutdown, as in `while (!stoppingToken.IsCancellationRequested)`.",
+      "source": { "section": "Common mistakes ❌" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "What is the risk of doing blocking work in `StartAsync`?",
+      "options": [
+        "It delays app startup",
+        "It cancels the stopping token",
+        "It registers the service twice",
+        "It disposes the service immediately"
+      ],
+      "answer": 0,
+      "explanation": "The best practices say to avoid blocking in `StartAsync`, because that delays app startup.",
+      "source": { "section": "Risks & Best Practices" },
+      "reviewed": false
+    }
+  ]
+}

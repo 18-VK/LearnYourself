@@ -1,0 +1,477 @@
+id: sql-server
+title: 'SQL Server: syntax, joins, window functions, indexes, isolation levels'
+summary: 'T-SQL on one page: query syntax and logical processing order, changing data and schema with ALTER, joins and set operators, subqueries and CTEs, CASE and NULL handling, window functions, indexes and SARGable predicates, keys and constraints, transactions and isolation levels.'
+groups:
+  - title: Query syntax & logical order
+    items:
+      - term: 'Logical processing order of a `SELECT`'
+        desc: '`FROM` → `ON` → `JOIN` → `WHERE` → `GROUP BY` → `WITH CUBE`/`ROLLUP` → `HAVING` → `SELECT` → `DISTINCT` → `ORDER BY` → `TOP`.'
+        from: { lesson: joins, section: 'Why This Happens (Logical Order)' }
+      - term: 'Comparison operators'
+        desc: '`=` · `<>` or `!=` · `>` · `<` · `>=` · `<=`, combined with `AND` / `OR` / `NOT`.'
+        from: { lesson: crud-filtering-sorting, section: 'Comparison Operators' }
+      - term: '`BETWEEN a AND b`'
+        desc: 'Inclusive range: same as `>= a AND <= b`.'
+        from: { lesson: crud-filtering-sorting, section: 'BETWEEN' }
+      - term: '`IN (...)`'
+        desc: 'Match one of several values: `WHERE Department IN (''HR'', ''IT'', ''Finance'')`.'
+        from: { lesson: crud-filtering-sorting, section: 'IN' }
+      - term: '`LIKE`'
+        desc: '`%` any number of characters, `_` exactly one: `''A%''` starts with A, `''%n''` ends with n, `''%man%''` contains.'
+        from: { lesson: crud-filtering-sorting, section: 'LIKE (Pattern Matching)' }
+      - term: '`IS NULL` / `IS NOT NULL`'
+        desc: 'Filter on missing values: `WHERE MiddleName IS NULL`.'
+        from: { lesson: crud-filtering-sorting, section: 'IS NULL / IS NOT NULL' }
+      - term: '`TOP`'
+        desc: '`SELECT TOP 5 *` or `TOP 10 PERCENT *`: returns the first rows only.'
+        from: { lesson: crud-filtering-sorting, section: 'TOP (Limit Rows)' }
+      - term: '`ORDER BY`'
+        desc: 'Ascending by default; `ORDER BY Department ASC, Salary DESC` sorts within groups; can sort by a `SELECT` alias.'
+        from: { lesson: crud-filtering-sorting, section: 'Multiple Column Sorting' }
+      - term: 'Pagination: `OFFSET … FETCH`'
+        desc: 'Skip then take; `ORDER BY` is mandatory (SQL Server 2012+, SELECT only).'
+        code: |
+          SELECT *
+          FROM Employees
+          ORDER BY Id
+          OFFSET 5 ROWS
+          FETCH NEXT 5 ROWS ONLY;
+        lang: sql
+        from: { lesson: crud-filtering-sorting, section: 'OFFSET + FETCH (Pagination)' }
+      - term: '`GROUP BY` rule'
+        desc: 'Every selected column must be inside an aggregate or listed in `GROUP BY`; otherwise SQL can''t pick one value per group ("Column … is invalid in the select list").'
+        from: { lesson: aggregates-and-grouping, section: 'GROUP BY Rules (Important)' }
+      - term: '`WHERE` + `GROUP BY` + `HAVING`'
+        code: |
+          SELECT CustomerName,
+                 SUM(Amount)
+          FROM Orders
+          WHERE CreatedAt >= '2026-01-01'
+          GROUP BY CustomerName
+          HAVING SUM(Amount) > 5000;
+        lang: sql
+        from: { lesson: aggregates-and-grouping, section: 'WHERE vs HAVING (Interview Question)' }
+    table:
+      columns: [Feature, WHERE, HAVING]
+      from: { lesson: aggregates-and-grouping, section: 'WHERE vs HAVING (Interview Question)' }
+      rows:
+        - ['Filters', 'Rows', 'Groups']
+        - ['Used before grouping?', '✅ Yes', '❌ No']
+        - ['Can use aggregate function?', '❌ No', '✅ Yes']
+
+  - title: Changing data & schema
+    items:
+      - term: '`UPDATE` / `DELETE` need `WHERE`'
+        desc: 'Without `WHERE`, `UPDATE Employees SET Salary = 10000;` changes ALL rows and `DELETE FROM Employees;` empties the table.'
+        from: { lesson: crud-filtering-sorting, section: 'UPDATE' }
+      - term: '`UPDATE … SET col = CASE …`'
+        desc: 'Different values per row. Without `ELSE`, rows matching no `WHEN` become NULL, so add `ELSE Salary`.'
+        code: |
+          UPDATE Employees
+          SET Salary = CASE
+                          WHEN Department = 'IT' THEN Salary + 5000
+                          WHEN Department = 'HR' THEN Salary + 3000
+                          ELSE Salary
+                       END;
+        lang: sql
+        from: { lesson: crud-filtering-sorting, section: 'Update Using CASE (Different Values for Different Rows)' }
+      - term: 'Multi-row `INSERT`'
+        code: |
+          INSERT INTO Employees (Id, Name, Age, Salary, IsActive)
+          VALUES
+          (2, 'Rahul', 30, 60000.00, 1),
+          (3, 'Priya', 26, 45000.00, 0);
+        lang: sql
+        from: { lesson: crud-filtering-sorting, section: 'INSERT' }
+      - term: 'ALTER rules'
+        desc: 'Can''t modify a column used in an index/constraint, drop a PK referenced by an FK, make a column NOT NULL while NULLs exist, or add IDENTITY to an existing column.'
+        from: { lesson: alter-command-guide, section: '🚨 Important Notes' }
+    table:
+      columns: [Task, T-SQL]
+      from: { lesson: alter-command-guide, section: '1️⃣ ALTER TABLE' }
+      rows:
+        - cells: ['Add column', '`ALTER TABLE Students ADD Email NVARCHAR(100);`']
+          from: { lesson: alter-command-guide, section: 'Add Column' }
+        - cells: ['Change data type', '`ALTER TABLE Students ALTER COLUMN StudentName NVARCHAR(200);`']
+          from: { lesson: alter-command-guide, section: 'Modify Column (Change Data Type)' }
+        - cells: ['NULL → NOT NULL', '`ALTER TABLE Students ALTER COLUMN Email NVARCHAR(100) NOT NULL;` (no NULLs may exist)']
+          from: { lesson: alter-command-guide, section: 'Change NULL to NOT NULL' }
+        - cells: ['Add DEFAULT', '`ALTER TABLE Students ADD CONSTRAINT DF_Email DEFAULT ''Not Provided'' FOR Email;`']
+          from: { lesson: alter-command-guide, section: 'Add DEFAULT Constraint' }
+        - cells: ['Add FOREIGN KEY', '`ALTER TABLE Students ADD CONSTRAINT FK_Students_Department FOREIGN KEY (DepartmentId) REFERENCES Departments(DepartmentId);`']
+          from: { lesson: alter-command-guide, section: 'Add FOREIGN KEY' }
+        - cells: ['Add UNIQUE / CHECK', '`ADD CONSTRAINT UQ_Email UNIQUE (Email)` · `ADD CONSTRAINT CHK_Grade CHECK (Grade IN (''A'',''B'',''C'',''D'',''F''))`']
+          from: { lesson: alter-command-guide, section: 'Add CHECK Constraint' }
+        - cells: ['Drop column / constraint', '`DROP COLUMN Phone` · `DROP CONSTRAINT UQ_Email`']
+          from: { lesson: alter-command-guide, section: 'Drop Constraint' }
+        - cells: ['Rename column / table', '`EXEC sp_rename ''Students.Email'', ''StudentEmail'', ''COLUMN'';` · `EXEC sp_rename ''Students'', ''UniversityStudents'';`']
+          from: { lesson: alter-command-guide, section: 'Rename Column' }
+        - cells: ['Disable / enable a constraint', '`ALTER TABLE Students NOCHECK CONSTRAINT FK_…` · `CHECK CONSTRAINT FK_…`']
+          from: { lesson: alter-command-guide, section: 'Disable Constraint' }
+        - cells: ['Rename database / read-only', '`ALTER DATABASE UniversityDB MODIFY NAME = CollegeDB;` · `SET READ_ONLY` / `SET READ_WRITE`']
+          from: { lesson: alter-command-guide, section: 'Rename Database' }
+        - cells: ['Rebuild / disable index', '`ALTER INDEX ALL ON Students REBUILD;` · `ALTER INDEX IX_StudentName ON Students DISABLE;`']
+          from: { lesson: alter-command-guide, section: 'Rebuild Index' }
+        - cells: ['Change a view / proc / function', '`ALTER VIEW` · `ALTER PROCEDURE` · `ALTER FUNCTION` (redefine without dropping)']
+          from: { lesson: alter-command-guide, section: 'Interview Summary' }
+
+  - title: DELETE vs TRUNCATE vs DROP
+    table:
+      columns: [Feature, DELETE, TRUNCATE, DROP]
+      from: { lesson: crud-filtering-sorting, section: 'DROP' }
+      rows:
+        - ['Removes data', 'Selected rows', 'All rows', 'All data']
+        - ['Removes table structure', 'No', 'No', 'Yes']
+        - ['`WHERE` allowed', 'Yes', 'No', 'No']
+        - ['Logging', 'Row-by-row', 'Minimal', 'Minimal']
+        - ['Speed', 'Slower', 'Faster', 'Fast']
+        - ['Resets identity', 'No', 'Yes', 'N/A (table removed)']
+        - ['Triggers fire', 'Yes', 'No', 'No']
+        - ['Table referenced by an FK', 'Allowed', 'Not allowed', 'Not allowed']
+        - ['Rollback inside a transaction', 'Yes', 'Yes', 'Yes']
+        - ['Locks', 'Row/page', 'Table', 'Table']
+
+  - title: Joins
+    table:
+      columns: [Join, Returns, Use for]
+      from: { lesson: joins, section: 'Quick overview (the 6 common join types)' }
+      rows:
+        - cells: ['`INNER JOIN`', 'Rows that match on both sides', 'Orders with customer info']
+          from: { lesson: joins, section: 'INNER JOIN (most common)' }
+        - cells: ['`LEFT [OUTER] JOIN`', 'All left rows + matches from the right (NULL when none)', 'All customers, with orders if any']
+          from: { lesson: joins, section: 'LEFT (LEFT OUTER) JOIN' }
+        - cells: ['`RIGHT [OUTER] JOIN`', 'All right rows + matches from the left', 'Rare: swap tables and use LEFT JOIN']
+          from: { lesson: joins, section: 'RIGHT JOIN' }
+        - cells: ['`FULL OUTER JOIN`', 'Matches + unmatched rows from both sides', 'Reconciling two sources']
+          from: { lesson: joins, section: 'FULL OUTER JOIN' }
+        - cells: ['`CROSS JOIN`', 'Cartesian product (3 × 4 = 12 rows)', 'Combinations, test data; row counts explode']
+          from: { lesson: joins, section: 'CROSS JOIN (Cartesian product)' }
+        - cells: ['Self join', 'A table joined to itself under two aliases', 'Hierarchies, employee → manager']
+          from: { lesson: joins, section: 'SELF JOIN (join a table to itself)' }
+        - cells: ['`CROSS APPLY` / `OUTER APPLY`', 'Run a table expression per left row; CROSS ≈ inner join, OUTER ≈ left join', '"Top N per group", calling a TVF per row']
+          from: { lesson: joins, section: 'APPLY (SQL Server-specific)' }
+    items:
+      - term: 'LEFT JOIN + WHERE trap'
+        desc: 'A `WHERE` condition on the right table removes the NULL rows (`NULL > 60` is UNKNOWN), turning the LEFT JOIN into an INNER JOIN. Put the condition in `ON` instead.'
+        code: |
+          SELECT c.Name, o.OrderId
+          FROM Customers c
+          LEFT JOIN Orders o
+          ON c.CustomerId = o.CustomerId
+             AND o.Amount > 60;
+        lang: sql
+        from: { lesson: joins, section: 'Correct Way (Condition in ON)' }
+      - term: 'Anti-join: rows with no match'
+        desc: '`LEFT JOIN … WHERE o.OrderId IS NULL`, or preferably `NOT EXISTS` (often more efficient, safe with duplicates).'
+        from: { lesson: joins, section: 'Anti-join (find unmatched rows)' }
+      - term: 'Semi-join: rows that have a match'
+        desc: '`INNER JOIN` repeats the customer once per order; `WHERE EXISTS (SELECT 1 …)` returns each customer once.'
+        from: { lesson: joins, section: 'Semi-join (existence check) vs INNER JOIN' }
+      - term: 'Top 1 per group with APPLY'
+        code: |
+          SELECT c.CustomerId, c.Name, lo.OrderId, lo.Amount
+          FROM Customers c
+          OUTER APPLY (
+            SELECT TOP(1) o.OrderId, o.Amount
+            FROM Orders o
+            WHERE o.CustomerId = c.CustomerId
+            ORDER BY o.OrderId DESC
+          ) lo;
+        lang: sql
+        from: { lesson: joins, section: 'OUTER APPLY' }
+
+  - title: Subqueries, set operators & CTEs
+    items:
+      - term: 'Subquery kinds'
+        desc: 'Single-row (one value, e.g. `> (SELECT AVG(Salary) …)`) · multi-row (`IN` / `ANY` / `ALL`) · correlated (references the outer row, runs per row) · in `SELECT` (computed column).'
+        from: { lesson: subqueries, section: 'Important Observations' }
+      - term: '2nd highest salary'
+        code: |
+          SELECT MAX(Salary)
+          FROM Employees
+          WHERE Salary < (
+              SELECT MAX(Salary)
+              FROM Employees
+          );
+        lang: sql
+        from: { lesson: subqueries, section: '2nd Highest Salary' }
+      - term: '`NOT IN` with a NULL returns nothing'
+        desc: '`3 NOT IN (1, 2, NULL)` = `3 <> 1 AND 3 <> 2 AND 3 <> NULL` = UNKNOWN, so no rows. `NOT EXISTS` checks row existence and is unaffected.'
+        from: { lesson: subqueries, section: 'NOT IN vs NOT EXISTS with NULL example' }
+      - term: 'CTE'
+        desc: 'Temporary named result set defined with `WITH`, used by the next statement only; reads better than nested subqueries. Several CTEs are separated by commas.'
+        code: |
+          WITH CTE_Name AS
+          (
+              SELECT ...
+          )
+          SELECT *
+          FROM CTE_Name;
+        lang: sql
+        from: { lesson: ctes, section: 'Common Table Expressions (CTEs)' }
+      - term: 'Recursive CTE'
+        desc: 'Anchor member `UNION ALL` recursive member that joins back to the CTE: org charts, folder trees, bill of materials.'
+        from: { lesson: ctes, section: 'Recursive CTE (Very Important)' }
+      - term: 'Delete duplicates with a CTE'
+        code: |
+          WITH DuplicateRows AS
+          (
+              SELECT *,
+                     ROW_NUMBER() OVER
+                     (
+                         PARTITION BY Name
+                         ORDER BY Id
+                     ) AS rn
+              FROM Employees
+          )
+          DELETE
+          FROM DuplicateRows
+          WHERE rn > 1;
+        lang: sql
+        from: { lesson: ctes, section: 'CTE for Deduplication' }
+      - term: 'Correlated subquery vs JOIN'
+        desc: 'A correlated subquery recomputes per outer row; a JOIN to a pre-aggregated derived table computes once, so it scales better.'
+        from: { lesson: ctes, section: 'Interview Answer (Short Version)' }
+    table:
+      columns: [Need, Use, Why]
+      from: { lesson: subqueries, section: 'Real Performance Rule' }
+      rows:
+        - ['Columns from both tables', '`JOIN`', 'Only JOIN returns the other table''s columns']
+        - ['Just check existence / avoid duplicates', '`EXISTS`', 'Stops at the first match (semi-join)']
+        - cells: ['Customers without orders', '`NOT EXISTS`', 'Safe with NULLs']
+          from: { lesson: subqueries, section: 'Real Production Examples' }
+        - cells: ['Merge logs', '`UNION ALL`', 'Keeps duplicates, faster']
+          from: { lesson: subqueries, section: 'Quick Comparison' }
+        - cells: ['Combine unique sets', '`UNION`', 'Removes duplicates']
+          from: { lesson: subqueries, section: 'Quick Comparison' }
+        - cells: ['Rows common to both', '`INTERSECT`', 'Distinct common rows']
+          from: { lesson: subqueries, section: 'Quick Comparison' }
+        - cells: ['Missing records', '`EXCEPT`', 'First minus second, distinct']
+          from: { lesson: subqueries, section: 'Quick Comparison' }
+
+  - title: CASE, NULL handling & functions
+    items:
+      - term: '`CASE`'
+        desc: 'If/else inside SQL: derived columns, custom sort order, conditional aggregation. Move complex logic to the .NET service layer.'
+        code: |
+          CASE
+              WHEN Salary > 100000 THEN 'High'
+              WHEN Salary BETWEEN 50000 AND 100000 THEN 'Medium'
+              ELSE 'Low'
+          END AS SalaryCategory
+        lang: sql
+        from: { lesson: case-coalesce-and-union, section: 'SQL CASE Clause' }
+      - term: 'Conditional aggregation'
+        desc: '`COUNT(CASE WHEN Status = ''Completed'' THEN 1 END)` · `SUM(CASE WHEN Gender = ''Male'' THEN 1 ELSE 0 END)` per `GROUP BY` group.'
+        from: { lesson: case-coalesce-and-union, section: 'Real Interview-Level Use Case' }
+      - term: '`IIF(cond, a, b)`'
+        desc: 'SQL Server shortcut for a two-branch CASE: `IIF(Salary > 50000, ''Good'', ''Average'')`.'
+        from: { lesson: case-coalesce-and-union, section: 'IIF (Shortcut for CASE – SQL Server)' }
+      - term: '`COALESCE(a, b, c, …)`'
+        desc: 'First non-NULL value (NULL if all are NULL): `COALESCE(Phone, ''Not Available'')`.'
+        from: { lesson: case-coalesce-and-union, section: 'COALESCE (Handle NULLs)' }
+      - term: '`ISNULL(a, b)`'
+        desc: 'SQL Server-specific two-argument replacement for NULL.'
+        from: { lesson: case-coalesce-and-union, section: 'ISNULL (SQL Server specific)' }
+      - term: '`NULLIF(a, b)`'
+        desc: 'NULL when equal: `Value / NULLIF(Divisor, 0)` avoids divide-by-zero errors.'
+        from: { lesson: case-coalesce-and-union, section: 'NULLIF' }
+    table:
+      columns: [Function type, Returns, Example]
+      from: { lesson: sql-server-functions, section: 'Quick Summary' }
+      rows:
+        - ['Scalar', 'Single value', '`LEN(''SQL'')`, `dbo.GetAnnualSalary(50000)`']
+        - ['Aggregate', 'One value from many rows', '`SUM(Salary)`']
+        - ['Inline TVF', 'Table (single `SELECT`, `RETURNS TABLE`)', '`SELECT * FROM dbo.GetEmployeesByDept(''IT'')`']
+        - ['Multi-statement TVF', 'Table variable filled by several statements', '`RETURNS @Result TABLE (...)`']
+        - ['Window', 'Value per row with window context', '`ROW_NUMBER() OVER (...)`']
+        - ['System', 'Built-in utility', '`GETDATE()`, `CAST(123 AS VARCHAR(10))`, `CONVERT(VARCHAR, GETDATE(), 106)`']
+
+  - title: Window functions
+    items:
+      - term: 'Anatomy'
+        desc: '`OVER()` is mandatory (defines the window) · `PARTITION BY` splits rows into groups · `ORDER BY` orders rows within a partition (required for ranking and value functions) · frame such as `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW`. Rows are not collapsed like `GROUP BY`.'
+        code: |
+          FUNCTION_NAME() OVER (
+              PARTITION BY column
+              ORDER BY column
+          )
+        lang: sql
+        from: { lesson: window-functions, section: 'Key Components of Window Functions' }
+      - term: 'Top N per group'
+        code: |
+          WITH RankedEmployees AS
+          (
+              SELECT *,
+                     ROW_NUMBER() OVER
+                     (
+                         PARTITION BY Department
+                         ORDER BY Salary DESC
+                     ) AS RankNum
+              FROM Employees
+          )
+          SELECT *
+          FROM RankedEmployees
+          WHERE RankNum = 1;
+        lang: sql
+        from: { lesson: ctes, section: 'CTE with Window Functions' }
+      - term: '`PERCENT_RANK()`'
+        desc: 'Relative rank from 0 (first row) to 1 (last row); ties share a value.'
+        from: { lesson: window-functions, section: 'PERCENT_RANK()' }
+      - term: '`FIRST_VALUE()` / `LAST_VALUE()`'
+        desc: 'First / last value in the ordered window. Trap: without a frame `LAST_VALUE` returns the current row; use `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`.'
+        from: { lesson: window-functions, section: 'LAST_VALUE()' }
+      - term: 'Aggregate over a window'
+        desc: '`SUM(Salary) OVER ()` repeats the grand total on every row; `AVG(Salary) OVER (PARTITION BY Department)` gives the department average per row.'
+        from: { lesson: window-functions, section: 'Partitioned Aggregate Example' }
+      - term: 'Running total'
+        code: |
+          SELECT Name, Salary,
+                 SUM(Salary) OVER (
+                     ORDER BY Salary DESC
+                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                 ) AS RunningTotal
+          FROM Employees;
+        lang: sql
+        from: { lesson: window-functions, section: 'Advanced Test Case — Running Total with Frame' }
+    table:
+      columns: [Function, Ties, Example sequence, Use for]
+      from: { lesson: window-functions, section: 'Common Types of Window Functions' }
+      rows:
+        - cells: ['`ROW_NUMBER()`', 'No ties: always unique', '1, 2, 3, 4', 'Pagination, top N, deduplication']
+          from: { lesson: window-functions, section: 'ROW_NUMBER()' }
+        - cells: ['`RANK()`', 'Same rank, then a gap', '1, 1, 3', 'Competition ranking']
+          from: { lesson: window-functions, section: 'RANK()' }
+        - cells: ['`DENSE_RANK()`', 'Same rank, no gap', '1, 1, 2', 'Leaderboards, top performers']
+          from: { lesson: window-functions, section: 'DENSE_RANK()' }
+
+  - title: Indexes, keys & constraints
+    table:
+      columns: [Index, What it is, Notes]
+      from: { lesson: indexes-and-keys, section: 'Index' }
+      rows:
+        - cells: ['Clustered', 'Defines the order the rows are stored in (B-tree whose leaf level is the data)', 'Only one per table; a PRIMARY KEY creates it by default']
+          from: { lesson: indexes-and-keys, section: 'Clustered Index' }
+        - cells: ['Non-clustered', 'Separate structure: indexed column(s) + clustered key as row locator', 'Many per table; may need a Key Lookup for other columns']
+          from: { lesson: indexes-and-keys, section: 'Non-Clustered Index' }
+        - cells: ['Covering', 'Contains every column the query needs (`INCLUDE`)', 'Index Seek with no Key Lookup']
+          from: { lesson: indexes-and-keys, section: 'Covering Index' }
+        - cells: ['Composite', 'Index on several columns, e.g. `(CustomerId, OrderDate)`', '`CustomerId` is the 1st key column, `OrderDate` the 2nd']
+          from: { lesson: indexes-and-keys, section: 'Composite Non-Clustered Index?' }
+    items:
+      - term: 'Covering index'
+        code: |
+          CREATE INDEX IX_Employee_Name
+          ON Employee(Name)
+          INCLUDE (Salary);
+        lang: sql
+        from: { lesson: indexes-and-keys, section: 'Covering Index' }
+      - term: 'Indexes cost writes'
+        desc: 'Every INSERT/DELETE updates the clustered index and every non-clustered index (1 + 5 = 6 structures). Random GUID clustered keys cause page splits; updating a clustered key touches all NC indexes.'
+        from: { lesson: indexes-and-keys, section: 'WRITE Performance Comparison' }
+      - term: 'Index every foreign key'
+        desc: '`CREATE INDEX IX_Employee_DepartmentID ON Employee(DepartmentID);` speeds parent deletes, joins and cascades and reduces locking.'
+        from: { lesson: indexes-and-keys, section: 'Best Practice (Very Important)' }
+      - term: 'Which constraint?'
+        desc: 'Unique row id → `PRIMARY KEY` · unique business column → `UNIQUE` (a nonclustered index, allows one NULL) · parent-child safety → `FOREIGN KEY` · required → `NOT NULL` · value when omitted → `DEFAULT` · domain rule (`> 0`, enum-like) → `CHECK`.'
+        from: { lesson: indexes-and-keys, section: 'Quick decision chart (which to use)' }
+      - term: 'Keys vocabulary'
+        desc: '**Candidate** = could be the PK · **alternate** = a candidate not chosen (enforce with `UNIQUE`) · **composite** = PK of 2+ columns · **surrogate** (`INT IDENTITY`, GUID) vs **natural** (email, ISBN).'
+        from: { lesson: indexes-and-keys, section: 'Keys in SQL' }
+      - term: 'FK cascade options'
+        desc: 'Default: a parent with children can''t be deleted. `ON DELETE CASCADE` deletes children, `ON DELETE SET NULL` nulls the FK, `ON UPDATE CASCADE` follows a PK change.'
+        from: { lesson: indexes-and-keys, section: 'Foreign Key with CASCADE Options' }
+
+  - title: Execution plans & SARGable queries
+    items:
+      - term: 'Index Seek vs Index Scan'
+        desc: 'Seek jumps straight to matching rows: best for selective predicates (`WHERE CustomerId = 123`). Scan reads many/all pages: fine when most rows are needed or no useful index exists.'
+        from: { lesson: execution-plans-and-sargability, section: 'Index Seek vs Index Scan' }
+      - term: 'Costly operators'
+        desc: 'Table/Index Scan (add a selective index) · Key/RID Lookup (make the index covering with `INCLUDE`) · Sort from `ORDER BY`/`DISTINCT`/`GROUP BY` without a usable index.'
+        from: { lesson: execution-plans-and-sargability, section: 'Costly operators (what to watch for)' }
+      - term: 'SARGable'
+        desc: 'Search-ARGument-able: the predicate lets the optimizer use an index seek. Keep the indexed column bare.'
+        from: { lesson: execution-plans-and-sargability, section: 'SARGABLE Queries' }
+      - term: 'Fix a function on a column'
+        code: |
+          WHERE JoinDate >= '2026-01-01'
+          AND JoinDate < '2027-01-01';
+        lang: sql
+        desc: 'Instead of `WHERE YEAR(JoinDate) = 2026`.'
+        from: { lesson: execution-plans-and-sargability, section: 'Fix It (Make It SARGABLE)' }
+      - term: 'Non-SARGable patterns'
+        desc: '`UPPER(Name) = ''AMAN''` (use a case-insensitive collation) · `Salary * 1.1 > 50000` (move the math to the constant side) · `LIKE ''%man''` · implicit conversions from mismatched types.'
+        from: { lesson: execution-plans-and-sargability, section: 'Common Non-SARGABLE Patterns' }
+    table:
+      columns: [Pattern, Uses index seek?]
+      from: { lesson: execution-plans-and-sargability, section: 'SARGABLE vs Non-SARGABLE Comparison' }
+      rows:
+        - ['`Column = Value`', '✅ Yes']
+        - ['`Column > Value`', '✅ Yes']
+        - ['`BETWEEN`', '✅ Yes']
+        - ['`Column LIKE ''abc%''`', '✅ Yes']
+        - ['`Function(Column)`', '❌ No']
+        - ['`Column + 1 = 10`', '❌ No']
+        - ['`LIKE ''%abc''`', '❌ No']
+
+  - title: Transactions & isolation levels
+    items:
+      - term: 'ACID'
+        desc: '**Atomicity** all or nothing · **Consistency** valid state to valid state (constraints, invariants) · **Isolation** concurrent transactions don''t interfere · **Durability** committed changes survive crashes (transaction log).'
+        from: { lesson: transactions-and-concurrency, section: 'Transactions & Concurrency' }
+      - term: 'Anomalies'
+        desc: '**Dirty read**: reading uncommitted data · **non-repeatable read**: the same row changes between two reads · **phantom**: a repeated query sees new rows.'
+        from: { lesson: transactions-and-concurrency, section: 'I — Isolation' }
+      - term: 'Transaction with TRY…CATCH'
+        code: |
+          BEGIN TRY
+              BEGIN TRANSACTION;
+
+              UPDATE Accounts
+              SET Balance = Balance - 500
+              WHERE AccountId = 1;
+
+              UPDATE Accounts
+              SET Balance = Balance + 500
+              WHERE AccountId = 2;
+
+              COMMIT;
+          END TRY
+          BEGIN CATCH
+              ROLLBACK;
+          END CATCH
+        lang: sql
+        from: { lesson: transactions-and-concurrency, section: 'Using TRY...CATCH with Transactions' }
+      - term: 'Savepoint'
+        desc: '`SAVE TRANSACTION AfterDebit;` … `ROLLBACK TRANSACTION AfterDebit;` undoes only the work after the savepoint.'
+        from: { lesson: transactions-and-concurrency, section: 'Savepoints (Partial Rollback)' }
+      - term: 'Auto-commit'
+        desc: 'By default each statement is its own transaction and commits automatically.'
+        from: { lesson: transactions-and-concurrency, section: 'Transaction vs Auto-Commit' }
+      - term: 'Set the level'
+        desc: '`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;` before `BEGIN TRANSACTION`.'
+        from: { lesson: transactions-and-concurrency, section: 'I — Isolation' }
+      - term: 'SNAPSHOT needs a database option'
+        desc: 'The `ALLOW_SNAPSHOT_ISOLATION` database option must be ON before a transaction can use `SNAPSHOT` (in every database it touches).'
+        docs: { url: 'https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql', title: 'SET TRANSACTION ISOLATION LEVEL (Transact-SQL)', accessed: '2026-10-22' }
+      - term: 'Blocking vs deadlock'
+        desc: 'Blocking: one transaction waits for another''s lock and continues after it commits (normal). Deadlock: a cycle of waits; SQL Server kills one ("Transaction was deadlocked on resources").'
+        from: { lesson: transactions-and-concurrency, section: 'Quick interview answer' }
+      - term: 'Prevent deadlocks'
+        desc: 'Access resources in the same order · keep transactions short · index properly · retry deadlocked transactions in the app.'
+        from: { lesson: transactions-and-concurrency, section: 'How to prevent deadlocks' }
+    table:
+      columns: [Level, Dirty read, Non-repeatable, Phantom, How / use]
+      from: { lesson: transactions-and-concurrency, section: 'Isolation Levels' }
+      rows:
+        - cells: ['READ UNCOMMITTED', 'Yes', 'Yes', 'Yes', 'Lowest; reads uncommitted data. Reports where accuracy isn''t critical']
+          from: { lesson: transactions-and-concurrency, section: '1. READ UNCOMMITTED' }
+        - cells: ['READ COMMITTED (default)', 'No', 'Yes', 'Yes', 'Readers wait for uncommitted writes. Most OLTP']
+          from: { lesson: transactions-and-concurrency, section: '2. READ COMMITTED (Default)' }
+        - cells: ['REPEATABLE READ', 'No', 'No', 'Yes', 'Rows read can''t be modified until commit. Consistent financial reads']
+          from: { lesson: transactions-and-concurrency, section: '3. REPEATABLE READ' }
+        - cells: ['SERIALIZABLE', 'No', 'No', 'No', 'Highest; locks ranges. Critical banking logic']
+          from: { lesson: transactions-and-concurrency, section: '4. SERIALIZABLE' }
+        - cells: ['SNAPSHOT', 'No', 'No', 'No', 'Row versioning, readers don''t block writers. High concurrency']
+          from: { lesson: transactions-and-concurrency, section: '5. SNAPSHOT' }

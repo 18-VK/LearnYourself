@@ -1,0 +1,1832 @@
+{
+  "topic": "dotnet-runtime",
+  "questions": [
+    {
+      "id": "dotnet-runtime-how-csharp-code-runs",
+      "topic": "dotnet-runtime",
+      "subtopic": "clr-jit-il",
+      "difficulty": "junior",
+      "question": "What happens between writing C# code and it running on the CPU?",
+      "shortAnswer": "The C# compiler turns source code into CPU-independent Intermediate Language (IL) plus metadata, stored in an assembly (`.dll`/`.exe`). At run time the CLR loads the assembly and its JIT compiler converts each method's IL to native machine code the first time the method is called, then reuses that native code.",
+      "answer": "**Key points**\n1. **Compile**: `csc` (via `dotnet build`) produces IL (also called CIL or MSIL) and **metadata** describing every type, member and reference. Both live in a portable executable (PE) file: the assembly.\n2. **Load**: the runtime host starts the CLR, which loads assemblies on demand (only when code needs them) and reads their metadata.\n3. **JIT-compile**: each method starts with a stub; on first call the stub hands the method's IL to the JIT, which emits native code for the current CPU and patches the stub so later calls go straight to the native code. Code that's never called is never compiled.\n4. **Run with services**: while the code runs, the CLR provides garbage collection, type safety, exception handling, thread management, security boundaries and interop with native code.\n\n**Why IL instead of native code?**\nThe same IL runs on any architecture the runtime supports (x64, Arm64, ...), the metadata makes code\nself-describing (reflection, cross-language use), and the JIT can optimize for the actual machine.\n\n**Variations**: ReadyToRun and Native AOT compile ahead of time to cut startup cost; .NET Framework had NGen for\nthe same purpose.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Program.cs\nConsole.WriteLine(Add(2, 3));\nstatic int Add(int a, int b) => a + b;\n\n// IL the compiler emits for Add (roughly):\n//   ldarg.0\n//   ldarg.1\n//   add\n//   ret\n// The JIT turns these stack-based IL instructions into native instructions on first call."
+      },
+      "pitfalls": [
+        "Saying C# compiles straight to machine code; normally it compiles to IL, and the JIT produces machine code at run time.",
+        "Thinking the whole assembly is compiled at startup; the JIT works method by method, on first call."
+      ],
+      "followUps": [
+        "What is in an assembly besides IL?",
+        "How do tiered compilation and ReadyToRun change JIT behaviour?",
+        "What does \"managed code\" mean?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/managed-execution-process",
+          "title": "Managed execution process - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/managed-code",
+          "title": "What is managed code? - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/assembly/",
+          "title": "Assemblies in .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "what-is-dotnet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-clr-cts-cls-bcl",
+      "topic": "dotnet-runtime",
+      "subtopic": "clr-jit-il",
+      "difficulty": "junior",
+      "question": "What are the CLR, CTS, CLS and BCL, and what is managed code?",
+      "shortAnswer": "The CLR is the runtime that executes .NET code and provides services like garbage collection. The CTS (common type system) defines how types are declared and used across languages, the CLS (common language specification) is the subset of rules a public API follows so every .NET language can use it, and the BCL is the base class library of core types. Managed code is code whose execution the CLR manages.",
+      "answer": "**Key points**\n- **CLR (common language runtime)**: loads code, JIT-compiles IL, manages memory with the GC, enforces type safety, handles exceptions and threads, and bridges to native code (interop). The same idea exists in every implementation: .NET Framework, .NET (Core/5+), Mono.\n- **CTS (common type system)**: the runtime's rules for types (classes, structs, interfaces, enums, delegates), members and visibility. Because all .NET languages compile to the same type system, a C# class can derive from a VB class.\n- **CLS (common language specification)**: a smaller set of rules (from the ECMA-335 standard) for **public** API surface, so components are usable from any CLS-compliant language. Example: unsigned integers aren't CLS-compliant in public signatures. Mark an assembly `[assembly: CLSCompliant(true)]` to get compiler checks; private implementation doesn't need to comply.\n- **BCL / class library**: the base types and APIs every app uses (`System.String`, collections, I/O, threading, networking...).\n- **Managed code**: compiled to IL and run under the CLR. **Unmanaged code** (C/C++ native binaries) runs directly on the OS and manages its own memory. C# can still step outside with `unsafe` code or P/Invoke.\n\n**Standards**: the type system, metadata format and execution engine are specified by ECMA-335 (Common Language\nInfrastructure), which is why multiple compilers and runtimes can interoperate.",
+      "code": {
+        "lang": "csharp",
+        "source": "[assembly: CLSCompliant(true)]\n\npublic class Meter\n{\n    public int Read() => 42;                 // fine: int is CLS-compliant\n\n    // public uint ReadRaw() => 42;          // warning: unsigned types other than byte aren't CLS-compliant\n\n    internal uint ReadRawInternal() => 42u;  // fine: not part of the public surface\n}"
+      },
+      "pitfalls": [
+        "Treating the CLS as a rule for all code; it only concerns the public surface of libraries meant for other languages.",
+        "Assuming managed code can't leak memory; the GC only frees objects that are unreachable, and native resources still need explicit cleanup."
+      ],
+      "followUps": [
+        "What services does the CLR provide at run time?",
+        "What does `unsafe` code give up?",
+        "Why does a C# library expose `int` rather than `uint` in public APIs?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/clr",
+          "title": "Common Language Runtime (CLR) overview",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/base-types/common-type-system",
+          "title": "Common type system - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/language-independence",
+          "title": "Language independence and language-independent components",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/managed-code",
+          "title": "What is managed code? - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "what-is-dotnet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-tiered-compilation-readytorun-pgo",
+      "topic": "dotnet-runtime",
+      "subtopic": "clr-jit-il",
+      "difficulty": "mid",
+      "question": "What are tiered compilation, ReadyToRun and dynamic PGO, and how do they affect startup and steady-state performance?",
+      "shortAnswer": "Tiered compilation starts methods with quickly generated (or precompiled ReadyToRun) code and later recompiles hot methods with full optimizations in the background. ReadyToRun ships precompiled native code alongside IL to cut JIT work at startup. Dynamic PGO instruments early code and uses the observed types and paths to optimize the recompiled code further.",
+      "answer": "**Tiered compilation** (on by default since .NET Core 3.0)\n- Tier 0: *quick JIT* (fast to compile, less optimized) or ReadyToRun code if available.\n- Tier 1: methods called often are recompiled with the optimizing JIT in the background and swapped in.\n- Quick JIT improves startup but tier-0 code can be slower and use more stack and memory. *Quick JIT for loops* (on-stack replacement) helps startup but can keep a long-running loop in less optimized code for a while.\n\n**ReadyToRun (R2R)**\n- A form of ahead-of-time compilation: publish with `-p:PublishReadyToRun=true` for a specific RID (for example `win-x64`).\n- Assemblies contain both IL and native code, so they are typically two to three times larger, but far fewer methods need JIT at startup or first use (useful for the first request to a Web API).\n- R2R code is less optimized than JIT code, so tiered compilation replaces hot R2R methods with tier-1 JIT code.\n- The .NET runtime libraries already ship as R2R, so small apps gain little.\n\n**Dynamic PGO** (profile-guided optimization)\n- Tier-0 code is instrumented; the tier-1 JIT then optimizes for the types and branches actually seen (for example devirtualizing the common interface implementation).\n- Available since .NET 6 and **enabled by default since .NET 8**; Microsoft reports about a 15% average improvement on its benchmark suite.\n\n**Interview angle**\nThe JIT trades a little warm-up time for code optimized to the real machine and workload. When startup matters\nmore (serverless, CLI tools, containers that scale often), use R2R or Native AOT.",
+      "code": {
+        "lang": "xml",
+        "source": "<!-- Project file: publish ReadyToRun for one runtime -->\n<PropertyGroup>\n  <RuntimeIdentifier>linux-x64</RuntimeIdentifier>\n  <PublishReadyToRun>true</PublishReadyToRun>\n  <!-- <TieredPGO>false</TieredPGO>  dynamic PGO is on by default in .NET 8+ -->\n</PropertyGroup>"
+      },
+      "pitfalls": [
+        "Benchmarking only the first few calls and blaming .NET for slow code; measure after warm-up (BenchmarkDotNet does this).",
+        "Expecting ReadyToRun to make steady-state code faster; it mainly helps startup and first-call latency.",
+        "Turning off tiered compilation globally without measuring; it usually worsens startup."
+      ],
+      "followUps": [
+        "How does Native AOT differ from ReadyToRun?",
+        "What is on-stack replacement?",
+        "Why are R2R binaries larger?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/runtime-config/compilation",
+          "title": "Runtime configuration options for compilation - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/deploying/ready-to-run",
+          "title": "ReadyToRun compilation - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/runtime",
+          "title": "What's new in the .NET 8 runtime",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Tiered compilation and quick JIT are on by default since .NET Core 3.0 (off in 2.1/2.2). Dynamic PGO exists from .NET 6 and is on by default from .NET 8. .NET Framework used NGen instead of ReadyToRun.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-assemblyloadcontext-vs-appdomain",
+      "topic": "dotnet-runtime",
+      "subtopic": "clr-jit-il",
+      "difficulty": "senior",
+      "question": "How do you load, isolate and unload plugins in .NET (Core/5+) now that AppDomains are gone?",
+      "shortAnswer": "Use `AssemblyLoadContext` (ALC). Each ALC has its own map of assembly names to loaded assemblies, so plugins can use different versions of the same dependency, and a collectible ALC can be unloaded. Creating new AppDomains isn't supported in .NET Core/.NET 5+; for real isolation (security, crashes), use separate processes or containers.",
+      "answer": "**Key points**\n- Every .NET Core/.NET 5+ app uses `AssemblyLoadContext.Default`, which loads the app's static dependencies by default probing.\n- **One version per name per ALC**: a single ALC can hold only one version of a given simple assembly name. To load conflicting versions (plugin A needs Newtonsoft 12, plugin B needs 13), give each plugin its own ALC.\n- Derive from `AssemblyLoadContext`, override `Load(AssemblyName)` to resolve a plugin's dependencies (often with `AssemblyDependencyResolver`), and return `null` to fall back to the default context for shared contracts.\n- **Unloading**: create the ALC with `isCollectible: true` and call `Unload()`. Unlike AppDomain unloading (forced, aborting threads), ALC unloading is **cooperative**: it completes only after no thread has the plugin's methods on its call stack and nothing outside the ALC (other than weak references) or any strong GC handle still references its types, instances or assemblies.\n- **No isolation boundary**: all ALCs share one process, one GC heap and the same security context. `AppDomain.CreateDomain` throws `PlatformNotSupportedException`; some `AppDomain` APIs remain for compatibility (for example `AppDomain.UnhandledException`).\n- For inspection without executing code, use `MetadataLoadContext`; the reflection-only load APIs from .NET Framework are obsolete (SYSLIB0018) and throw `PlatformNotSupportedException`.\n\n**Design tips**\nShare a contracts assembly (interfaces) through the default ALC so host and plugin agree on type identity; a type\nloaded in two contexts is two different types.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Reflection;\nusing System.Runtime.Loader;\n\npublic sealed class PluginLoadContext(string pluginPath)\n    : AssemblyLoadContext(isCollectible: true)\n{\n    private readonly AssemblyDependencyResolver _resolver = new(pluginPath);\n\n    protected override Assembly? Load(AssemblyName name)\n    {\n        string? path = _resolver.ResolveAssemblyToPath(name);\n        return path is null ? null : LoadFromAssemblyPath(path);   // null: use the default context\n    }\n}\n\n// var ctx = new PluginLoadContext(@\"plugins\\Reports\\Reports.dll\");\n// Assembly plugin = ctx.LoadFromAssemblyPath(@\"plugins\\Reports\\Reports.dll\");\n// ... use it through a shared interface ...\n// ctx.Unload();   // completes once nothing references the plugin's types"
+      },
+      "pitfalls": [
+        "Expecting `Unload()` to free memory immediately; any lingering reference (a static event, a cached delegate, a running thread) keeps the plugin loaded.",
+        "Loading the shared contracts assembly into the plugin's context too, which creates a second, incompatible copy of the interface types.",
+        "Treating an ALC as a security sandbox; untrusted code needs a separate process."
+      ],
+      "followUps": [
+        "How would you diagnose a collectible ALC that never unloads?",
+        "What does `AssemblyDependencyResolver` read to find dependencies?",
+        "Why is type identity tied to the load context?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/dependency-loading/understanding-assemblyloadcontext",
+          "title": "About AssemblyLoadContext - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/tutorials/creating-app-with-plugin-support",
+          "title": "Create a .NET Core application with plugins",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/assembly/unloadability",
+          "title": "How to use and debug assembly unloadability in .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/porting/net-framework-tech-unavailable",
+          "title": ".NET Framework technologies unavailable on .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/syslib-diagnostics/syslib0018",
+          "title": "SYSLIB0018: Reflection-only loading is not supported",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/assembly/",
+          "title": "Assemblies in .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "resources-and-assembly-loading"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`AssemblyLoadContext` exists only in .NET Core/.NET 5+ (`AssemblyDependencyResolver` since .NET Core 3.0). .NET Framework uses AppDomains for isolation and unloading.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-framework-vs-core-vs-modern-dotnet",
+      "topic": "dotnet-runtime",
+      "subtopic": "deployment",
+      "difficulty": "junior",
+      "question": "What is the difference between .NET Framework, .NET Core and .NET 5+?",
+      "shortAnswer": ".NET Framework (1.0 to 4.8) is the original Windows-only implementation, built into Windows and still supported but no longer getting new features. .NET Core (1.0 to 3.1) was a separate, rewritten, cross-platform and open-source implementation. From version 5 it was renamed simply \".NET\" and is the main implementation going forward.",
+      "answer": "**Key points**\n- **.NET Framework**: Windows only; one machine-wide copy of .NET Framework 4.x (each 4.x version replaces the previous one); hosts Web Forms, WCF server, Windows Workflow and other technologies that were never ported.\n- **.NET Core 1.0-3.1**: cross-platform (Windows, Linux, macOS), open source, modular, side-by-side installs per app, much better performance; brought ASP.NET Core and EF Core.\n- **.NET 5 and later** (5, 6, 7, 8, 9, 10...): the continuation of .NET Core. The name skipped 4.x to avoid confusion with .NET Framework 4.x and dropped \"Core\" because it is now *the* .NET. ASP.NET Core and EF Core kept \"Core\" to avoid confusion with ASP.NET MVC 5 and Entity Framework 6.\n- Microsoft recommends the latest .NET for new server apps; reasons to stay on .NET Framework are specific: an existing app that works, dependencies that only exist for .NET Framework, or technologies like Web Forms.\n\n**Detail**\nBoth implementations share concepts (CLR, IL, C#, BCL) but they are different runtimes. A library can target\n.NET Standard 2.0 to be usable from both, and modern .NET can run side by side with multiple versions on one\nmachine, which .NET Framework 4.x can't.",
+      "code": {
+        "lang": "xml",
+        "source": "<!-- Target framework monikers (TFMs) in a project file -->\n<TargetFramework>net48</TargetFramework>          <!-- .NET Framework 4.8 -->\n<TargetFramework>netcoreapp3.1</TargetFramework>  <!-- .NET Core 3.1 -->\n<TargetFramework>net10.0</TargetFramework>        <!-- .NET 10 -->\n<TargetFramework>netstandard2.0</TargetFramework> <!-- library usable by both -->"
+      },
+      "pitfalls": [
+        "Calling .NET Core \"the latest version of .NET Framework\"; it's a separate implementation, and .NET 5+ continues .NET Core, not .NET Framework.",
+        "Assuming any .NET Framework app can be recompiled for .NET; Web Forms, WCF server and Workflow Foundation aren't available.",
+        "Assuming \"Core\" in ASP.NET Core means it only runs on .NET Core 1-3.1; ASP.NET Core runs on .NET 5+ too."
+      ],
+      "followUps": [
+        "Why was version 4 skipped?",
+        "When would you keep an app on .NET Framework?",
+        "What is a target framework moniker (TFM)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-5",
+          "title": "What's new in .NET 5",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/choosing-core-framework-server",
+          "title": ".NET vs. .NET Framework for server apps",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/introduction",
+          "title": "What is .NET? Introduction and overview",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "what-is-dotnet"
+      ],
+      "notCoveredYet": false,
+      "versionNote": ".NET Core 1.0-3.1 (2016-2019), then .NET 5 (2020) onward with yearly major releases. .NET Framework stops at 4.8.x.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-dotnet-standard-today",
+      "topic": "dotnet-runtime",
+      "subtopic": "deployment",
+      "difficulty": "mid",
+      "question": "What is .NET Standard, and should a new library target it?",
+      "shortAnswer": ".NET Standard is a specification of APIs available across .NET implementations, so one library binary could run on .NET Framework, .NET Core, Mono and others. No new versions will ship. Target `netstandard2.0` only if the library must also work on .NET Framework; otherwise target a modern TFM like `net10.0`, or multi-target both.",
+      "answer": "**Key points**\n- Versions are additive: a higher .NET Standard includes every API of the lower ones.\n- **.NET Standard 2.0** is the last version .NET Framework supports, and Microsoft recommends it when you need one target for many platforms.\n- **.NET Standard 2.1** isn't supported by .NET Framework; Microsoft suggests skipping it and targeting .NET (for example `net10.0`) directly.\n- **.NET Standard 1.x** pulls in a large graph of small packages; since .NET 9 the SDK warns when you target it.\n- .NET 5 and later take a different route to uniformity (one product with OS-specific TFMs such as `net10.0-windows`), which removes the need for .NET Standard in most scenarios.\n\n**Practical guidance**\n- Application components (projects inside one app): target the same modern TFM everywhere.\n- NuGet libraries: multi-target, for example `<TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>`: `netstandard2.0` for reach, the modern TFM to use newer APIs and better performance.\n- Missing APIs on `netstandard2.0` can often be added through packages or conditional compilation (`#if NET8_0_OR_GREATER`).",
+      "code": {
+        "lang": "xml",
+        "source": "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <!-- Reach .NET Framework via netstandard2.0, and use modern APIs on .NET 8+ -->\n    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>\n  </PropertyGroup>\n</Project>"
+      },
+      "pitfalls": [
+        "Targeting .NET Standard 2.1 to \"support .NET Framework\"; .NET Framework doesn't support 2.1.",
+        "Targeting `netstandard2.0` for a library only used by a .NET 8+ app, giving up newer APIs for no benefit."
+      ],
+      "followUps": [
+        "What is the difference between a TFM like `net10.0` and `net10.0-windows`?",
+        "How do you write code that only compiles for some target frameworks?",
+        "What does multi-targeting cost in build time and testing?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/net-standard",
+          "title": ".NET Standard",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/frameworks",
+          "title": "Target frameworks in SDK-style projects",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "No .NET Standard versions after 2.1. .NET Framework supports up to .NET Standard 2.0; .NET Core 3.0+ and .NET 5+ support 2.1.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-lts-vs-sts-support",
+      "topic": "dotnet-runtime",
+      "subtopic": "deployment",
+      "difficulty": "junior",
+      "question": "What is the difference between LTS and STS .NET releases, and which should you choose?",
+      "shortAnswer": "Major .NET versions ship every November and alternate between Long Term Support (LTS, at least three years of support) and Standard Term Support (STS, two years). Choose LTS when you need stability over a long period; choose the latest release, LTS or STS, for services you update regularly.",
+      "answer": "**Key points**\n- Even-numbered releases have been LTS (.NET 6, 8, 10) and odd-numbered ones STS (.NET 7, 9); releases alternate.\n- **LTS**: supported for a minimum of three years, or one year after the next LTS ships if that is later.\n- **STS**: supported for 24 months (for example .NET 9, released November 2024, is supported until November 2026).\n- **Servicing updates** (patches like 9.0.3) ship about monthly, security fixes on Patch Tuesday. Only the latest patch of a version is supported, and framework-dependent apps roll forward to the latest installed patch automatically.\n- Major versions install side by side and may contain breaking changes; patches maintain compatibility.\n\n**Current state (October 2026)**\n.NET 10 (LTS) is supported until November 2028; .NET 9 (STS) and .NET 8 (LTS) both reach end of support in\nNovember 2026. .NET 11 is in preview.\n\n**Choosing**\n- Services you deploy often: the latest release.\n- Client apps or products with slow upgrade cycles: an LTS release.\n- Always use the newest SDK; it can build for older supported runtimes.",
+      "code": {
+        "lang": "bash",
+        "source": "# Which runtimes and SDKs are installed?\ndotnet --list-runtimes\ndotnet --list-sdks\n\n# Warn at build time when the SDK is out of support (MSBuild property)\ndotnet build -p:CheckSdkVulnerabilities=true"
+      },
+      "pitfalls": [
+        "Staying on an out-of-support version because \"it still works\"; it stops receiving security fixes.",
+        "Not installing monthly patches on servers, which leaves known vulnerabilities in place."
+      ],
+      "followUps": [
+        "What happens to a framework-dependent app when a new patch is installed?",
+        "How do SDK feature bands (9.0.1xx, 9.0.2xx) work?",
+        "How would you plan an upgrade from .NET 8 to .NET 10?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/releases-and-support",
+          "title": "Releases and support for .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://devblogs.microsoft.com/dotnet/dotnet-sts-releases-supported-for-24-months/",
+          "title": ".NET STS releases supported for 24 months (.NET Blog)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "STS support was 18 months until Microsoft extended it to 24 months in September 2025, starting with .NET 9 (so .NET 8 and .NET 9 both end in November 2026). Dates above are from the support page as accessed in October 2026.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-runtime-roll-forward",
+      "topic": "dotnet-runtime",
+      "subtopic": "deployment",
+      "difficulty": "mid",
+      "question": "A framework-dependent app targets `net8.0`. Which runtime does it run on if only .NET 8.0.x patches, or only .NET 9, are installed?",
+      "shortAnswer": "It always uses the latest installed 8.0 patch. If no 8.0 runtime exists, the default policy (`Minor`) allows a newer 8.x minor version, but it does **not** roll forward to .NET 9; the app fails to start unless you change the `RollForward` setting (for example to `LatestMajor`).",
+      "answer": "**Key points**\n- **Patch roll-forward is automatic**: an app built for 8.0 runs on the newest installed 8.0.x, so security fixes apply without rebuilding.\n- **Default `RollForward` = `Minor`**: if the requested `major.minor` isn't installed, use the lowest higher minor version in the same major; never a new major.\n- Other values: `LatestPatch` (no minor roll), `LatestMinor` (highest minor of the same major), `Major` (next major only if the requested major is missing), `LatestMajor` (highest installed version), `Disable` (exact version only).\n- Where it's set (later overrides earlier): `*.runtimeconfig.json` (`rollForward`, generated from the `<RollForward>` project property), the `DOTNET_ROLL_FORWARD` environment variable, then the `--roll-forward` command-line option.\n- **Self-contained apps** don't roll forward at run time: the runtime is chosen at publish time (the latest patch available then) and ships with the app, so you must republish to pick up fixes.\n\n**Why the default blocks major versions**\nMajor releases may contain breaking changes, so silently running a .NET 8 app on .NET 9 could change behaviour.\n`LatestMajor` is mainly for tools that should run on whatever newest runtime exists.",
+      "code": {
+        "lang": "xml",
+        "source": "<!-- Project file -->\n<PropertyGroup>\n  <TargetFramework>net8.0</TargetFramework>\n  <RollForward>LatestMajor</RollForward>   <!-- allow running on .NET 9/10 if 8 is missing -->\n</PropertyGroup>\n\n<!-- Same setting at run time without rebuilding:\n     dotnet myapp.dll --roll-forward LatestMajor\n     or set the DOTNET_ROLL_FORWARD environment variable -->"
+      },
+      "pitfalls": [
+        "Expecting a .NET 8 app to start on a server that only has .NET 9 installed.",
+        "Forgetting that self-contained apps keep the runtime they were published with until you republish.",
+        "Setting `LatestMajor` on business apps and getting untested breaking changes after a server update."
+      ],
+      "followUps": [
+        "How does `global.json` control which SDK is used to build?",
+        "What is in `*.runtimeconfig.json`?",
+        "How do container images change this picture?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/versions/selection",
+          "title": "Select the .NET version to use",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/releases-and-support",
+          "title": "Releases and support for .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-single-file-and-trimming",
+      "topic": "dotnet-runtime",
+      "subtopic": "deployment",
+      "difficulty": "mid",
+      "question": "What are single-file publishing and trimming, and what are their trade-offs?",
+      "shortAnswer": "Single-file publishing bundles the app's managed assemblies (and, if self-contained, the runtime) into one executable for a specific OS and CPU. Trimming removes unused code from a self-contained app to shrink it. Both need a runtime identifier, and both can break code that relies on reflection or file locations.",
+      "answer": "**Single-file** (`PublishSingleFile`)\n- Works for framework-dependent and self-contained apps; always OS/architecture-specific, so you publish per RID: `dotnet publish -r linux-x64 -p:PublishSingleFile=true`.\n- Only **managed** DLLs are bundled by default; native libraries of the runtime stay as separate files unless you set `IncludeNativeLibrariesForSelfExtract` (they're then extracted to disk at start-up).\n- API differences: `Assembly.Location` returns an empty string; use `AppContext.BaseDirectory` for files next to the executable. The analyzer shows warnings during build when `PublishSingleFile` is in the project.\n- Can be combined with ReadyToRun and trimming.\n\n**Trimming** (`PublishTrimmed`)\n- Fully supported from .NET 6 (experimental in .NET Core 3.1/.NET 5); **only for self-contained** publishing.\n- A build-time analysis removes framework and library code the app doesn't reference.\n- Risky with unbounded **reflection**, older serializers (for example XML serialization) and built-in COM. The trimmer emits warnings where it can't prove code is safe; treat them seriously.\n\n**When to use**\nDistributing command-line tools or desktop utilities as one file; shrinking deployments for size-sensitive\ntargets (Blazor WebAssembly, containers). For servers, plain framework-dependent deployment in a container is usually simpler.",
+      "code": {
+        "lang": "xml",
+        "source": "<PropertyGroup>\n  <RuntimeIdentifier>win-x64</RuntimeIdentifier>\n  <SelfContained>true</SelfContained>\n  <PublishSingleFile>true</PublishSingleFile>\n  <PublishTrimmed>true</PublishTrimmed>          <!-- self-contained only -->\n  <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>\n</PropertyGroup>\n\n<!-- dotnet publish -c Release -->"
+      },
+      "pitfalls": [
+        "Publishing single-file without a runtime identifier; single-file apps are always built for a specific RID.",
+        "Using `Assembly.Location` or `Assembly.GetExecutingAssembly().Location` to find config files; it's empty in a single-file app.",
+        "Ignoring trim warnings and discovering missing types only at run time."
+      ],
+      "followUps": [
+        "Why does reflection make trimming unsafe?",
+        "Where are bundled native libraries extracted, and why can that fail under systemd?",
+        "How does Native AOT relate to single-file and trimming?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview",
+          "title": "Create a single file for application deployment",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/trim-self-contained",
+          "title": "Trim self-contained deployments and executables",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dotnet-cli"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Single-file publishing dates from .NET Core 3.x; today managed assemblies load straight from the bundle, and the old extract-everything behaviour survives only as the `IncludeAllContentForSelfExtract` compatibility mode. Trimming is fully supported from .NET 6 (experimental in .NET Core 3.1 and .NET 5).",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-native-aot-tradeoffs",
+      "topic": "dotnet-runtime",
+      "subtopic": "deployment",
+      "difficulty": "senior",
+      "question": "What is Native AOT, when is it worth it, and what does it cost?",
+      "shortAnswer": "Native AOT compiles the whole app ahead of time into a self-contained native executable with no JIT at run time, giving faster startup and a smaller memory footprint. In exchange you lose dynamic features: no loading assemblies at run time, no `Reflection.Emit`, mandatory trimming, and some libraries and ASP.NET Core features aren't compatible.",
+      "answer": "**Benefits**\n- Fast startup and low memory: most valuable when you run many instances (cloud services, serverless, containers that scale often) or CLI tools.\n- Runs on machines without .NET installed, and in environments that forbid JIT.\n\n**How to use**\n- `<PublishAot>true</PublishAot>` in the project (also enables AOT analyzers during build), then `dotnet publish -r <RID> -c Release`.\n- Needs a native toolchain (on Windows, Visual Studio's C++ workload; on Linux, clang and zlib dev packages). A Linux binary runs on the same or newer distro version it was built on.\n- Libraries declare support with `<IsAotCompatible>true</IsAotCompatible>`, which turns on trim, AOT and single-file analyzers.\n\n**Limitations (from the docs)**\n- No dynamic loading (`Assembly.LoadFile`) and no run-time code generation (`System.Reflection.Emit`).\n- Requires trimming and implies single-file, inheriting their incompatibilities.\n- No C++/CLI; no built-in COM on Windows.\n- `System.Linq.Expressions` run interpreted (slower).\n- All generic instantiations over structs are generated ahead of time, which can noticeably grow the binary.\n- Only part of ASP.NET Core works: gRPC is supported, minimal APIs and SignalR partially, MVC and Blazor Server not at all; debugging and profiling also have limits.\n\n**Decision rule**\nUse it when startup time, memory or \"no runtime installed\" matter more than flexibility, and your dependencies are\nAOT-compatible (source-generated JSON serialization, no reflection-heavy libraries). Otherwise ReadyToRun gives\npart of the startup gain with no compatibility cost.",
+      "code": {
+        "lang": "xml",
+        "source": "<PropertyGroup>\n  <PublishAot>true</PublishAot>\n</PropertyGroup>\n\n<!-- dotnet publish -r linux-x64 -c Release\n     Output: one native executable that doesn't need the .NET runtime installed -->"
+      },
+      "pitfalls": [
+        "Enabling AOT and ignoring the AOT/trim warnings; they point at code that will fail at run time.",
+        "Using reflection-based serializers; switch to source-generated `System.Text.Json` contexts.",
+        "Expecting better peak throughput than the JIT; Native AOT mainly wins on startup and memory."
+      ],
+      "followUps": [
+        "How does Native AOT differ from ReadyToRun?",
+        "How do source generators help make libraries AOT-compatible?",
+        "Which ASP.NET Core features work with Native AOT?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/",
+          "title": "Native AOT deployment overview - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/native-aot",
+          "title": "ASP.NET Core support for Native AOT",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Native AOT publishing is available from .NET 7; .NET 8 added ASP.NET Core support and macOS support.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-how-the-gc-works",
+      "topic": "dotnet-runtime",
+      "subtopic": "gc-and-memory",
+      "difficulty": "junior",
+      "question": "How does the .NET garbage collector decide what to free, and what are generations 0, 1 and 2?",
+      "shortAnswer": "The GC finds every object still reachable from roots (stack variables, static fields, GC handles), treats the rest as garbage, and compacts the survivors. The heap is split into generations: new objects start in gen 0, survivors are promoted to gen 1 and then gen 2, so most collections only scan the small, young part of the heap.",
+      "answer": "**When a GC happens**\n- Allocations pass a threshold (which the runtime keeps tuning), the system is low on memory, or code calls `GC.Collect`.\n- All managed threads are suspended for the blocking part of the collection, except the thread that triggered it.\n\n**Phases**\n1. **Mark**: starting from roots (stack roots reported by the JIT, GC handles, static data), mark every live object.\n2. **Relocate**: update references to objects that will move.\n3. **Compact**: slide survivors together, removing dead space. This keeps allocation cheap: new objects are placed at the end of the heap, like bumping a pointer.\n\n**Generations** (based on \"most objects die young\")\n- **Gen 0**: new small objects; collected most often; most objects die here.\n- **Gen 1**: survivors of a gen-0 collection; a buffer between short- and long-lived objects.\n- **Gen 2**: long-lived objects (caches, singletons, static data). A gen-2 collection is a **full GC**: collecting a generation also collects all younger ones.\n- Objects of 85,000 bytes or more go to the **large object heap**, logically part of gen 2 (sometimes called \"generation 3\").\n- If a generation's survival rate is high, the GC raises its allocation budget so the next collection reclaims more.\n\n**What the GC doesn't do**: it frees managed memory only. File handles, sockets and native memory need\n`Dispose`/`SafeHandle`; and an object you still reference (in a static list, an event, a cache) is never collected.",
+      "code": {
+        "lang": "csharp",
+        "source": "var data = new byte[1_000];                  // small object: allocated in gen 0\nConsole.WriteLine(GC.GetGeneration(data));   // 0\n\nGC.Collect();                                // demo only: force a full collection\nConsole.WriteLine(GC.GetGeneration(data));   // typically 1 or 2: it survived because 'data' is still a root\n\nvar big = new byte[100_000];                 // >= 85,000 bytes: large object heap\nConsole.WriteLine(GC.GetGeneration(big));    // 2 (LOH is collected with gen 2)"
+      },
+      "pitfalls": [
+        "Thinking the GC uses reference counting; it traces reachability, so cycles of unreachable objects are collected fine.",
+        "Assuming you must set locals to `null` to free them; the JIT reports when stack variables are live, so this is rarely useful.",
+        "Forgetting that native resources aren't managed memory; the GC doesn't release them on time."
+      ],
+      "followUps": [
+        "What is the large object heap and why is it collected differently?",
+        "What are GC roots?",
+        "How do workstation and server GC differ?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/fundamentals",
+          "title": "Fundamentals of garbage collection - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/large-object-heap",
+          "title": "The large object heap on Windows systems - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-large-object-heap",
+      "topic": "dotnet-runtime",
+      "subtopic": "gc-and-memory",
+      "difficulty": "mid",
+      "question": "What is the large object heap (LOH), and why can large allocations hurt performance?",
+      "shortAnswer": "Objects of 85,000 bytes or more (usually big arrays) are allocated on the LOH, which is collected only with gen 2 and normally isn't compacted because copying large objects is expensive. Frequent large, short-lived allocations therefore trigger costly full GCs and fragment memory; reuse buffers (for example with `ArrayPool<T>`) instead.",
+      "answer": "**Key points**\n- The threshold is 85,000 bytes (chosen by performance tuning; it can only be raised, with `System.GC.LOHThreshold` / `DOTNET_GCLOHThreshold`).\n- Large objects belong to gen 2 from the start, so they're only reclaimed by **gen-2 (full) collections**. Allocating many of them can force full GCs.\n- The LOH **isn't compacted by default**; freed space is reused for later large allocations, but holes can cause fragmentation. You can request one compaction with `GCSettings.LargeObjectHeapCompactionMode = CompactOnce` followed by a full GC, and the LOH is compacted automatically when a heap hard limit is set (for example by a container memory limit).\n- .NET 5+ also has a **pinned object heap (POH)** alongside the small and large object heaps (the GC settings expose separate limits for SOH, LOH and POH); `GC.AllocateArray<T>(length, pinned: true)` allocates an array that must stay at a fixed address.\n\n**How to reduce LOH pressure**\n- Rent and return buffers with `ArrayPool<T>.Shared` instead of allocating large arrays per request.\n- Stream data (`Stream`, `PipeReader`) instead of loading whole files or responses into one array or string.\n- Avoid huge `StringBuilder`/`List<T>` growth by setting a sensible capacity, or chunking.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Buffers;\n\n// Allocates 1 MB on the LOH for every call: costly if done per request\nstatic byte[] ReadNaive(Stream s) { var buf = new byte[1024 * 1024]; s.ReadExactly(buf); return buf; }\n\n// Reuses pooled buffers instead\nstatic int Checksum(Stream s)\n{\n    byte[] buffer = ArrayPool<byte>.Shared.Rent(1024 * 1024);\n    try\n    {\n        int read = s.Read(buffer, 0, buffer.Length);\n        int sum = 0;\n        for (int i = 0; i < read; i++) sum += buffer[i];\n        return sum;\n    }\n    finally\n    {\n        ArrayPool<byte>.Shared.Return(buffer);   // always return what you rent\n    }\n}"
+      },
+      "pitfalls": [
+        "Allocating large temporary arrays or strings in a hot path and wondering why gen-2 GCs are frequent.",
+        "Returning a rented array and continuing to use it, or relying on `Rent` returning exactly the requested size (it can be larger).",
+        "Forcing LOH compaction routinely; it's expensive and rarely needed."
+      ],
+      "followUps": [
+        "Why isn't the LOH compacted by default?",
+        "How does `ArrayPool<T>` decide which array to give you?",
+        "Why does pinning make the GC's job harder?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/large-object-heap",
+          "title": "The large object heap on Windows systems - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/fundamentals",
+          "title": "Fundamentals of garbage collection - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/runtime-config/garbage-collector",
+          "title": "Runtime configuration options for garbage collection",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "The pinned object heap and `GC.AllocateArray(..., pinned: true)` exist from .NET 5; on-demand LOH compaction from .NET Framework 4.5.1 and in all .NET Core versions.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-workstation-vs-server-gc",
+      "topic": "dotnet-runtime",
+      "subtopic": "gc-and-memory",
+      "difficulty": "senior",
+      "question": "What is the difference between workstation and server GC, what is background GC, and what does DATAS change?",
+      "shortAnswer": "Workstation GC uses one heap and collects on the thread that triggered it; it's the default for standalone apps. Server GC uses a heap and a dedicated high-priority GC thread per logical CPU for throughput; it's the default for ASP.NET Core. Background GC lets gen-2 collections run while app threads keep working. DATAS (default since .NET 9) lets server GC grow and shrink its heap count to fit the app's real memory needs.",
+      "answer": "**Workstation GC**\n- Designed for client apps; default for standalone apps. Collection runs on the user thread that triggered it, at normal priority.\n- Always used on a machine with a single logical CPU, whatever the setting.\n\n**Server GC**\n- Designed for throughput: one heap and one dedicated GC thread per logical CPU, collected in parallel; faster than workstation GC on the same heap size, but uses more memory and CPU.\n- The default for ASP.NET Core apps. Many server-GC processes on one small machine can interfere with each other; for hundreds of instances or dense container hosting, workstation GC (possibly non-concurrent) can perform better.\n\n**Background GC** (default for both flavors)\n- Gen-2 collections run on a dedicated thread while application threads continue; gen-0/1 (\"foreground\") collections can still happen during it and briefly suspend threads.\n- Applies only to gen-2 collections. Control with `System.GC.Concurrent` / `<ConcurrentGarbageCollection>`.\n\n**DATAS** (dynamic adaptation to application sizes)\n- Server GC that starts with one heap and adjusts the number of heaps and the gen-0 budget so heap size tracks the app's long-lived data, instead of scaling with core count.\n- Opt-in in .NET 8, **enabled by default in .NET 9+**; aims for a throughput cost target (default 2% \"TCP\"). Disable with `<GarbageCollectionAdaptationMode>0</GarbageCollectionAdaptationMode>` if a throughput-critical service regresses.\n\n**How to choose**: measure. Look at `% time in GC`, pause times and working set with `dotnet-counters`,\nthen adjust `ServerGarbageCollection`, `ConcurrentGarbageCollection` or heap hard limits (`GCHeapHardLimit`).",
+      "code": {
+        "lang": "xml",
+        "source": "<!-- Project file (copied into *.runtimeconfig.json at build) -->\n<PropertyGroup>\n  <ServerGarbageCollection>true</ServerGarbageCollection>        <!-- System.GC.Server -->\n  <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection> <!-- background GC, default -->\n  <!-- <GarbageCollectionAdaptationMode>0</GarbageCollectionAdaptationMode>  turn DATAS off -->\n</PropertyGroup>"
+      },
+      "pitfalls": [
+        "Running many server-GC processes on a small machine or in tightly limited containers and paying in memory and CPU contention.",
+        "Tuning GC settings without measuring pause time and memory before and after.",
+        "Assuming segment or heap sizes are fixed; the docs say they're implementation details that change between versions."
+      ],
+      "followUps": [
+        "How do container memory limits affect the GC?",
+        "What is the difference between a blocking and a background collection?",
+        "How would you diagnose high \"% time in GC\"?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/workstation-server-gc",
+          "title": "Workstation and server garbage collection - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/background-gc",
+          "title": "Background garbage collection - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/runtime-config/garbage-collector",
+          "title": "Runtime configuration options for garbage collection",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/memory",
+          "title": "Memory management and garbage collection (GC) in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "DATAS can be enabled in .NET 8 and is on by default from .NET 9. Background server GC exists since .NET Framework 4.5; earlier .NET Framework server GC was non-concurrent.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-managed-memory-leaks",
+      "topic": "dotnet-runtime",
+      "subtopic": "gc-and-memory",
+      "difficulty": "mid",
+      "question": "Can a .NET application leak memory despite the GC? What causes it and how do you find it?",
+      "shortAnswer": "Yes. The GC only frees objects that are unreachable, so anything you keep referencing by mistake stays alive: growing static collections or caches, event handlers on long-lived publishers, timers, captured closures, and undisposed native resources. Find leaks by watching heap size with `dotnet-counters`, then taking a dump and tracing what roots the growing objects.",
+      "answer": "**Common causes**\n- Static or singleton collections and caches that only grow (no eviction or size limit).\n- Event subscriptions from short-lived objects to long-lived publishers (the publisher's delegate keeps the subscriber alive).\n- Timers and background callbacks that capture `this` and are never stopped or disposed.\n- Long-lived lambdas/closures that capture large objects.\n- Native or unmanaged resources (handles, native memory, unmanaged buffers) not released because `Dispose` isn't called.\n- Scoped/transient services captured by singletons in DI (the singleton keeps them alive).\n\n**How to diagnose** (the docs' workflow)\n1. `dotnet-counters monitor -p <pid>` and watch GC heap size and gen-2 size grow over time under steady load.\n2. Capture a dump with `dotnet-dump collect` (or a GC heap snapshot with `dotnet-gcdump`).\n3. Analyze: `dumpheap -stat` shows which types dominate; `gcroot <address>` shows the reference chain keeping an instance alive.\n4. On Windows, Visual Studio's memory diagnostic tools offer the same with a UI.\n\n**Prevention**\nBound caches (`MemoryCache` with size limits/expiration), unsubscribe or use weak events, dispose timers and\n`IDisposable` services, and be careful what long-lived objects capture.",
+      "code": {
+        "lang": "csharp",
+        "source": "public static class AuditLog\n{\n    // Leak: grows forever and is rooted by a static field\n    private static readonly List<string> Entries = new();\n    public static void Add(string entry) => Entries.Add(entry);\n}\n\npublic sealed class Poller : IDisposable\n{\n    private readonly Timer _timer;\n    public Poller() => _timer = new Timer(_ => Poll(), null, 0, 1000);   // timer callback references this\n    private void Poll() { }\n    public void Dispose() => _timer.Dispose();                            // stop it, or it lives on\n}\n\n// Diagnose:\n//   dotnet-counters monitor -p 4807\n//   dotnet-dump collect -p 4807\n//   dotnet-dump analyze <dump>  ->  dumpheap -stat  ->  gcroot <address>"
+      },
+      "pitfalls": [
+        "Concluding \"the GC will handle it\" without checking what still references the objects.",
+        "Calling `GC.Collect` to \"fix\" a leak; it can't free objects that are still reachable.",
+        "Using an unbounded `ConcurrentDictionary` as a cache keyed by user input."
+      ],
+      "followUps": [
+        "How does a captive dependency in DI cause a leak?",
+        "What does `gcroot` show you?",
+        "How would you set up a memory alert in production?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/debug-memory-leak",
+          "title": "Debug a memory leak in .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines",
+          "title": "Dependency injection guidelines (captive dependency)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/events/how-to-subscribe-to-and-unsubscribe-from-events",
+          "title": "How to subscribe to and unsubscribe from events - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/fundamentals",
+          "title": "Fundamentals of garbage collection - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "events"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-should-you-call-gc-collect",
+      "topic": "dotnet-runtime",
+      "subtopic": "gc-and-memory",
+      "difficulty": "mid",
+      "question": "Should you call `GC.Collect()` in production code?",
+      "shortAnswer": "Almost never. The GC is self-tuning and runs when it's productive; forcing a collection usually causes a full, blocking gen-2 GC at a bad moment and can promote objects that would have died young. The docs reserve it for rare cases, such as right after a large, one-off drop in memory use, and for tests.",
+      "answer": "**Key points**\n- `GC.Collect()` with no arguments means `GCCollectionMode.Forced`: an immediate, **full blocking** collection of all generations.\n- Calling it often hurts performance: you pay for full GCs, and objects that survive are promoted to older generations, where they're more expensive to collect later.\n- It can't help with leaks: reachable objects stay alive regardless.\n- Microsoft's guidance: let the GC run on its own; induced collections are for rare situations, for example after closing a large dialog or finishing a big one-off batch when a lot of memory has just become garbage.\n\n**Gentler options**\n- `GC.Collect(2, GCCollectionMode.Optimized)`: lets the GC skip the collection if it wouldn't be productive.\n- `GC.Collect(gen, mode, blocking: false)`: requests a background collection (not guaranteed).\n- Compacting the LOH once: set `GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce` before a forced full GC.\n\n**Legitimate uses**: tests and benchmarks that need a clean heap, memory-measurement tools, or a documented,\nmeasured one-off point in a long-running process.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Runtime;\n\n// Avoid: in a request handler or loop\n// GC.Collect();\n\n// Rare, measured one-off cleanup after a huge batch has finished\nGCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;\nGC.Collect(2, GCCollectionMode.Optimized, blocking: false);   // the GC may decline\n\n// In tests that measure allocations\nGC.Collect();\nGC.WaitForPendingFinalizers();\nGC.Collect();"
+      },
+      "pitfalls": [
+        "Calling `GC.Collect()` after every request \"to keep memory low\", which adds full GC pauses under load.",
+        "Using it to hide a leak instead of finding what holds the references."
+      ],
+      "followUps": [
+        "What does `GC.WaitForPendingFinalizers` do, and why is it often paired with `Collect` in tests?",
+        "What are GC latency modes?",
+        "How do you measure whether a forced collection actually helped?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/induced",
+          "title": "Induced collections - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/fundamentals",
+          "title": "Fundamentals of garbage collection - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-idisposable-and-using",
+      "topic": "dotnet-runtime",
+      "subtopic": "idisposable",
+      "difficulty": "junior",
+      "question": "What is `IDisposable`, and what exactly does a `using` statement or `using` declaration do?",
+      "shortAnswer": "`IDisposable` has one method, `Dispose()`, which releases resources the GC doesn't manage promptly (file handles, connections, sockets, native memory). `using` calls `Dispose()` for you when the variable goes out of scope, even if an exception is thrown, because the compiler turns it into `try`/`finally`.",
+      "answer": "**Key points**\n- The GC frees **memory**, not other resources, and it does so at an unpredictable time. `Dispose()` gives deterministic cleanup.\n- `using (var x = ...) { ... }`: `x` is disposed when control leaves the block (normal end, `return`, or exception).\n- `using var x = ...;` (C# 8 using **declaration**): `x` is disposed at the **end of the enclosing scope**: the method if declared at method level, or the inner block (`if`, loop body) if declared there.\n- Several resources in one `using` are disposed in **reverse** order of declaration.\n- The `using` variable is read-only; you can't reassign it.\n- `await using` does the same for `IAsyncDisposable` (`DisposeAsync`).\n- `Dispose()` should be **idempotent**: calling it twice must not throw.\n\n**Who disposes?**\nWhoever creates and owns the object. Objects you get from a DI container are disposed by the container, so don't\ndispose them yourself.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Statement form: disposed at the closing brace\nusing (var reader = new StreamReader(\"data.txt\"))\n{\n    Console.WriteLine(reader.ReadLine());\n}\n\n// Declaration form: disposed at the end of the enclosing scope\nvoid Copy(string from, string to)\n{\n    using var input = File.OpenRead(from);\n    using var output = File.Create(to);    // disposed first (reverse order)\n    input.CopyTo(output);\n}   // output.Dispose(), then input.Dispose()\n\n// Roughly what the compiler generates for the statement form:\n// var reader = new StreamReader(\"data.txt\");\n// try { ... } finally { reader?.Dispose(); }"
+      },
+      "pitfalls": [
+        "Using a `using` declaration at method level for a resource you need to release early (for example a lock or file you reopen later in the method).",
+        "Keeping a reference to the object after the `using` block and calling it, which throws `ObjectDisposedException`.",
+        "Disposing objects you don't own, such as services injected by DI."
+      ],
+      "followUps": [
+        "What does the compiler generate for `using`?",
+        "When would you implement `IAsyncDisposable`?",
+        "What is the difference between `Dispose` and a finalizer?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/using",
+          "title": "using statement - ensure the correct use of disposable objects",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-dispose",
+          "title": "Implement a Dispose method - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dispose-and-using"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`using` declarations (`using var`) and `await using` need C# 8 or later.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-dispose-pattern",
+      "topic": "dotnet-runtime",
+      "subtopic": "idisposable",
+      "difficulty": "mid",
+      "question": "Explain the dispose pattern with `Dispose(bool disposing)` and `GC.SuppressFinalize`.",
+      "shortAnswer": "Public non-virtual `Dispose()` calls `protected virtual Dispose(true)` and then `GC.SuppressFinalize(this)`; a finalizer, if there is one, calls `Dispose(false)`. The flag says whether managed objects may be touched: `true` from `Dispose` (release managed and unmanaged resources), `false` from the finalizer (unmanaged only).",
+      "answer": "**Key points**\n- `Dispose()`: `public`, non-virtual; calls `Dispose(true)`, then `GC.SuppressFinalize(this)` so the finalizer doesn't run needlessly (no effect if there's no finalizer).\n- `Dispose(bool disposing)`: `protected virtual` in non-sealed classes, so derived classes can add cleanup and call `base.Dispose(disposing)`. It has three parts:\n  1. return early if already disposed (idempotent);\n  2. if `disposing` is `true`, dispose managed `IDisposable` fields you own (and optionally null out large references);\n  3. always free unmanaged resources.\n- From a finalizer (`disposing == false`) don't touch other managed objects; they may already be finalized, because finalization order isn't deterministic.\n- A **finalizer is only needed if you hold a raw unmanaged resource directly**. If you only own managed disposables, implement the pattern without a finalizer. For raw handles, wrap them in a `SafeHandle` instead of writing a finalizer.\n- Sealed classes can skip `Dispose(bool)` and just implement `Dispose()`.\n\n**Also good practice**\nThrow `ObjectDisposedException` (for example via `ObjectDisposedException.ThrowIf(_disposed, this)`) from members\ncalled after disposal, and make disposal thread-safe if the object is shared.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class ReportWriter : IDisposable\n{\n    private readonly StreamWriter _writer;   // managed resource we own\n    private bool _disposed;\n\n    public ReportWriter(string path) => _writer = new StreamWriter(path);\n\n    public void Write(string line)\n    {\n        ObjectDisposedException.ThrowIf(_disposed, this);\n        _writer.WriteLine(line);\n    }\n\n    public void Dispose()\n    {\n        Dispose(disposing: true);\n        GC.SuppressFinalize(this);\n    }\n\n    protected virtual void Dispose(bool disposing)\n    {\n        if (_disposed) return;\n        if (disposing)\n        {\n            _writer.Dispose();               // only when called from Dispose()\n        }\n        // free unmanaged resources here (none in this class, so no finalizer)\n        _disposed = true;\n    }\n}"
+      },
+      "pitfalls": [
+        "Adding an empty finalizer \"just in case\"; every finalizable object costs the GC extra work.",
+        "Touching managed fields when `disposing` is `false`.",
+        "Making `Dispose()` virtual instead of `Dispose(bool)`, so derived classes can break the pattern."
+      ],
+      "followUps": [
+        "How does a derived class extend disposal correctly?",
+        "Why does `GC.SuppressFinalize` matter for performance?",
+        "When is `GC.KeepAlive` needed?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-dispose",
+          "title": "Implement a Dispose method - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/finalizers",
+          "title": "Finalizers - C# programming guide",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dispose-and-using"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`ObjectDisposedException.ThrowIf` is a newer .NET API (not available on .NET Framework); older code checks the flag and throws manually.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-finalizer-vs-dispose",
+      "topic": "dotnet-runtime",
+      "subtopic": "idisposable",
+      "difficulty": "mid",
+      "question": "What is the difference between a finalizer (destructor) and `Dispose`, and when does a finalizer actually run?",
+      "shortAnswer": "`Dispose` is called explicitly (or by `using`) for prompt, deterministic cleanup. A finalizer (`~MyClass()`) is a safety net the GC may run at some unknown time after the object becomes unreachable. In .NET 5+ (and .NET Core), finalizers are not run when the application exits, so they can't be relied on for cleanup.",
+      "answer": "**Key points**\n| | `Dispose()` | Finalizer `~T()` |\n|---|---|---|\n| Called by | your code / `using` | the GC (finalizer thread) |\n| Timing | deterministic, immediately | non-deterministic, after the object is unreachable |\n| Can touch managed objects | yes | no (they may already be finalized) |\n| Cost | a method call | object survives an extra GC and goes through the finalization queue |\n\n- C# finalizers compile to an override of `Object.Finalize` that calls the base finalizer in `finally`. They can't be called directly, take no parameters or modifiers, can't be in structs, and a class has at most one.\n- An object with a finalizer is put on the finalization queue; the GC must run the finalizer before the memory can be reclaimed, so finalizable objects live longer. Empty or needless finalizers waste performance.\n- **Application exit**: .NET Framework made a best effort to run pending finalizers at exit; **.NET Core and .NET 5+ don't run finalizers on termination**. For reliable cleanup at shutdown, dispose objects explicitly (for example from an `AppDomain.ProcessExit` handler or the host's shutdown).\n- Modern guidance: you rarely need a finalizer; wrap unmanaged handles in a `SafeHandle`, which already has one.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class NativeBuffer : IDisposable\n{\n    private IntPtr _memory = System.Runtime.InteropServices.Marshal.AllocHGlobal(1024);\n\n    public void Dispose()\n    {\n        Free();\n        GC.SuppressFinalize(this);       // finalizer no longer needed\n    }\n\n    ~NativeBuffer() => Free();           // safety net if Dispose is forgotten\n\n    private void Free()\n    {\n        if (_memory != IntPtr.Zero)\n        {\n            System.Runtime.InteropServices.Marshal.FreeHGlobal(_memory);\n            _memory = IntPtr.Zero;\n        }\n    }\n}"
+      },
+      "pitfalls": [
+        "Saying a destructor runs when the object goes out of scope (like C++); in .NET the GC decides when.",
+        "Expecting finalizers to run when the process exits on .NET Core/.NET 5+; they don't.",
+        "Using a finalizer to release managed resources such as streams or connections."
+      ],
+      "followUps": [
+        "What does the finalization queue do to an object's lifetime?",
+        "Why is `SafeHandle` preferred to writing your own finalizer?",
+        "How do you guarantee cleanup at application shutdown?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/finalizers",
+          "title": "Finalizers - C# programming guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-dispose",
+          "title": "Implement a Dispose method - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "oop",
+        "dispose-and-using"
+      ],
+      "notCoveredYet": false,
+      "versionNote": ".NET Framework tries to run outstanding finalizers at application exit; .NET Core and .NET 5+ don't.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-iasyncdisposable",
+      "topic": "dotnet-runtime",
+      "subtopic": "idisposable",
+      "difficulty": "mid",
+      "question": "What is `IAsyncDisposable`, and how should a class implement it alongside `IDisposable`?",
+      "shortAnswer": "`IAsyncDisposable` (C# 8 / .NET Core 3.0) declares `ValueTask DisposeAsync()` for cleanup that involves I/O, such as flushing a stream or closing a network connection, without blocking a thread. Callers use `await using`. A class should usually implement both interfaces so callers that only call `Dispose()` don't leak resources.",
+      "answer": "**Key points**\n- `DisposeAsync()` returns a `ValueTask`; `await using var x = ...;` calls it at the end of the scope.\n- Recommended shape for non-sealed classes: public `DisposeAsync()` calls `protected virtual ValueTask DisposeAsyncCore()`, then `Dispose(false)`, then `GC.SuppressFinalize(this)`.\n- Implement **both** `IDisposable` and `IAsyncDisposable` when you can. The docs warn that implementing only `IAsyncDisposable` leaks if a consumer just calls `Dispose`.\n- Inside library code, `await DisposeAsyncCore().ConfigureAwait(false)` avoids capturing a synchronization context.\n- The DI container calls `DisposeAsync` (or `Dispose`) on disposable services it created when their scope or the container is disposed.\n\n**When to use**\nWhen cleanup itself is I/O: `Stream`/`FileStream` flushing, `DbConnection`, network streams, gRPC channels,\nmessage-broker clients.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class AuditSink : IAsyncDisposable, IDisposable\n{\n    private readonly FileStream _stream = new(\"audit.log\", FileMode.Append);\n    private readonly StreamWriter _writer;\n\n    public AuditSink() => _writer = new StreamWriter(_stream);\n\n    public Task WriteAsync(string line) => _writer.WriteLineAsync(line);\n\n    public async ValueTask DisposeAsync()\n    {\n        await _writer.DisposeAsync().ConfigureAwait(false);   // flushes asynchronously\n        await _stream.DisposeAsync().ConfigureAwait(false);\n    }\n\n    public void Dispose()\n    {\n        _writer.Dispose();\n        _stream.Dispose();\n    }\n}\n\n// await using var sink = new AuditSink();\n// await sink.WriteAsync(\"started\");"
+      },
+      "pitfalls": [
+        "Implementing only `IAsyncDisposable`; synchronous callers can't clean up.",
+        "Calling `.DisposeAsync().GetAwaiter().GetResult()` from `Dispose()`, which blocks and can deadlock.",
+        "Forgetting `await` in `await using`; a plain `using` on a type that only implements `IAsyncDisposable` doesn't compile, but a type implementing both would silently use the synchronous path."
+      ],
+      "followUps": [
+        "Why does `DisposeAsync` return `ValueTask` instead of `Task`?",
+        "How does `await using` behave when the async disposal throws?",
+        "How does the DI container decide between `Dispose` and `DisposeAsync`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-disposeasync",
+          "title": "Implement a DisposeAsync method - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/using",
+          "title": "using statement - ensure the correct use of disposable objects",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines",
+          "title": "Dependency injection guidelines (disposal of services)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dispose-and-using"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`IAsyncDisposable` and `await using` need C# 8 and .NET Core 3.0 / .NET Standard 2.1 or later.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-safehandle-and-ownership",
+      "topic": "dotnet-runtime",
+      "subtopic": "idisposable",
+      "difficulty": "senior",
+      "question": "Why should you wrap native handles in a `SafeHandle` instead of writing a finalizer, and who is responsible for disposing an object?",
+      "shortAnswer": "`SafeHandle` already implements reliable finalization and guarantees the handle is released exactly once, even with races or a missed `Dispose`, so your class only needs a simple `Dispose`. Disposal follows ownership: whoever creates an object (and doesn't hand it off) disposes it, and objects created by the DI container are disposed by the container.",
+      "answer": "**SafeHandle**\n- An abstract wrapper around an `IntPtr` (a Windows handle or a Unix file descriptor). Derived types define what an invalid value is and override `ReleaseHandle()` to free it.\n- It guarantees `ReleaseHandle` runs **once and only once**: on `Dispose`, or by its own finalizer if all references are dropped. That removes the need for your own finalizer and for synchronization in `Dispose`.\n- Built-in types cover common cases: `SafeFileHandle`, `SafePipeHandle`, `SafeMemoryMappedFileHandle`, `SafeWaitHandle`, `SafeRegistryHandle`, crypto handles. Most .NET APIs that create native resources already return a `SafeHandle`.\n- With P/Invoke, declare signatures that return or take a `SafeHandle` subtype rather than `IntPtr`, so the handle is wrapped immediately.\n\n**Ownership rules**\n- If your class creates and stores an `IDisposable`, it owns it and must implement `IDisposable` itself to cascade the call.\n- If it only *uses* an `IDisposable` someone else owns (for example, injected via the constructor), it must not dispose it.\n- The DI container disposes what it creates: transient and scoped services at the end of the scope (typically the request), singletons when the container is disposed at shutdown. Instances you create yourself and register (`AddSingleton(new X())`) aren't disposed by the container.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Runtime.InteropServices;\nusing Microsoft.Win32.SafeHandles;\n\npublic sealed class NativeMemoryHandle : SafeHandleZeroOrMinusOneIsInvalid\n{\n    public NativeMemoryHandle(int size) : base(ownsHandle: true)\n        => SetHandle(Marshal.AllocHGlobal(size));\n\n    protected override bool ReleaseHandle()\n    {\n        Marshal.FreeHGlobal(handle);     // called exactly once\n        return true;\n    }\n}\n\npublic sealed class ImageBuffer : IDisposable\n{\n    private readonly NativeMemoryHandle _memory = new(4096);   // owned: we created it\n    public void Dispose() => _memory.Dispose();                // no finalizer needed here\n}"
+      },
+      "pitfalls": [
+        "Writing your own finalizer and lock-free release logic around a raw `IntPtr`; it's easy to double-free or leak under races.",
+        "Disposing an object passed in by a caller or injected by DI that you don't own.",
+        "Registering a manually created instance with DI and assuming the container will dispose it."
+      ],
+      "followUps": [
+        "How does a P/Invoke signature use `SafeHandle`?",
+        "What happens if two threads call `Dispose` at the same time?",
+        "Which DI registrations does the container not dispose?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-dispose",
+          "title": "Implement a Dispose method - .NET (safe handles)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines",
+          "title": "Dependency injection guidelines (disposal of services)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.safehandle",
+          "title": "SafeHandle class - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dispose-and-using",
+        "dependency-injection"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-thread-vs-task",
+      "topic": "dotnet-runtime",
+      "subtopic": "threads-and-threadpool",
+      "difficulty": "junior",
+      "question": "What is the difference between a `Thread`, the ThreadPool and a `Task`, and which should you use?",
+      "shortAnswer": "A `Thread` is a dedicated OS thread you create and manage yourself. The ThreadPool is a per-process set of reusable background threads. A `Task` is a higher-level object representing an operation; by default it runs on pool threads and adds waiting, results, cancellation, continuations and exception handling. Use `Task` (and async/await) by default.",
+      "answer": "**Key points**\n- **Thread**: expensive to create, has its own stack, can be foreground or background, priority and apartment can be set. You coordinate it with `Join`, shared variables, and so on.\n- **ThreadPool**: one per process; threads are background threads that are reused after each work item, which avoids creation costs. The pool adjusts the thread count to maximize throughput. Used by the TPL, async I/O completions, timers and more.\n- **Task** (TPL): queued to the ThreadPool by default; supports `await`, `Result`, `ContinueWith`, `WhenAll`/`WhenAny`, cancellation tokens and propagates exceptions. Microsoft calls the TPL the preferred API for multithreaded, asynchronous and parallel code.\n- A `Task` isn't always a thread: an I/O task (an HTTP call, `Task.Delay`) usually has no thread at all while it waits.\n\n**When a dedicated thread is still right** (from the thread-pool docs)\n- You need a foreground thread, a specific priority, a single-threaded apartment (STA, for COM/UI), or a stable thread identity.\n- The work blocks for a long time; many blocked pool threads can stop other work from starting. (`TaskCreationOptions.LongRunning` tells the scheduler the task is long-running, so it may add an extra thread rather than hold up work queued on the pool.)",
+      "code": {
+        "lang": "csharp",
+        "source": "// Dedicated thread: rarely needed\nvar worker = new Thread(() => Console.WriteLine(\"on a dedicated thread\")) { IsBackground = true };\nworker.Start();\nworker.Join();\n\n// Task on the thread pool for CPU-bound work\nint sum = await Task.Run(() => Enumerable.Range(1, 1_000).Sum());\n\n// I/O-bound work: no thread is blocked while waiting\nusing var http = new HttpClient();\nstring page = await http.GetStringAsync(\"https://example.com\");"
+      },
+      "pitfalls": [
+        "Creating a new `Thread` per request or per item; it's slow and doesn't scale.",
+        "Wrapping I/O-bound async calls in `Task.Run`; it only adds a pool hop.",
+        "Blocking pool threads with long synchronous waits, which can starve the pool."
+      ],
+      "followUps": [
+        "What is the difference between `Task.Run` and `Task.Factory.StartNew`?",
+        "What happens to an unhandled exception on a pool thread versus inside a task?",
+        "What are foreground and background threads?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/the-managed-thread-pool",
+          "title": "The managed thread pool - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/task-based-asynchronous-programming",
+          "title": "Task-based asynchronous programming - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.taskcreationoptions",
+          "title": "TaskCreationOptions enum - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "threads",
+        "threadpool-and-task"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-lock-statement-rules",
+      "topic": "dotnet-runtime",
+      "subtopic": "threads-and-threadpool",
+      "difficulty": "mid",
+      "question": "How does the `lock` statement work, what should you lock on, and why can't you `await` inside it?",
+      "shortAnswer": "`lock (x)` compiles to `Monitor.Enter`/`Monitor.Exit` in a `try`/`finally` (or, for a `System.Threading.Lock` in C# 13/.NET 9, to `EnterScope()` in a `using`). Lock a private, dedicated object, never `this`, a `Type` or a string. You can't `await` inside it because the lock belongs to a thread and the code after `await` may resume on another.",
+      "answer": "**Key points**\n- Only one thread at a time runs the body; the owning thread can re-enter (the lock is reentrant). Other threads block until it's released, and the `finally` guarantees release on exceptions.\n- **What to lock on**: a `private readonly` object used only for that purpose. Since .NET 9 / C# 13, prefer a `private readonly Lock _lock = new();`, which the compiler handles with the faster `Lock.EnterScope()` pattern.\n- **Avoid**: `this` (outside code may lock it too), `typeof(...)` or other `Type` objects (reachable from anywhere through reflection), and strings (literals may be interned and shared). Also don't share one lock object across unrelated resources.\n- Keep the body short; never call unknown code (events, callbacks) while holding a lock, to avoid deadlocks.\n- **`await` is not allowed inside `lock`**: the compiler rejects it. `Monitor` is thread-affine, and after an `await` the method may continue on a different thread that doesn't own the lock.\n- For async code, use `SemaphoreSlim(1, 1)` with `await WaitAsync()` and `Release()` in `finally`.\n- For simple counters, `Interlocked` is faster than a lock.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Account\n{\n    private readonly Lock _balanceLock = new();     // .NET 9+; use 'new object()' on older versions\n    private decimal _balance;\n\n    public void Deposit(decimal amount)\n    {\n        lock (_balanceLock)\n        {\n            _balance += amount;\n        }\n    }\n}\n\npublic class AsyncCache\n{\n    private readonly SemaphoreSlim _gate = new(1, 1);\n\n    public async Task RefreshAsync(Func<Task> load)\n    {\n        await _gate.WaitAsync();\n        try { await load(); }          // awaiting while holding the semaphore is fine\n        finally { _gate.Release(); }\n    }\n}"
+      },
+      "pitfalls": [
+        "Locking on `this`, `typeof(MyClass)` or a string literal.",
+        "Taking two locks in different orders in different places (classic deadlock).",
+        "Using `lock` around async work by moving the `await` just outside it, which no longer protects the state."
+      ],
+      "followUps": [
+        "What is the difference between `lock`, `Monitor`, `Mutex` and `SemaphoreSlim`?",
+        "Why is `System.Threading.Lock` faster than locking an `object`?",
+        "How would you detect and avoid deadlocks?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/lock",
+          "title": "The lock statement - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/semaphore-and-semaphoreslim",
+          "title": "Semaphore and SemaphoreSlim - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/managed-threading-best-practices",
+          "title": "Managed threading best practices - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "locking-primitives",
+        "race-conditions-and-deadlocks"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`System.Threading.Lock` and the compiler's special handling of it need .NET 9 and C# 13; earlier versions lock a plain `object`.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-volatile-and-interlocked",
+      "topic": "dotnet-runtime",
+      "subtopic": "threads-and-threadpool",
+      "difficulty": "senior",
+      "question": "What does `volatile` really guarantee, and when should you use `Interlocked` or `lock` instead?",
+      "shortAnswer": "`volatile` only stops the compiler, runtime and CPU from reordering certain reads and writes of that field; it doesn't make compound operations like `count++` atomic, and the docs say a volatile read isn't even guaranteed to see the latest value written by another processor. Use `Interlocked` for atomic single-variable updates and `lock` for anything larger.",
+      "answer": "**Key points**\n- Compilers, the JIT and hardware may reorder memory operations for performance. Marking a field `volatile` excludes it from certain reorderings; there's no single total order of volatile writes across all threads.\n- The C# reference's caution: `volatile` is often misunderstood; on a multiprocessor system a volatile read doesn't guarantee the latest value written by any processor, and a volatile write isn't guaranteed to be immediately visible to others. Prefer `Interlocked`, `lock` or higher-level primitives.\n- `volatile` is allowed only on fields of reference types, pointers, small primitives (`int`, `bool`, `float`, ...), suitable enums, `IntPtr`/`UIntPtr`; not on `long` or `double`, because their reads and writes aren't guaranteed atomic everywhere.\n- **`Interlocked`**: atomic `Increment`, `Decrement`, `Add`, `Exchange`, `CompareExchange`, and 64-bit `Read`. Cheaper than `lock` for simple state changes; the best-practices article recommends it for counters and flags.\n- **`lock`**: when several fields must change together, or an invariant spans multiple operations.\n- Higher-level options often remove the need for any of these: `ConcurrentDictionary`, `Channel<T>`, immutable snapshots, `Lazy<T>`.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Stats\n{\n    private int _requests;              // updated atomically\n    private long _bytes;\n\n    public void Record(int size)\n    {\n        Interlocked.Increment(ref _requests);           // atomic ++\n        Interlocked.Add(ref _bytes, size);              // atomic += for long\n    }\n\n    public long Bytes => Interlocked.Read(ref _bytes);  // atomic 64-bit read\n\n    private int _initialized;\n    public bool TryInitOnce()\n        => Interlocked.CompareExchange(ref _initialized, 1, 0) == 0;   // only the first caller wins\n}\n\n// volatile int _count;  _count++;   // still a race: read-modify-write isn't atomic"
+      },
+      "pitfalls": [
+        "Using `volatile` to make `++` thread-safe; it doesn't.",
+        "Describing `volatile` as \"always read from main memory\"; the docs explicitly don't guarantee the latest value.",
+        "Reading a `long` updated with `Interlocked` using a plain read on 32-bit platforms; use `Interlocked.Read`."
+      ],
+      "followUps": [
+        "How does `Interlocked.CompareExchange` enable lock-free algorithms?",
+        "What does `System.Threading.Volatile.Read/Write` provide?",
+        "When is a lock simpler and safer than lock-free code?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/volatile",
+          "title": "volatile - C# reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/managed-threading-best-practices",
+          "title": "Managed threading best practices - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/overview-of-synchronization-primitives",
+          "title": "Overview of synchronization primitives - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "race-conditions-and-deadlocks",
+        "keywords"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-threadpool-starvation",
+      "topic": "dotnet-runtime",
+      "subtopic": "threads-and-threadpool",
+      "difficulty": "senior",
+      "question": "What is ThreadPool starvation, how do you recognize it, and how do you fix it?",
+      "shortAnswer": "Starvation happens when all pool threads are busy, usually blocked waiting, so queued work can't start and latency climbs even though CPU is low. The pool slowly injects more threads, which shows up as a steadily rising thread count. The most common cause is sync-over-async (`.Result`, `.Wait()`); the fix is to make the call chain async rather than raising thread limits.",
+      "answer": "**Symptoms**\n- Requests get slow or time out, but CPU usage is well below 100%.\n- `dotnet-counters` shows `dotnet.thread_pool.thread.count` growing: quickly to about 2-3x the core count, then by roughly one or two threads per second; often a long `dotnet.thread_pool.queue.length` and low completed work-item rate.\n\n**Causes**\n- **Sync-over-async**: `Task.Result`, `Task.Wait()`, `GetAwaiter().GetResult()` inside request code (the docs call it the most common cause).\n- Long blocking calls on pool threads: synchronous I/O, `Thread.Sleep`, contended locks, `SemaphoreSlim.Wait()`.\n- Bursts of CPU-heavy work queued with `Task.Run` in a server that also handles requests on the pool.\n\n**Diagnosis**\n- `dotnet-counters monitor` for thread count and queue length.\n- `dotnet-stack report -p <pid>` to see what many threads are blocked on.\n- On .NET 9+, `dotnet-trace` with the `WaitHandleWait` event pinpoints blocking waits.\n\n**Fixes**\n- Use `async`/`await` end to end so threads return to the pool while I/O is pending.\n- Move long-running blocking work off the pool (`TaskCreationOptions.LongRunning` hints that an extra thread may be needed) or into a bounded background queue.\n- `ThreadPool.SetMinThreads` can mask the problem temporarily; the docs warn that raising minimums unnecessarily can hurt performance.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Starves the pool under load: each request blocks a pool thread\n// public ActionResult<string> Get() => _repo.LoadAsync().Result;\n\n// Fixed: the thread is released while the database works\n// public async Task<ActionResult<string>> Get() => await _repo.LoadAsync();\n\n// Diagnose a running process:\n//   dotnet-counters monitor -p 4807 --counters System.Runtime\n//   dotnet-stack report -p 4807"
+      },
+      "pitfalls": [
+        "Raising `SetMinThreads` as the fix instead of removing the blocking calls.",
+        "Calling `.Result` \"just once\" in a library method that ends up on every request path.",
+        "Assuming high latency with low CPU means the database is slow without checking thread-pool counters."
+      ],
+      "followUps": [
+        "Why does the thread pool inject threads slowly instead of all at once?",
+        "How does async I/O avoid holding a thread?",
+        "When is `TaskCreationOptions.LongRunning` appropriate?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/debug-threadpool-starvation",
+          "title": "Debug ThreadPool starvation - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/the-managed-thread-pool",
+          "title": "The managed thread pool - .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "threadpool-and-task"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "The `WaitHandleWait` trace event used for diagnosis was added in .NET 9; the counters and `dotnet-stack` work on earlier versions.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-limiting-concurrency",
+      "topic": "dotnet-runtime",
+      "subtopic": "threads-and-threadpool",
+      "difficulty": "mid",
+      "question": "How do you run many async operations concurrently but limit how many run at once?",
+      "shortAnswer": "Use `Parallel.ForEachAsync` with `MaxDegreeOfParallelism` (.NET 6+), or gate each operation with a `SemaphoreSlim` whose `WaitAsync` lets only N in at a time, then `Task.WhenAll`. Don't start thousands of calls with an unbounded `WhenAll`, and don't use `Parallel.ForEach` for async lambdas.",
+      "answer": "**Options**\n- **`Parallel.ForEachAsync`** (.NET 6+): takes an async body and `ParallelOptions { MaxDegreeOfParallelism = N, CancellationToken = ct }`; simplest for \"process this list with at most N at a time\".\n- **`SemaphoreSlim` + `Task.WhenAll`**: start a task per item, each awaiting `WaitAsync()` before the work and calling `Release()` in `finally`. Flexible (different limits per resource, works inside existing pipelines).\n- **`Channel<T>`** with a fixed number of consumer tasks: good for producer/consumer pipelines and back-pressure.\n\n**Why limit**\nRemote services, connection pools and rate limits can't take unlimited parallel requests; too many concurrent\ncalls cause timeouts, socket exhaustion or 429 responses.\n\n**Traps**\n- `Parallel.ForEach(items, async item => ...)` creates `async void` lambdas: `ForEach` returns before the work finishes and exceptions are lost.\n- `SemaphoreSlim` doesn't guarantee FIFO order of waiters.\n- Always `Release()` in `finally`, or one exception permanently reduces your capacity.",
+      "code": {
+        "lang": "csharp",
+        "source": "var urls = Enumerable.Range(1, 100).Select(i => $\"https://example.com/items/{i}\").ToList();\nusing var http = new HttpClient();\n\n// Option 1: .NET 6+\nawait Parallel.ForEachAsync(urls,\n    new ParallelOptions { MaxDegreeOfParallelism = 8 },\n    async (url, ct) =>\n    {\n        string body = await http.GetStringAsync(url, ct);\n        Console.WriteLine($\"{url}: {body.Length}\");\n    });\n\n// Option 2: SemaphoreSlim gate\nvar gate = new SemaphoreSlim(8);\nvar tasks = urls.Select(async url =>\n{\n    await gate.WaitAsync();\n    try { return await http.GetStringAsync(url); }\n    finally { gate.Release(); }\n});\nstring[] pages = await Task.WhenAll(tasks);"
+      },
+      "pitfalls": [
+        "Passing an async lambda to `Parallel.ForEach` or `List<T>.ForEach`; it becomes `async void`.",
+        "Forgetting `Release()` in `finally`.",
+        "Unbounded `Task.WhenAll` over a huge list against an external service."
+      ],
+      "followUps": [
+        "How do `Task.WhenAll` exceptions surface when several tasks fail?",
+        "When is `Channel<T>` a better fit than a semaphore?",
+        "How would you add retries and per-call timeouts?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/semaphore-and-semaphoreslim",
+          "title": "Semaphore and SemaphoreSlim - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.parallel.foreachasync",
+          "title": "Parallel.ForEachAsync method - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "locking-primitives",
+        "threadpool-and-task"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`Parallel.ForEachAsync` is available from .NET 6; on older versions use the `SemaphoreSlim` pattern.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-async-state-machine-no-thread",
+      "topic": "dotnet-runtime",
+      "subtopic": "async-await-internals",
+      "difficulty": "mid",
+      "question": "What does the compiler do with an `async` method, and does `await` start a new thread?",
+      "shortAnswer": "The compiler rewrites an async method into a state machine: each `await` becomes a point where, if the awaited task isn't finished, the method registers the rest of itself as a continuation and returns to its caller. `async` and `await` don't create threads; while an I/O operation is pending, no thread is used at all.",
+      "answer": "**Key points**\n- The method runs **synchronously** until the first `await` of an incomplete task. If the task is already complete, execution just continues on the same thread.\n- Otherwise the state machine saves its locals and position, hooks a continuation onto the awaited task, and returns an incomplete `Task` to the caller.\n- When the awaited operation finishes, the continuation runs: on the captured `SynchronizationContext` if there is one (UI thread, classic ASP.NET), otherwise on a thread-pool thread.\n- The docs: `async` and `await` don't cause extra threads to be created; the method uses time on a thread only when it's active. True I/O (network, files, timers) completes through OS callbacks, so nothing is blocked while waiting.\n- `Task.Run` is the explicit way to move **CPU-bound** work to the thread pool; it doesn't help a method that's only waiting on I/O.\n- Exceptions inside the async method are stored in the returned task and rethrown at the `await`.\n\n**Why it scales**\nA server can have thousands of requests waiting on databases or HTTP calls with only a handful of threads,\nbecause waiting doesn't hold a thread.",
+      "code": {
+        "lang": "csharp",
+        "source": "async Task<int> GetLengthAsync(HttpClient http, string url)\n{\n    Console.WriteLine($\"before await: thread {Environment.CurrentManagedThreadId}\");\n    string body = await http.GetStringAsync(url);   // returns to caller here if not complete\n    Console.WriteLine($\"after await: thread {Environment.CurrentManagedThreadId}\");  // may differ (no sync context)\n    return body.Length;\n}\n\n// CPU-bound work is different: move it to the pool explicitly\nint primes = await Task.Run(() => CountPrimes(5_000_000));\n\nstatic int CountPrimes(int max) => Enumerable.Range(2, max).Count(n => n % 2 != 0);"
+      },
+      "pitfalls": [
+        "Saying \"async means multithreaded\"; most async I/O uses no extra thread while waiting.",
+        "Wrapping synchronous I/O in `Task.Run` and calling it async; it just blocks a pool thread instead.",
+        "Assuming code after `await` runs on the same thread; without a synchronization context it usually doesn't."
+      ],
+      "followUps": [
+        "What is a `SynchronizationContext`?",
+        "What happens if the awaited task is already completed?",
+        "How are exceptions propagated through `await`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/task-asynchronous-programming-model",
+          "title": "Task asynchronous programming model - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/",
+          "title": "Asynchronous programming with async and await - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "async-await",
+        "continuations-configureawait-valuetask"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-configureawait-false-today",
+      "topic": "dotnet-runtime",
+      "subtopic": "async-await-internals",
+      "difficulty": "mid",
+      "question": "What does `ConfigureAwait(false)` do, and do you still need it in ASP.NET Core?",
+      "shortAnswer": "It tells `await` not to resume on the captured `SynchronizationContext` or `TaskScheduler`, so the continuation can run on a thread-pool thread. ASP.NET Core has no `SynchronizationContext`, so application code there doesn't need it; general-purpose library code should still use it because it may be called from UI or classic ASP.NET apps.",
+      "answer": "**Key points**\n- By default `await` captures the current context: the UI thread in WPF/WinForms, the request context in classic ASP.NET. The continuation is posted back there.\n- `ConfigureAwait(false)` skips that, avoiding the cost of marshaling back and avoiding one kind of deadlock when a caller blocks the context thread.\n- It does **not** guarantee a thread switch: if the awaited task has already completed, the method simply keeps running synchronously on the current thread and context.\n- **ASP.NET Core** has no `SynchronizationContext`, so continuations already run on pool threads; `ConfigureAwait(false)` makes no behavioural difference in app code there.\n- **Guidance** (Stephen Toub's ConfigureAwait FAQ on the .NET Blog): use `ConfigureAwait(false)` in general-purpose library code; don't use it in app-level code that needs its context, such as UI event handlers that update controls after the `await`.\n- It isn't a cure for sync-over-async: blocking on tasks (`.Result`, `.Wait()`) is still wrong, and can still starve the thread pool.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Library code: doesn't care which thread continues\npublic static async Task<string> ReadConfigAsync(string path)\n{\n    using var reader = new StreamReader(path);\n    return await reader.ReadToEndAsync().ConfigureAwait(false);\n}\n\n// WPF event handler: needs the UI thread after the await, so keep the default\n// private async void LoadButton_Click(object sender, RoutedEventArgs e)\n// {\n//     string text = await ReadConfigAsync(\"app.json\");   // resumes on the UI thread\n//     ConfigBox.Text = text;                             // safe: we're on the UI thread\n// }"
+      },
+      "pitfalls": [
+        "Using `ConfigureAwait(false)` in UI code and then touching controls from a pool thread.",
+        "Believing `ConfigureAwait(false)` makes `.Result` safe; it only avoids one deadlock pattern.",
+        "Adding it to the first `await` only; every `await` in library code needs it, because a completed first task doesn't switch threads."
+      ],
+      "followUps": [
+        "Why does `.Result` deadlock in WPF but not in ASP.NET Core?",
+        "What is a `SynchronizationContext`, and who installs one?",
+        "What does `ConfigureAwaitOptions` (.NET 8) add?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://devblogs.microsoft.com/dotnet/configureawait-faq/",
+          "title": "ConfigureAwait FAQ (.NET Blog, Stephen Toub)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios",
+          "title": "Asynchronous programming scenarios - C#",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "continuations-configureawait-valuetask",
+        "race-conditions-and-deadlocks"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Classic ASP.NET (.NET Framework) has a request SynchronizationContext; ASP.NET Core doesn't.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-async-void",
+      "topic": "dotnet-runtime",
+      "subtopic": "async-await-internals",
+      "difficulty": "junior",
+      "question": "Why should you avoid `async void`, and when is it acceptable?",
+      "shortAnswer": "An `async void` method can't be awaited, so the caller can't know when it finishes, and exceptions thrown inside it can't be caught by the caller. Use `async Task` instead everywhere except event handlers, which must return `void`.",
+      "answer": "**Key points**\n- Return types for async methods: `Task`, `Task<T>`, `ValueTask`/`ValueTask<T>` (or other task-like types), `IAsyncEnumerable<T>` for async streams, and `void`.\n- The docs: return `async void` **only from event handlers**. Other `async void` methods:\n  - can't be awaited, so callers continue immediately and can't sequence work after them;\n  - throw exceptions that can't be caught outside the method;\n  - are hard to test;\n  - surprise callers who don't expect them to run asynchronously.\n- Lambdas become `async void` silently when passed to a parameter of type `Action` (for example `List<T>.ForEach`, `Parallel.ForEach`, or an `Action` callback), with the same problems.\n\n**In event handlers**\nWrap the body in `try`/`catch` and handle or log errors there, because nothing above the handler can catch them.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Bad: fire-and-forget with lost exceptions\nasync void SaveBad() { await Task.Delay(10); throw new InvalidOperationException(\"lost\"); }\n\n// Good: callers can await and catch\nasync Task SaveAsync() { await Task.Delay(10); }\n\n// Acceptable: UI event handler, with local error handling\n// private async void SaveButton_Click(object sender, EventArgs e)\n// {\n//     try { await SaveAsync(); }\n//     catch (Exception ex) { MessageBox.Show(ex.Message); }\n// }\n\n// Hidden async void: List<T>.ForEach takes an Action<T>\n// items.ForEach(async item => await ProcessAsync(item));   // don't"
+      },
+      "pitfalls": [
+        "Writing `async void` helper methods \"because they return nothing\".",
+        "Passing async lambdas to `Action` parameters and assuming the work is awaited.",
+        "Leaving exceptions unhandled in async event handlers."
+      ],
+      "followUps": [
+        "What happens to an unhandled exception in an `async void` method?",
+        "How would you safely run fire-and-forget work in a server?",
+        "What return types can an async method have?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios",
+          "title": "Asynchronous programming scenarios - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/async",
+          "title": "async keyword - C# reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "async-await"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-valuetask-vs-task",
+      "topic": "dotnet-runtime",
+      "subtopic": "async-await-internals",
+      "difficulty": "senior",
+      "question": "When should a method return `ValueTask<T>` instead of `Task<T>`, and what are the rules for consuming it?",
+      "shortAnswer": "Return `Task<T>` by default. Use `ValueTask<T>` only when profiling shows that a hot method usually completes synchronously (for example, from a cache), so avoiding the `Task` allocation matters. A `ValueTask` must be consumed exactly once: await it once, or call `AsTask()` if you need anything else.",
+      "answer": "**Why it exists**\n`Task<T>` is a class, so every call that returns one may allocate. When the result is often available\nsynchronously and the method is called very frequently, those allocations add up. `ValueTask<T>` is a struct that\ncan hold the result directly, or wrap a `Task<T>` (or an `IValueTaskSource<T>`) when the work is truly asynchronous.\n\n**Rules from the API docs**\n- Never await a `ValueTask` more than once, call `AsTask()` more than once, read `.Result`/`.GetAwaiter().GetResult()` before it has completed (or more than once), or mix these. Results are undefined.\n- If you need to await multiple times, use it with `WhenAll`/`WhenAny`, or store it, call `.AsTask()` once and use the `Task`.\n- The default for any async method should be `Task`/`Task<T>`; use `ValueTask<T>` only if performance analysis shows it's worthwhile. The non-generic `ValueTask` is not recommended for most scenarios (return `Task.CompletedTask` for synchronous success).\n\n**Trade-offs**\nIt has several fields, so it's more data to copy and makes the caller's async state machine larger. The benefit\nexists only on the synchronous path.\n\n**Typical uses**: high-throughput I/O abstractions (`Stream.ReadAsync(Memory<byte>)`, `IAsyncDisposable.DisposeAsync`), caches, channels.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class PriceCache(HttpClient http)\n{\n    private readonly Dictionary<string, decimal> _cache = new();\n\n    public ValueTask<decimal> GetPriceAsync(string sku)\n    {\n        if (_cache.TryGetValue(sku, out var price))\n            return new ValueTask<decimal>(price);          // no allocation on a hit\n\n        return new ValueTask<decimal>(LoadAsync(sku));     // miss: wrap a real Task\n    }\n\n    private async Task<decimal> LoadAsync(string sku)\n    {\n        string text = await http.GetStringAsync($\"/prices/{sku}\");\n        return _cache[sku] = decimal.Parse(text);\n    }\n}\n\n// OK:  decimal p = await cache.GetPriceAsync(\"A1\");\n// Bad: var vt = cache.GetPriceAsync(\"A1\"); await vt; await vt;   // undefined behaviour"
+      },
+      "pitfalls": [
+        "Switching every method to `ValueTask` \"for performance\" without measurements.",
+        "Awaiting the same `ValueTask` twice or storing it in a field for later use.",
+        "Passing `ValueTask`s straight to `Task.WhenAll`; convert each with `AsTask()` first."
+      ],
+      "followUps": [
+        "What is `IValueTaskSource`, and why does it make multiple awaits unsafe?",
+        "Why does `IAsyncDisposable.DisposeAsync` return `ValueTask`?",
+        "How would you measure whether `ValueTask` helps?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask-1",
+          "title": "ValueTask<TResult> struct - .NET API reference (remarks)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios",
+          "title": "Asynchronous programming scenarios - C# (consider using ValueTask)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "continuations-configureawait-valuetask"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-whenall-exceptions",
+      "topic": "dotnet-runtime",
+      "subtopic": "async-await-internals",
+      "difficulty": "mid",
+      "question": "If several tasks passed to `Task.WhenAll` fail, what does `await Task.WhenAll(...)` throw?",
+      "shortAnswer": "`await` rethrows only the first exception, unwrapped, not an `AggregateException`. The task returned by `WhenAll` still records every failure in its `Exception` property (an `AggregateException`), so keep a reference to it if you need all of them. Blocking with `.Wait()` or `.Result` throws the `AggregateException` instead.",
+      "answer": "**Key points**\n- A faulted task stores its exceptions in `Task.Exception`, which is always an `AggregateException` (it can hold several).\n- When you **await** a faulted task, the runtime rethrows the **first** inner exception, so async code feels like synchronous code (`catch (HttpRequestException)` works).\n- `Task.WhenAll` waits for **all** tasks to finish (it doesn't stop at the first failure) and then faults with the aggregation of all their exceptions.\n- So `await Task.WhenAll(a, b, c)` throws one exception; inspect `whenAllTask.Exception.InnerExceptions` (or each task's `Exception`) to see the rest.\n- `Task.Wait()`, `Task.WaitAll()` and `.Result` throw the `AggregateException` itself; `GetAwaiter().GetResult()` throws the original exception.\n\n**Related**\n- `Task.WhenAny` returns the first task to complete; it doesn't throw. You must await or inspect the returned task to observe its exception.\n- An exception in a task nobody observes doesn't terminate the process by default; the runtime raises `TaskScheduler.UnobservedTaskException` and then handles it.",
+      "code": {
+        "lang": "csharp",
+        "source": "Task Fail(string name) => Task.FromException(new InvalidOperationException(name));\n\nTask all = Task.WhenAll(Fail(\"A\"), Fail(\"B\"));\ntry\n{\n    await all;\n}\ncatch (InvalidOperationException ex)\n{\n    Console.WriteLine($\"caught: {ex.Message}\");                         // caught: A\n    foreach (var inner in all.Exception!.InnerExceptions)\n        Console.WriteLine($\"recorded: {inner.Message}\");                // A, B\n}\n\n// Blocking instead of awaiting wraps everything:\n// try { Task.WhenAll(Fail(\"A\"), Fail(\"B\")).Wait(); }\n// catch (AggregateException agg) { Console.WriteLine(agg.InnerExceptions.Count); }   // 2"
+      },
+      "pitfalls": [
+        "Writing `catch (AggregateException)` around `await Task.WhenAll(...)`; it won't match.",
+        "Logging only the caught exception and losing the other failures.",
+        "Assuming `WhenAll` cancels the other tasks when one fails; it doesn't, they keep running."
+      ],
+      "followUps": [
+        "How would you cancel the remaining tasks when one fails?",
+        "What is the difference between `Wait()` and `GetAwaiter().GetResult()` for exceptions?",
+        "What happens to an exception in a task nobody awaits?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/",
+          "title": "Asynchronous programming with async and await - C# (handle asynchronous exceptions)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios",
+          "title": "Asynchronous programming scenarios - C#",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task.whenall",
+          "title": "Task.WhenAll method - .NET API reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.taskscheduler.unobservedtaskexception",
+          "title": "TaskScheduler.UnobservedTaskException event - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "threadpool-and-task",
+        "async-await"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-cooperative-cancellation",
+      "topic": "dotnet-runtime",
+      "subtopic": "async-await-internals",
+      "difficulty": "mid",
+      "question": "How does cancellation work in .NET, and how should an async API support it?",
+      "shortAnswer": "Cancellation is cooperative: a `CancellationTokenSource` signals a `CancellationToken`, and the code receiving the token decides when to stop, usually by passing it to every async call and checking it in loops. Canceled operations end by throwing `OperationCanceledException`, which callers should treat as a normal outcome, not an error.",
+      "answer": "**Key points**\n- The creator of the `CancellationTokenSource` requests cancellation (`Cancel()`, `CancelAfter(timeout)`); listeners get the `Token` and respond. Nothing is aborted forcibly.\n- **Support it in an API**: accept a `CancellationToken cancellationToken = default` as the last parameter, pass it down to every async call (`HttpClient`, EF Core, `Task.Delay`, streams), and in CPU loops call `token.ThrowIfCancellationRequested()`.\n- **Combine** sources with `CancellationTokenSource.CreateLinkedTokenSource(a, b)`, for example the request-aborted token plus your own timeout.\n- **Catch** `OperationCanceledException` (it also covers `TaskCanceledException`, which derives from it) at the level that started the operation; don't log it as an error.\n- **Dispose** `CancellationTokenSource` objects you create (they implement `IDisposable`), especially ones with timers from `CancelAfter`.\n- In ASP.NET Core, `HttpContext.RequestAborted` (or a `CancellationToken` action parameter) fires when the client disconnects; in hosted services, `stoppingToken` fires on shutdown.",
+      "code": {
+        "lang": "csharp",
+        "source": "public static async Task<int> CountLinesAsync(string path, CancellationToken cancellationToken = default)\n{\n    using var reader = new StreamReader(path);\n    int count = 0;\n    while (await reader.ReadLineAsync(cancellationToken) is not null)   // token passed down\n    {\n        count++;\n    }\n    return count;\n}\n\nusing var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));\ntry\n{\n    int lines = await CountLinesAsync(\"big.log\", timeout.Token);\n    Console.WriteLine(lines);\n}\ncatch (OperationCanceledException)\n{\n    Console.WriteLine(\"Timed out\");        // expected outcome, not a crash\n}"
+      },
+      "pitfalls": [
+        "Accepting a token but not passing it to the inner async calls.",
+        "Catching `TaskCanceledException` only and missing other `OperationCanceledException`s.",
+        "Creating `CancellationTokenSource`s in a loop without disposing them."
+      ],
+      "followUps": [
+        "How do you combine a caller's token with your own timeout?",
+        "What should a background service do when its stopping token fires?",
+        "How do `Register` callbacks on a token work?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads",
+          "title": "Cancellation in managed threads - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/exceptions/best-practices-for-exceptions",
+          "title": "Best practices for exceptions - .NET (catch cancellation)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "async-await",
+        "threadpool-and-task"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "The `StreamReader.ReadLineAsync(CancellationToken)` overload used in the example exists only in recent .NET versions; on older targets, check the token yourself in the loop.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-dictionary-hashing-contract",
+      "topic": "dotnet-runtime",
+      "subtopic": "collections-internals",
+      "difficulty": "mid",
+      "question": "How does `Dictionary<TKey, TValue>` find a key so quickly, and what must `GetHashCode` and `Equals` guarantee?",
+      "shortAnswer": "`Dictionary` is a hash table: it uses the key's hash code to jump to a bucket and then calls `Equals` to find the exact key, so lookups are close to O(1). That only works if equal keys always return equal hash codes and a key's hash code never changes while it's in the dictionary.",
+      "answer": "**How a lookup works**\n1. The dictionary's comparer (default: `EqualityComparer<TKey>.Default`) computes the key's hash code.\n2. The hash code selects a bucket; entries whose hashes collide share it.\n3. Within the bucket, `Equals` is called until the matching key is found.\n- The docs: retrieving by key is \"very fast, close to O(1)\"; the complexity table lists add and lookup as O(1) amortized, O(n) in the worst case (for example, when many keys collide or the table must resize).\n\n**The contract**\n- If `a.Equals(b)` is true, `a.GetHashCode()` **must** equal `b.GetHashCode()`. Unequal objects may share a hash code (a collision is allowed, just slower).\n- Override `Equals` and `GetHashCode` together, using the same fields.\n- A key must not change in any way that affects its hash while it's in the dictionary; otherwise it ends up in the \"wrong\" bucket and can't be found. The docs advise not overriding `Equals` on mutable reference types for this reason.\n- Hash codes aren't stable identifiers: they can differ between .NET implementations, versions and platforms, and for strings even between two runs of the same program, so never persist them.\n- Keys can't be `null`; values can.\n\n**Customizing**: pass an `IEqualityComparer<TKey>` (for example `StringComparer.OrdinalIgnoreCase`) instead of changing the key type.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class OrderKey(string region, int number) : IEquatable<OrderKey>\n{\n    public string Region { get; } = region;   // immutable fields used for equality\n    public int Number { get; } = number;\n\n    public bool Equals(OrderKey? other) =>\n        other is not null && Region == other.Region && Number == other.Number;\n\n    public override bool Equals(object? obj) => Equals(obj as OrderKey);\n    public override int GetHashCode() => HashCode.Combine(Region, Number);   // same fields as Equals\n}\n\nvar orders = new Dictionary<OrderKey, string> { [new(\"EU\", 7)] = \"pending\" };\nConsole.WriteLine(orders[new OrderKey(\"EU\", 7)]);   // pending: found by value\n\nvar tags = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { [\"Urgent\"] = 1 };\nConsole.WriteLine(tags.ContainsKey(\"URGENT\"));      // True"
+      },
+      "pitfalls": [
+        "Overriding `Equals` without `GetHashCode` (or using different fields), so equal keys land in different buckets.",
+        "Using a mutable object as a key and changing it after insertion.",
+        "Writing a constant `GetHashCode()` (for example `return 1;`); it's legal but turns every lookup into a linear scan."
+      ],
+      "followUps": [
+        "What does `HashCode.Combine` do?",
+        "Why shouldn't you store `GetHashCode()` results in a database?",
+        "How does `HashSet<T>` relate to `Dictionary<TKey, TValue>`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class - .NET API reference (remarks)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.object.gethashcode",
+          "title": "Object.GetHashCode method - .NET API reference (remarks)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.string.gethashcode",
+          "title": "String.GetHashCode method - .NET API reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/collections/",
+          "title": "Collections and data structures - .NET (algorithmic complexity)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections",
+        "records-equality-partial"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-list-capacity-and-complexity",
+      "topic": "dotnet-runtime",
+      "subtopic": "collections-internals",
+      "difficulty": "junior",
+      "question": "How does `List<T>` grow, and what are the costs of `Add`, indexing, `Insert` and `Contains`?",
+      "shortAnswer": "`List<T>` wraps an array. Indexing is O(1); `Add` is O(1) while there's spare capacity, but when the array is full the list allocates a bigger one and copies everything (O(n)), which averages out to amortized O(1). `Insert`, `Remove` and `Contains` are O(n) because they shift or scan elements.",
+      "answer": "**Key points**\n- `Count` is how many items you have; `Capacity` is the size of the internal array. When `Count` would exceed `Capacity`, the list reallocates a larger array and copies the elements.\n- From the docs' complexity table: `List<T>.Add` is O(1) amortized, O(n) worst case; `List<T>[i]` is O(1).\n- `Insert(0, x)` and `RemoveAt(0)` shift every later element: O(n). For queue-like use, prefer `Queue<T>`; for stack-like use, add and remove at the end or use `Stack<T>`.\n- `Contains`/`IndexOf`/`Remove(item)` scan linearly: O(n). For frequent membership tests, use `HashSet<T>` (O(1) average).\n- **Pre-size** when you know the approximate count (`new List<T>(capacity)`); the docs call this the best way to avoid repeated reallocations. `TrimExcess()` releases unused capacity.\n\n**Array vs List<T>**\nUse arrays for fixed-size data and interop; `List<T>` when the size changes. Both are contiguous memory, so\niterating them is cache-friendly.",
+      "code": {
+        "lang": "csharp",
+        "source": "var list = new List<int>(capacity: 1_000);   // avoids reallocations while adding 1,000 items\nfor (int i = 0; i < 1_000; i++) list.Add(i); // O(1) each\n\nint third = list[2];                          // O(1)\nlist.Insert(0, -1);                           // O(n): shifts every element\nbool hasValue = list.Contains(999);           // O(n): linear scan\n\nvar lookup = new HashSet<int>(list);\nbool fast = lookup.Contains(999);             // O(1) average"
+      },
+      "pitfalls": [
+        "Repeatedly inserting or removing at the front of a large list.",
+        "Calling `list.Contains` inside a loop over another large list (O(n·m)); build a `HashSet<T>` first.",
+        "Confusing `Capacity` with `Count`."
+      ],
+      "followUps": [
+        "When would `LinkedList<T>` actually be the better choice?",
+        "Why is iterating an `ImmutableList<T>` with a `for` loop slow?",
+        "How does `CollectionsMarshal.AsSpan` relate to a list's internal array?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/collections/",
+          "title": "Collections and data structures - .NET (algorithmic complexity)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1",
+          "title": "List<T> class - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections",
+        "arrays-and-arraylist"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-collection-modified-during-enumeration",
+      "topic": "dotnet-runtime",
+      "subtopic": "collections-internals",
+      "difficulty": "junior",
+      "question": "Why do you get \"Collection was modified; enumeration operation may not execute\", and how do you fix it?",
+      "shortAnswer": "A `List<T>` or `Dictionary<TKey, TValue>` enumerator is invalidated when the collection changes, so the next `MoveNext()` in your `foreach` throws `InvalidOperationException`. Don't add or remove items while iterating the same collection: collect changes and apply them afterwards, iterate a copy, use `RemoveAll`, or loop backwards with an index.",
+      "answer": "**Why**\n- The API docs: an enumerator stays valid only while the collection is unchanged; adding, modifying or deleting elements invalidates it, and the next `MoveNext` throws `InvalidOperationException`.\n- This is a safety check, not a thread-safety feature: it's detected on the same thread too.\n\n**Fixes**\n- `list.RemoveAll(predicate)` for conditional removal from a `List<T>`.\n- Iterate backwards with a `for` loop when removing by index.\n- Iterate a snapshot (`foreach (var x in list.ToList())`) when the list is small.\n- Collect the items to change in a separate list, then apply the changes after the loop.\n- For `Dictionary`, the current docs say `Remove` and `Clear` can be called during enumeration without invalidating the enumerator (adding still invalidates it). That doesn't make it thread-safe.\n- When other threads modify the collection, use a `System.Collections.Concurrent` type instead; they're designed for concurrent reads and writes.",
+      "code": {
+        "lang": "csharp",
+        "source": "var numbers = new List<int> { 1, 2, 3, 4, 5, 6 };\n\n// Throws InvalidOperationException on the next iteration\n// foreach (var n in numbers) if (n % 2 == 0) numbers.Remove(n);\n\nnumbers.RemoveAll(n => n % 2 == 0);              // simplest fix: [1, 3, 5]\n\nfor (int i = numbers.Count - 1; i >= 0; i--)      // index-based, backwards\n    if (numbers[i] > 3) numbers.RemoveAt(i);      // [1, 3]\n\nvar stock = new Dictionary<string, int> { [\"a\"] = 0, [\"b\"] = 5 };\nforeach (var (key, qty) in stock)\n    if (qty == 0) stock.Remove(key);              // allowed for Dictionary in current .NET"
+      },
+      "pitfalls": [
+        "Removing inside `foreach` and \"fixing\" it with try/catch.",
+        "Iterating forwards with an index while removing, which skips the element after each removal.",
+        "Assuming concurrent collections are needed for single-threaded modification; usually a different loop shape is enough."
+      ],
+      "followUps": [
+        "Why does iterating backwards avoid skipping elements?",
+        "How do enumerators of `ConcurrentDictionary` behave during updates?",
+        "What does `yield return` generate, and can it detect modification?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1.getenumerator",
+          "title": "List<T>.GetEnumerator method - .NET API reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.remove",
+          "title": "Dictionary<TKey,TValue>.Remove method - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-concurrentdictionary-getoradd",
+      "topic": "dotnet-runtime",
+      "subtopic": "collections-internals",
+      "difficulty": "senior",
+      "question": "Is `ConcurrentDictionary.GetOrAdd(key, valueFactory)` atomic? Can the factory run more than once?",
+      "shortAnswer": "All its members are thread-safe, but `GetOrAdd` and `AddOrUpdate` are not atomic with respect to your delegate: the factory runs outside the dictionary's internal lock, so two threads can both run it for the same key, and only one result is stored. If the factory is expensive or has side effects, store `Lazy<T>` values so the work runs once.",
+      "answer": "**Key points**\n- `ConcurrentDictionary` lets many threads read and write without your own locks, using fine-grained internal locking.\n- The docs: not all methods are atomic, specifically `GetOrAdd` and `AddOrUpdate`. To avoid running unknown code while holding a lock, the user delegate is invoked **outside** the internal lock. So thread A and thread B can both find the key missing and both call the factory; one value wins, the other is discarded, and both callers get the winning value.\n- Consequences: a factory that opens connections, sends emails or increments counters can do so twice; an expensive factory wastes work.\n- **Fix**: `ConcurrentDictionary<TKey, Lazy<TValue>>` with `GetOrAdd(key, k => new Lazy<TValue>(() => Create(k))).Value`. Creating a `Lazy` is cheap, only one `Lazy` instance is stored, and its default thread-safety mode runs `Create` once.\n- Even with thread-safe collections, *compound* operations (check then act across two calls) can race: another thread can update a key right after you read it.\n\n**Other choices**: `ImmutableDictionary` with `ImmutableInterlocked` for rarely written maps, `FrozenDictionary` for\nbuild-once data, or a plain `Dictionary` behind a `lock` when contention is low and logic is complex.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Collections.Concurrent;\n\nvar cache = new ConcurrentDictionary<string, Lazy<Report>>();\n\nReport GetReport(string id) =>\n    cache.GetOrAdd(id, key => new Lazy<Report>(() => BuildReport(key)))   // factory may race...\n         .Value;                                                          // ...but BuildReport runs once\n\nReport BuildReport(string id)\n{\n    Console.WriteLine($\"building {id}\");   // expensive work we don't want twice\n    return new Report(id);\n}\n\nParallel.For(0, 8, _ => GetReport(\"Q3\"));   // prints \"building Q3\" once\n\nrecord Report(string Id);"
+      },
+      "pitfalls": [
+        "Assuming the `valueFactory` is called at most once per key.",
+        "Putting side effects (I/O, counters) in `GetOrAdd`/`AddOrUpdate` delegates.",
+        "Using `ContainsKey` then indexer assignment as if the pair were atomic."
+      ],
+      "followUps": [
+        "What `LazyThreadSafetyMode` does `Lazy<T>` use by default, and what happens if the factory throws?",
+        "How does `AddOrUpdate` behave when the update delegate races?",
+        "When is a plain `lock` around a `Dictionary` the better design?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/collections/thread-safe/how-to-add-and-remove-items",
+          "title": "How to add and remove items from a ConcurrentDictionary - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.lazy-1",
+          "title": "Lazy<T> class - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "concurrent-collections"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-readonly-immutable-frozen",
+      "topic": "dotnet-runtime",
+      "subtopic": "collections-internals",
+      "difficulty": "senior",
+      "question": "What is the difference between read-only, immutable and frozen collections?",
+      "shortAnswer": "A read-only collection (`ReadOnlyCollection<T>`, `IReadOnlyList<T>`) is a view that stops *you* from changing it, but the underlying collection can still change. Immutable collections (`ImmutableList<T>`, `ImmutableDictionary`) never change; \"modifying\" returns a new instance that shares structure. Frozen collections (.NET 8) are built once and optimized for fast reads, with an up-front creation cost.",
+      "answer": "**Read-only views**\n- `list.AsReadOnly()`, `ReadOnlyCollection<T>`, `ReadOnlyDictionary<TKey, TValue>`, or just exposing `IReadOnlyList<T>`.\n- Wrap the original; if the owner changes the original list, readers see it. Cheap, no copy.\n\n**Immutable collections** (`System.Collections.Immutable`)\n- Can't be modified after creation; `Add`/`Remove` return a **new** collection, sharing most of the data internally (trees), so they're inherently thread-safe to read and to pass around.\n- Trade-off: many operations are O(log n) instead of O(1) (`ImmutableList<T>` indexing, `ImmutableDictionary` lookup). `ImmutableArray<T>` is array-backed (fast reads, O(n) copies on change). Builders (`ToBuilder()`) allow efficient batch changes.\n\n**Frozen collections** (`System.Collections.Frozen`, .NET 8+)\n- `FrozenDictionary<TKey, TValue>` and `FrozenSet<T>` don't allow any change to keys or values once created, which allows faster reads such as `TryGetValue`.\n- The API docs: a `FrozenDictionary` has a relatively high cost to create but excellent lookup performance, so it suits data created once (often at startup) and read for the rest of the app's life (configuration, lookup tables, routing). Initialize it only with trusted keys, since the keys affect construction time.\n\n**Choosing**\n- Hide mutation from callers: read-only view or interface.\n- Share snapshots across threads and produce modified versions: immutable.\n- Build once, read constantly, performance matters: frozen.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.Collections.Frozen;\nusing System.Collections.Immutable;\n\nvar source = new List<string> { \"a\", \"b\" };\nIReadOnlyList<string> view = source.AsReadOnly();\nsource.Add(\"c\");\nConsole.WriteLine(view.Count);              // 3: the view reflects the change\n\nImmutableList<string> v1 = ImmutableList.Create(\"a\", \"b\");\nImmutableList<string> v2 = v1.Add(\"c\");     // new instance\nConsole.WriteLine($\"{v1.Count} {v2.Count}\"); // 2 3\n\nFrozenDictionary<string, int> limits =\n    new Dictionary<string, int> { [\"free\"] = 10, [\"pro\"] = 1_000 }.ToFrozenDictionary();\nConsole.WriteLine(limits[\"pro\"]);           // fast read-only lookups"
+      },
+      "pitfalls": [
+        "Returning `IReadOnlyList<T>` and assuming callers get a stable snapshot; they get a live view.",
+        "Using `ImmutableList<T>` with index-based loops in hot paths (O(log n) per access).",
+        "Creating frozen collections repeatedly at run time; their benefit comes from building once."
+      ],
+      "followUps": [
+        "How do immutable collections share structure between versions?",
+        "When would you use an immutable collection's builder?",
+        "How does `ImmutableInterlocked` help update a shared immutable reference?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/collections/",
+          "title": "Collections and data structures - .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/runtime",
+          "title": "What's new in the .NET 8 runtime (frozen collections)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.frozen.frozendictionary-2",
+          "title": "FrozenDictionary<TKey,TValue> class - .NET API reference",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.immutable",
+          "title": "System.Collections.Immutable namespace - .NET API reference",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Frozen collections need .NET 8 or later. Immutable collections come from the System.Collections.Immutable library (a NuGet package when targeting .NET Framework).",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-generic-host",
+      "topic": "dotnet-runtime",
+      "subtopic": "configuration-and-hosting",
+      "difficulty": "junior",
+      "question": "What is the .NET Generic Host, and what does it give a console app or worker service?",
+      "shortAnswer": "The Generic Host is an object that owns an app's shared resources and lifetime: dependency injection, configuration, logging, hosted (background) services and graceful startup and shutdown. ASP.NET Core is built on the same host, so console apps, worker services and WPF apps can use the same composition model.",
+      "answer": "**Key points**\n- Created with `Host.CreateApplicationBuilder(args)` (introduced in .NET 6; recommended and used by current templates) or the older callback style `Host.CreateDefaultBuilder(args)`. Both have the same defaults.\n- **Defaults** set up by the builder:\n  - content root = current directory;\n  - host configuration from `DOTNET_`-prefixed environment variables and the command line;\n  - app configuration from `appsettings.json`, `appsettings.{Environment}.json`, user secrets (Development only), environment variables and the command line;\n  - Console, Debug and EventSource logging providers (plus EventLog on Windows);\n  - in the `Development` environment, DI scope validation and dependency validation (`ValidateOnBuild`).\n- **Lifetime**: when the host starts, it calls `StartAsync` on every registered `IHostedService` (`BackgroundService.ExecuteAsync` for workers). `IHostApplicationLifetime` exposes `ApplicationStarted`, `ApplicationStopping` and `ApplicationStopped`, and `StopApplication()` requests a graceful stop.\n- **Shutdown**: with the default console lifetime, Ctrl+C, SIGTERM (for example `docker stop`) and SIGQUIT trigger a graceful stop: hosted services' `StopAsync` runs and code after `Run()` executes.\n\n**Why bother in a console app**: you get the same DI, options, logging and graceful-shutdown behaviour as a web\napp instead of hand-wiring `new ConfigurationBuilder()`, `new ServiceCollection()` and `Console.CancelKeyPress`.",
+      "code": {
+        "lang": "csharp",
+        "source": "using Microsoft.Extensions.DependencyInjection;\nusing Microsoft.Extensions.Hosting;\n\nHostApplicationBuilder builder = Host.CreateApplicationBuilder(args);\n\nbuilder.Services.AddSingleton<IClock, SystemClock>();\nbuilder.Services.AddHostedService<Worker>();       // started and stopped by the host\n\nusing IHost host = builder.Build();\nawait host.RunAsync();                             // runs until Ctrl+C / SIGTERM / StopApplication()\n\npublic interface IClock { DateTime UtcNow { get; } }\npublic sealed class SystemClock : IClock { public DateTime UtcNow => DateTime.UtcNow; }\n\npublic sealed class Worker(IClock clock) : BackgroundService\n{\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        while (!stoppingToken.IsCancellationRequested)\n        {\n            Console.WriteLine(clock.UtcNow);\n            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);\n        }\n    }\n}"
+      },
+      "pitfalls": [
+        "Calling `Environment.Exit` to stop a hosted app; use `IHostApplicationLifetime.StopApplication()` so hosted services shut down cleanly.",
+        "Building a second `ServiceCollection` by hand next to the host, ending up with two containers."
+      ],
+      "followUps": [
+        "What is the difference between `CreateApplicationBuilder` and `CreateDefaultBuilder`?",
+        "How does the host decide the environment name?",
+        "What happens to hosted services when SIGTERM arrives?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host",
+          "title": ".NET Generic Host",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/workers",
+          "title": "Worker services in .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "configuration",
+        "hosted-services",
+        "real-app-setup"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`Host.CreateApplicationBuilder` arrived in .NET 6 (current templates use it); graceful SIGTERM handling without `ProcessExit` tricks also arrived in .NET 6.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-configuration-precedence",
+      "topic": "dotnet-runtime",
+      "subtopic": "configuration-and-hosting",
+      "difficulty": "mid",
+      "question": "Where does `IConfiguration` get its values in a default .NET app, and which source wins when the same key is set twice?",
+      "shortAnswer": "Configuration providers are layered in order, and a provider added later overrides earlier ones. With the default host the order is `appsettings.json`, `appsettings.{Environment}.json`, user secrets (Development only), environment variables, then command-line arguments, so the command line wins.",
+      "answer": "**Key points**\n- `IConfiguration` is a flat set of `key:subkey` pairs merged from all providers; sections map to classes through binding (`GetSection(\"Smtp\").Get<SmtpOptions>()` or the options pattern).\n- **Last provider wins** for a given key; the docs' example: if a key is in both `appsettings.json` and the environment, the environment value is used because that provider was added later.\n- Default app configuration order (lowest to highest): `appsettings.json` → `appsettings.{Environment}.json` → user secrets (Development) → environment variables → command line.\n- **Environment variables**: use `__` (double underscore) for hierarchy, because `:` doesn't work on every platform (`Smtp__Host=mail.local` maps to `Smtp:Host`).\n- Host settings (environment name, content root) come from `DOTNET_`-prefixed variables and the command line (`ASPNETCORE_` too in web apps).\n- JSON files added with `reloadOnChange: true` are re-read when saved, which is what lets `IOptionsMonitor`/`IOptionsSnapshot` see new values.\n\n**Secrets**: keep them out of `appsettings.json`; use user secrets in development and environment variables or a\nvault provider (for example Azure Key Vault) in production.",
+      "code": {
+        "lang": "csharp",
+        "source": "// appsettings.json:              { \"Smtp\": { \"Host\": \"localhost\", \"Port\": 25 } }\n// appsettings.Production.json:   { \"Smtp\": { \"Host\": \"smtp.prod.local\" } }\n// environment:                   Smtp__Port=2525\n// command line:                  --Smtp:Host=override.local\n\nvar builder = Host.CreateApplicationBuilder(args);\nstring? host = builder.Configuration[\"Smtp:Host\"];        // \"override.local\" (command line wins)\nint port = builder.Configuration.GetValue<int>(\"Smtp:Port\"); // 2525 (environment beats JSON)\n\nbuilder.Configuration.AddJsonFile(\"extra.json\", optional: true);  // added last: overrides everything above"
+      },
+      "pitfalls": [
+        "Using `:` in environment variable names on Linux; use `__`.",
+        "Adding a JSON file after the defaults and accidentally overriding environment variables and command-line values.",
+        "Committing secrets to `appsettings.json` or `appsettings.Development.json`."
+      ],
+      "followUps": [
+        "How do you add a custom configuration provider?",
+        "How are arrays represented in configuration keys?",
+        "How do user secrets work, and where are they stored?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration",
+          "title": "Configuration in .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration-providers",
+          "title": "Configuration providers in .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host",
+          "title": ".NET Generic Host (host builder settings)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "configuration",
+        "environment-and-launchsettings"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-ioptions-snapshot-monitor",
+      "topic": "dotnet-runtime",
+      "subtopic": "configuration-and-hosting",
+      "difficulty": "mid",
+      "question": "What is the difference between `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>`?",
+      "shortAnswer": "`IOptions<T>` is a singleton computed once and never reflects later configuration changes. `IOptionsSnapshot<T>` is scoped: recomputed once per scope (per request) so it sees reloaded values, but it can't be injected into singletons. `IOptionsMonitor<T>` is a singleton that always returns the current value and raises change notifications.",
+      "answer": "**Comparison**\n\n| | `IOptions<T>` | `IOptionsSnapshot<T>` | `IOptionsMonitor<T>` |\n|---|---|---|---|\n| DI lifetime | Singleton | Scoped | Singleton |\n| Sees config changes after start | No | Yes, per scope | Yes, any time (`CurrentValue`) |\n| Named options | No | Yes (`Get(name)`) | Yes (`Get(name)`) |\n| Change notifications | No | No | Yes (`OnChange`) |\n| Inject into singletons | Yes | No | Yes |\n\n**Key points**\n- Register with `services.Configure<T>(config.GetSection(\"...\"))` or `services.AddOptions<T>().Bind(...)`.\n- The value is created lazily when you first read `.Value` (or `CurrentValue`), not when the wrapper is injected.\n- Reloading only works if the provider supports it (for example JSON files added with `reloadOnChange: true`).\n- `IOptionsSnapshot<T>` computes options once per request and caches them for that request: consistent within a request, fresh between requests.\n- Use `IOptionsMonitor<T>` in singletons and background services that must react to changes; read `CurrentValue` each time rather than caching it in a field.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class FeatureFlags { public bool NewCheckout { get; set; } }\n\n// registration:\n// builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection(\"Features\"));\n\npublic sealed class CheckoutService(IOptionsSnapshot<FeatureFlags> flags)     // scoped consumer\n{\n    public bool UseNewFlow => flags.Value.NewCheckout;                       // fixed for this request\n}\n\npublic sealed class FlagWatcher : IDisposable                                 // singleton consumer\n{\n    private readonly IDisposable? _subscription;\n    public FlagWatcher(IOptionsMonitor<FeatureFlags> monitor)\n        => _subscription = monitor.OnChange(f => Console.WriteLine($\"NewCheckout = {f.NewCheckout}\"));\n    public void Dispose() => _subscription?.Dispose();\n}"
+      },
+      "pitfalls": [
+        "Injecting `IOptionsSnapshot<T>` into a singleton; DI scope validation rejects it (and it would capture one scope's value forever).",
+        "Caching `monitor.CurrentValue` in a field, which defeats live updates.",
+        "Expecting `IOptions<T>` to pick up edits to `appsettings.json` without a restart."
+      ],
+      "followUps": [
+        "What are named options, and when would you use them?",
+        "How does `IOptionsMonitorCache<T>` invalidate values?",
+        "How do post-configuration callbacks (`PostConfigure`) work?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/options",
+          "title": "Options pattern in .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "configuration"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-options-validation-on-start",
+      "topic": "dotnet-runtime",
+      "subtopic": "configuration-and-hosting",
+      "difficulty": "mid",
+      "question": "How do you validate configuration with the options pattern, and why use `ValidateOnStart`?",
+      "shortAnswer": "Bind with `AddOptions<T>().Bind(section)` and add rules with `ValidateDataAnnotations()`, `Validate(predicate)` or an `IValidateOptions<T>` class. By default validation runs only when the options are first read, so a bad setting can fail long after deployment; `ValidateOnStart()` runs it while the host starts, so the app fails fast instead.",
+      "answer": "**Key points**\n- `services.AddOptions<SmtpOptions>().Bind(config.GetSection(\"Smtp\"))` returns an `OptionsBuilder<T>` to chain rules on.\n- **Data annotations**: decorate the options class with `[Required]`, `[Range]`, `[Url]`... and call `ValidateDataAnnotations()` (from the `Microsoft.Extensions.Options.DataAnnotations` package).\n- **Delegates**: `.Validate(o => o.Port is > 0 and < 65536, \"Port must be 1-65535\")` for cross-field rules.\n- **Classes**: implement `IValidateOptions<T>` for complex rules or rules needing other services; .NET 8 added `ValidateOptionsResultBuilder` to collect several errors. A compile-time options-validation source generator is also available for better performance.\n- **Timing**: validation happens at run time when options are first accessed; chaining `ValidateOnStart()` moves it to host startup.\n- Failure throws `OptionsValidationException`, listing the failed rules.\n\n**Why fail fast**: a missing connection string or wrong URL is then caught during deployment health checks rather\nthan by the first customer request at 2 a.m.",
+      "code": {
+        "lang": "csharp",
+        "source": "using System.ComponentModel.DataAnnotations;\n\npublic sealed class SmtpOptions\n{\n    [Required] public string Host { get; set; } = \"\";\n    [Range(1, 65535)] public int Port { get; set; } = 25;\n    public bool UseTls { get; set; }\n}\n\n// Program.cs\n// builder.Services.AddOptions<SmtpOptions>()\n//     .Bind(builder.Configuration.GetSection(\"Smtp\"))\n//     .ValidateDataAnnotations()\n//     .Validate(o => !o.UseTls || o.Port != 25, \"TLS on port 25 is not allowed\")\n//     .ValidateOnStart();          // the host refuses to start with bad settings"
+      },
+      "pitfalls": [
+        "Forgetting `ValidateOnStart`, so invalid settings surface only on first use.",
+        "Validating with `[Required]` on a non-nullable string initialized to `\"\"`; an empty string passes unless you also check it (`[MinLength(1)]` or a delegate).",
+        "Validating options by hand in constructors scattered across services."
+      ],
+      "followUps": [
+        "When would you implement `IValidateOptions<T>`?",
+        "How do you validate nested option objects and collections?",
+        "How does validation interact with reloadable configuration?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/options",
+          "title": "Options pattern in .NET (options validation)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/runtime",
+          "title": "What's new in the .NET 8 runtime (ValidateOptionsResultBuilder)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "configuration",
+        "taskflow-studio"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`ValidateOptionsResultBuilder` is new in .NET 8; check older target frameworks for the validation helpers they include.",
+      "reviewed": false
+    },
+    {
+      "id": "dotnet-runtime-backgroundservice-pitfalls",
+      "topic": "dotnet-runtime",
+      "subtopic": "configuration-and-hosting",
+      "difficulty": "senior",
+      "question": "What are the common pitfalls when writing a `BackgroundService`, such as using scoped services, handling exceptions and shutting down?",
+      "shortAnswer": "Hosted services are singletons, so create a scope (`IServiceScopeFactory`) for scoped dependencies like a `DbContext`. Since .NET 6 an unhandled exception in `ExecuteAsync` is logged and stops the host by default, so catch and handle errors inside the loop. Honour the `stoppingToken`, and await the base methods if you override `StartAsync`/`StopAsync`.",
+      "answer": "**Scoped dependencies**\n- `AddHostedService<T>()` registers the service as a **singleton**. Injecting a scoped service (EF Core `DbContext`, unit of work) directly is a captive dependency; scope validation rejects it in Development.\n- Inject `IServiceScopeFactory` and create a scope per unit of work (each loop iteration or message): `using var scope = factory.CreateScope();` then resolve from `scope.ServiceProvider`. Disposing the scope disposes the scoped services.\n\n**Exceptions**\n- .NET 6 changed the behaviour: an exception escaping `ExecuteAsync` is logged and, by default, **stops the host** (`HostOptions.BackgroundServiceExceptionBehavior = StopHost`). Before .NET 6 it was silently lost and the service just stopped working.\n- Catch per-iteration exceptions inside the loop (log, back off, continue) and let only truly fatal errors escape. `BackgroundServiceExceptionBehavior.Ignore` restores the old behaviour, which is rarely what you want.\n\n**Shutdown**\n- Pass `stoppingToken` to every await (`Task.Delay`, queries, HTTP calls) so the service stops promptly; `HostOptions.ShutdownTimeout` limits how long the host waits for hosted services to stop.\n- If you override `StartAsync` or `StopAsync`, call and `await` the base implementation (the docs call this out explicitly).",
+      "code": {
+        "lang": "csharp",
+        "source": "using Microsoft.Extensions.DependencyInjection;\nusing Microsoft.Extensions.Hosting;\nusing Microsoft.Extensions.Logging;\n\npublic interface IOrderRepository { Task<int> ArchiveOldOrdersAsync(CancellationToken ct); }\n\npublic sealed class ArchiveWorker(IServiceScopeFactory scopes, ILogger<ArchiveWorker> logger)\n    : BackgroundService\n{\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        while (!stoppingToken.IsCancellationRequested)\n        {\n            try\n            {\n                using var scope = scopes.CreateScope();                  // new scope per iteration\n                var repo = scope.ServiceProvider.GetRequiredService<IOrderRepository>();\n                int archived = await repo.ArchiveOldOrdersAsync(stoppingToken);\n                logger.LogInformation(\"Archived {Count} orders\", archived);\n            }\n            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)\n            {\n                break;                                                   // normal shutdown\n            }\n            catch (Exception ex)\n            {\n                logger.LogError(ex, \"Archive run failed; retrying later\"); // don't kill the host\n            }\n\n            await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);\n        }\n    }\n}"
+      },
+      "pitfalls": [
+        "Injecting a `DbContext` straight into a hosted service constructor.",
+        "Letting one transient failure escape `ExecuteAsync` and stop the whole app (or, before .NET 6, silently end the worker).",
+        "Ignoring `stoppingToken`, so shutdown waits for the timeout and the work is cut off anyway."
+      ],
+      "followUps": [
+        "How would you process a queue with several concurrent consumers in a hosted service?",
+        "What is `IHostedLifecycleService` and when does it help?",
+        "How do you make a background job resilient to restarts (persistence, idempotency)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/scoped-service",
+          "title": "Use scoped services within a BackgroundService",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/6.0/hosting-exception-handling",
+          "title": "Breaking change: unhandled exceptions from a BackgroundService (.NET 6)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/workers",
+          "title": "Worker services in .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "hosted-services",
+        "taskflow-studio",
+        "dependency-injection"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Before .NET 6, exceptions from `ExecuteAsync` were lost and the host kept running; from .NET 6 they're logged and stop the host by default.",
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "topic": "linq-ef-core",
+  "questions": [
+    {
+      "id": "linq-ef-core-iqueryable-vs-ienumerable-vs-list",
+      "topic": "linq-ef-core",
+      "subtopic": "iqueryable-vs-ienumerable",
+      "difficulty": "mid",
+      "question": "What is the difference between IQueryable, IEnumerable and List in C#, and when do you use each?",
+      "shortAnswer": "`IEnumerable<T>` … Filtering: Happens in memory after the data is loaded. … `IQueryable<T>` … Filtering: Happens at the data source (e.g., SQL WHERE clause). … `List<T>` … Deferred Execution: No — data is already loaded.",
+      "answerFrom": {
+        "file": "InterviewQuestion.md",
+        "section": "# Here’s a clear, practical breakdown of IQueryable, IEnumerable, and List in C#, along with when to use each."
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "IQueryable<User> users = dbContext.Users; // From EF DbSet\nvar activeUsers = users.Where(u => u.IsActive); // Translates to SQL WHERE"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "InterviewQuestion.md",
+          "section": "# Here’s a clear, practical breakdown of IQueryable, IEnumerable, and List in C#, along with when to use each."
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "deferred-vs-immediate",
+        "collections"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-n-plus-1-problem",
+      "topic": "linq-ef-core",
+      "subtopic": "performance",
+      "difficulty": "mid",
+      "question": "What is the N+1 problem, and how do you fix it?",
+      "shortAnswer": "The N+1 problem occurs when an application executes one query to fetch data and then N additional queries to fetch related data, leading to performance issues. … Eager Loading (Best Solution)",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/11.Question.md",
+        "section": "# The N+1 Problem"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "var users = context.Users\n    .Include(u => u.Orders)\n    .ToList();"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/11.Question.md",
+          "section": "# The N+1 Problem"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-model-config-and-loading",
+        "joins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    }
+  ]
+}

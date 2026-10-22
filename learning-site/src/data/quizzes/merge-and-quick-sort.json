@@ -1,0 +1,94 @@
+{
+  "lesson": "merge-and-quick-sort",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In `Merge`, `i` and `j` start at `0`, but the write index `k` starts at `left`. Why?",
+      "options": [
+        "Because `left` is always `0` on the first call",
+        "So the merge runs from right to left, which keeps it stable",
+        "Because `leftArr` and `rightArr` are indexed from `left`",
+        "Because the merged values must go back into this subarray's slice of the original array; starting at `0` would overwrite other elements"
+      ],
+      "answer": 3,
+      "explanation": "`i` and `j` index the temporary `leftArr` and `rightArr`, which start at 0. `k` writes into the original array, so it must start where the current subarray starts.",
+      "source": {
+        "section": "4. Merge Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "With `left = 0` and `mid = 2`, which elements of `arr` does `arr[left..(mid + 1)]` copy into `leftArr`?",
+      "options": [
+        "Indexes 0 to 3",
+        "Indexes 1 to 3",
+        "Indexes 0 to 2",
+        "Only index 3"
+      ],
+      "answer": 2,
+      "explanation": "In C# range syntax the start index is inclusive and the end index is exclusive, so `arr[0..3]` contains indexes 0, 1 and 2, that is `left` through `mid`.",
+      "source": {
+        "section": "4. Merge Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "`Partition(arr, 0, 6)` is called on the sorted array `[1, 2, 3, 4, 5, 6, 7]`. What does it return?",
+      "code": {
+        "lang": "csharp",
+        "source": "int Partition(int[] arr, int low, int high)\n{\n    int pivot = arr[high]; // last element as pivot\n    int i = low - 1;\n    for (int j = low; j < high; j++)\n    {\n        if (arr[j] <= pivot)\n        {\n            i++;\n            (arr[i], arr[j]) = (arr[j], arr[i]);\n        }\n    }\n    (arr[i + 1], arr[high]) = (arr[high], arr[i + 1]); // placing pivot on right sorted position\n    return i + 1;\n}"
+      },
+      "options": [
+        "6",
+        "0",
+        "3",
+        "7"
+      ],
+      "answer": 0,
+      "explanation": "The pivot `7` is the largest value, so every other element is `<= pivot` and `i` ends at 5. The pivot stays at index 6, leaving 6 elements on the left and none on the right.",
+      "source": {
+        "section": "The mechanism"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does quicksort with a last-element pivot take O(n²) on an already sorted array?",
+      "options": [
+        "Partitioning needs an extra O(n) array on each call",
+        "Sorted input makes every comparison swap two elements",
+        "The recursion stops early and the remaining elements are sorted by bubble sort",
+        "Each partition peels off only the pivot, so the recursion is `n` levels deep and each level still scans the remaining elements"
+      ],
+      "answer": 3,
+      "explanation": "The split is `n-1` and `0` every time, so the tree has height `n` instead of `log n`, and the comparisons add up to `(n-1) + (n-2) + ... + 1 = n(n-1)/2`.",
+      "source": {
+        "section": "Why this makes it O(n²)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How do real-world quicksort implementations avoid the sorted-input worst case, and how does that compare with merge sort?",
+      "options": [
+        "They sort the input first; after that both algorithms are guaranteed O(n log n)",
+        "They pick the pivot randomly or by median-of-three; merge sort guarantees O(n log n) on any input, while quicksort's average depends on the pivot choice",
+        "They always pick the first element instead of the last; merge sort has the same worst case",
+        "They switch to merge sort for any array larger than 32 elements"
+      ],
+      "answer": 1,
+      "explanation": "Random or median-of-three pivots make the pathological pattern very unlikely, bringing quicksort back to O(n log n) on average. Merge sort guarantees O(n log n) regardless of input.",
+      "source": {
+        "section": "Notes"
+      },
+      "reviewed": false
+    }
+  ]
+}

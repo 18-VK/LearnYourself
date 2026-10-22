@@ -1,0 +1,291 @@
+id: wpf-mvvm
+title: 'WPF & MVVM bindings'
+summary: 'Binding modes and UpdateSourceTrigger, DataContext, ElementName and RelativeSource, MVVM roles, ICommand / RelayCommand and CommandManager, INotifyPropertyChanged, ObservableCollection and validation, converters, styles, templates and resources, layout panels and UI-thread rules.'
+groups:
+  - title: Binding modes
+    note: 'Source = usually the ViewModel; target = a dependency property on a UI element.'
+    table:
+      columns: [Mode, Flow, Use for]
+      from: { lesson: data-binding, section: 'Type of Bindings' }
+      rows:
+        - cells: ['`TwoWay`', 'source ⇄ target', 'Input controls: `TextBox.Text`, `CheckBox`, `ComboBox`, `SelectedItem`']
+          from: { lesson: data-binding, section: '1. TwoWay' }
+        - cells: ['`OneWay`', 'source → target', 'Read-only UI that reflects VM changes (status text, labels)']
+          from: { lesson: data-binding, section: '2. OneWay' }
+        - cells: ['`OneTime`', 'source → target once, when the binding is created', 'Values that never change (app title); no change listeners, slightly faster']
+          from: { lesson: data-binding, section: '3. OneTime' }
+        - cells: ['`OneWayToSource`', 'target → source only', 'Rare push-only cases, e.g. a slider that only feeds the VM']
+          from: { lesson: data-binding, section: '4. OneWayToSource' }
+    items:
+      - term: 'Default mode'
+        desc: 'Comes from the dependency property''s metadata: many default to `OneWay`, `TextBox.Text` to `TwoWay`. Set `Mode=` when you depend on it.'
+        from: { lesson: data-binding, section: 'Type of Bindings' }
+      - term: '`UpdateSourceTrigger`'
+        desc: '`PropertyChanged` = every change (live search) · `LostFocus` = on focus loss (the default for `TextBox.Text`) · `Explicit` = only when you call `BindingExpression.UpdateSource()`.'
+        code: |
+          <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+        lang: xml
+        from: { lesson: data-binding, section: 'UpdateSourceTrigger — important companion to Mode' }
+      - term: 'Pitfalls'
+        desc: 'No `INotifyPropertyChanged` → UI never sees VM changes · assuming a property defaults to TwoWay · TwoWay + `PropertyChanged` can be chatty · bindings inside a `ControlTemplate` need `TemplatedParent` / `RelativeSource`.'
+        from: { lesson: data-binding, section: 'Common pitfalls' }
+
+  - title: Binding sources
+    items:
+      - term: '`DataContext`'
+        desc: 'The object bindings resolve paths against by default: "where should this UI get its data?" `{Binding Name}` reads `Name` from the current DataContext; set it on the window/user control.'
+        code: |
+          InitializeComponent();
+          DataContext = new MainViewModel();
+        lang: csharp
+        from: { lesson: data-binding, section: 'DataContext in WPF — explained simply (with clear examples)' }
+      - term: '`ElementName`'
+        desc: 'Bind to another named control in the same XAML scope, no ViewModel involved.'
+        code: |
+          <TextBox x:Name="txtUser" Width="200"/>
+          <TextBlock Text="{Binding Text, ElementName=txtUser}" />
+        lang: xml
+        from: { lesson: data-binding, section: '1. What is ElementName binding?' }
+      - term: 'Parent VM command inside a template'
+        desc: 'Inside a `DataTemplate` the DataContext is the item (`User`), so reach the window/list VM through an ancestor and pass the row with `CommandParameter="{Binding}"`.'
+        code: |
+          <Button Content="Delete"
+                  Command="{Binding DataContext.DeleteUserCommand,
+                            RelativeSource={RelativeSource AncestorType=ListBox}}"
+                  CommandParameter="{Binding}" />
+        lang: xml
+        from: { lesson: data-binding, section: 'Explanation for both' }
+      - term: '`StringFormat`'
+        desc: '`{Binding Rating, StringFormat=Rating sent to VM: {0}}` formats the value in XAML.'
+        from: { lesson: data-binding, section: '2. MainWindow XAML (UI) sample' }
+    table:
+      columns: [RelativeSource mode, Binds to]
+      from: { lesson: data-binding, section: '2. What is RelativeSource?' }
+      rows:
+        - ['`Self`', 'The same control, e.g. `Width="{Binding Height, RelativeSource={RelativeSource Self}}"`']
+        - ['`FindAncestor` (`AncestorType=Window`)', 'A parent / ancestor, typically its `DataContext.SomeCommand`']
+        - ['`TemplatedParent`', 'The control a `ControlTemplate` is applied to (`ElementName` doesn''t work there)']
+        - ['`PreviousData`', 'Previous item in an `ItemsControl` (rare)']
+
+  - title: MVVM roles
+    items:
+      - term: 'Model — what the app KNOWS'
+        desc: 'Business data, domain rules, business validation, entities/DTOs. No UI state, commands or `PropertyChanged`.'
+        from: { lesson: mvvm, section: 'Model — "What the app KNOWS"' }
+      - term: 'View — what the user SEES'
+        desc: 'XAML layout, styles, templates, bindings, converters, visual states. No business logic, database calls or if/else decisions; click handlers mostly not.'
+        from: { lesson: mvvm, section: 'View — "What the user SEES"' }
+      - term: 'ViewModel — how the screen BEHAVES'
+        desc: 'UI state, bindable properties, `ICommand`s, UI-level validation, computed properties (`CanSave => Amount > 0`), talks to services. No UI elements, XAML, colors or fonts.'
+        from: { lesson: mvvm, section: 'ViewModel — "How the screen BEHAVES" 🧠' }
+      - term: 'Interview line'
+        desc: 'Model holds data, View displays it, ViewModel controls behavior; they communicate via bindings and commands, not references.'
+        from: { lesson: mvvm, section: 'Interview-ready summary ⭐' }
+      - term: 'Separation mistakes'
+        desc: 'Logic in the View (`Click="if(User.IsAdmin) Save()"`) · UI in the ViewModel (`MessageBox.Show("Saved!")`) · business logic in a converter (role check from the DB).'
+        from: { lesson: mvvm, section: 'Common MVVM separation mistakes ❌' }
+      - term: 'Code-behind may contain'
+        desc: '`InitializeComponent()`, setting `DataContext`, view-only behavior, UI events binding can''t express, window lifecycle. Not queries, calculations, validation, permissions or save/delete logic.'
+        from: { lesson: converters-and-code-behind, section: '1️⃣ What code-behind is allowed to contain ✅' }
+      - term: 'Dialogs from a ViewModel'
+        desc: 'Inject an `IDialogService` (message boxes, confirmations, file open/save, custom modal windows) instead of touching WPF windows directly.'
+        from: { lesson: dialog-service-and-message-bus, section: 'When to use IDialogService' }
+      - term: 'Cross-ViewModel messages'
+        desc: 'A singleton message bus for background → UI (autosave status), window → window, service → ViewModel (sync progress) and global events (logout, shutdown).'
+        from: { lesson: dialog-service-and-message-bus, section: 'When do you NEED a MessageBus in WPF?' }
+    table:
+      columns: [Aspect, Model, ViewModel]
+      from: { lesson: mvvm, section: 'ViewModel vs Model (interview favorite)' }
+      rows:
+        - ['Purpose', 'Business data', 'UI behavior']
+        - ['Has `PropertyChanged`', '❌', '✔']
+        - ['Used in UI', 'Indirect', 'Direct']
+        - ['Testable', '✔', '✔']
+
+  - title: Commands
+    items:
+      - term: '`ICommand`'
+        desc: '`CanExecute(object)` enables/disables the control · `Execute(object)` runs the action · `CanExecuteChanged` tells the UI to re-check.'
+        code: |
+          public interface ICommand
+          {
+              bool CanExecute(object parameter);
+              void Execute(object parameter);
+              event EventHandler CanExecuteChanged;
+          }
+        lang: csharp
+        from: { lesson: commands, section: 'ICommand — the interface (what matters)' }
+      - term: '`RelayCommand` / `DelegateCommand`'
+        desc: 'Reusable `ICommand` taking an `Action execute` and optional `Func<bool> canExecute`; `RelayCommand<T>` takes `Action<T>` / `Predicate<T>` for a typed parameter.'
+        from: { lesson: commands, section: 'RelayCommand / DelegateCommand' }
+      - term: 'Hooking into `CommandManager`'
+        code: |
+          public event EventHandler CanExecuteChanged
+          {
+              add    { CommandManager.RequerySuggested += value; }
+              remove { CommandManager.RequerySuggested -= value; }
+          }
+        lang: csharp
+        from: { lesson: commands, section: '4️⃣ Where does CommandManager fit in MVVM?' }
+      - term: '`CommandManager`'
+        desc: 'WPF infrastructure that re-evaluates `CanExecute()` on focus changes, mouse clicks, window (de)activation and menu opening.'
+        from: { lesson: commands, section: '3️⃣ What triggers CommandManager automatically?' }
+      - term: '`CommandManager.InvalidateRequerySuggested()`'
+        desc: 'Forces every command to re-check NOW, e.g. after a `SelectedTransaction` change that raised no keyboard/mouse event.'
+        from: { lesson: commands, section: 'Why do we call InvalidateRequerySuggested()?' }
+      - term: 'Manual `RaiseCanExecuteChanged()`'
+        desc: 'Purer alternative: the command owns `CanExecuteChanged` and the VM raises it when the relevant state changes.'
+        code: |
+          public void RaiseCanExecuteChanged()
+              => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        lang: csharp
+        from: { lesson: commands, section: '9️⃣ Alternative (manual approach – purer MVVM)' }
+      - term: '`CommandParameter`'
+        desc: 'Extra value passed to `Execute()` / `CanExecute()`. Row actions use `CommandParameter="{Binding}"` (the current row) instead of depending on `SelectedItem`.'
+        from: { lesson: command-parameter-and-async-commands, section: 'SelectedItem vs CommandParameter (INTERVIEW FAVORITE)' }
+      - term: 'Async command rules'
+        desc: 'Disable the button while running (`_isExecuting`), no `async void` in VM methods, no `Task.Run` for I/O, no `MessageBox` in the VM, no `CommandManager` with async commands.'
+        from: { lesson: command-parameter-and-async-commands, section: '6️⃣ Common mistakes ❌' }
+    table:
+      columns: [Aspect, CommandManager, Manual]
+      from: { lesson: commands, section: 'Comparison: CommandManager vs Manual (IMPORTANT)' }
+      rows:
+        - ['Control', 'Implicit', 'Explicit']
+        - ['Performance', 'Global refresh', 'Local']
+        - ['Async friendly', '❌', '✔']
+        - ['Testability', 'Hard', 'Easy']
+        - ['Predictability', 'Medium', 'High']
+        - ['Recommended today', '❌', '✔']
+
+  - title: Notifications, collections & validation
+    items:
+      - term: '`INotifyPropertyChanged`'
+        desc: 'Raise `PropertyChanged` from each setter so OneWay/TwoWay bindings refresh; `[CallerMemberName]` fills in the property name, so no string typos.'
+        code: |
+          public event PropertyChangedEventHandler PropertyChanged;
+
+          private void OnPropertyChanged([CallerMemberName] string propName = null)
+              => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+        lang: csharp
+        from: { lesson: data-binding, section: '1. ViewModel' }
+      - term: '`nameof(Rating)`'
+        desc: 'Compile-time name string, for raising a change for another property: `OnPropertyChanged(nameof(CanSave));`.'
+        from: { lesson: data-binding, section: 'What is nameof?' }
+      - term: '`ObservableCollection<T>`'
+        desc: 'Implements `INotifyCollectionChanged`: Add / Remove / Clear / Replace update the bound list. `List<T>` never notifies the UI.'
+        from: { lesson: observablecollection-and-validation, section: 'Why ObservableCollection<T> works ✅' }
+      - term: 'Item edits need INPC on the item'
+        desc: '`Transactions[0].Amount = 500;` changes an item, not the collection; the item class must implement `INotifyPropertyChanged` (required for an editable DataGrid).'
+        from: { lesson: observablecollection-and-validation, section: '❌ It does NOT notify when:' }
+      - term: 'Replacing the whole collection'
+        desc: 'Assigning a new `ObservableCollection` only updates the UI if the property raises `PropertyChanged`; otherwise `Clear()` and re-`Add` the items.'
+        from: { lesson: observablecollection-and-validation, section: 'Replace entire collection (IMPORTANT)' }
+      - term: 'UI thread only'
+        desc: 'Modify an `ObservableCollection` (and anything UI-bound) on the UI thread. A background thread crashes with "The calling thread cannot access this object".'
+        from: { lesson: observablecollection-and-validation, section: 'Threading rule (VERY IMPORTANT)' }
+      - term: '`Dispatcher.Invoke` vs direct call'
+        desc: '`Application.Current.Dispatcher.Invoke(() => handler(message));` marshals to the UI thread (safe for background → UI); `handler?.Invoke(message);` runs on the current thread.'
+        from: { lesson: dialog-service-and-message-bus, section: 'What each line actually does' }
+      - term: '`INotifyDataErrorInfo`'
+        desc: 'Modern MVVM validation: `HasErrors`, `GetErrors(propertyName)`, `ErrorsChanged`; async validation, several errors per property, no UI logic in the View.'
+        from: { lesson: observablecollection-and-validation, section: '3️⃣ Best practice (Modern MVVM) — INotifyDataErrorInfo' }
+    table:
+      columns: [Validation approach, Logic lives in, MVVM friendly]
+      from: { lesson: observablecollection-and-validation, section: '2️⃣ Validation approaches (most → least used)' }
+      rows:
+        - ['`INotifyDataErrorInfo`', 'ViewModel', '⭐⭐⭐⭐⭐']
+        - ['`IDataErrorInfo`', 'Model/ViewModel', '⭐⭐⭐⭐']
+        - ['`ValidationRules`', 'XAML', '⭐⭐']
+        - ['Exceptions', 'Model', '⭐']
+
+  - title: Value converters
+    items:
+      - term: '`IValueConverter`'
+        desc: 'Translates VM data into UI-friendly values and back: `Convert` = ViewModel → UI, `ConvertBack` = UI → ViewModel (TwoWay only).'
+        from: { lesson: converters-and-code-behind, section: 'Converter (IValueConverter)' }
+      - term: 'bool → Visibility'
+        code: |
+          <Window.Resources>
+              <local:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+          </Window.Resources>
+
+          <TextBlock Text="Admin Panel"
+                     Visibility="{Binding IsAdmin,
+                                  Converter={StaticResource BoolToVisibility}}" />
+        lang: xml
+        from: { lesson: converters-and-code-behind, section: 'Most common example: bool → Visibility ⭐' }
+      - term: '`ConverterParameter`'
+        desc: '`ConverterParameter=Invert` arrives as `parameter`, e.g. `parameter?.ToString() == "Invert"`.'
+        from: { lesson: converters-and-code-behind, section: 'Converter with Parameter (advanced but useful)' }
+      - term: 'When `ConvertBack` matters'
+        desc: 'TwoWay bindings and user-input editing need it; OneWay / read-only UI don''t (return `Binding.DoNothing`).'
+        from: { lesson: converters-and-code-behind, section: 'When to use ConvertBack?' }
+      - term: 'Converter mistakes'
+        desc: 'DB/API calls in a converter · changing ViewModel state · throwing exceptions · forgetting `Binding.DoNothing` in `ConvertBack`.'
+        from: { lesson: converters-and-code-behind, section: 'Common mistakes ❌' }
+
+  - title: Styles, templates & resources
+    table:
+      columns: [Tool, Changes, Use when]
+      from: { lesson: control-and-data-templates, section: 'Style VS ContentTemplate' }
+      rows:
+        - cells: ['`Style`', 'Property values via `Setter`s, plus `Triggers`; implicit or keyed', 'Reusing colors, fonts, padding: try this first']
+          from: { lesson: styles-and-resources, section: 'Simple Summary (Remember This)' }
+        - cells: ['`ControlTemplate`', 'The control''s whole visual tree (Border, Grid, where content goes)', 'Re-skinning Button/TextBox when a Style isn''t enough']
+          from: { lesson: control-and-data-templates, section: 'What is ControlTemplate?' }
+        - cells: ['`DataTemplate`', 'How a *data object* is displayed', 'Items in ListBox, ComboBox, ItemsControl, DataGrid cells']
+          from: { lesson: control-and-data-templates, section: 'ControlTemplate vs DataTemplate (Quick Compare)' }
+    items:
+      - term: '`ContentPresenter`'
+        desc: 'Placeholder inside a `ControlTemplate` where the control''s `Content` appears; without it the content is lost.'
+        from: { lesson: control-and-data-templates, section: 'What is ContentPresenter?' }
+      - term: '`TemplateBinding`'
+        desc: 'Lightweight binding, only inside a `ControlTemplate`, from the control''s own properties to the template visuals: `Background="{TemplateBinding Background}"`.'
+        from: { lesson: control-and-data-templates, section: 'TemplateBinding Explained (IMPORTANT)' }
+      - term: 'Implicit DataTemplate'
+        desc: 'Omit `x:Key` and set `DataType="{x:Type local:Person}"`: applied wherever a `Person` is displayed.'
+        from: { lesson: control-and-data-templates, section: 'Auto-applied DataTemplate (by data type)' }
+      - term: 'Resource lookup'
+        desc: 'Current control → parent controls → Window → Application → System; the closest resource wins (a Window `ThemeColor` overrides the Application one).'
+        from: { lesson: styles-and-resources, section: 'Note : How Resource Lookup Works (IMPORTANT)' }
+      - term: '`StaticResource` vs `DynamicResource`'
+        desc: 'Static: resolved once at load, faster, can''t change. Dynamic: updates at runtime, slightly slower; use for light/dark themes.'
+        from: { lesson: styles-and-resources, section: 'StaticResource vs DynamicResource (Quick Tip)' }
+      - term: 'Merged dictionaries'
+        code: |
+          <ResourceDictionary.MergedDictionaries>
+              <ResourceDictionary Source="Resources/Colors.xaml"/>
+              <ResourceDictionary Source="Resources/ButtonStyles.xaml"/>
+              <ResourceDictionary Source="Resources/TextStyles.xaml"/>
+          </ResourceDictionary.MergedDictionaries>
+        lang: xml
+        from: { lesson: resource-dictionaries-and-sizing, section: 'MergedDictionaries (IMPORTANT)' }
+      - term: 'Resource best practices'
+        desc: 'Separate dictionaries by purpose, keep `App.xaml` small, meaningful unique keys, `DynamicResource` for themes, `BasedOn` for style reuse. Don''t forget to merge a dictionary.'
+        from: { lesson: wpf-summary, section: 'Best Practices (REAL PROJECTS)' }
+      - term: 'Dependency property vs CLR property'
+        desc: 'DPs (`DependencyProperty.Register`, owner inherits `DependencyObject`) support binding *targets*, styles, triggers, animation and value inheritance: use them in custom controls. ViewModels and models use CLR properties + `INotifyPropertyChanged`.'
+        from: { lesson: dependency-properties, section: 'Dependency vs CLR Property' }
+
+  - title: Layout panels
+    note: 'Two passes: Measure (how big children want to be), then Arrange (where they go).'
+    table:
+      columns: [Panel, Arranges children, Typical use]
+      from: { lesson: layout-system, section: 'Layout system — quick overview' }
+      rows:
+        - cells: ['`Grid`', 'Rows/columns sized `Auto`, pixels or star (`*`, `2*`); children use `Grid.Row`, `Grid.Column`, `Grid.RowSpan`, `Grid.ColumnSpan`', 'Forms, CRUD screens, dashboards: "if confused, use Grid"']
+          from: { lesson: layout-system, section: 'Grid (the workhorse)' }
+        - cells: ['`StackPanel`', 'One line, `Orientation` vertical/horizontal; children get infinite space in the stack direction', 'Login forms, menus, button groups; not large resizable forms']
+          from: { lesson: layout-system, section: 'StackPanel' }
+        - cells: ['`DockPanel`', '`DockPanel.Dock` Top/Bottom/Left/Right; last child fills the rest (`LastChildFill=true`)', 'Main window shell, menu + status bar']
+          from: { lesson: layout-system, section: 'DockPanel' }
+        - cells: ['`WrapPanel`', 'Left to right, wraps when space runs out (`ItemWidth`, `ItemHeight`)', 'Thumbnails, tags, cards; not huge lists (no virtualization)']
+          from: { lesson: layout-system, section: 'WrapPanel' }
+        - cells: ['`Canvas`', 'Absolute positioning at explicit `Canvas.Left` / `Canvas.Top` (or `Canvas.Right` / `Canvas.Bottom`)', '—']
+          from: { lesson: layout-system, section: 'Canvas' }
+        - cells: ['`UniformGrid`', 'Equal-size cells', 'Calculator keypad, icon grid']
+          from: { lesson: layout-system, section: 'UniformGrid' }
+    items:
+      - term: '`SharedSizeGroup`'
+        desc: 'Lines up columns (or rows) across separate Grids, e.g. labels in stacked forms: `SharedSizeGroup` on the column definitions, `SharedSizeScope` when defining the Grid.'
+        from: { lesson: layout-system, section: 'Grid (the workhorse)' }

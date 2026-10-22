@@ -1,0 +1,73 @@
+{
+  "lesson": "learning-paths-and-resources",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Your goal is security and cryptography. Which topics does the learning-paths table tell you to focus on?",
+      "options": [
+        "Trigonometry, linear algebra, geometry, quaternions and 3D math",
+        "Number theory, modular arithmetic, probability and finite fields",
+        "Linear algebra, calculus, statistics and optimization",
+        "Big-O, percentiles and queueing basics"
+      ],
+      "answer": 1,
+      "explanation": "The table maps security/cryptography to number theory, modular arithmetic, probability and finite fields. The other options are the game dev, data science/ML and systems/performance paths.",
+      "source": {
+        "section": "Suggested Learning Paths"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which goal does the table pair with Big-O, statistics (percentiles), probability and queueing basics?",
+      "options": [
+        "Game dev / graphics",
+        "Interviews / competitive programming",
+        "Systems / performance engineering",
+        "Data science / ML / AI"
+      ],
+      "answer": 2,
+      "explanation": "Systems/performance engineering focuses on Big-O, statistics such as percentiles, probability and queueing basics; interviews and competitive programming focus on Levels 2–4 (combinatorics, DP, number theory, graphs).",
+      "source": {
+        "section": "Suggested Learning Paths"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put these topics in the order the quick learning sequence suggests.",
+      "steps": [
+        "Binary, bitwise operations, modulo, logs",
+        "Big-O and recurrences",
+        "Probability and statistics basics",
+        "Linear algebra",
+        "Calculus"
+      ],
+      "explanation": "The quick version starts with binary, bitwise operations, modulo and logs, moves through Big-O and recurrences and probability/statistics basics, and reaches linear algebra and then calculus before advanced topics.",
+      "source": {
+        "section": "Suggested Order (Quick Version)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which resource does the page recommend for visual intuition about linear algebra, calculus and neural networks?",
+      "options": [
+        "3Blue1Brown (YouTube)",
+        "*Concrete Mathematics* (Graham, Knuth, Patashnik)",
+        "Project Euler",
+        "*Introduction to Algorithms* (CLRS)"
+      ],
+      "answer": 0,
+      "explanation": "3Blue1Brown is listed for visual intuition for linear algebra, calculus and neural networks. *Concrete Mathematics* is an advanced discrete math classic, CLRS is math applied to algorithms, and Project Euler is listed under practice.",
+      "source": {
+        "section": "Free Resources"
+      },
+      "reviewed": false
+    }
+  ]
+}

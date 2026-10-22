@@ -1,0 +1,81 @@
+{
+  "lesson": "jwk-jwks-and-pkce",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A JWT header carries a `kid`. How does an API use it when validating the token?",
+      "options": [
+        "It decrypts the token payload with the `kid`",
+        "It finds the public key in the JWKS array with the matching `kid` and verifies the signature with it",
+        "It sends the `kid` back to the authorization server to ask whether the token is valid",
+        "It compares the `kid` with the user's ID to check who owns the token"
+      ],
+      "answer": 1,
+      "explanation": "The authorization server puts the `kid` in the JWT header so the client knows which key signed it; the API fetches the JWKS and uses the key with that `kid` to verify the signature.",
+      "source": { "section": "JWKS" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the PKCE flow in order.",
+      "steps": [
+        "The app generates a random `code_verifier`",
+        "The app hashes the verifier with SHA-256 and base64url-encodes it to get the `code_challenge`",
+        "The app sends the `code_challenge` with the authorization request, and the server records it",
+        "The server authenticates the user and returns a temporary authorization code",
+        "The app sends the code together with the original `code_verifier` to the token endpoint",
+        "The server hashes the verifier, compares it with the stored challenge and issues the access token"
+      ],
+      "explanation": "Only the hash travels in the authorization request; the raw verifier is revealed at token exchange, so an intercepted code is useless without it.",
+      "source": { "section": "PKCE" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which statement correctly contrasts `client_secret` with the PKCE `code_verifier`?",
+      "options": [
+        "`client_secret` is a temporary per-login value; `code_verifier` is created once at client registration",
+        "Both are long-lived credentials that must be kept out of the browser",
+        "`client_secret` is a permanent application credential; `code_verifier` is a temporary per-login credential",
+        "`code_verifier` authenticates the client application; `client_secret` protects against code interception"
+      ],
+      "answer": 2,
+      "explanation": "The secret is generated once and authenticates the client app; the verifier is new for every login attempt and protects against authorization code interception.",
+      "source": { "section": "client_secret vs PKCE code_verifier" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You are building an Angular frontend. Which approach does the lesson recommend, and why?",
+      "options": [
+        "A client secret, because Angular can store it in an environment file",
+        "PKCE with a public client, because the JS bundle is fully visible in devtools so a secret can't be hidden",
+        "The Client Credentials grant, because no user is involved",
+        "No protection is needed, because the redirect happens inside the browser"
+      ],
+      "answer": 1,
+      "explanation": "A client secret only works if the client can keep it confidential. SPAs can't, so they use PKCE with `ClientType` = `Public`.",
+      "source": { "section": "PKCE — for public clients" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A server-rendered MVC app can keep a client secret. Does that make PKCE pointless for it?",
+      "options": [
+        "Yes, PKCE is only allowed for public clients",
+        "Yes, a client secret already proves the redeemer started the login",
+        "No, but only mobile apps benefit from combining them",
+        "No, they solve different problems, and many setups require PKCE on every client"
+      ],
+      "answer": 3,
+      "explanation": "The secret authenticates who the client is, while PKCE proves the redeemer is the party that started the flow. The public/confidential split only tells you whether you also need a secret.",
+      "source": { "section": "PKCE vs client_secret — when to use what?" },
+      "reviewed": false
+    }
+  ]
+}

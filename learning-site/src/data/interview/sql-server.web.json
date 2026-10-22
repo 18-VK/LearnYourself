@@ -1,0 +1,2021 @@
+{
+  "topic": "sql-server",
+  "questions": [
+    {
+      "id": "sql-server-inner-vs-outer-joins",
+      "topic": "sql-server",
+      "subtopic": "joins",
+      "difficulty": "junior",
+      "question": "What is the difference between INNER JOIN, LEFT JOIN, RIGHT JOIN, FULL OUTER JOIN and CROSS JOIN?",
+      "shortAnswer": "An INNER JOIN returns only the row pairs that satisfy the ON condition. Outer joins also keep the unmatched rows from the left (LEFT), the right (RIGHT) or both tables (FULL) and fill the missing side with NULLs. A CROSS JOIN has no condition and returns every combination of rows (the Cartesian product).",
+      "answer": "**Key points**\n\n- **INNER** — matching pairs only; unmatched rows from both sides are discarded. Plain `JOIN` means INNER.\n- **LEFT [OUTER]** — every left row appears at least once; right-side columns are NULL when nothing matches.\n- **RIGHT [OUTER]** — the mirror image of LEFT. Most teams swap the table order and write a LEFT JOIN instead, because it reads more naturally.\n- **FULL [OUTER]** — all rows from both sides, matched where possible and NULL-padded otherwise.\n- **CROSS JOIN** — every left row paired with every right row (m × n rows), no ON clause.\n\n**Detail**\n\n- The NULLs an outer join adds look exactly like NULLs stored in the data. To ask \"was there a match?\", test a column that can't be NULL in the right table, usually its key: `LEFT JOIN … WHERE r.Id IS NULL` is the anti-join pattern.\n- NULL join keys never match each other, because `NULL = NULL` evaluates to unknown. Rows with a NULL key come back only through an outer join.\n- ON vs WHERE: for an inner join it makes no difference where a one-table predicate goes. For an outer join, ON is applied *before* the unmatched rows are padded with NULLs and WHERE is applied *after*, so the results differ (the classic \"LEFT JOIN turned into INNER JOIN\" bug).\n- Microsoft recommends writing join conditions in the FROM clause (ANSI syntax). Outer and cross joins can only be written there.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Every customer, with their orders if they have any\nSELECT c.CustomerId, c.Name, o.OrderId\nFROM dbo.Customers AS c\nLEFT JOIN dbo.Orders AS o\n    ON o.CustomerId = c.CustomerId;\n\n-- Customers who have never ordered (anti-join on the right table's key)\nSELECT c.CustomerId, c.Name\nFROM dbo.Customers AS c\nLEFT JOIN dbo.Orders AS o\n    ON o.CustomerId = c.CustomerId\nWHERE o.OrderId IS NULL;"
+      },
+      "pitfalls": [
+        "Saying RIGHT JOIN returns \"only the right table\". It returns every right row plus the matching left rows.",
+        "Expecting rows whose join key is NULL to match each other in an inner join.",
+        "Testing a nullable right-side column in the anti-join WHERE clause: a real match whose value happens to be NULL then looks like \"no match\".",
+        "Creating an accidental CROSS JOIN (old comma syntax with a forgotten WHERE condition) and multiplying the row count."
+      ],
+      "followUps": [
+        "How would you find rows in A that have no match in B: LEFT JOIN/IS NULL, NOT EXISTS or EXCEPT?",
+        "What changes if you move a right-table filter from ON to WHERE in a LEFT JOIN?",
+        "When is a FULL OUTER JOIN useful in practice, for example to reconcile two lists?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/joins",
+          "title": "Joins (SQL Server) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql",
+          "title": "FROM clause plus JOIN, APPLY, PIVOT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/is-distinct-from-transact-sql",
+          "title": "IS [NOT] DISTINCT FROM (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "joins"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "IS [NOT] DISTINCT FROM (to make NULL keys match) exists only from SQL Server 2022 (16.x) and in Azure SQL Database / Managed Instance; older versions need `(a.Col = b.Col OR (a.Col IS NULL AND b.Col IS NULL))`.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-self-join",
+      "topic": "sql-server",
+      "subtopic": "joins",
+      "difficulty": "junior",
+      "question": "What is a self join? Write a query that lists each employee with their manager's name.",
+      "shortAnswer": "A self join is an ordinary join in which both sides are the same table, told apart by two aliases, so one copy plays the \"child\" and the other the \"parent\". The classic example is an Employees table whose ManagerId column points back to EmployeeId.",
+      "answer": "**Key points**\n\n- It isn't a separate join type: it's an INNER or LEFT join of a table to itself. Aliases are mandatory so SQL Server can tell the two copies apart.\n- Use a LEFT JOIN when the top of the hierarchy (the row with `ManagerId IS NULL`) must still appear.\n- A self join walks exactly one level. For \"everyone under this manager at any depth\", use a recursive CTE.\n\n**Detail**\n\nTypical uses are employee → manager, category → parent category, and comparing rows of the same table with each other. When you look for pairs (for example, products with the same price), join on `a.Id < b.Id`: that stops a row pairing with itself and lists each pair once instead of twice.",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT e.EmployeeId,\n       e.Name AS Employee,\n       m.Name AS Manager\nFROM dbo.Employees AS e\nLEFT JOIN dbo.Employees AS m            -- same table, second alias\n    ON m.EmployeeId = e.ManagerId;      -- the CEO has no manager -> Manager is NULL\n\n-- Pairs of products with the same price, each pair listed once\nSELECT a.ProductId, b.ProductId AS OtherProductId, a.Price\nFROM dbo.Products AS a\nJOIN dbo.Products AS b\n    ON a.Price = b.Price\n   AND a.ProductId < b.ProductId;"
+      },
+      "pitfalls": [
+        "Using an INNER JOIN and silently losing the root rows that have no manager.",
+        "Writing the condition the wrong way round (`m.ManagerId = e.EmployeeId`), which lists each employee's direct reports instead of their manager.",
+        "Using `<>` instead of `<` in pair queries, which returns every pair twice."
+      ],
+      "followUps": [
+        "How would you list the full management chain above one employee?",
+        "How do you find employees who earn more than their manager?",
+        "What other ways are there to store a hierarchy (hierarchyid, closure table)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql",
+          "title": "FROM clause plus JOIN, APPLY, PIVOT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/joins",
+          "title": "Joins (SQL Server) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "joins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-cross-apply-vs-outer-apply",
+      "topic": "sql-server",
+      "subtopic": "joins",
+      "difficulty": "mid",
+      "question": "What are CROSS APPLY and OUTER APPLY, and when would you use them instead of a JOIN?",
+      "shortAnswer": "APPLY evaluates the right-hand table expression once for each row of the left side, so the right side can use the current left row's columns, which a normal JOIN can't do. CROSS APPLY drops left rows for which the right side returns nothing (like an inner join); OUTER APPLY keeps them with NULLs (like a left join).",
+      "answer": "**Key points**\n\n- The right side is usually a table-valued function or a derived table that refers to columns of the current left row.\n- CROSS APPLY behaves like an inner join; OUTER APPLY behaves like a left outer join.\n- Common uses:\n  - top-N per group (`TOP (n) … ORDER BY` inside the APPLY)\n  - calling a table-valued function per row, for example `sys.dm_exec_query_plan(cp.plan_handle)`\n  - turning columns into rows with a `VALUES` list\n\n**Detail**\n\nThe documentation describes APPLY logically: SQL Server evaluates the right side for each left row and combines the per-row results with a UNION ALL. The optimizer still chooses the physical plan. With an index such as `Orders (CustomerId, OrderDate DESC)`, the top-N APPLY below becomes one small seek per customer. A `ROW_NUMBER()` version of the same query has to number every order first. Which one is faster depends on how many groups there are and how many rows each group has, so measure both.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Latest 3 orders per customer, keeping customers with no orders\nSELECT c.CustomerId, c.Name, x.OrderId, x.OrderDate\nFROM dbo.Customers AS c\nOUTER APPLY (\n    SELECT TOP (3) o.OrderId, o.OrderDate\n    FROM dbo.Orders AS o\n    WHERE o.CustomerId = c.CustomerId     -- uses the outer row\n    ORDER BY o.OrderDate DESC\n) AS x;\n\n-- A table-valued function called once per cached plan\nSELECT cp.plan_handle, qp.query_plan\nFROM sys.dm_exec_cached_plans AS cp\nCROSS APPLY sys.dm_exec_query_plan(cp.plan_handle) AS qp;"
+      },
+      "pitfalls": [
+        "Using CROSS APPLY when every left row must appear. Customers without orders silently disappear; OUTER APPLY keeps them.",
+        "Leaving out ORDER BY inside the `TOP` subquery, which makes \"latest N\" an arbitrary N.",
+        "Calling an expensive multi-statement function inside APPLY over millions of rows and blaming APPLY for the slowness."
+      ],
+      "followUps": [
+        "How would you write top-N per group with ROW_NUMBER, and which version would you choose?",
+        "What index supports the APPLY version of top-N per group?",
+        "How does OUTER APPLY differ from a LEFT JOIN to a derived table?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql",
+          "title": "FROM clause plus JOIN, APPLY, PIVOT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "joins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-join-row-multiplication",
+      "topic": "sql-server",
+      "subtopic": "joins",
+      "difficulty": "mid",
+      "question": "After adding a JOIN, my query returns more rows and the SUM totals are inflated. Why, and how do you fix it?",
+      "shortAnswer": "A join returns one row for every matching pair, so joining to a table with several rows per key repeats the parent row once per match (one-to-many fan-out). An aggregate computed after that join counts the same value several times. Fix it by aggregating the child table before the join, by using EXISTS when you only need a yes/no check, or by joining on the full key.",
+      "answer": "**Key points**\n\n- An inner join returns all matching pairs of rows, so one order with five order lines becomes five rows.\n- Joining two independent child tables to the same parent multiplies again: 5 lines × 3 payments = 15 rows per order, and both SUMs come out wrong.\n- Fixes:\n  - pre-aggregate each child table in a derived table, CTE or APPLY, then join at the parent's grain\n  - use `EXISTS` when you only need to know that a child row exists\n  - check that the join uses the *complete* key (composite keys are easy to half-join)\n- `DISTINCT` hides the symptom without fixing the cause, and `SUM(DISTINCT x)` is wrong whenever two genuine values happen to be equal.\n\n**Detail**\n\nTo find the culprit, count the rows per key on each side (`GROUP BY key HAVING COUNT(*) > 1`). When the fan-out is what you want (listing order lines), only aggregate columns that belong at that grain.",
+      "code": {
+        "lang": "sql",
+        "source": "-- WRONG: both totals are multiplied by the number of rows on the other child table\nSELECT o.OrderId, SUM(l.Amount) AS LinesTotal, SUM(p.Amount) AS Paid\nFROM dbo.Orders AS o\nJOIN dbo.OrderLines AS l ON l.OrderId = o.OrderId\nJOIN dbo.Payments   AS p ON p.OrderId = o.OrderId\nGROUP BY o.OrderId;\n\n-- RIGHT: aggregate each child at the order grain first\nSELECT o.OrderId, l.LinesTotal, p.Paid\nFROM dbo.Orders AS o\nLEFT JOIN (SELECT OrderId, SUM(Amount) AS LinesTotal\n           FROM dbo.OrderLines GROUP BY OrderId) AS l ON l.OrderId = o.OrderId\nLEFT JOIN (SELECT OrderId, SUM(Amount) AS Paid\n           FROM dbo.Payments GROUP BY OrderId)   AS p ON p.OrderId = o.OrderId;"
+      },
+      "pitfalls": [
+        "Adding DISTINCT to \"remove the duplicates\" instead of finding the join that fans out.",
+        "Using `SUM(DISTINCT Amount)`, which drops amounts that are legitimately equal.",
+        "Joining on part of a composite key, for example only ProductId when the key is (ProductId, WarehouseId)."
+      ],
+      "followUps": [
+        "How do you find which join is producing the duplicate rows?",
+        "When would you use EXISTS instead of a JOIN?",
+        "How does an ORM query that includes two child collections run into the same multiplication problem?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql",
+          "title": "FROM clause plus JOIN, APPLY, PIVOT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/sum-transact-sql",
+          "title": "SUM (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "joins",
+        "aggregates-and-grouping"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-nth-highest-salary",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "junior",
+      "question": "How do you find the second (or Nth) highest salary? Give more than one approach.",
+      "shortAnswer": "The most general answer is DENSE_RANK() OVER (ORDER BY Salary DESC) in a CTE, filtered on rank = N. It handles ties and returns nothing when there is no Nth value. Alternatives are MAX with a subquery (second highest only) and OFFSET N-1 ROWS FETCH NEXT 1 ROW ONLY over the distinct salaries.",
+      "answer": "**Key points**\n\n- First pin down what \"Nth highest\" means when salaries tie. Usually it means the Nth *distinct* value (DENSE_RANK), not the Nth row (ROW_NUMBER).\n- The DENSE_RANK version works for any N and returns every employee on that salary.\n- `MAX(Salary) WHERE Salary < (SELECT MAX(Salary) …)` is the classic \"second highest\". It doesn't generalise to N.\n- `OFFSET … FETCH` needs an ORDER BY and DISTINCT values.\n\n**Detail**\n\nA window function can't be filtered in the WHERE clause of the same query, so compute the rank in a CTE or derived table and filter outside it. For \"Nth highest per department\", add `PARTITION BY DepartmentId`. An index on `Salary` (or `DepartmentId, Salary`) lets SQL Server read the values in order instead of sorting.",
+      "code": {
+        "lang": "sql",
+        "source": "DECLARE @N int = 2;\n\n-- 1) DENSE_RANK: ties share a rank, no gaps\nWITH Ranked AS (\n    SELECT EmployeeId, Name, Salary,\n           DENSE_RANK() OVER (ORDER BY Salary DESC) AS Rnk\n    FROM dbo.Employees\n)\nSELECT EmployeeId, Name, Salary\nFROM Ranked\nWHERE Rnk = @N;\n\n-- 2) Second highest only\nSELECT MAX(Salary) AS SecondHighest\nFROM dbo.Employees\nWHERE Salary < (SELECT MAX(Salary) FROM dbo.Employees);\n\n-- 3) OFFSET / FETCH over the distinct values\nSELECT DISTINCT Salary\nFROM dbo.Employees\nORDER BY Salary DESC\nOFFSET (@N - 1) ROWS FETCH NEXT 1 ROW ONLY;"
+      },
+      "pitfalls": [
+        "Using ROW_NUMBER: when two people share the top salary, \"second highest\" returns the same salary again.",
+        "`SELECT TOP (2) … ORDER BY Salary DESC` and taking the second row has the same problem with ties.",
+        "Not saying what the query returns when there is no Nth salary. The CTE returns no rows, while the MAX version returns a single NULL."
+      ],
+      "followUps": [
+        "How would you return the Nth highest salary in each department?",
+        "What is the difference between RANK, DENSE_RANK and ROW_NUMBER here?",
+        "Which index would help these queries?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/dense-rank-transact-sql",
+          "title": "DENSE_RANK (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql",
+          "title": "ORDER BY clause (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "subqueries",
+        "window-functions"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "OFFSET/FETCH and the window ranking functions are available from SQL Server 2012 (11.x); on older versions only the subquery approach works.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-union-vs-union-all",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "junior",
+      "question": "What is the difference between UNION and UNION ALL, and which should you use by default?",
+      "shortAnswer": "Both append the rows of one query to another, which needs the same number of columns, in the same order, with compatible types. UNION removes duplicate rows and UNION ALL keeps them. Use UNION ALL unless you need de-duplication, because removing duplicates is extra work for the server.",
+      "answer": "**Key points**\n\n- Rules: same number and order of columns, and compatible data types. When the types differ, the result type follows data type precedence.\n- `UNION` = de-duplicated result; `UNION ALL` = every row from every branch.\n- UNION appends *rows*; a JOIN combines *columns* from two tables into one row.\n- ORDER BY can appear only once, after the last query. Its column names come from the first (left-hand) query's select list.\n\n**Detail**\n\nTo remove duplicates, SQL Server has to compare whole rows, typically with a sort or a hash operator in the plan. When the branches can't overlap (for example, `WHERE Year = 2024` vs `WHERE Year = 2025`), UNION ALL gives the same answer for less work. EXCEPT and INTERSECT are the other set operators; they also return distinct rows.\n\nParentheses control the evaluation order when you mix UNION and UNION ALL.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Every contact email, duplicates kept (cheapest)\nSELECT Email FROM dbo.Customers\nUNION ALL\nSELECT Email FROM dbo.Suppliers;\n\n-- Distinct list, sorted once at the end\nSELECT Email FROM dbo.Customers\nUNION\nSELECT Email FROM dbo.Suppliers\nORDER BY Email;"
+      },
+      "pitfalls": [
+        "Putting ORDER BY after the first SELECT. It's a syntax error; ORDER BY goes after the last query.",
+        "Using UNION \"to be safe\" on large sets that can't overlap, and paying for de-duplication you don't need.",
+        "Assuming UNION only removes duplicates *between* branches. It also collapses duplicates *within* a single branch.",
+        "Listing columns in a different order in each branch. If the types happen to be compatible, values silently land in the wrong column."
+      ],
+      "followUps": [
+        "How do EXCEPT and INTERSECT compare with NOT EXISTS and EXISTS, especially for NULLs?",
+        "What decides the data type of a UNION result column?",
+        "How do parentheses change the result when you mix UNION and UNION ALL?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/set-operators-union-transact-sql",
+          "title": "UNION (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/set-operators-except-and-intersect-transact-sql",
+          "title": "EXCEPT and INTERSECT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql",
+          "title": "ORDER BY clause (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/joins",
+          "title": "Joins (SQL Server) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "subqueries",
+        "case-coalesce-and-union"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-recursive-cte",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "mid",
+      "question": "How does a recursive CTE work? Write one that returns an org chart with each employee's level.",
+      "shortAnswer": "A recursive CTE has an anchor member that produces the starting rows and a recursive member that references the CTE itself, combined with UNION ALL. SQL Server runs the recursive member repeatedly, each time on the rows the previous iteration produced, until it returns no rows. MAXRECURSION (default 100) stops runaway recursion.",
+      "answer": "**Key points**\n\n- Structure: anchor query, then `UNION ALL`, then the recursive member that joins the base table to the CTE name.\n- Each iteration only sees the rows produced by the previous iteration.\n- The default limit is 100 recursion levels. Change it with `OPTION (MAXRECURSION n)` (0–32767, where 0 means no limit) on the *outer* statement.\n- Not allowed in the recursive member: `SELECT DISTINCT`, `GROUP BY`, `HAVING`, `TOP`, scalar aggregation, outer joins and subqueries.\n- When the CTE isn't the first statement in a batch, the previous statement must end with a semicolon (hence the `;WITH` habit).\n\n**Detail**\n\nTypical uses are hierarchies (employees, categories, bills of materials) and generating series of numbers or dates. Cyclic data (A → B → A) loops until it hits the limit and the statement fails, so guard with a level counter or a path column. Anchor and recursive columns must have exactly the same data type, so cast computed columns such as a path to a fixed type in both parts.",
+      "code": {
+        "lang": "sql",
+        "source": "WITH OrgChart AS (\n    -- anchor: the top of the tree\n    SELECT EmployeeId, ManagerId, Name,\n           0 AS Lvl,\n           CAST(Name AS nvarchar(1000)) AS Path\n    FROM dbo.Employees\n    WHERE ManagerId IS NULL\n    UNION ALL\n    -- recursive member: direct reports of the previous level\n    SELECT e.EmployeeId, e.ManagerId, e.Name,\n           oc.Lvl + 1,\n           CAST(oc.Path + N' > ' + e.Name AS nvarchar(1000))\n    FROM dbo.Employees AS e\n    JOIN OrgChart AS oc\n        ON e.ManagerId = oc.EmployeeId\n)\nSELECT EmployeeId, Name, Lvl, Path\nFROM OrgChart\nORDER BY Path\nOPTION (MAXRECURSION 50);"
+      },
+      "pitfalls": [
+        "Anchor and recursive columns with different types (for example a varchar literal against an nvarchar column) make the statement fail. Cast both sides to the same type.",
+        "Using UNION instead of UNION ALL between the last anchor member and the recursive member; only UNION ALL is allowed there.",
+        "Putting the OPTION (MAXRECURSION …) hint inside the CTE definition. It belongs on the outer statement.",
+        "Forgetting that a cycle in the data recurses until the limit and then errors."
+      ],
+      "followUps": [
+        "How would you detect or stop cycles in the hierarchy?",
+        "How would you return all ancestors of one employee instead of all descendants?",
+        "When would hierarchyid be a better choice than a self-referencing ManagerId?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql",
+          "title": "WITH common_table_expression (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ctes"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-delete-duplicate-rows",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "mid",
+      "question": "How do you delete duplicate rows but keep one copy of each?",
+      "shortAnswer": "In a CTE, number the rows of each duplicate group with ROW_NUMBER() OVER (PARTITION BY <the columns that define a duplicate> ORDER BY <which copy to keep>). Then DELETE from the CTE where the row number is greater than 1; deleting through the CTE removes the rows from the underlying table.",
+      "answer": "**Key points**\n\n- Define \"duplicate\" explicitly: those are the PARTITION BY columns.\n- The ORDER BY decides which copy survives (lowest Id, newest ModifiedDate…). Make it unique, because ROW_NUMBER is nondeterministic when the ordering has ties.\n- `DELETE` accepts a CTE as its target, so `DELETE FROM cte WHERE rn > 1` works.\n- Afterwards, add a UNIQUE constraint or unique index so the duplicates can't come back.\n\n**Detail**\n\nRun the same CTE as a `SELECT` first and check what would be deleted. On a big table, delete in batches (a loop around `DELETE TOP (5000) …`) so each transaction, its log usage and its locks stay small. DELETE is always fully logged.",
+      "code": {
+        "lang": "sql",
+        "source": "WITH Numbered AS (\n    SELECT Id, Email, CreatedAt,\n           ROW_NUMBER() OVER (\n               PARTITION BY Email          -- what makes a row a duplicate\n               ORDER BY CreatedAt, Id      -- the oldest copy wins\n           ) AS rn\n    FROM dbo.Customers\n)\nDELETE FROM Numbered\nWHERE rn > 1;\n\n-- Stop it happening again\nALTER TABLE dbo.Customers ADD CONSTRAINT UQ_Customers_Email UNIQUE (Email);"
+      },
+      "pitfalls": [
+        "A non-unique ORDER BY inside ROW_NUMBER, so the surviving copy can change from run to run.",
+        "Copying `SELECT DISTINCT` into a new table and swapping the tables, which loses constraints, indexes and permissions.",
+        "Deleting millions of rows in one statement: one huge transaction, a growing log and long-held locks.",
+        "Skipping the unique constraint, so the duplicates come back the next week."
+      ],
+      "followUps": [
+        "How would you do it if the rows are exact duplicates with no key column at all?",
+        "How would you keep the newest row instead of the oldest?",
+        "How do you delete in batches safely?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql",
+          "title": "ROW_NUMBER (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/delete-transact-sql",
+          "title": "DELETE (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql",
+          "title": "WITH common_table_expression (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ctes",
+        "window-functions"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-cte-vs-temp-table-vs-table-variable",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "senior",
+      "question": "CTE vs temporary table vs table variable: how do they differ, and when do you pick each?",
+      "shortAnswer": "A CTE is a named query that lives for one statement and is not materialized, so every reference runs it again. A #temp table is a real table in tempdb with statistics and full index support, good for larger intermediate results reused across statements. A @table variable is scoped to its batch, has no distribution statistics, and suits small row counts.",
+      "answer": "**Key points**\n\n| | CTE | #temp table | @table variable |\n|---|---|---|---|\n| Lifetime | one statement | session or procedure | batch, procedure or function |\n| Storage | nothing stored; inlined into the query | tempdb | tempdb (not memory-only) |\n| Statistics | uses the base tables' statistics | yes | no distribution statistics |\n| Indexes | n/a | any index, created at any time | only inline (PRIMARY KEY, UNIQUE, inline INDEX) |\n| Effect of ROLLBACK | n/a | rolled back | not affected |\n\n**Detail**\n\n- **CTE**: for readability and recursion. The docs say CTE results \"aren't materialized\": two references to an expensive CTE do the work twice. Put that result in a #temp table instead.\n- **Table variable**: causes fewer recompiles, and its contents survive a ROLLBACK. Without statistics, the optimizer often plans as if it held very few rows, and the docs advise caution above about 100 rows. Queries that *modify* a table variable never get a parallel plan. From compatibility level 150, deferred compilation uses the real row count at first execution, but there are still no column statistics.\n- **#temp table**: the right choice for large or reused intermediate results that need indexes and good estimates. Its trade-off is possible recompilation.",
+      "code": {
+        "lang": "sql",
+        "source": "-- A table variable survives a rollback: handy for keeping log rows\nDECLARE @log TABLE (Msg nvarchar(200));\nBEGIN TRAN;\n    INSERT @log VALUES (N'step 1 done');\nROLLBACK;\nSELECT * FROM @log;          -- still returns the row\n\n-- A large, reused intermediate result: #temp with an index and statistics\nSELECT CustomerId, SUM(Amount) AS Total\nINTO #Totals\nFROM dbo.Orders\nGROUP BY CustomerId;\n\nCREATE CLUSTERED INDEX IX_Totals ON #Totals (CustomerId);"
+      },
+      "pitfalls": [
+        "Believing a CTE caches its result. Referencing it twice evaluates it twice.",
+        "Believing table variables live only in memory. They are created in tempdb, just like temp tables.",
+        "Loading 100,000 rows into a table variable on an old compatibility level and getting a tiny row estimate and a nested-loops plan that crawls.",
+        "Expecting ROLLBACK to undo inserts into a table variable."
+      ],
+      "followUps": [
+        "What does table variable deferred compilation change, and what doesn't it change?",
+        "Why can #temp tables cause stored procedure recompiles?",
+        "How would you pass a set of rows into a stored procedure (table-valued parameters)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql",
+          "title": "WITH common_table_expression (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/data-types/table-transact-sql",
+          "title": "table (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-details",
+          "title": "Intelligent query processing details — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ctes"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Table variable deferred compilation (actual row count used at first compile instead of a one-row guess) needs database compatibility level 150 (SQL Server 2019) or later. Inline index syntax on table variables exists from SQL Server 2014 (12.x).",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-row-number-rank-dense-rank",
+      "topic": "sql-server",
+      "subtopic": "window-functions",
+      "difficulty": "junior",
+      "question": "What is the difference between ROW_NUMBER, RANK and DENSE_RANK?",
+      "shortAnswer": "All three number rows in the order given by OVER (… ORDER BY …). ROW_NUMBER gives every row a unique number even when values tie; RANK gives tied rows the same number and then skips (1, 2, 2, 4); DENSE_RANK gives tied rows the same number without gaps (1, 2, 2, 3).",
+      "answer": "**Key points**\n\n- ORDER BY inside OVER is required for all three. PARTITION BY restarts the numbering for each group.\n- None of them accepts a ROWS or RANGE frame.\n- ROW_NUMBER with tied ORDER BY values is nondeterministic: tied rows can swap numbers between runs. Add the key column to the ORDER BY when you need stable output (paging, \"keep one row per group\").\n- When to use which:\n  - **ROW_NUMBER**: de-duplication, paging, top-1 per group\n  - **DENSE_RANK**: \"Nth distinct value\" questions\n  - **RANK**: competition-style rankings, where two people tied for first mean nobody is second\n- NTILE(n) is the fourth ranking function; it splits the rows into n buckets.\n\n**Detail**\n\nUnlike GROUP BY, a window function keeps every detail row and adds the computed value as a column.",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT Name, Salary,\n       ROW_NUMBER() OVER (ORDER BY Salary DESC) AS RowNum,\n       RANK()       OVER (ORDER BY Salary DESC) AS Rnk,\n       DENSE_RANK() OVER (ORDER BY Salary DESC) AS DenseRnk\nFROM dbo.Employees;\n\n-- Salaries 900, 800, 800, 700 give:\n-- RowNum   1, 2, 3, 4\n-- Rnk      1, 2, 2, 4\n-- DenseRnk 1, 2, 2, 3"
+      },
+      "pitfalls": [
+        "Using ROW_NUMBER for \"top earners\" and arbitrarily leaving out someone who ties.",
+        "Assuming ROW_NUMBER results are repeatable when the ORDER BY has ties.",
+        "Confusing the ORDER BY inside OVER (which decides the numbering) with the query's ORDER BY (which decides the display order). They are independent."
+      ],
+      "followUps": [
+        "How would you get the top 3 earners in each department?",
+        "Why can't you use ROW_NUMBER() in a WHERE clause?",
+        "What does NTILE do, and where is it useful?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql",
+          "title": "ROW_NUMBER (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/rank-transact-sql",
+          "title": "RANK (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/dense-rank-transact-sql",
+          "title": "DENSE_RANK (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "window-functions"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-window-function-in-where",
+      "topic": "sql-server",
+      "subtopic": "window-functions",
+      "difficulty": "junior",
+      "question": "Why can't you filter on ROW_NUMBER() (or on a SELECT alias) in the WHERE clause, and how do you work around it?",
+      "shortAnswer": "Because of the logical processing order: WHERE is evaluated before SELECT, while window functions and column aliases are produced in the SELECT step, so they don't exist yet when WHERE runs. Compute them in a CTE or derived table and filter in the outer query.",
+      "answer": "**Key points**\n\n- Logical order: FROM → ON → JOIN → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → TOP.\n- A SELECT alias can be used in ORDER BY, which comes later, but not in WHERE, GROUP BY or HAVING.\n- Window functions are allowed only in the SELECT list and ORDER BY. They see the rows that remain *after* WHERE, GROUP BY and HAVING.\n- So a WHERE filter changes what the window function counts. Often that's what you want, but not always.\n- The logical order describes when names become available. The optimizer may still execute the steps physically in a different order.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Fails: a window function isn't allowed in WHERE\n-- SELECT Name, ROW_NUMBER() OVER (ORDER BY Salary DESC) AS rn\n-- FROM dbo.Employees\n-- WHERE rn <= 3;\n\nWITH Ranked AS (\n    SELECT Name, DepartmentId, Salary,\n           ROW_NUMBER() OVER (PARTITION BY DepartmentId\n                              ORDER BY Salary DESC, EmployeeId) AS rn\n    FROM dbo.Employees\n)\nSELECT Name, DepartmentId, Salary\nFROM Ranked\nWHERE rn <= 3;           -- top 3 per department"
+      },
+      "pitfalls": [
+        "Trying to repeat the window expression inside WHERE; it's simply not allowed.",
+        "Forgetting that WHERE runs first: adding `WHERE Status = 'Active'` changes the ranking itself.",
+        "Treating the logical order as the physical execution order."
+      ],
+      "followUps": [
+        "Can you use a SELECT alias in ORDER BY? In GROUP BY?",
+        "Where does TOP sit in the logical order, and why does TOP without ORDER BY return arbitrary rows?",
+        "How is filtering a window result in an outer query different from HAVING?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/select-transact-sql",
+          "title": "SELECT (Transact-SQL): logical processing order — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/answers/questions/315433/can-i-use-over-clause-after-having-on-sql-server-2",
+          "title": "Microsoft Q&A: Can I use the OVER clause after HAVING? — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "window-functions",
+        "ctes"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "The QUALIFY clause, which filters window results directly, exists only in Microsoft Fabric Data Warehouse, not in SQL Server.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-lag-lead",
+      "topic": "sql-server",
+      "subtopic": "window-functions",
+      "difficulty": "mid",
+      "question": "How do LAG and LEAD work? Show a month-over-month change without a self join.",
+      "shortAnswer": "LAG(expr, offset, default) returns the value from the row `offset` rows before the current one in the OVER ordering, and LEAD looks the same distance ahead. That lets you compare a row with its neighbours without a self join. When no such row exists in the partition, they return the default, or NULL if you didn't give one.",
+      "answer": "**Key points**\n\n- `offset` defaults to 1 and can't be negative. ORDER BY inside OVER is required.\n- PARTITION BY restarts the lookup for each group; the first row of each partition gets the default.\n- With `IGNORE NULLS` (SQL Server 2022+), LAG skips NULLs and returns the most recent non-NULL value, which makes \"carry the last known value forward\" easy.\n- Typical uses: period-over-period deltas, time between consecutive events, detecting status changes.",
+      "code": {
+        "lang": "sql",
+        "source": "WITH Monthly AS (\n    SELECT DATEFROMPARTS(YEAR(OrderDate), MONTH(OrderDate), 1) AS MonthStart,\n           SUM(Amount) AS Revenue\n    FROM dbo.Orders\n    GROUP BY DATEFROMPARTS(YEAR(OrderDate), MONTH(OrderDate), 1)\n)\nSELECT MonthStart,\n       Revenue,\n       LAG(Revenue)  OVER (ORDER BY MonthStart)           AS PrevRevenue,\n       Revenue - LAG(Revenue) OVER (ORDER BY MonthStart)  AS Change,\n       100.0 * (Revenue - LAG(Revenue) OVER (ORDER BY MonthStart))\n             / NULLIF(LAG(Revenue) OVER (ORDER BY MonthStart), 0) AS PctChange,\n       LEAD(Revenue) OVER (ORDER BY MonthStart)           AS NextRevenue\nFROM Monthly\nORDER BY MonthStart;"
+      },
+      "pitfalls": [
+        "Assuming LAG means \"the previous calendar month\". It means the previous *row*: if a month has no orders, it compares with an older month. Join to a calendar table first when months can be missing.",
+        "Defaulting the first row to 0 and then reporting a meaningless growth percentage.",
+        "Forgetting PARTITION BY (for example per customer), so values leak from one customer into the next.",
+        "Dividing by the LAG value without `NULLIF(…, 0)`."
+      ],
+      "followUps": [
+        "How would you compute the number of days between consecutive orders per customer?",
+        "How would you fill NULLs with the last known value on SQL Server 2019 vs 2022?",
+        "How would you write the same query with a self join, and why is that harder to get right?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/lag-transact-sql",
+          "title": "LAG (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/lead-transact-sql",
+          "title": "LEAD (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "window-functions"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "LAG and LEAD exist from SQL Server 2012 (11.x). IGNORE NULLS / RESPECT NULLS arrived in SQL Server 2022 (16.x) and Azure SQL.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-running-total-rows-vs-range",
+      "topic": "sql-server",
+      "subtopic": "window-functions",
+      "difficulty": "mid",
+      "question": "How do you compute a running total, and why does ROWS vs RANGE matter?",
+      "shortAnswer": "Use SUM(Amount) OVER (PARTITION BY … ORDER BY … ROWS UNBOUNDED PRECEDING). If you write only ORDER BY, SQL Server uses the default frame RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW, which treats rows with the same ORDER BY value as peers and gives them all the same total. That's rarely what a running balance needs.",
+      "answer": "**Key points**\n\n- With ORDER BY and no frame clause, the default frame is `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`.\n- `ROWS` counts physical rows. `RANGE … CURRENT ROW` includes every row whose ORDER BY value equals the current row's.\n- So when several rows share a date, RANGE gives each of them the whole day's total, while ROWS increases row by row. Add a tiebreaker (such as the key) to the ORDER BY so the ROWS order is stable.\n- SQL Server's RANGE supports only UNBOUNDED PRECEDING/FOLLOWING and CURRENT ROW, not `n PRECEDING`. Moving windows like \"the last 7 rows\" need ROWS.\n\n**Detail**\n\nFor performance, the OVER clause docs recommend an index whose keys are the PARTITION BY columns followed by the ORDER BY columns, with the summed column included, so no sort is needed. Before SQL Server 2012, running totals meant correlated subqueries or cursors, which re-read earlier rows for every row.",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT AccountId, TxnDate, TxnId, Amount,\n       SUM(Amount) OVER (PARTITION BY AccountId\n                         ORDER BY TxnDate, TxnId            -- unique order\n                         ROWS UNBOUNDED PRECEDING) AS RunningBalance,\n       AVG(Amount) OVER (PARTITION BY AccountId\n                         ORDER BY TxnDate, TxnId\n                         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS MovingAvg7\nFROM dbo.Transactions;\n\n-- Supporting index: partition columns, then order columns, then the summed column\nCREATE INDEX IX_Txn_Account_Date\n    ON dbo.Transactions (AccountId, TxnDate, TxnId)\n    INCLUDE (Amount);"
+      },
+      "pitfalls": [
+        "Relying on the default RANGE frame and getting identical totals on every row that shares a date.",
+        "Writing `RANGE BETWEEN 6 PRECEDING AND CURRENT ROW`. That isn't supported; use ROWS.",
+        "Using ROWS with a non-unique ORDER BY, so the running order among ties can change between runs.",
+        "Computing running totals with a correlated subquery on a modern version."
+      ],
+      "followUps": [
+        "Why does LAST_VALUE often just return the current row's value?",
+        "How would you compute a 7-*day* moving average when some days have no rows?",
+        "How would you restart the running total every month?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql",
+          "title": "OVER clause (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-details",
+          "title": "Intelligent query processing details — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "window-functions"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "ROWS/RANGE frames require SQL Server 2012 (11.x) or later. Batch mode for window aggregates on rowstore tables needs compatibility level 150 (SQL Server 2019) or later.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-gaps-and-islands",
+      "topic": "sql-server",
+      "subtopic": "window-functions",
+      "difficulty": "senior",
+      "question": "How would you find streaks of consecutive days, for example each user's login streaks (the \"gaps and islands\" problem)?",
+      "shortAnswer": "Subtract a per-user ROW_NUMBER (ordered by date) from the date itself. Within a run of consecutive days the date and the row number both go up by one, so the difference stays constant and identifies the island. Then GROUP BY user and that key to get each streak's start, end and length.",
+      "answer": "**Key points**\n\n- De-duplicate first (one row per user per day). Otherwise a second login on the same day breaks the arithmetic and splits the streak.\n- Island key: `DATEADD(day, -ROW_NUMBER() OVER (PARTITION BY UserId ORDER BY LoginDate), LoginDate)`.\n- For the *gaps*, use LEAD(LoginDate) and look for rows where the next date isn't the current date plus one.\n- The same idea works for consecutive numbers (missing invoice numbers). For runs of the same status, use LAG to flag each change and a running SUM of the flags to number the groups.\n\n**Detail**\n\nThis is set-based: one sort per user partition, then an aggregate. That beats a cursor or a self join, both of which look at neighbouring rows one at a time. Use the `date` type, not `datetime`, so the time of day doesn't break the \"+1 day\" arithmetic.",
+      "code": {
+        "lang": "sql",
+        "source": "WITH Days AS (\n    SELECT DISTINCT UserId, CAST(LoginAt AS date) AS LoginDate\n    FROM dbo.Logins\n),\nGrouped AS (\n    SELECT UserId, LoginDate,\n           DATEADD(day,\n                   -ROW_NUMBER() OVER (PARTITION BY UserId ORDER BY LoginDate),\n                   LoginDate) AS IslandKey\n    FROM Days\n)\nSELECT UserId,\n       MIN(LoginDate) AS StreakStart,\n       MAX(LoginDate) AS StreakEnd,\n       COUNT(*)       AS StreakDays\nFROM Grouped\nGROUP BY UserId, IslandKey\nORDER BY UserId, StreakStart;"
+      },
+      "pitfalls": [
+        "Not de-duplicating same-day logins, so one real streak shows up as several.",
+        "Working with datetime values, so the time of day breaks the date arithmetic.",
+        "Solving it with a cursor or a per-row self join on millions of rows."
+      ],
+      "followUps": [
+        "How would you return the gaps (missing date ranges) instead of the islands?",
+        "How would you find each user's longest streak?",
+        "How would you group consecutive rows that have the same status?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql",
+          "title": "ROW_NUMBER (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/dateadd-transact-sql",
+          "title": "DATEADD (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/functions/lead-transact-sql",
+          "title": "LEAD (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "window-functions"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-clustered-vs-nonclustered-index",
+      "topic": "sql-server",
+      "subtopic": "indexes",
+      "difficulty": "junior",
+      "question": "What is the difference between a clustered and a nonclustered index?",
+      "shortAnswer": "A clustered index *is* the table: it stores the data rows themselves in key order, so a table can have only one. A nonclustered index is a separate B+ tree of key values, each pointing back to its row through a row locator (the clustered key, or a RID on a heap). A table can have up to 999 of them.",
+      "answer": "**Key points**\n\n| | Clustered | Nonclustered |\n|---|---|---|\n| What the leaf level holds | the full data rows | key columns (+ included columns) + a row locator |\n| How many per table | 1 | up to 999 |\n| Row order | data stored in key order | separate structure; the table isn't reordered |\n| Without it | the table is a **heap** (unordered) | — |\n\n- On a clustered table, every nonclustered index's row locator *is the clustered key*, so a wide clustered key makes every other index wider.\n- On a heap, the row locator is a RID (file, page, row slot).\n- Both kinds can be unique or non-unique. A non-unique clustered index gets a hidden 4-byte \"uniqueifier\" added to its key.\n\n**Detail**\n\nMicrosoft's guidance for a clustered key is that it should be **narrow, unique, ever-increasing and immutable** (an `int`/`bigint` IDENTITY fits). A random GUID key is 16 bytes wide and isn't ever-increasing, which causes page splits. A nonclustered index helps when it's selective for the query, or when it *covers* the query so the base table isn't touched at all.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE TABLE dbo.Orders (\n    OrderId    int IDENTITY(1,1) NOT NULL,\n    CustomerId int           NOT NULL,\n    OrderDate  datetime2(0)  NOT NULL,\n    Amount     decimal(18,2) NOT NULL,\n    CONSTRAINT PK_Orders PRIMARY KEY CLUSTERED (OrderId)     -- the table itself\n);\n\n-- Separate structure: CustomerId keys + the clustered key (OrderId) as the locator\nCREATE NONCLUSTERED INDEX IX_Orders_CustomerId\n    ON dbo.Orders (CustomerId);"
+      },
+      "pitfalls": [
+        "Saying a clustered index is \"physically sorted on disk\". The leaf pages are in logical key order, linked to each other; they aren't necessarily contiguous on disk.",
+        "Choosing a wide or frequently updated clustered key, which bloats and churns every nonclustered index.",
+        "Thinking a nonclustered index stores the whole row. Without included columns, SQL Server may still need a lookup into the base table.",
+        "Adding indexes freely. Every index has to be maintained on each INSERT, UPDATE and DELETE."
+      ],
+      "followUps": [
+        "Why is a GUID a poor clustered key, and when is NEWSEQUENTIALID() better?",
+        "What is a heap, and when (if ever) is it acceptable?",
+        "What is a covering index?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/indexes/clustered-and-nonclustered-indexes-described",
+          "title": "Clustered and nonclustered indexes — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide",
+          "title": "Index architecture and design guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/sql-server/maximum-capacity-specifications-for-sql-server",
+          "title": "Maximum capacity specifications for SQL Server — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "indexes-and-keys"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-primary-key-vs-clustered-index",
+      "topic": "sql-server",
+      "subtopic": "indexes",
+      "difficulty": "junior",
+      "question": "Is the primary key always the clustered index?",
+      "shortAnswer": "No. A primary key is a logical constraint (unique, NOT NULL) and a clustered index is a storage structure. SQL Server enforces a new PRIMARY KEY with a clustered index by default only if the table doesn't already have one; otherwise it uses a nonclustered index. You can also ask for `PRIMARY KEY NONCLUSTERED` explicitly and cluster the table on a different column.",
+      "answer": "**Key points**\n\n- PRIMARY KEY = uniqueness + NOT NULL + \"this identifies the row\". Clustered index = how the rows are stored.\n- The default is convenient, not mandatory: `PRIMARY KEY` → clustered *unless a clustered index already exists*.\n- A UNIQUE constraint creates a nonclustered index by default.\n- Valid design: a GUID primary key enforced by a *nonclustered* index, with the table clustered on an ever-increasing column such as an IDENTITY or a date.\n\n**Detail**\n\nThe primary key is limited to 32 columns and 900 bytes. Because the clustered key is copied into every nonclustered index, choosing which index to cluster on is a performance decision, separate from choosing the logical key.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE TABLE dbo.Documents (\n    DocumentId uniqueidentifier NOT NULL DEFAULT NEWID(),\n    CreatedAt  datetime2(3)     NOT NULL DEFAULT SYSUTCDATETIME(),\n    Title      nvarchar(200)    NOT NULL,\n    CONSTRAINT PK_Documents PRIMARY KEY NONCLUSTERED (DocumentId)\n);\n\n-- Cluster on an ever-increasing column instead\nCREATE CLUSTERED INDEX CX_Documents_CreatedAt\n    ON dbo.Documents (CreatedAt);"
+      },
+      "pitfalls": [
+        "Saying \"primary key = clustered index\". It's only the default.",
+        "Assuming a UNIQUE constraint makes a clustered index. By default it's nonclustered.",
+        "Forgetting that a non-unique clustered key gets a hidden uniqueifier."
+      ],
+      "followUps": [
+        "Can a table have a clustered index but no primary key?",
+        "What is the difference between a UNIQUE constraint and a unique index?",
+        "How would you choose a clustered key for an append-heavy table?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/indexes/clustered-and-nonclustered-indexes-described",
+          "title": "Clustered and nonclustered indexes — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/tables/create-primary-keys",
+          "title": "Create primary keys — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/sql-server/maximum-capacity-specifications-for-sql-server",
+          "title": "Maximum capacity specifications for SQL Server — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "indexes-and-keys"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-covering-index-included-columns",
+      "topic": "sql-server",
+      "subtopic": "indexes",
+      "difficulty": "mid",
+      "question": "What is a covering index, and what's the difference between key columns and INCLUDE columns?",
+      "shortAnswer": "A covering index contains every column a query needs, so SQL Server answers the query from the index alone, with no lookup into the base table. Columns you search, join, group or sort on go in the index *key*; columns you only return go in INCLUDE, where they're stored at the leaf level only and don't count toward the key size or column limits.",
+      "answer": "**Key points**\n\n- **Key columns**: used for seeks, ordering, joins and GROUP BY; they're stored at every level of the B+ tree. Limits: 32 columns, 900 bytes (clustered) or 1,700 bytes (nonclustered).\n- **INCLUDE columns**: stored only at the leaf level. They can be data types that aren't allowed as keys (e.g. `nvarchar(max)`), and they don't count toward the key limits.\n- If the query needs a column the index doesn't have, the plan adds a **Key Lookup** (or a RID Lookup on a heap) per row.\n- The clustered key is already present in every nonclustered index, so you never need to INCLUDE it.\n\n**Detail**\n\nDon't make indexes too wide: every included column is a second copy of that data, which costs storage, memory and write time on every modification. Microsoft suggests covering indexes when a query returns a *small portion of a large table defined by a fixed predicate*. When a query targets a well-defined subset (for example `WHERE Status = 'Open'`), a **filtered index** can cover it with far fewer rows.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Query to support\nSELECT OrderId, OrderDate, Amount\nFROM dbo.Orders\nWHERE CustomerId = @CustomerId\nORDER BY OrderDate DESC;\n\n-- Key: search column, then sort column. INCLUDE: returned-only column.\n-- OrderId (the clustered key) is carried automatically.\nCREATE NONCLUSTERED INDEX IX_Orders_Customer_Date\n    ON dbo.Orders (CustomerId, OrderDate DESC)\n    INCLUDE (Amount);\n\n-- Filtered variant for a hot subset\nCREATE NONCLUSTERED INDEX IX_Orders_Open\n    ON dbo.Orders (CustomerId)\n    INCLUDE (Amount)\n    WHERE Status = 'Open';"
+      },
+      "pitfalls": [
+        "Putting returned-only columns in the key. That makes the key wider and every level of the tree bigger, for no seek benefit.",
+        "Covering every query with its own wide index, so writes slow down and indexes duplicate each other. Extend an existing index instead.",
+        "Including `SELECT *` columns. SELECT * basically can't be covered.",
+        "Expecting a filtered index to be used when the query's WHERE clause isn't guaranteed to be a subset of the index filter. With `WHERE Status = @status`, the plan must also be correct for values outside the filter."
+      ],
+      "followUps": [
+        "How do you spot a Key Lookup in a plan and decide whether to cover it?",
+        "Why does column order matter in the key but not in INCLUDE?",
+        "When would you use a filtered index instead of a covering one?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide",
+          "title": "Index architecture and design guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-indexes-with-included-columns",
+          "title": "Create indexes with included columns — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes",
+          "title": "Create filtered indexes — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "indexes-and-keys",
+        "execution-plans-and-sargability"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "The 1,700-byte nonclustered key limit applies from SQL Server 2016 (13.x); SQL Server 2014 and earlier allowed 900 bytes for every index type.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-composite-index-column-order",
+      "topic": "sql-server",
+      "subtopic": "indexes",
+      "difficulty": "mid",
+      "question": "Does column order matter in a composite (multi-column) index? How do you choose it?",
+      "shortAnswer": "Yes. The index is sorted by the first key column, then by the second within it, and so on, so SQL Server can seek only on a *leading* prefix of the key. Put the column used in equality (or the main range, or the join) first, then order the rest by how distinct they are and by what the query sorts on.",
+      "answer": "**Key points**\n\n- An index on `(LastName, FirstName)` supports `WHERE LastName = …` and `WHERE LastName = … AND FirstName = …`, but not an efficient seek on `WHERE FirstName = …` alone (that usually becomes a scan).\n- Microsoft's guidance: the column used in an equality, inequality or BETWEEN predicate, or in a join, goes first; additional columns go from most distinct to least distinct.\n- Equality columns before range columns: with `(CustomerId, OrderDate)`, the query `CustomerId = 5 AND OrderDate >= '2025-01-01'` is one tight range seek. Reversed, every customer's rows in the date range have to be read.\n- A matching key order can also remove a Sort: `WHERE CustomerId = @c ORDER BY OrderDate` is already in order.\n\n**Detail**\n\nStatistics histograms are built only on the *first* key column, so the leading column also drives the row estimates. Check the existing indexes before adding a new one: often you can widen one that shares the same leading columns.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE INDEX IX_Orders_Customer_Date ON dbo.Orders (CustomerId, OrderDate);\n\n-- Seek on the leading column + range on the second: efficient\nSELECT OrderId FROM dbo.Orders\nWHERE CustomerId = 42 AND OrderDate >= '2025-01-01';\n\n-- Leading column missing: can't seek with this index (expect a scan)\nSELECT OrderId FROM dbo.Orders\nWHERE OrderDate >= '2025-01-01';"
+      },
+      "pitfalls": [
+        "Assuming any query that mentions any indexed column can seek on the index.",
+        "Putting a range column (dates) before an equality column.",
+        "Creating `(A, B)`, `(A, B, C)` and `(A)` separately. `(A, B, C)` usually serves all three.",
+        "Ordering columns only by \"selectivity\" and ignoring which predicates the queries actually use."
+      ],
+      "followUps": [
+        "How does the ORDER BY of a query influence the best index key order?",
+        "Why do statistics on a multi-column index only have a histogram for the first column?",
+        "How would you find unused or duplicate indexes?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide",
+          "title": "Index architecture and design guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/statistics/statistics",
+          "title": "Statistics — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "indexes-and-keys",
+        "execution-plans-and-sargability"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-index-fragmentation-maintenance",
+      "topic": "sql-server",
+      "subtopic": "indexes",
+      "difficulty": "senior",
+      "question": "What is index fragmentation, and how do you decide between REORGANIZE, REBUILD or doing nothing?",
+      "shortAnswer": "Fragmentation means the logical order of index pages no longer matches their physical order, usually because of page splits; low *page density* means pages are partly empty. Microsoft's current guidance is not to maintain indexes on fixed 5%/30% thresholds: measure whether maintenance actually helps your workload, prefer REORGANIZE (cheaper, always online), and remember that much of a rebuild's benefit comes from the full-scan statistics update.",
+      "answer": "**Key points**\n\n- Measure with `sys.dm_db_index_physical_stats`: `avg_fragmentation_in_percent` and `avg_page_space_used_in_percent` (page density).\n- **REORGANIZE**: defragments the leaf level and compacts pages to the fill factor. It's always online, can be stopped and keeps its progress, and **doesn't update statistics**.\n- **REBUILD**: drops and re-creates the index. It removes fragmentation at every level, can run online (with a short lock at the end) or offline, needs space for a second copy, and **updates the index statistics with a full scan**.\n- Many \"rebuild fixed it\" stories are really \"fresh statistics fixed it\". Try `UPDATE STATISTICS` first; it costs far less.\n- Fragmentation hurts mainly large range scans; low page density costs memory and I/O for every read.\n\n**Detail**\n\nThe recommended strategy: don't assume maintenance helps, measure before and after (Query Store A/B), maintain only the indexes that degraded queries depend on, and run it in quiet periods. Microsoft advises keeping the fill factor at 100 (or 0) except for indexes with many page splits, such as those with a random GUID as the leading key. Small indexes often stay \"fragmented\" no matter what, so ignore them.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Fragmentation and page density for the current database\nSELECT OBJECT_NAME(ips.object_id) AS table_name,\n       i.name AS index_name,\n       ips.avg_fragmentation_in_percent,\n       ips.avg_page_space_used_in_percent,\n       ips.page_count\nFROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'SAMPLED') AS ips\nJOIN sys.indexes AS i\n  ON i.object_id = ips.object_id AND i.index_id = ips.index_id\nWHERE ips.page_count > 1000\nORDER BY ips.page_count DESC;\n\nALTER INDEX IX_Orders_Customer_Date ON dbo.Orders REORGANIZE;\nALTER INDEX IX_Orders_Customer_Date ON dbo.Orders REBUILD WITH (ONLINE = ON);\nUPDATE STATISTICS dbo.Orders WITH FULLSCAN;"
+      },
+      "pitfalls": [
+        "Running a nightly \"rebuild everything over 30%\" job without ever measuring its effect.",
+        "Lowering the fill factor everywhere \"to avoid page splits\", which lowers page density and costs memory and I/O on every read.",
+        "Forgetting that an offline rebuild holds object-level locks for its whole duration.",
+        "Expecting REORGANIZE to refresh statistics."
+      ],
+      "followUps": [
+        "Why can rebuilding an index make a query faster even when fragmentation wasn't the problem?",
+        "What causes page splits, and how does the choice of clustered key affect them?",
+        "How would you schedule maintenance in Azure SQL Database, where resources are governed?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/indexes/reorganize-and-rebuild-indexes",
+          "title": "Maintain indexes optimally (reorganize and rebuild) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide",
+          "title": "Index architecture and design guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "indexes-and-keys",
+        "alter-command-guide"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Resumable online index rebuilds are available from SQL Server 2017 (14.x); online rebuild support depends on edition and version. Mixed-extent effects on small indexes apply up to SQL Server 2014 (12.x).",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-key-lookup",
+      "topic": "sql-server",
+      "subtopic": "execution-plans",
+      "difficulty": "mid",
+      "question": "What is a Key Lookup in an execution plan, and how do you get rid of it?",
+      "shortAnswer": "A Key Lookup appears when SQL Server finds rows through a nonclustered index that doesn't contain every column the query needs, then goes back to the clustered index once per row to fetch the rest (on a heap it's a RID Lookup). It always appears with a Nested Loops join. A few lookups are fine; thousands are expensive, and you remove them by covering the query (INCLUDE the missing columns) or by returning fewer columns.",
+      "answer": "**Key points**\n\n- Plan shape: Index Seek on the nonclustered index → Nested Loops → Key Lookup on the clustered index.\n- Cost grows with the number of executions: every row means another seek into the clustered index.\n- The lookup's Output List shows exactly which columns are missing. Add them as INCLUDE columns, or drop them from the SELECT list.\n- When too many rows would need lookups, the optimizer switches to scanning the clustered index instead. That point is why a \"useless\" index sometimes gets ignored.\n\n**Detail**\n\nMicrosoft's operator reference says a Key Lookup with a high number of executions relative to the table size might benefit from a covering index, while a low number of executions is typically not a concern. Check *Actual Number of Executions* in the actual plan. Bad estimates can make the optimizer choose seek + lookup for far more rows than it expected, so stale statistics or parameter sniffing are often behind a lookup-heavy plan.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Index has CustomerId only; the query also needs OrderDate and Amount\nCREATE INDEX IX_Orders_CustomerId ON dbo.Orders (CustomerId);\n\nSELECT OrderId, OrderDate, Amount       -- OrderDate, Amount -> Key Lookup\nFROM dbo.Orders\nWHERE CustomerId = 42;\n\n-- Cover it: the same seek, no lookup\nCREATE INDEX IX_Orders_CustomerId\n    ON dbo.Orders (CustomerId)\n    INCLUDE (OrderDate, Amount)\n    WITH (DROP_EXISTING = ON);"
+      },
+      "pitfalls": [
+        "Treating every Key Lookup as a problem. One lookup for a single-row query is cheap.",
+        "Fixing lookups with ever-wider \"include everything\" indexes, which slows down writes.",
+        "Looking at the estimated plan only. The actual execution count is what matters."
+      ],
+      "followUps": [
+        "Why might the optimizer ignore your nonclustered index and scan instead?",
+        "How do you read Estimated vs Actual Number of Rows on an operator?",
+        "What is a RID Lookup, and why does it appear only on heaps?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/showplan-logical-and-physical-operators-reference",
+          "title": "Logical and physical showplan operator reference — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide",
+          "title": "Index architecture and design guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "execution-plans-and-sargability",
+        "indexes-and-keys"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-statistics",
+      "topic": "sql-server",
+      "subtopic": "execution-plans",
+      "difficulty": "mid",
+      "question": "What are statistics in SQL Server, and why do stale statistics cause bad plans?",
+      "shortAnswer": "Statistics are objects that describe how values are distributed in one or more columns, with a histogram of up to 200 steps on the first column plus density information. The optimizer uses them to estimate how many rows each step will return, and those estimates drive every choice (seek vs scan, join type, memory grant). When the data changes but the statistics don't, the estimates are wrong and the plan is built for a different reality.",
+      "answer": "**Key points**\n\n- **Histogram**: up to 200 steps, built only on the *first* column of the statistics object. **Density** (1 / distinct values) covers column combinations.\n- `AUTO_CREATE_STATISTICS`: the optimizer creates single-column statistics on predicate columns as needed (they're named `_WA_Sys_…`).\n- `AUTO_UPDATE_STATISTICS`: statistics refresh when a query uses them after enough modifications. On a 2-million-row table the modern threshold is about 44,721 changes instead of 400,500.\n- Synchronous updates (the default) make the triggering query wait; `AUTO_UPDATE_STATISTICS_ASYNC` compiles with the old statistics and refreshes in the background.\n- Symptom of bad statistics: *Estimated* rows far from *Actual* rows in the actual plan.\n\n**Detail**\n\nClassic trouble spot: an ever-increasing date column. Rows inserted since the last update fall beyond the histogram's last step, so a query for \"today\" estimates almost nothing. Fix it with a targeted `UPDATE STATISTICS` (maybe `WITH FULLSCAN` for skewed columns) or more frequent maintenance, not with blind index rebuilds. Updating statistics also invalidates the plans that use them, so they recompile.",
+      "code": {
+        "lang": "sql",
+        "source": "-- When were the statistics on a table last updated, and how stale are they?\nSELECT s.name AS stats_name,\n       sp.last_updated,\n       sp.rows,\n       sp.modification_counter\nFROM sys.stats AS s\nCROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) AS sp\nWHERE s.object_id = OBJECT_ID('dbo.Orders');\n\nUPDATE STATISTICS dbo.Orders IX_Orders_Customer_Date WITH FULLSCAN;\nDBCC SHOW_STATISTICS ('dbo.Orders', IX_Orders_Customer_Date);"
+      },
+      "pitfalls": [
+        "Turning off AUTO_CREATE or AUTO_UPDATE statistics \"for performance\".",
+        "Rebuilding indexes every night when a cheap statistics update would have fixed the plan.",
+        "Expecting multi-column statistics to have a histogram on every column. Only the first column gets one."
+      ],
+      "followUps": [
+        "How do you compare estimated and actual row counts in a plan, and what is a big mismatch?",
+        "When would you enable asynchronous statistics updates?",
+        "What is the cardinality estimator, and what changed in SQL Server 2014?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/statistics/statistics",
+          "title": "Statistics — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/query-processing-architecture-guide",
+          "title": "Query processing architecture guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "execution-plans-and-sargability"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "From SQL Server 2016 (13.x) with compatibility level 130+, the auto-update threshold is MIN(500 + 20% of n, SQRT(1000 × n)); earlier versions use 500 + 20% of n (trace flag 2371 gives the dynamic threshold on older versions).",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-implicit-conversion",
+      "topic": "sql-server",
+      "subtopic": "execution-plans",
+      "difficulty": "mid",
+      "question": "What is an implicit conversion, and how can a C# parameter type turn an index seek into a scan?",
+      "shortAnswer": "When a comparison mixes data types, SQL Server converts the lower-precedence type to the higher-precedence one. If that means converting the *column* (for example a varchar column compared with an nvarchar parameter, or an nvarchar column compared with an int), the predicate is no longer a plain column comparison: the index seek can be lost, and the plan shows a CONVERT_IMPLICIT warning. ADO.NET sends a C# string as NVarChar by default, so this is a classic .NET-to-SQL bug.",
+      "answer": "**Key points**\n\n- Data type precedence decides the direction: `nvarchar` beats `varchar`, and `int` beats every string type.\n- A conversion applied to the column (rather than to the literal or parameter) makes the predicate non-SARGable. Expect a scan, or at least worse estimates.\n- Look for the warning triangle on the SELECT operator: *Type conversion in expression (CONVERT_IMPLICIT…) may affect \"CardinalityEstimate\" / \"SeekPlan\"*.\n- .NET side: `AddWithValue(\"@code\", \"ABC\")` infers `SqlDbType.NVarChar`. Declare the parameter as `SqlDbType.VarChar` with a size (or `DbType.AnsiString`), or configure the ORM so the column is mapped as non-Unicode.\n\n**Detail**\n\nThe fix belongs on the parameter side: make the parameter (or literal) match the column's type and length. Don't wrap the column in CAST, which is just another non-SARGable expression. Also watch for joins between columns of different types (`int` vs `varchar` keys) and for string literals compared with numeric-looking string columns (`WHERE NationalId = 12345`).",
+      "code": {
+        "lang": "sql",
+        "source": "-- Column: AccountCode varchar(20), indexed\n-- BAD: nvarchar parameter -> the column is converted, the seek can be lost\nDECLARE @code nvarchar(20) = N'ACC-001';\nSELECT AccountId FROM dbo.Accounts WHERE AccountCode = @code;\n\n-- GOOD: types match, plain index seek\nDECLARE @code2 varchar(20) = 'ACC-001';\nSELECT AccountId FROM dbo.Accounts WHERE AccountCode = @code2;\n\n/* C# (ADO.NET):\n   cmd.Parameters.AddWithValue(\"@code\", code);                         // sent as NVarChar\n   cmd.Parameters.Add(\"@code\", SqlDbType.VarChar, 20).Value = code;    // matches the column\n*/"
+      },
+      "pitfalls": [
+        "Fixing it with `WHERE CAST(AccountCode AS nvarchar(20)) = @code`, which still converts the column.",
+        "Using AddWithValue everywhere. Besides the type, it also infers the length from each value, which can fill the plan cache with near-duplicate plans.",
+        "Keying related tables with different types (int in one, varchar in the other) and joining them."
+      ],
+      "followUps": [
+        "Which conversions are harmless (constant side) and which ones hurt (column side)?",
+        "How do you tell an ORM that a string column is varchar rather than nvarchar?",
+        "Where do you see conversion warnings in an actual execution plan?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-type-precedence-transact-sql",
+          "title": "Data type precedence (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/framework/data/adonet/configuring-parameters-and-parameter-data-types",
+          "title": "Configuring parameters and parameter data types (ADO.NET) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/archive/blogs/blogdoezequiel/when-do-conversions-generate-conversion-warnings-and-why-are-these-bad",
+          "title": "When do conversions generate conversion warnings? (Microsoft archived blog) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "execution-plans-and-sargability",
+        "data-types",
+        "calling-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-physical-join-operators",
+      "topic": "sql-server",
+      "subtopic": "execution-plans",
+      "difficulty": "senior",
+      "question": "Explain Nested Loops, Merge Join and Hash Match. When does the optimizer pick each one?",
+      "shortAnswer": "These are the physical algorithms behind a logical JOIN. Nested Loops looks up matches in the inner input once per outer row, which is ideal for a small outer input and an indexed inner one. Merge Join walks two inputs already sorted on the join key, which is very fast when indexes provide that order. Hash Match builds an in-memory hash table from the smaller input and probes it with the other, which suits large unsorted inputs at the cost of a memory grant that can spill to tempdb.",
+      "answer": "**Key points**\n\n| Operator | Best when | Watch out for |\n|---|---|---|\n| Nested Loops | small outer input, inner side indexed on the join key | huge outer input from a bad estimate → millions of seeks |\n| Merge Join | both inputs sorted on the key (from indexes) | an added Sort operator; many-to-many merges use a worktable |\n| Hash Match | large, unsorted, unindexed inputs; intermediate results | memory grant; spills to tempdb (hash warning) when the estimate is low |\n\n- The optimizer makes the smaller input the hash *build* input. If it guessed wrong, the roles can be swapped at run time.\n- **Adaptive Join**: the plan defers the choice between hash and nested loops until the first input has been read, using a row-count threshold.\n- The join operator is usually a *symptom*. A Nested Loops over 2 million \"estimated 10\" rows means a cardinality estimation problem (statistics, parameter sniffing), not a join problem.\n\n**Detail**\n\nJoin hints (`INNER HASH JOIN`, `OPTION (LOOP JOIN)`) force an algorithm and the join order too. Microsoft recommends hints only as a last resort: fixing statistics, indexes or the query shape usually lasts longer.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Compare the plans (use SET STATISTICS IO, TIME ON and the actual plan)\nSELECT c.Name, o.OrderId\nFROM dbo.Customers AS c\nJOIN dbo.Orders AS o ON o.CustomerId = c.CustomerId\nWHERE c.CustomerId = 42;                 -- tiny outer -> likely Nested Loops\n\nSELECT c.Region, SUM(o.Amount)\nFROM dbo.Customers AS c\nJOIN dbo.Orders AS o ON o.CustomerId = c.CustomerId\nGROUP BY c.Region;                       -- big unsorted inputs -> likely Hash Match\n\n-- Last resort only: forcing an algorithm\nSELECT c.Name, o.OrderId\nFROM dbo.Customers AS c\nINNER MERGE JOIN dbo.Orders AS o ON o.CustomerId = c.CustomerId;"
+      },
+      "pitfalls": [
+        "Declaring \"hash joins are bad\". They're the right tool for big unsorted inputs.",
+        "Forcing join hints in application code, which locks in one plan as the data grows and changes.",
+        "Ignoring the spill warning on a Hash Match or Sort. It usually points to an underestimate."
+      ],
+      "followUps": [
+        "What is a memory grant, and what happens when it's too small?",
+        "How does an Adaptive Join decide which algorithm to use?",
+        "Why can a bad row estimate turn a good Nested Loops plan into a disaster?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/joins",
+          "title": "Joins (SQL Server): nested loops, merge, hash and adaptive joins — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query",
+          "title": "Query hints (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "execution-plans-and-sargability",
+        "joins"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Batch-mode Adaptive Joins (switching between hash and nested loops at run time) need SQL Server 2017 (14.x)+, compatibility level 140+, and batch mode (a columnstore index, or batch mode on rowstore from SQL Server 2019).",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-parameter-sniffing",
+      "topic": "sql-server",
+      "subtopic": "execution-plans",
+      "difficulty": "senior",
+      "question": "What is parameter sniffing? A stored procedure is fast for one customer and very slow for another. How do you diagnose and fix it?",
+      "shortAnswer": "When a parameterized query or procedure is compiled, SQL Server \"sniffs\" the parameter values of that first call and builds a plan that's optimal for them, then caches it and reuses it for every later value. With skewed data, a plan built for a value with 10 rows can be terrible for a value with 10 million rows (or the reverse). Fixes range from OPTION (RECOMPILE) and OPTIMIZE FOR to Query Store plan forcing and, in SQL Server 2022, Parameter Sensitive Plan optimization.",
+      "answer": "**Key points**\n\n- Sniffing itself is normal and usually good; the problem is *one cached plan for very differently sized parameter values*.\n- It affects stored procedures, `sp_executesql` queries and prepared statements (which includes most ORM-generated SQL).\n- Diagnose:\n  - compare the actual plan for a \"fast\" value and a \"slow\" value\n  - check the parameter values in the cached plan\n  - look at Query Store for one query with several plans and very different durations\n- \"Fast in SSMS, slow in the app\": SSMS defaults to `ARITHABORT ON` and applications default to `OFF`. ARITHABORT is part of the plan cache key, so each gets its own cached plan. Match the setting before comparing.\n\n**Fixes (pick the least intrusive that works)**\n\n- `OPTION (RECOMPILE)`: a fresh plan for each execution's values; costs CPU on every call.\n- `OPTIMIZE FOR (@p = value)`: optimize for a representative value. `OPTIMIZE FOR UNKNOWN`: use average selectivity instead of the sniffed value.\n- Query Store: force a known-good plan.\n- SQL Server 2022+: PSP optimization caches several plan variants for skewed equality predicates automatically.\n- Design changes: separate procedures or code paths for \"big\" and \"small\" cases; updated statistics.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE OR ALTER PROCEDURE dbo.GetOrdersByCustomer @CustomerId int\nAS\nBEGIN\n    SET NOCOUNT ON;\n\n    SELECT OrderId, OrderDate, Amount\n    FROM dbo.Orders\n    WHERE CustomerId = @CustomerId\n    OPTION (RECOMPILE);          -- or: OPTION (OPTIMIZE FOR (@CustomerId UNKNOWN))\nEND;\nGO\n\n-- Clear one bad plan instead of the whole cache\nDECLARE @h varbinary(64) =\n    (SELECT plan_handle FROM sys.dm_exec_procedure_stats\n     WHERE object_id = OBJECT_ID('dbo.GetOrdersByCustomer'));\nDBCC FREEPROCCACHE (@h);"
+      },
+      "pitfalls": [
+        "Running `DBCC FREEPROCCACHE` with no argument in production, which recompiles everything on the server.",
+        "Putting WITH RECOMPILE on a procedure that runs thousands of times a second.",
+        "Testing in SSMS with different SET options from the app and concluding \"it's fast for me\".",
+        "Copying parameters into local variables as a \"fix\" without understanding that it simply hides the value from the optimizer."
+      ],
+      "followUps": [
+        "How does Query Store help you find and fix plan regressions?",
+        "What is the difference between OPTIMIZE FOR UNKNOWN and OPTION (RECOMPILE)?",
+        "Why can an ORM's parameterized queries suffer from the same problem as stored procedures?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/query-processing-architecture-guide",
+          "title": "Query processing architecture guide: parameter sensitivity — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/parameter-sensitive-plan-optimization",
+          "title": "Parameter Sensitive Plan optimization — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query",
+          "title": "Query hints (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-arithabort-transact-sql",
+          "title": "SET ARITHABORT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "execution-plans-and-sargability",
+        "views-and-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "PSP optimization requires SQL Server 2022 (16.x) and compatibility level 160 (extended to DML in SQL Server 2025 at level 170). Query Store is on by default for new databases from SQL Server 2022.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-acid-properties",
+      "topic": "sql-server",
+      "subtopic": "transactions-and-isolation",
+      "difficulty": "junior",
+      "question": "What does ACID mean, and how does SQL Server provide each property?",
+      "shortAnswer": "ACID is the set of guarantees a transaction gives. Atomicity: all or nothing. Consistency: from one valid state to another, with every constraint respected. Isolation: concurrent transactions don't see each other's intermediate states. Durability: once committed, the change survives a crash. SQL Server delivers them through the transaction log, constraints, and locking or row versioning.",
+      "answer": "**Key points**\n\n| Property | Meaning | How SQL Server provides it |\n|---|---|---|\n| **Atomicity** | every change in the transaction happens, or none does | the transaction log records changes, so ROLLBACK (or crash recovery) can undo them |\n| **Consistency** | the database moves between valid states | constraints (PK, FK, CHECK, UNIQUE), triggers, and your own transaction logic |\n| **Isolation** | concurrent transactions don't see each other's in-between states | locks or row versions, depending on the isolation level |\n| **Durability** | committed changes survive failures | for fully durable transactions, the log records are hardened to disk before the commit returns; after a crash, recovery uses the log |\n\n**Detail**\n\n- Each statement is atomic on its own (auto-commit mode). Several statements are only atomic together inside an explicit `BEGIN TRAN … COMMIT`.\n- Isolation is a dial, not a switch: READ COMMITTED is the default, and stronger levels prevent more anomalies at the cost of concurrency.\n- \"Consistency\" in ACID is partly *your* job. The database can only enforce the rules you declare.\n- *Delayed durability* (an opt-in setting, `DELAYED_DURABILITY = ALLOWED | FORCED`) returns from COMMIT before the log is written to disk. It trades possible data loss for speed, so know it exists before claiming every commit is durable.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Money transfer: both updates or neither\nSET XACT_ABORT ON;\nBEGIN TRAN;\n    UPDATE dbo.Accounts SET Balance = Balance - 100 WHERE AccountId = 1;\n    UPDATE dbo.Accounts SET Balance = Balance + 100 WHERE AccountId = 2;\nCOMMIT;"
+      },
+      "pitfalls": [
+        "Saying \"Consistency\" means \"every read sees the latest data\". That's an isolation question, not consistency.",
+        "Running related updates without an explicit transaction and assuming they're atomic together.",
+        "Forgetting that the isolation level only changes how *reads* behave. Writes always take exclusive locks until the transaction ends."
+      ],
+      "followUps": [
+        "How does the transaction log make atomicity and durability possible?",
+        "Which anomalies does READ COMMITTED still allow?",
+        "What is delayed durability, and when would you consider it?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+          "title": "Transaction locking and row versioning guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/logs/control-transaction-durability",
+          "title": "Control transaction durability — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-delete-vs-truncate",
+      "topic": "sql-server",
+      "subtopic": "transactions-and-isolation",
+      "difficulty": "junior",
+      "question": "What is the difference between DELETE and TRUNCATE TABLE? Can TRUNCATE be rolled back?",
+      "shortAnswer": "DELETE removes rows one at a time, logs every row, can take a WHERE clause and fires DELETE triggers. TRUNCATE TABLE removes all rows by deallocating the data pages, logs only the page deallocations, resets the IDENTITY seed and fires no triggers. And yes: TRUNCATE can be rolled back inside a transaction, a very common interview trap.",
+      "answer": "**Key points**\n\n| | DELETE | TRUNCATE TABLE |\n|---|---|---|\n| Which rows | any (WHERE) | all rows (or whole partitions, SQL Server 2016+) |\n| Logging | every deleted row | page deallocations only |\n| Locks | row/page locks (can escalate) | table lock (including Sch-M) and pages |\n| Triggers | DELETE triggers fire | no triggers |\n| IDENTITY | keeps the current value | reset to the seed |\n| Rollback | yes | **yes**, inside a transaction |\n| Permission | DELETE | ALTER on the table |\n\n**Restrictions on TRUNCATE**: you can't truncate a table referenced by a FOREIGN KEY (a self-reference is allowed), a table that participates in an indexed view, a table published by transactional or merge replication, or a system-versioned temporal table.\n\n**Detail**\n\nTRUNCATE is \"minimally logged\", not \"not logged\": that's why it can be rolled back. For a huge table the page deallocation can be deferred and finished in the background after commit.",
+      "code": {
+        "lang": "sql",
+        "source": "BEGIN TRAN;\n    TRUNCATE TABLE dbo.StagingOrders;\n    SELECT COUNT(*) FROM dbo.StagingOrders;   -- 0\nROLLBACK;\nSELECT COUNT(*) FROM dbo.StagingOrders;       -- the rows are back"
+      },
+      "pitfalls": [
+        "Claiming TRUNCATE \"can't be rolled back\" or \"isn't logged\".",
+        "Using TRUNCATE on a table that other tables reference with foreign keys; it fails.",
+        "Expecting TRUNCATE to fire audit triggers, or to keep the IDENTITY counter.",
+        "Using DELETE without a WHERE clause on a huge table when TRUNCATE (or batched deletes) would be far cheaper."
+      ],
+      "followUps": [
+        "How would you remove a few million rows from a busy table without blocking everyone?",
+        "What does DROP TABLE do differently from TRUNCATE?",
+        "Why does TRUNCATE need ALTER permission rather than DELETE permission?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql",
+          "title": "TRUNCATE TABLE (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/delete-transact-sql",
+          "title": "DELETE (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "crud-filtering-sorting",
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-isolation-levels-anomalies",
+      "topic": "sql-server",
+      "subtopic": "transactions-and-isolation",
+      "difficulty": "mid",
+      "question": "Explain SQL Server's isolation levels. Which anomalies (dirty reads, non-repeatable reads, phantoms) does each prevent?",
+      "shortAnswer": "READ UNCOMMITTED allows dirty reads. READ COMMITTED (the default) prevents them. REPEATABLE READ also stops rows you've read from changing. SERIALIZABLE also stops new rows from appearing in ranges you've read (phantoms). SNAPSHOT gives the whole transaction a consistent, versioned view without read locks. Stronger levels hold locks longer, which means more blocking.",
+      "answer": "**Key points**\n\n| Level | Dirty read | Non-repeatable read | Phantom | How |\n|---|---|---|---|---|\n| READ UNCOMMITTED | possible | possible | possible | no shared locks (like NOLOCK) |\n| READ COMMITTED (default) | prevented | possible | possible | short shared locks, or row versions with RCSI |\n| REPEATABLE READ | prevented | prevented | possible | shared locks held to end of transaction |\n| SERIALIZABLE | prevented | prevented | prevented | key-range locks held to end of transaction |\n| SNAPSHOT | prevented | prevented | prevented | row versions as of transaction start; needs ALLOW_SNAPSHOT_ISOLATION |\n\n- **Dirty read**: reading another transaction's uncommitted change, which may later be rolled back.\n- **Non-repeatable read**: re-reading a row inside one transaction and getting a different value.\n- **Phantom**: re-running a range query and getting new rows that another transaction inserted.\n\n**Detail**\n\nThe isolation level affects *reads* only. Every transaction always takes exclusive locks on what it modifies and holds them until it ends. The level is set per session (`SET TRANSACTION ISOLATION LEVEL …`) or per table with hints (`WITH (HOLDLOCK)` = SERIALIZABLE, `WITH (NOLOCK)` = READ UNCOMMITTED). A level set inside a stored procedure reverts when the procedure returns.",
+      "code": {
+        "lang": "sql",
+        "source": "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;\nBEGIN TRAN;\n    SELECT Balance FROM dbo.Accounts WHERE AccountId = 1;   -- S lock kept\n    -- another session's UPDATE of this row now waits...\n    SELECT Balance FROM dbo.Accounts WHERE AccountId = 1;   -- same value\nCOMMIT;"
+      },
+      "pitfalls": [
+        "Thinking a higher isolation level protects writes more. Writes always get exclusive locks.",
+        "Using SERIALIZABLE \"to be safe\" everywhere, and getting blocking and deadlocks on range locks.",
+        "Assuming READ COMMITTED gives a consistent view across several statements in one transaction. It doesn't; only SNAPSHOT does.",
+        "Forgetting that Azure SQL Database runs READ COMMITTED with row versioning by default, so readers don't wait for writers there."
+      ],
+      "followUps": [
+        "What's the difference between READ COMMITTED SNAPSHOT and SNAPSHOT isolation?",
+        "Why is NOLOCK dangerous even for reports?",
+        "Which isolation level would you use to stop two sessions from booking the same seat?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql",
+          "title": "SET TRANSACTION ISOLATION LEVEL (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+          "title": "Transaction locking and row versioning guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "READ COMMITTED uses locking by default in SQL Server (READ_COMMITTED_SNAPSHOT OFF) but row versioning by default in Azure SQL Database and SQL database in Microsoft Fabric (READ_COMMITTED_SNAPSHOT ON).",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-nolock-risks",
+      "topic": "sql-server",
+      "subtopic": "transactions-and-isolation",
+      "difficulty": "mid",
+      "question": "Is WITH (NOLOCK) a safe way to make queries faster? What can go wrong?",
+      "shortAnswer": "No. NOLOCK means READ UNCOMMITTED: the query takes no shared locks, so it can read changes that are later rolled back (dirty reads), and during scans it can skip rows or read the same row twice when other sessions move rows around. It also doesn't stop schema-lock blocking. If the real goal is \"readers shouldn't block writers\", use READ COMMITTED SNAPSHOT or SNAPSHOT isolation instead.",
+      "answer": "**Key points**\n\n- `NOLOCK` = `READUNCOMMITTED`. It applies only to data locks: the query still takes a schema-stability (Sch-S) lock, so DDL can still block it.\n- What can go wrong:\n  - **dirty reads**: values that never existed once the other transaction rolls back\n  - **missing or duplicate rows**: if a row's index key changes during your scan, you can see it twice or not at all; with allocation-order scans, page splits can make you miss rows\n  - occasional error 601 (\"could not continue scan due to data movement\"), which you have to retry like a deadlock\n- NOLOCK on the *target* of an UPDATE or DELETE is ignored and is deprecated.\n\n**Better options**\n\n- `READ_COMMITTED_SNAPSHOT ON`: readers see the last committed version of each row, with no read locks and no dirty data. It costs tempdb (or, with Accelerated Database Recovery, in-database) version store space.\n- `SNAPSHOT` isolation for reports that need one consistent view across several statements.\n- Fix the actual cause of the blocking: long transactions, missing indexes, lock escalation.",
+      "code": {
+        "lang": "sql",
+        "source": "-- What people write\nSELECT SUM(Amount) FROM dbo.Orders WITH (NOLOCK) WHERE OrderDate >= '2025-01-01';\n\n-- What usually solves the real problem (database-level, test first)\nALTER DATABASE Shop SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE;\n-- Readers now get the last committed row versions; no dirty reads, no read locks"
+      },
+      "pitfalls": [
+        "Using NOLOCK on financial or inventory queries where a wrong total matters.",
+        "Believing NOLOCK means \"never blocks\". Schema modifications still block it.",
+        "Sprinkling NOLOCK across an ORM-generated workload instead of enabling RCSI once.",
+        "Enabling RCSI without checking tempdb / version store capacity and long-running transactions."
+      ],
+      "followUps": [
+        "How does READ_COMMITTED_SNAPSHOT avoid blocking readers?",
+        "What is an allocation-order scan, and why does it make NOLOCK riskier?",
+        "When is READ UNCOMMITTED acceptable, if ever?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table",
+          "title": "Table hints (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+          "title": "Transaction locking and row versioning guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-xact-abort-try-catch",
+      "topic": "sql-server",
+      "subtopic": "transactions-and-isolation",
+      "difficulty": "mid",
+      "question": "How do you write error handling for a transaction in a stored procedure? What do SET XACT_ABORT, XACT_STATE() and nested BEGIN TRAN actually do?",
+      "shortAnswer": "Use SET XACT_ABORT ON plus TRY…CATCH. In the CATCH block, roll back if XACT_STATE() <> 0 (or @@TRANCOUNT > 0) and re-raise the error with THROW. XACT_ABORT ON makes any run-time error doom and roll back the whole transaction instead of leaving it half done. And SQL Server has no truly nested transactions: an inner COMMIT only decrements @@TRANCOUNT, while any ROLLBACK (other than to a savepoint) undoes everything.",
+      "answer": "**Key points**\n\n- **XACT_ABORT OFF** (the default in T-SQL): some errors roll back only the failing statement, and the transaction carries on, which leads to partial work being committed. **ON**: a run-time error terminates and rolls back the whole transaction. (It's ON by default inside triggers.)\n- **TRY…CATCH** catches errors above severity 10 that don't close the connection. It does *not* catch compile errors or name-resolution errors at the same level, or attentions such as client timeouts.\n- **XACT_STATE()**: `1` = active and committable, `-1` = uncommittable (you can only read or roll back), `0` = no transaction.\n- **Nesting**: each `BEGIN TRAN` adds 1 to `@@TRANCOUNT`, and an inner `COMMIT` only subtracts 1. `ROLLBACK` goes all the way back to the outermost BEGIN, unless you roll back to a named `SAVE TRANSACTION` savepoint.\n- Use **THROW**, not RAISERROR: THROW re-raises the original error and honours XACT_ABORT.\n\n**Detail**\n\nClient timeouts matter a lot in .NET apps. When a command times out or is cancelled, the client sends an *attention*: SQL Server stops the current batch but **doesn't roll back or commit the open transaction**, and TRY…CATCH never runs. The session is left \"sleeping\" with `@@TRANCOUNT > 0`, still holding its locks, possibly back in the connection pool. Microsoft's blocking guidance: in the client's error handler, run `IF @@TRANCOUNT > 0 ROLLBACK`, and use `SET XACT_ABORT ON` in procedures that start transactions.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE OR ALTER PROCEDURE dbo.TransferFunds\n    @From int, @To int, @Amount decimal(18,2)\nAS\nBEGIN\n    SET NOCOUNT ON;\n    SET XACT_ABORT ON;\n\n    BEGIN TRY\n        BEGIN TRAN;\n            UPDATE dbo.Accounts SET Balance = Balance - @Amount WHERE AccountId = @From;\n            UPDATE dbo.Accounts SET Balance = Balance + @Amount WHERE AccountId = @To;\n        COMMIT;\n    END TRY\n    BEGIN CATCH\n        IF XACT_STATE() <> 0 ROLLBACK;\n        THROW;          -- re-raise to the caller with the original error\n    END CATCH\nEND;"
+      },
+      "pitfalls": [
+        "Leaving XACT_ABORT OFF and committing a half-finished transaction after a constraint error.",
+        "Swallowing the error in CATCH (no THROW), so the application thinks the call succeeded.",
+        "Calling COMMIT on an uncommittable transaction (XACT_STATE() = -1). It fails; only ROLLBACK is allowed.",
+        "Believing an inner COMMIT makes the inner work permanent even if the outer transaction rolls back."
+      ],
+      "followUps": [
+        "Why doesn't TRY…CATCH help when the .NET client times out?",
+        "How do savepoints let you undo part of a transaction?",
+        "How would you write a procedure that works both on its own and when called inside a caller's transaction?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-xact-abort-transact-sql",
+          "title": "SET XACT_ABORT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql",
+          "title": "TRY...CATCH (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-transaction-transact-sql",
+          "title": "BEGIN TRANSACTION (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking",
+          "title": "Understand and resolve SQL Server blocking problems — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-rcsi-vs-snapshot-isolation",
+      "topic": "sql-server",
+      "subtopic": "transactions-and-isolation",
+      "difficulty": "senior",
+      "question": "What is the difference between READ COMMITTED SNAPSHOT (RCSI) and SNAPSHOT isolation? What do they cost?",
+      "shortAnswer": "Both use row versioning so that readers take no shared locks and don't block writers (nor get blocked by them). RCSI changes the default READ COMMITTED level for the whole database and gives each *statement* a consistent view as of when that statement started. SNAPSHOT must be requested per transaction (after enabling ALLOW_SNAPSHOT_ISOLATION) and gives the whole *transaction* a view as of its start, so a write to a row someone else changed after that point fails with an update conflict.",
+      "answer": "**Key points**\n\n| | READ COMMITTED SNAPSHOT (RCSI) | SNAPSHOT isolation |\n|---|---|---|\n| Enable | `ALTER DATABASE … SET READ_COMMITTED_SNAPSHOT ON` | `ALTER DATABASE … SET ALLOW_SNAPSHOT_ISOLATION ON`, then `SET TRANSACTION ISOLATION LEVEL SNAPSHOT` |\n| Who uses it | every READ COMMITTED transaction, with no code change | only sessions that ask for it |\n| Consistency | per **statement** | per **transaction** |\n| Write conflicts | normal locking for writers | update conflict error if the row changed after the transaction started, so the app must retry |\n\n**Costs**\n\n- Every modification in the database keeps the previous row image in the version store (tempdb, or the database itself with ADR), even when nobody is reading old versions.\n- Long-running transactions keep versions alive, so the version store grows. If tempdb fills up, reads that need a missing version can fail.\n- Logic that relied on readers *waiting* (for example \"read, then update based on what I read\") can behave differently. Use `UPDLOCK` or `READCOMMITTEDLOCK` where you really need blocking.\n\n**Detail**\n\nRCSI is the usual fix for reader/writer blocking in OLTP systems, and it's far safer than NOLOCK. SNAPSHOT suits long reports that need several queries to agree with each other.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Database-level switch (needs no other active connections; ROLLBACK IMMEDIATE kicks them out)\nALTER DATABASE Shop SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE;\n\n-- Transaction-level snapshot for a consistent multi-query report\nALTER DATABASE Shop SET ALLOW_SNAPSHOT_ISOLATION ON;\nSET TRANSACTION ISOLATION LEVEL SNAPSHOT;\nBEGIN TRAN;\n    SELECT SUM(Amount) FROM dbo.Orders;\n    SELECT COUNT(*)    FROM dbo.OrderLines;   -- same point in time as the first query\nCOMMIT;"
+      },
+      "pitfalls": [
+        "Enabling RCSI in production without sizing the version store or checking for long-running transactions.",
+        "Using SNAPSHOT for updates without retry logic for update-conflict errors.",
+        "Assuming RCSI makes a read-then-write sequence safe. Two sessions can both read the old value and both act on it.",
+        "Confusing the two: turning on ALLOW_SNAPSHOT_ISOLATION alone changes nothing until sessions request SNAPSHOT."
+      ],
+      "followUps": [
+        "How would you monitor version store usage?",
+        "Which existing code patterns can break when you turn on RCSI?",
+        "How do you implement a \"check then update\" safely under RCSI?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+          "title": "Transaction locking and row versioning guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql",
+          "title": "SET TRANSACTION ISOLATION LEVEL (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "RCSI is ON by default in Azure SQL Database and SQL database in Microsoft Fabric and OFF by default in SQL Server. With Accelerated Database Recovery, row versions live in the database's persistent version store instead of tempdb. Optimized locking (Azure SQL; SQL Server 2025) changes how RCSI writers lock.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-lock-modes",
+      "topic": "sql-server",
+      "subtopic": "locking-and-deadlocks",
+      "difficulty": "mid",
+      "question": "What are the main lock modes in SQL Server (S, U, X, intent locks), and why do update locks exist?",
+      "shortAnswer": "Shared (S) locks are for reading, exclusive (X) locks for modifying, and update (U) locks for \"I've found this row and am about to change it\". Intent locks (IS, IX, SIX) sit on the page and table above, announcing that finer-grained locks exist below. U locks exist to prevent the classic deadlock where two sessions both read a row with S locks and then both try to convert to X.",
+      "answer": "**Key points**\n\n- **S**: many sessions can hold one on the same resource. It blocks X.\n- **X**: nothing else is compatible. It's held until the transaction ends, at every isolation level.\n- **U**: compatible with S, but only *one* session can hold a U lock on a resource. It's converted to X when the row is actually modified.\n- **Intent locks (IS, IX, SIX)**: placed on the table and page so SQL Server can check a table-level lock request without examining every row lock.\n- **Schema locks**: Sch-S while a query compiles and runs, Sch-M for DDL. Sch-M blocks everything, including NOLOCK readers.\n\n**Compatibility (simplified)**\n\n| Requested ↓ / held → | S | U | X |\n|---|---|---|---|\n| S | ✅ | ✅ | ❌ |\n| U | ✅ | ❌ | ❌ |\n| X | ❌ | ❌ | ❌ |\n\n**Detail**\n\nLocks are taken at row/key, page or table level (and can escalate). The documentation suggests \"select a row with UPDLOCK, then update it\" as the pattern for avoiding conversion deadlocks in read-then-update logic.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Read-then-update without the S -> X conversion deadlock\nBEGIN TRAN;\n    SELECT Quantity\n    FROM dbo.Stock WITH (UPDLOCK)        -- U lock: others can still read, only one can hold U\n    WHERE ProductId = 10;\n\n    UPDATE dbo.Stock SET Quantity = Quantity - 1 WHERE ProductId = 10;  -- U -> X\nCOMMIT;\n\n-- See the locks a session holds\nSELECT resource_type, request_mode, request_status, resource_description\nFROM sys.dm_tran_locks\nWHERE request_session_id = @@SPID;"
+      },
+      "pitfalls": [
+        "Thinking SELECT never blocks anything. Under the default locking READ COMMITTED it takes S locks, which conflict with writers' X locks.",
+        "Not knowing intent locks exist, then being surprised by IX locks on a table when you only updated one row.",
+        "Using XLOCK or TABLOCKX \"for safety\" and serializing the whole workload."
+      ],
+      "followUps": [
+        "What causes a conversion deadlock, and how does UPDLOCK prevent it?",
+        "What is lock escalation?",
+        "How does RCSI change which locks a SELECT takes?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+          "title": "Transaction locking and row versioning guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table",
+          "title": "Table hints (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-find-blocking",
+      "topic": "sql-server",
+      "subtopic": "locking-and-deadlocks",
+      "difficulty": "mid",
+      "question": "Users say the application \"hangs\". How do you find out what is blocking what in SQL Server?",
+      "shortAnswer": "Query sys.dm_exec_requests for requests whose blocking_session_id isn't 0, then follow the chain to the *head blocker*: the session that blocks others but isn't blocked itself. Get its SQL text, transaction age and wait details, then fix the cause (usually a long-open transaction, a missing index, or an app that left a transaction open). Kill the session only as a last resort.",
+      "answer": "**Key points**\n\n- `sys.dm_exec_requests`: `blocking_session_id`, `wait_type` (`LCK_M_X`, `LCK_M_S`…), `wait_time`, `wait_resource`.\n- The head blocker is often *sleeping* with an open transaction. It isn't running anything, so look in `sys.dm_exec_sessions` / `sys.dm_tran_session_transactions` too, not just at requests.\n- `sys.dm_tran_locks` shows which resources are held and which are waited on. `sys.dm_os_waiting_tasks` covers individual parallel tasks.\n- Permissions: VIEW SERVER STATE (VIEW SERVER PERFORMANCE STATE from SQL Server 2022); without them you only see your own session.\n\n**Typical root causes**\n\n- a transaction left open by the application (an exception path that never commits or rolls back)\n- long transactions doing slow work, or waiting for user input, while holding locks\n- missing indexes, so an UPDATE scans and locks far more rows than needed\n- lock escalation to a table lock\n\n**Detail**\n\nBlocking is normal and short-lived; it becomes a problem when the head blocker never finishes. For recurring cases, capture them with the blocked process report (extended events) instead of watching DMVs live.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Who is blocked, by whom, running what\nSELECT r.session_id,\n       r.blocking_session_id,\n       r.wait_type,\n       r.wait_time,\n       r.wait_resource,\n       t.text AS running_sql\nFROM sys.dm_exec_requests AS r\nCROSS APPLY sys.dm_exec_sql_text(r.sql_handle) AS t\nWHERE r.blocking_session_id <> 0;\n\n-- Head blockers: they block others but aren't blocked themselves\nSELECT s.session_id, s.status, s.login_name, s.host_name, s.open_transaction_count\nFROM sys.dm_exec_sessions AS s\nWHERE s.session_id IN (SELECT blocking_session_id FROM sys.dm_exec_requests)\n  AND s.session_id NOT IN (SELECT session_id FROM sys.dm_exec_requests WHERE blocking_session_id <> 0);"
+      },
+      "pitfalls": [
+        "Killing the first blocked session you see instead of the head blocker.",
+        "Ignoring *sleeping* sessions with open transactions, which are the classic head blockers.",
+        "Treating every block as a deadlock. Blocking resolves on its own once the blocker finishes; a deadlock never would without SQL Server stepping in.",
+        "Using KILL without checking what the session is doing; the rollback can take as long as the work did."
+      ],
+      "followUps": [
+        "How do you capture blocking that happens at night (blocked process report)?",
+        "Why can a .NET app leave a transaction open on a pooled connection?",
+        "How would RCSI change the blocking picture?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql",
+          "title": "sys.dm_exec_requests (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking",
+          "title": "Understand and resolve SQL Server blocking problems — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-lock-escalation",
+      "topic": "sql-server",
+      "subtopic": "locking-and-deadlocks",
+      "difficulty": "senior",
+      "question": "What is lock escalation? When does it happen, and how do you deal with it?",
+      "shortAnswer": "Lock escalation is SQL Server replacing many fine-grained row or page locks with one table (or partition) lock to save lock memory. It's triggered when a single statement acquires at least 5,000 locks on one table or index (or when lock memory runs short). The cost is concurrency: one big update can suddenly block every other user of the table.",
+      "answer": "**Key points**\n\n- Trigger: ~5,000 locks taken by **one statement** on one non-partitioned table or index (or one partition when `LOCK_ESCALATION = AUTO`), or lock memory reaching its configured limit.\n- If escalation is blocked by other sessions' locks, SQL Server retries every additional 1,250 locks.\n- Escalation goes straight to the table (or partition) level, never to page level.\n- Table option: `ALTER TABLE … SET (LOCK_ESCALATION = TABLE | AUTO | DISABLE)`.\n\n**How to deal with it**\n\n1. **Batch big modifications**, for example `DELETE TOP (4000)` in a loop, so each statement stays under the threshold.\n2. **Index the predicate** so the statement locks only the rows it needs instead of scanning and locking many.\n3. **Shorten transactions**. Locks are held until commit.\n4. Use **RCSI** so readers don't need shared locks at all.\n5. `AUTO` on partitioned tables escalates to the partition instead of the whole table.\n6. `DISABLE` only as a last resort: it can use a lot of lock memory.\n\n**Detail**\n\nMonitor escalations with the `lock_escalation` extended event. With **optimized locking** (SQL Server 2025, opt-in per database; always on in Azure SQL Database), row and page locks are released as soon as each row is modified and only one transaction-ID lock is held until commit, so escalation becomes much less likely.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Purge old rows in batches to avoid escalating to a table lock\nDECLARE @rows int = 1;\nWHILE @rows > 0\nBEGIN\n    DELETE TOP (4000) FROM dbo.AuditLog\n    WHERE CreatedAt < DATEADD(year, -2, SYSUTCDATETIME());\n    SET @rows = @@ROWCOUNT;\nEND;\n\n-- Partition-level escalation on a partitioned table\nALTER TABLE dbo.AuditLog SET (LOCK_ESCALATION = AUTO);"
+      },
+      "pitfalls": [
+        "Disabling lock escalation across the board, then running out of lock memory.",
+        "Believing ROWLOCK hints prevent escalation. Escalation can still happen.",
+        "Running one huge UPDATE in business hours and wondering why every reader waits."
+      ],
+      "followUps": [
+        "Why batch in chunks of a few thousand rows specifically?",
+        "How does an index on the WHERE column reduce locking?",
+        "How would you detect that escalation is causing blocking?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+          "title": "Transaction locking and row versioning guide: lock escalation — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-locking",
+          "title": "Optimized locking — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/delete-transact-sql",
+          "title": "DELETE (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Optimized locking, which makes escalation much rarer, exists only in SQL Server 2025 (17.x), where it's opt-in per database and needs accelerated database recovery, and in Azure SQL Database, Managed Instance (always-up-to-date / 2025 policy) and Fabric, where it's always on.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-diagnose-deadlocks",
+      "topic": "sql-server",
+      "subtopic": "locking-and-deadlocks",
+      "difficulty": "senior",
+      "question": "How does SQL Server detect and resolve deadlocks, and how do you investigate and prevent them in production?",
+      "shortAnswer": "A background lock monitor looks for cycles in the wait-for graph (every 5 seconds by default, more often while deadlocks keep occurring). When it finds one, it picks a victim (the session with the lower DEADLOCK_PRIORITY, otherwise the transaction cheapest to roll back), rolls that transaction back and returns error 1205. To investigate, read the deadlock graph that the built-in system_health session already captures; to prevent, access objects in the same order, keep transactions short, index well, and retry on 1205.",
+      "answer": "**Key points**\n\n- **Detection**: the lock monitor runs every 5 s by default and checks more often (down to about 100 ms) while deadlocks keep happening.\n- **Victim**: lower `DEADLOCK_PRIORITY` loses; with equal priority, the transaction that's cheapest to roll back is chosen. The victim gets error **1205** and its transaction is rolled back.\n- **Evidence**: the `xml_deadlock_report` event is captured by default in the **system_health** extended event session, so you don't need extra setup. SSMS draws the graph: the processes, the resources, who owns what, who waits for what.\n- **Minimise** (Microsoft's list):\n  - access objects in the same order\n  - avoid user interaction inside transactions\n  - keep transactions short and in one batch\n  - use a lower isolation level or row versioning (RCSI)\n  - use bound connections\n- **Application side**: treat 1205 as transient. Retry after a short, randomised delay.\n\n**Detail**\n\nCommon shapes in .NET apps:\n\n- two code paths updating the same tables in opposite order\n- read-then-update under REPEATABLE READ or SERIALIZABLE (a conversion deadlock; use UPDLOCK)\n- a missing index, so an UPDATE scans and locks rows it doesn't need\n\nFixing the access pattern beats tuning DEADLOCK_PRIORITY.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Deadlock graphs captured by the default system_health session (ring buffer)\nSELECT xdr.value('@timestamp', 'datetime2') AS deadlock_time,\n       xdr.query('.')                       AS deadlock_graph\nFROM (SELECT CAST(xet.target_data AS xml) AS target_data\n      FROM sys.dm_xe_session_targets AS xet\n      JOIN sys.dm_xe_sessions AS xs ON xs.address = xet.event_session_address\n      WHERE xs.name = N'system_health'\n        AND xet.target_name = N'ring_buffer') AS d\nCROSS APPLY d.target_data.nodes('RingBufferTarget/event[@name=\"xml_deadlock_report\"]') AS x(xdr);\n\n-- Make a background job the preferred victim\nSET DEADLOCK_PRIORITY LOW;"
+      },
+      "pitfalls": [
+        "Saying SQL Server waits for a timeout to break deadlocks. It detects them actively.",
+        "Catching 1205 in the app and not retrying, or retrying instantly in a tight loop.",
+        "Adding NOLOCK everywhere to \"fix\" deadlocks instead of fixing the access order or indexing.",
+        "Forgetting that the victim's whole transaction is rolled back, not just the last statement."
+      ],
+      "followUps": [
+        "How would you read a deadlock graph: which parts tell you the resources and the lock modes?",
+        "What is a conversion deadlock?",
+        "How would you implement retry-on-deadlock in a .NET data layer?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide",
+          "title": "Deadlocks guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+          "title": "Transaction locking and row versioning guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-upsert-race-condition",
+      "topic": "sql-server",
+      "subtopic": "locking-and-deadlocks",
+      "difficulty": "senior",
+      "question": "Two requests run \"IF NOT EXISTS (SELECT …) INSERT … ELSE UPDATE …\" at the same time and you get duplicate-key errors or lost updates. Why, and how do you make an upsert safe under concurrency?",
+      "shortAnswer": "Under READ COMMITTED, the existence check releases its shared lock straight away (and takes none with RCSI), so both sessions can see \"no row\" and both try to INSERT. MERGE alone has the same gap. Make the check and the write atomic by holding a key-range lock: WITH (UPDLOCK, HOLDLOCK) on the check (or on the MERGE target) inside one transaction, plus a unique constraint as the final safety net.",
+      "answer": "**Key points**\n\n- The race: session A checks (no row) → session B checks (no row) → A inserts → B inserts → duplicate key, or two rows when there's no unique constraint.\n- `UPDLOCK`: only one session at a time can hold the update lock on the key, so the second one waits instead of racing ahead.\n- `HOLDLOCK` (= SERIALIZABLE) holds a **range lock**, so it also protects a key that *doesn't exist yet*. Without it, there's no row to lock.\n- The MERGE documentation itself recommends `HOLDLOCK` when unique keys may be both inserted and updated, to prevent unique-key violations.\n- Always back it with a UNIQUE constraint or index, and keep the transaction short. Range locks reduce concurrency.\n\n**Alternative pattern**: UPDATE first; if `@@ROWCOUNT = 0`, then INSERT, both inside the same transaction with the same hints. Or try the INSERT and handle the unique-key violation error by updating instead.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE OR ALTER PROCEDURE dbo.UpsertStock @ProductId int, @Qty int\nAS\nBEGIN\n    SET NOCOUNT ON;\n    SET XACT_ABORT ON;\n    BEGIN TRAN;\n\n        UPDATE dbo.Stock WITH (UPDLOCK, HOLDLOCK)\n        SET Quantity = @Qty\n        WHERE ProductId = @ProductId;\n\n        IF @@ROWCOUNT = 0\n            INSERT dbo.Stock (ProductId, Quantity) VALUES (@ProductId, @Qty);\n\n    COMMIT;\nEND;\n\n-- MERGE equivalent: the hint goes on the target\n-- MERGE dbo.Stock WITH (HOLDLOCK) AS t\n-- USING (SELECT @ProductId AS ProductId, @Qty AS Quantity) AS s\n--   ON t.ProductId = s.ProductId\n-- WHEN MATCHED THEN UPDATE SET Quantity = s.Quantity\n-- WHEN NOT MATCHED THEN INSERT (ProductId, Quantity) VALUES (s.ProductId, s.Quantity);"
+      },
+      "pitfalls": [
+        "Believing a single MERGE statement is automatically race-free.",
+        "Using UPDLOCK without HOLDLOCK. When the row doesn't exist yet, there is nothing to lock.",
+        "Relying on RCSI. Reads take no locks at all, so the check-then-insert race gets *easier* to hit.",
+        "Skipping the unique constraint and silently accumulating duplicates."
+      ],
+      "followUps": [
+        "Why does SERIALIZABLE protect a row that doesn't exist yet (key-range locks)?",
+        "What deadlock risk do UPDLOCK + HOLDLOCK introduce, and how do you keep it low?",
+        "How would you do the same upsert with EF Core and handle the conflict?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/merge-transact-sql",
+          "title": "MERGE (Transact-SQL): concurrency considerations — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table",
+          "title": "Table hints (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql",
+          "title": "SET TRANSACTION ISOLATION LEVEL (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-stored-procedure-vs-function",
+      "topic": "sql-server",
+      "subtopic": "stored-procedures-and-functions",
+      "difficulty": "junior",
+      "question": "What is the difference between a stored procedure and a user-defined function?",
+      "shortAnswer": "A stored procedure is a program you EXECUTE: it can modify data, manage transactions, use TRY…CATCH, run dynamic SQL and return several result sets plus output parameters. A user-defined function is an expression you use *inside* a query (SELECT, WHERE, JOIN): it returns one value or one table and can't change database state.",
+      "answer": "**Key points**\n\n| | Stored procedure | User-defined function |\n|---|---|---|\n| How it's called | `EXEC dbo.Proc …` | inside a query: `SELECT dbo.Fn(x)`, `FROM dbo.TableFn(@p)` |\n| Returns | 0..n result sets, OUTPUT parameters, an int return code | one scalar value or one table |\n| Modify data / DDL | yes | no (only its own table variables) |\n| Transactions, TRY…CATCH, dynamic SQL, temp tables | yes | no |\n| Call the other kind | can call functions | can't call stored procedures |\n| Side-effecting built-ins (NEWID, RAND) | yes | not allowed |\n\n**Function types**: scalar, inline table-valued (a single `RETURN (SELECT …)`) and multi-statement table-valued (fills a `@table` variable).\n\n**When to use which**: a procedure for operations (business transactions, writes, the API surface for an app); an inline TVF for reusable, *parameterized views*; avoid scalar functions on hot paths over many rows unless they can be inlined (SQL Server 2019+).",
+      "code": {
+        "lang": "sql",
+        "source": "-- Procedure: performs work, can return several things\nCREATE OR ALTER PROCEDURE dbo.PlaceOrder @CustomerId int, @OrderId int OUTPUT\nAS\nBEGIN\n    SET NOCOUNT ON;\n    INSERT dbo.Orders (CustomerId, OrderDate) VALUES (@CustomerId, SYSUTCDATETIME());\n    SET @OrderId = SCOPE_IDENTITY();\nEND;\nGO\n\n-- Inline TVF: a parameterized view you can join to\nCREATE OR ALTER FUNCTION dbo.OrdersForCustomer (@CustomerId int)\nRETURNS TABLE\nAS RETURN\n    SELECT OrderId, OrderDate, Amount\n    FROM dbo.Orders\n    WHERE CustomerId = @CustomerId;\nGO\n\nSELECT c.Name, o.OrderId\nFROM dbo.Customers AS c\nCROSS APPLY dbo.OrdersForCustomer(c.CustomerId) AS o;"
+      },
+      "pitfalls": [
+        "Trying to INSERT/UPDATE or use TRY…CATCH inside a function. Not allowed.",
+        "Calling NEWID() or RAND() in a function. You get the \"invalid use of a side-effecting operator\" error.",
+        "Treating a scalar UDF like a free expression: before SQL Server 2019 inlining, it ran once per row and blocked parallelism.",
+        "Saying \"functions can't return tables\". Table-valued functions do exactly that."
+      ],
+      "followUps": [
+        "Why is an inline TVF usually faster than a multi-statement TVF?",
+        "How would you return a value from a procedure to C#: result set, OUTPUT parameter or return code?",
+        "What does WITH SCHEMABINDING do for a function?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/create-user-defined-functions-database-engine",
+          "title": "Create user-defined functions (Database Engine) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/return-data-from-a-stored-procedure",
+          "title": "Return data from a stored procedure — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "sql-server-functions",
+        "views-and-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-return-data-from-procedure",
+      "topic": "sql-server",
+      "subtopic": "stored-procedures-and-functions",
+      "difficulty": "junior",
+      "question": "What are the ways a stored procedure can return data, and why do people put SET NOCOUNT ON at the top?",
+      "shortAnswer": "There are three ways: result sets (any SELECT that sends rows to the client), OUTPUT parameters, and an integer return code set with RETURN. SET NOCOUNT ON stops SQL Server from sending a \"(n rows affected)\" DONEINPROC message after every statement, which reduces network chatter, especially in procedures with many statements or loops.",
+      "answer": "**Key points**\n\n- **Result sets**: each SELECT (not `SELECT … INTO` / `INSERT … SELECT`) goes straight to the client. Several SELECTs give several result sets, which you read with `NextResult()` on an ADO.NET data reader.\n- **OUTPUT parameters**: declared `@p int OUTPUT` and passed with `OUTPUT` by the caller as well. If the caller forgets the keyword, there's no error, but no value comes back either.\n- **Return code**: `RETURN n`, an **int** only, 0 conventionally meaning success. Microsoft's guidance: signal failure with an error (`THROW`), not with a return code, and don't use the return code for application data.\n- **SET NOCOUNT ON**: suppresses the row-count messages. `@@ROWCOUNT` still works.\n\n**Detail (.NET side)**\n\nOutput parameters and return values aren't available until the data reader is closed. Parameter direction: `ParameterDirection.Output` / `ReturnValue`.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE OR ALTER PROCEDURE dbo.GetCustomerOrders\n    @CustomerId int,\n    @OrderCount int OUTPUT\nAS\nBEGIN\n    SET NOCOUNT ON;\n\n    IF NOT EXISTS (SELECT 1 FROM dbo.Customers WHERE CustomerId = @CustomerId)\n        THROW 50001, 'Customer not found.', 1;     -- an error, not a magic return code\n\n    SELECT OrderId, OrderDate, Amount               -- result set\n    FROM dbo.Orders\n    WHERE CustomerId = @CustomerId;\n\n    SET @OrderCount = @@ROWCOUNT;                   -- still updated with NOCOUNT ON\n    RETURN 0;                                       -- status code\nEND;\nGO\n\nDECLARE @n int, @rc int;\nEXEC @rc = dbo.GetCustomerOrders @CustomerId = 42, @OrderCount = @n OUTPUT;\nSELECT @rc AS ReturnCode, @n AS OrderCount;"
+      },
+      "pitfalls": [
+        "Forgetting OUTPUT on the *caller's* side and wondering why the variable stays NULL.",
+        "Returning business data through RETURN. It only carries an int and is meant for status.",
+        "Reading an output parameter in C# before closing the data reader.",
+        "Leaving NOCOUNT OFF in chatty procedures. Some older client code even mistakes the row-count messages for result sets."
+      ],
+      "followUps": [
+        "How do you read multiple result sets from one procedure in C#?",
+        "Why does an output parameter value appear only after the reader is closed?",
+        "When would you return a table-valued result instead of output parameters?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/return-data-from-a-stored-procedure",
+          "title": "Return data from a stored procedure — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-nocount-transact-sql",
+          "title": "SET NOCOUNT (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/framework/data/adonet/retrieving-data-using-a-datareader",
+          "title": "Retrieving data using a DataReader (ADO.NET) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "views-and-stored-procedures",
+        "calling-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-procedure-plan-caching-myth",
+      "topic": "sql-server",
+      "subtopic": "stored-procedures-and-functions",
+      "difficulty": "mid",
+      "question": "Are stored procedures \"precompiled\", and are they always faster than parameterized queries sent from the application?",
+      "shortAnswer": "No to both, as stated. SQL Server stores only the procedure's source text. The plan is compiled on first execution, cached and reused, and it can be recompiled later. A parameterized query sent through sp_executesql (which is what ADO.NET, Dapper and EF Core send) gets the same cache-and-reuse behaviour, so performance is equivalent. Procedures still have real benefits, mostly security, encapsulation and fewer round trips, but \"precompiled\" isn't one of them.",
+      "answer": "**Key points**\n\n- From the query processing guide: the engine \"stores only the source for stored procedures and triggers. When a stored procedure or trigger is first executed, the source is compiled into an execution plan.\" That plan is cached and reused until it's evicted or invalidated.\n- Recompilation happens on schema changes, statistics updates, index changes, some SET option changes, `WITH RECOMPILE` / `OPTION (RECOMPILE)`, and so on.\n- For `sp_executesql` with parameters, the docs say that because only the parameter values change, the optimizer is likely to reuse the plan, and *\"performance is equivalent to that of a stored procedure.\"* ADO.NET sends parameterized commands through `sp_executesql`.\n- What really costs performance is **unparameterized ad hoc SQL** (string concatenation): a new plan per distinct literal, plan cache bloat, and injection risk.\n\n**Real advantages of procedures**\n\n- **Security**: callers get EXECUTE only, not table permissions (via ownership chaining).\n- **Encapsulation and versioning** of data logic in the database.\n- **Fewer round trips** for multi-statement work.\n- Plan reuse shared by all callers.\n\n**Shared downside**: parameter sniffing affects both procedures and parameterized queries.",
+      "code": {
+        "lang": "sql",
+        "source": "-- These two behave the same way for plan caching:\nEXEC dbo.GetOrdersByCustomer @CustomerId = 42;\n\nEXEC sp_executesql\n     N'SELECT OrderId, OrderDate, Amount FROM dbo.Orders WHERE CustomerId = @CustomerId',\n     N'@CustomerId int',\n     @CustomerId = 42;\n\n-- This one is the real problem: a new plan per literal, and injectable if built from input\n-- EXEC ('SELECT OrderId FROM dbo.Orders WHERE CustomerId = ' + @input);"
+      },
+      "pitfalls": [
+        "Saying procedures are compiled when they're created.",
+        "Comparing a procedure against *unparameterized* inline SQL and concluding that \"procs are faster\".",
+        "Assuming a cached procedure plan is good for every parameter value (parameter sniffing).",
+        "Forgetting that the real security benefit only holds if the procedure itself doesn't build unsafe dynamic SQL."
+      ],
+      "followUps": [
+        "What causes a stored procedure to recompile?",
+        "What is parameter sniffing, and why does it affect both procedures and ORMs?",
+        "What security benefit does granting EXECUTE on a procedure give over granting SELECT on tables?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/query-processing-architecture-guide",
+          "title": "Query processing architecture guide — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-executesql-transact-sql",
+          "title": "sp_executesql (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/framework/data/adonet/configuring-parameters-and-parameter-data-types",
+          "title": "Configuring parameters and parameter data types (ADO.NET) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "views-and-stored-procedures",
+        "execution-plans-and-sargability"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-triggers",
+      "topic": "sql-server",
+      "subtopic": "stored-procedures-and-functions",
+      "difficulty": "mid",
+      "question": "What are AFTER and INSTEAD OF triggers, what are the inserted and deleted tables, and what are the classic trigger mistakes?",
+      "shortAnswer": "A DML trigger is code that runs automatically on INSERT, UPDATE or DELETE. An AFTER trigger runs once the statement (and its constraint checks) has succeeded; an INSTEAD OF trigger replaces the statement and is the only kind allowed on views. Inside a trigger, the virtual tables `inserted` (new rows) and `deleted` (old rows) hold every affected row. The classic bug is writing the trigger as if only one row changed.",
+      "answer": "**Key points**\n\n- A trigger fires **once per statement**, not once per row. An `UPDATE` touching 10,000 rows fires it once, with 10,000 rows in `inserted` and in `deleted`.\n- INSERT → `inserted` only; DELETE → `deleted` only; UPDATE → both (old in `deleted`, new in `inserted`).\n- **AFTER**: runs after constraints pass; you can have several, and `sp_settriggerorder` sets only the first and last. **INSTEAD OF**: at most one per action per table or view; it's how you make complex views updatable.\n- Triggers run **inside the caller's transaction**. Their locks are held until it commits, and a ROLLBACK inside the trigger undoes the caller's statement too.\n- TRUNCATE TABLE doesn't fire DELETE triggers. There are also DDL triggers and logon triggers.\n\n**Detail**\n\nKeep triggers short and set-based. Exit early with `IF (ROWCOUNT_BIG() = 0) RETURN;`. Don't return result sets: that ability is deprecated. For audit history, consider temporal tables or Change Data Capture instead of hand-written triggers.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE OR ALTER TRIGGER dbo.trg_Products_PriceAudit\nON dbo.Products\nAFTER UPDATE\nAS\nBEGIN\n    IF (ROWCOUNT_BIG() = 0) RETURN;\n    SET NOCOUNT ON;\n\n    -- Set-based: handles 1 or 100,000 updated rows\n    INSERT dbo.PriceAudit (ProductId, OldPrice, NewPrice, ChangedAt)\n    SELECT d.ProductId, d.Price, i.Price, SYSUTCDATETIME()\n    FROM inserted AS i\n    JOIN deleted  AS d ON d.ProductId = i.ProductId\n    WHERE i.Price <> d.Price;\nEND;"
+      },
+      "pitfalls": [
+        "`DECLARE @id int = (SELECT ProductId FROM inserted)`, which silently handles only one row of a multi-row change (or fails).",
+        "Doing slow work (emails, HTTP calls, cursors) inside a trigger while the caller's locks are held.",
+        "Hidden business logic that developers don't know exists, so \"the database does something weird when I update\".",
+        "Expecting TRUNCATE to fire the DELETE audit trigger."
+      ],
+      "followUps": [
+        "How would you prevent recursive or nested trigger loops?",
+        "When would you use an INSTEAD OF trigger on a view?",
+        "What are the alternatives to triggers for auditing (temporal tables, CDC)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql",
+          "title": "CREATE TRIGGER (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/triggers/use-the-inserted-and-deleted-tables",
+          "title": "Use the inserted and deleted tables — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-udf-performance",
+      "topic": "sql-server",
+      "subtopic": "stored-procedures-and-functions",
+      "difficulty": "senior",
+      "question": "Why are scalar UDFs and multi-statement table-valued functions often slow, and what changed in SQL Server 2017 and 2019?",
+      "shortAnswer": "A non-inlined scalar UDF runs once per row in an interpreted, statement-by-statement way: the optimizer can't cost what's inside it, and the query can't go parallel. A multi-statement TVF is a black box with a fixed row estimate (100 rows from SQL Server 2014, 1 row before). Inline TVFs don't have these problems because they're expanded into the query like a view. SQL Server 2017 added interleaved execution for MSTVFs, and SQL Server 2019 added scalar UDF inlining.",
+      "answer": "**Key points**\n\n- **Scalar UDF problems** (from the docs): iterative invocation once per row, no costing of what's inside, interpreted execution with no cross-statement optimization, and serial execution (no parallelism in the calling query).\n- **Scalar UDF inlining** (SQL Server 2019, compatibility level 150): eligible functions are rewritten into the query as expressions or subqueries. Check `sys.sql_modules.is_inlineable`. Many constructs block it, for example GETDATE(), table variables, CTEs, or several RETURN statements.\n- **MSTVF**: the fixed cardinality guess often produces bad joins and memory grants. **Interleaved execution** (SQL Server 2017, compatibility level 140) runs the MSTVF first and uses its actual row count for the rest of the plan (read-only statements only).\n- **Inline TVF**: a single `RETURN (SELECT …)`. The optimizer sees through it, so it's the preferred way to package reusable query logic.\n\n**Detail**\n\nThe documentation's own example is a single-expression scalar UDF that made a TPC-H query take 29 minutes instead of 1.6 seconds without inlining, and 1.6 seconds again with inlining. When you can't rely on inlining (older versions or compatibility levels, non-inlineable functions), rewrite the scalar function as an inline TVF and use CROSS APPLY.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Slow pattern: scalar UDF called per row\nCREATE OR ALTER FUNCTION dbo.fn_OrderTotal (@OrderId int)\nRETURNS decimal(18,2)\nAS\nBEGIN\n    RETURN (SELECT SUM(Quantity * UnitPrice) FROM dbo.OrderLines WHERE OrderId = @OrderId);\nEND;\nGO\n\n-- Rewrite: inline TVF + CROSS APPLY (optimizer sees the whole query)\nCREATE OR ALTER FUNCTION dbo.itvf_OrderTotal (@OrderId int)\nRETURNS TABLE\nAS RETURN\n    SELECT SUM(Quantity * UnitPrice) AS Total\n    FROM dbo.OrderLines\n    WHERE OrderId = @OrderId;\nGO\n\nSELECT o.OrderId, t.Total\nFROM dbo.Orders AS o\nCROSS APPLY dbo.itvf_OrderTotal(o.OrderId) AS t;\n\n-- Is a scalar UDF eligible for inlining?\nSELECT OBJECT_NAME(object_id) AS fn, is_inlineable\nFROM sys.sql_modules\nWHERE OBJECT_NAME(object_id) = 'fn_OrderTotal';"
+      },
+      "pitfalls": [
+        "Assuming scalar UDF inlining always happens on SQL Server 2019. It needs compatibility level 150 and an eligible function.",
+        "Using scalar UDFs in computed columns or CHECK constraints. Inlining never applies there.",
+        "Joining large MSTVFs and trusting the plan's row estimates.",
+        "Wrapping simple expressions in functions \"for reuse\" on hot queries."
+      ],
+      "followUps": [
+        "How do you check in a plan whether a UDF was inlined?",
+        "What is interleaved execution, and when doesn't it apply?",
+        "When is a multi-statement TVF still the right tool?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/scalar-udf-inlining",
+          "title": "Scalar UDF inlining — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-details",
+          "title": "Intelligent query processing details — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/create-user-defined-functions-database-engine",
+          "title": "Create user-defined functions (Database Engine) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "sql-server-functions"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Interleaved execution for MSTVFs needs compatibility level 140 (SQL Server 2017+). Scalar UDF inlining needs compatibility level 150 (SQL Server 2019+) and an inlineable function (several restrictions were added in later 2019 CUs).",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-windows-vs-sql-authentication",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "junior",
+      "question": "What is the difference between Windows authentication and SQL Server authentication? Which should an application use?",
+      "shortAnswer": "With Windows authentication, Windows (NTLM or Kerberos) confirms who the user is and SQL Server trusts that token, so no SQL password is stored or sent. With SQL Server authentication, the login name and password are created and checked by SQL Server itself. Microsoft calls Windows authentication \"much more secure\" and recommends it whenever possible. SQL logins exist for non-domain clients, third-party apps and mixed environments, and they require \"mixed mode\".",
+      "answer": "**Key points**\n\n- **Authentication modes** (chosen at setup, changeable later): *Windows Authentication mode* (SQL logins disabled) or *Mixed mode* (both). Windows authentication can't be disabled.\n- **Windows authentication**: Kerberos/NTLM, domain password policies (complexity, lockout, expiry), Windows groups as logins, and no password in the connection string (`Integrated Security=true` / `Trusted_Connection=yes`).\n- **SQL authentication**: works without a domain (Linux clients, containers, partners), but every client must store a password, it can't use Kerberos, and the encrypted password travels on every connection.\n- **sa**: created in both modes, disabled in Windows mode. It's a well-known target, so keep it disabled unless something really needs it.\n\n**For .NET apps**\n\nPrefer integrated / Entra ID authentication with a dedicated low-privilege identity per application. If you must use SQL logins, keep the password in a secret store (not in appsettings.json in source control) and turn on password policy for the login.",
+      "code": {
+        "lang": "sql",
+        "source": "-- Windows group as a login (manage people in AD, not in SQL Server)\nCREATE LOGIN [CONTOSO\\ShopApp-Readers] FROM WINDOWS;\n\n-- SQL login only when required, with policy enforcement\nCREATE LOGIN shop_api WITH PASSWORD = N'<strong password here>',\n    CHECK_POLICY = ON, CHECK_EXPIRATION = ON;\n\n-- Connection strings (C#)\n-- Server=sql01;Database=Shop;Integrated Security=true;Encrypt=true;\n-- Server=sql01;Database=Shop;User Id=shop_api;Password=...;Encrypt=true;"
+      },
+      "pitfalls": [
+        "Connecting applications as `sa` or as a sysadmin login.",
+        "Committing SQL login passwords in connection strings to source control.",
+        "Thinking Windows authentication alone authorizes anything. The login still needs a database user and permissions.",
+        "Enabling mixed mode \"just in case\" and leaving weak SQL logins behind."
+      ],
+      "followUps": [
+        "What is the difference between a login and a database user?",
+        "How does a contained database user change the picture?",
+        "How would a .NET app in Azure connect without any stored password (managed identity)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/choose-an-authentication-mode",
+          "title": "Choose an authentication mode — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/principals-database-engine",
+          "title": "Principals (Database Engine) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "sql-server-setup",
+        "databases-schemas-and-logins"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "In Azure SQL Database and Managed Instance, the equivalent of Windows authentication is Microsoft Entra ID authentication (including managed identities); SQL authentication is also available there.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-grant-deny-revoke",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "junior",
+      "question": "What is the difference between GRANT, DENY and REVOKE, and why is \"use DENY to take a permission away\" a mistake?",
+      "shortAnswer": "GRANT gives a permission, DENY explicitly forbids it, and REVOKE removes a previously granted *or* denied permission, returning it to neutral. Permissions add up across a user and all their roles, but any DENY overrides every GRANT. So DENYing a role to \"undo\" its grant also blocks members who were granted the permission another way; REVOKE is the right undo.",
+      "answer": "**Key points**\n\n- Syntax shape: `GRANT | DENY | REVOKE <permission> ON <securable> TO <principal>`.\n- Effective permission = everything granted to the user, their login and all their roles, minus anything DENIED anywhere. **DENY wins.**\n- REVOKE removes an entry (grant or deny). It doesn't forbid anything.\n- Permissions are hierarchical: SELECT on a schema covers every table and view in it, and CONTROL covers all permissions on an object.\n- Microsoft's guidance:\n  - grant to **roles**, not individuals\n  - grant at the **schema** level when objects need the same access\n  - follow **least privilege**\n  - generally don't DENY to `public`, because that overrides everyone's grants\n\n**Detail**\n\nMembers of sysadmin, the `sa` login and the database owner enter a database as the `dbo` user, which \"has all permissions in the database and can't be limited\". A DENY doesn't restrict them, which is one more reason applications shouldn't connect as sysadmin. To review permissions, use `sys.database_permissions`, `sys.database_principals` and `sys.database_role_members`.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE ROLE SalesReaders;\nALTER ROLE SalesReaders ADD MEMBER Jae;\n\nGRANT SELECT ON SCHEMA::Sales TO SalesReaders;       -- schema-level, via a role\nGRANT SELECT ON OBJECT::Sales.OrderStatus TO Jae;    -- Jae also has a direct grant\n\n-- WRONG way to undo the role grant: Jae loses access too (DENY beats Jae's own GRANT)\n-- DENY SELECT ON SCHEMA::Sales TO SalesReaders;\n\n-- RIGHT: remove the role's grant; Jae keeps the direct grant\nREVOKE SELECT ON SCHEMA::Sales FROM SalesReaders;"
+      },
+      "pitfalls": [
+        "Using DENY as \"undo\". That's REVOKE.",
+        "Granting permissions table by table to individual users until nobody can audit them.",
+        "Denying something to `public` and locking everybody out.",
+        "Assuming DENY restricts a sysadmin or the database owner."
+      ],
+      "followUps": [
+        "What does CONTROL on a schema imply?",
+        "How would you design roles for a reporting user versus an application account?",
+        "How do you list a user's effective permissions?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/getting-started-with-database-engine-permissions",
+          "title": "Get started with Database Engine permissions — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/principals-database-engine",
+          "title": "Principals (Database Engine) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "user-privileges-and-roles",
+        "databases-schemas-and-logins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-sql-injection-dynamic-sql",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "mid",
+      "question": "How do you prevent SQL injection, both in C# and inside T-SQL that builds dynamic SQL?",
+      "shortAnswer": "Never concatenate user input into SQL text. In C#, use parameters (SqlParameter with an explicit type and length, Dapper's anonymous objects, EF Core LINQ or FromSql with interpolated parameters). In T-SQL, run dynamic SQL through sp_executesql with a parameter list, and for identifiers that can't be parameters (table or column names), check them against a whitelist or system catalog and wrap them in QUOTENAME(). A stored procedure is only safe if it doesn't concatenate input into dynamic SQL itself.",
+      "answer": "**Key points**\n\n- Injection works by closing a string literal early and appending new commands (`'; DROP TABLE … --`). The engine runs anything that's syntactically valid.\n- **Parameters** are treated as literal values, never as code, and they give you type and length checks.\n- **sp_executesql**: values go in as parameters, the SQL text stays constant, and plans get reused. `EXEC(@sql)` with concatenated values is the dangerous form.\n- **Identifiers**: `QUOTENAME(@name)` produces a delimited identifier. Better still, validate against `sys.tables` / `sys.columns` or a fixed list.\n- **Defence in depth**: validate type, length, format and range at every tier; run the app with least privilege; escape LIKE wildcards when the pattern comes from users.\n- Microsoft's docs warn that procedures built by concatenation (`EXEC('… ' + @input)`) are just as vulnerable as client code.\n\n**Detail**\n\nWatch out for truncation attacks: if the dynamic SQL is built into a variable that's too short, the end of the statement can be cut off in a way an attacker controls. Use `nvarchar(max)` for dynamic SQL buffers, or call QUOTENAME directly inside the statement.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE OR ALTER PROCEDURE dbo.SearchOrders\n    @SortColumn sysname,\n    @CustomerId int\nAS\nBEGIN\n    SET NOCOUNT ON;\n\n    -- Identifier: whitelist + QUOTENAME (values can't do this job)\n    IF @SortColumn NOT IN (N'OrderDate', N'Amount', N'OrderId')\n        THROW 50002, 'Invalid sort column.', 1;\n\n    DECLARE @sql nvarchar(max) =\n        N'SELECT OrderId, OrderDate, Amount\n          FROM dbo.Orders\n          WHERE CustomerId = @CustomerId\n          ORDER BY ' + QUOTENAME(@SortColumn) + N';';\n\n    -- Value: a real parameter\n    EXEC sp_executesql @sql, N'@CustomerId int', @CustomerId = @CustomerId;\nEND;\n\n/* C#:\n   cmd.Parameters.Add(\"@CustomerId\", SqlDbType.Int).Value = customerId;   // safe\n   $\"... WHERE Name = '{name}'\"  passed to ExecuteSqlRaw / SqlCommand      // injectable\n*/"
+      },
+      "pitfalls": [
+        "\"It's a stored procedure, so it's safe\", while the procedure concatenates `@input` into `EXEC(...)`.",
+        "Escaping quotes by hand (`Replace(\"'\", \"''\")`) as the main defence. Microsoft calls filtering unreliable.",
+        "Using parameters for values but concatenating ORDER BY or table names straight from input.",
+        "Building dynamic SQL in a short `varchar(200)` variable (truncation).",
+        "Running the app as db_owner, which turns any injection into full control."
+      ],
+      "followUps": [
+        "Why can't you pass a table name as a parameter?",
+        "How does EF Core's FromSql (interpolated) differ from FromSqlRaw with string concatenation?",
+        "What permissions should the application's database user have?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/sql-injection",
+          "title": "SQL injection — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-executesql-transact-sql",
+          "title": "sp_executesql (Transact-SQL) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/previous-versions/dotnet/framework/data/adonet/sql/writing-secure-dynamic-sql-in-sql-server",
+          "title": "Writing secure dynamic SQL in SQL Server (ADO.NET, archived) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/sql-queries",
+          "title": "SQL queries (EF Core) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "calling-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "EF Core's FromSql (interpolated, auto-parameterized) was introduced in EF Core 7.0; older versions use FromSqlInterpolated. FromSqlRaw/ExecuteSqlRaw don't parameterize text you concatenate yourself.",
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-ownership-chaining",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "senior",
+      "question": "A user has only EXECUTE permission on a stored procedure, yet the procedure can read tables the user has no permission on. Why does that work, and when does it stop working?",
+      "shortAnswer": "Ownership chaining. When an object such as a procedure or view references another object with the same owner, SQL Server checks permissions only on the first object and skips the check on the referenced one. Typically everything in `dbo` is owned by the `dbo` user, so EXECUTE on the procedure is enough. The chain breaks when the owners differ, when the procedure runs dynamic SQL (EXEC/sp_executesql re-checks the caller's own permissions), and across databases unless cross-database chaining is enabled (off by default).",
+      "answer": "**Key points**\n\n- Permission check in a chain: compare the owner of the referenced object with the owner of the calling object; **same owner → no check**, different owner → normal check against the caller.\n- That's why \"grant EXECUTE on procedures, nothing on tables\" is a common and recommended security pattern.\n- **dbo is a user as well as a schema**: the `dbo` user owns the `dbo` schema, and sysadmin members, `sa` and the database owner enter the database *as* the dbo user. (The `dbo` user isn't the same thing as the `db_owner` role.)\n- **Chain breakers**:\n  - objects owned by different principals\n  - dynamic SQL inside the module\n  - cross-database access (`cross db ownership chaining` is off by default, and Microsoft warns that enabling it can allow privilege escalation)\n- **Fixes when the chain breaks**: `EXECUTE AS` on the module (impersonation; functions like USER_NAME() then return the proxy user) or **module signing with a certificate** (adds the certificate user's permissions to the caller's, without impersonation; you must re-sign after every change).",
+      "code": {
+        "lang": "sql",
+        "source": "-- Same owner (dbo) for the procedure and the table: EXECUTE alone works\nCREATE OR ALTER PROCEDURE dbo.GetOrders @CustomerId int\nAS\n    SELECT OrderId, Amount FROM dbo.Orders WHERE CustomerId = @CustomerId;\nGO\nGRANT EXECUTE ON dbo.GetOrders TO AppRole;      -- no SELECT on dbo.Orders needed\n\n-- Dynamic SQL breaks the chain: the caller now needs SELECT on dbo.Orders...\nCREATE OR ALTER PROCEDURE dbo.GetOrdersDynamic @CustomerId int\nWITH EXECUTE AS OWNER          -- ...unless the module runs as its owner\nAS\n    EXEC sp_executesql\n        N'SELECT OrderId, Amount FROM dbo.Orders WHERE CustomerId = @c',\n        N'@c int', @c = @CustomerId;\nGO"
+      },
+      "pitfalls": [
+        "Saying \"dbo is only a schema\". It's also the special database owner user that owns that schema.",
+        "Being surprised that a procedure stops working after someone adds dynamic SQL to it.",
+        "Enabling cross-database ownership chaining server-wide to \"fix\" access between two databases.",
+        "Using EXECUTE AS OWNER casually: the code then runs with the owner's rights, and auditing sees the proxy identity."
+      ],
+      "followUps": [
+        "How does certificate signing differ from EXECUTE AS?",
+        "What happens to the chain if a table is moved to a schema with a different owner?",
+        "Why are views a security mechanism and not just a convenience?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms188676(v=sql.105)",
+          "title": "Ownership chains (SQL Server 2008 R2 docs, archived) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/previous-versions/dotnet/framework/data/adonet/sql/writing-secure-dynamic-sql-in-sql-server",
+          "title": "Writing secure dynamic SQL in SQL Server (ADO.NET, archived) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/cross-db-ownership-chaining-server-configuration-option",
+          "title": "Server configuration: cross db ownership chaining — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/principals-database-engine",
+          "title": "Principals (Database Engine): dbo user and dbo schema — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "user-privileges-and-roles",
+        "databases-schemas-and-logins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-row-level-security",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "senior",
+      "question": "How would you implement multi-tenant isolation inside SQL Server so that a tenant can never read another tenant's rows, even if application code forgets a WHERE clause?",
+      "shortAnswer": "Use Row-Level Security (SQL Server 2016+). Write an inline table-valued function that returns a row when the current context, for example a TenantId stored in SESSION_CONTEXT by the app, matches the row's TenantId. Then bind it to the table with CREATE SECURITY POLICY: a FILTER predicate silently hides other tenants' rows from reads, and a BLOCK predicate stops writes of rows for the wrong tenant.",
+      "answer": "**Key points**\n\n- **Predicate function**: an inline TVF, preferably `WITH SCHEMABINDING`, kept in a separate `Security` schema.\n- **Filter predicate**: acts like an automatic WHERE on SELECT, UPDATE and DELETE. Hidden rows simply don't exist for the user.\n- **Block predicate**: AFTER INSERT / AFTER UPDATE / BEFORE UPDATE / BEFORE DELETE checks that raise errors on violating writes.\n- **Middle-tier apps sharing one SQL login**: after opening the connection, the app calls `sp_set_session_context @key = N'TenantId', @value = …, @read_only = 1`, and the predicate reads `SESSION_CONTEXT(N'TenantId')`. `@read_only = 1` stops later code on that connection from changing it.\n- Policies apply to everyone, **including dbo and db_owner**, unless the predicate explicitly lets them through.\n\n**Caveats from the docs**\n\n- Side channels exist: errors such as divide-by-zero can leak information to crafted queries.\n- DBCC SHOW_STATISTICS access is restricted.\n- You can't build indexed views on tables with a policy.\n- CDC can expose filtered rows to privileged users.\n- Keep predicate functions simple: avoid joins, type conversions and anything dependent on SET options.\n- RLS is defence in depth, not a replacement for authorization in the application.",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE SCHEMA Security;\nGO\nCREATE FUNCTION Security.fn_TenantPredicate (@TenantId int)\nRETURNS TABLE\nWITH SCHEMABINDING\nAS RETURN\n    SELECT 1 AS ok\n    WHERE @TenantId = CAST(SESSION_CONTEXT(N'TenantId') AS int);\nGO\nCREATE SECURITY POLICY Security.TenantIsolation\n    ADD FILTER PREDICATE Security.fn_TenantPredicate(TenantId) ON dbo.Orders,\n    ADD BLOCK  PREDICATE Security.fn_TenantPredicate(TenantId) ON dbo.Orders AFTER INSERT\n    WITH (STATE = ON);\nGO\n\n-- The application, right after opening each connection:\nEXEC sp_set_session_context @key = N'TenantId', @value = 42, @read_only = 1;\nSELECT * FROM dbo.Orders;          -- only tenant 42's rows"
+      },
+      "pitfalls": [
+        "Forgetting that pooled connections are reused. Set the session context every time a connection is opened, with @read_only = 1.",
+        "Writing a predicate function with heavy joins or scalar UDFs, which slows down every query on the table.",
+        "Assuming admins can still see everything. dbo and db_owner are filtered too unless the predicate allows them.",
+        "Treating RLS as complete isolation; side-channel queries can still infer data."
+      ],
+      "followUps": [
+        "How does RLS interact with EF Core global query filters, and would you use both?",
+        "How would you let a support role see all tenants safely?",
+        "When would separate databases per tenant be the better design?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security",
+          "title": "Row-level security — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Row-Level Security exists from SQL Server 2016 (13.x) and in Azure SQL. Microsoft Fabric and Azure Synapse support filter predicates only, not block predicates.",
+      "reviewed": false
+    }
+  ]
+}

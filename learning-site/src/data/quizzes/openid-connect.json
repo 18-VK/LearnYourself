@@ -1,0 +1,79 @@
+{
+  "lesson": "openid-connect",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "OAuth 2.0 already gives your app an access token. What does OpenID Connect add on top of it?",
+      "options": [
+        "Identity: an `id_token` that tells your app who the user is",
+        "Authorization: permission to call the user's APIs",
+        "A way to skip the consent screen entirely",
+        "Encryption of the access token so the client can read it"
+      ],
+      "answer": 0,
+      "explanation": "OAuth 2.0 gives authorization but deliberately says nothing about identity. OIDC adds that: include `openid` in the scope and the token response also carries an `id_token`.",
+      "source": { "section": "OpenID Connect (OIDC)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the \"Sign in with Google\" OIDC interaction in order.",
+      "steps": [
+        "The website redirects the browser to Google with an OIDC request for the user's basic profile",
+        "Google asks the user to log in and to consent to sharing their details",
+        "Google redirects back and provides an access token and an ID token",
+        "The website verifies Google's signature on the ID token and logs the user in"
+      ],
+      "explanation": "The four stages are the request, the authentication, the token exchange and the verification of the signed ID token.",
+      "source": { "section": "OpenID Connect (OIDC)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which `id_token` claim should you persist as the user's permanent identifier at the provider?",
+      "options": [
+        "`email`, because every user has exactly one",
+        "`aud`, because it names the app",
+        "`sub`, because it is unique and never changes",
+        "`iat`, because it records when the user signed up"
+      ],
+      "answer": 2,
+      "explanation": "`sub` is the user's permanent, unique ID at the provider. The lesson warns never to use email as a primary key, because users can change their email.",
+      "source": { "section": "OpenID Connect (OIDC)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What is the Discovery endpoint (`/.well-known/openid-configuration`) for?",
+      "options": [
+        "Fetching extra user claims with the access token",
+        "A machine-readable JSON document listing the provider's endpoints, scopes, signing algorithms and JWKS URI",
+        "Exchanging the authorization code for tokens",
+        "Registering your app to receive a `client_id` and `client_secret`"
+      ],
+      "answer": 1,
+      "explanation": "Your .NET middleware fetches the discovery document once on startup and configures itself from it. Fetching extra claims is the UserInfo endpoint's job.",
+      "source": { "section": "OpenID Connect (OIDC)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does Google's token endpoint require both the `code` and the `client_secret`?",
+      "options": [
+        "The `code` proves a specific user just consented, and the `client_secret` proves the request really comes from your app",
+        "The `client_secret` identifies the user, and the `code` identifies the app",
+        "Either one is enough; sending both only makes the request faster",
+        "The `code` is reused for every login, so the `client_secret` makes it unique"
+      ],
+      "answer": 0,
+      "explanation": "A code alone could be stolen from the front channel, and a secret alone says nothing about a user consenting right now. Both checks must pass.",
+      "source": { "section": "How they're related — why BOTH are required together" },
+      "reviewed": false
+    }
+  ]
+}

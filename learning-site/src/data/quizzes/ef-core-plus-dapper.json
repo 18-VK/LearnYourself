@@ -1,0 +1,80 @@
+{
+  "lesson": "ef-core-plus-dapper",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In this combined pattern, which job is given to Dapper rather than EF Core?",
+      "options": [
+        "Creating and updating products with change tracking",
+        "Managing migrations and relationships",
+        "Large or complex read queries that return DTOs, where you want full SQL control",
+        "Deleting products through the `DbSet`"
+      ],
+      "answer": 2,
+      "explanation": "EF Core handles create/update/delete, change tracking, relationships and migrations; Dapper is used for very large reads returning DTOs and complex SQL (window functions, CTEs, tuned queries).",
+      "source": { "section": "### When to combine EF Core + Dapper" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In `IncreasePriceForTopSellersAsync`, how does the Dapper query take part in the transaction started by EF Core?",
+      "options": [
+        "Dapper opens its own `SqlConnection` and the transactions are merged automatically",
+        "It runs on `_db.Database.GetDbConnection()` and receives `tx.GetDbTransaction()` in its `CommandDefinition`",
+        "EF Core's `SaveChangesAsync` re-runs the Dapper query inside the transaction",
+        "It doesn't; Dapper queries can never share an EF Core transaction"
+      ],
+      "answer": 1,
+      "explanation": "The transaction is begun through EF Core, Dapper uses the same underlying connection, and the underlying `DbTransaction` from `tx.GetDbTransaction()` is passed to the Dapper command.",
+      "source": { "section": "### Repository showing both EF Core and Dapper usage (async)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put the steps of `IncreasePriceForTopSellersAsync` in order.",
+      "steps": [
+        "Begin a transaction with `_db.Database.BeginTransactionAsync`",
+        "Get the underlying connection and open it if it is closed",
+        "Run the Dapper query for the top product ids, passing the transaction",
+        "Load those products with EF, raise their prices and call `SaveChangesAsync`",
+        "Commit the transaction (or roll back if anything threw)"
+      ],
+      "explanation": "Both the Dapper read and the EF update run inside one transaction begun through EF Core, which is committed at the end and rolled back in `catch`.",
+      "source": { "section": "### Repository showing both EF Core and Dapper usage (async)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You read a `Product` with Dapper and now want to update it. What does the lesson advise?",
+      "options": [
+        "Re-query it with EF (or attach it carefully) instead of putting the Dapper instance straight into EF's change tracker",
+        "Change its properties and call `_db.SaveChangesAsync()`; EF tracks Dapper results automatically",
+        "Call `AsNoTracking()` on the Dapper result",
+        "Update it with another Dapper query inside `SaveChangesAsync`"
+      ],
+      "answer": 0,
+      "explanation": "Don't mix Dapper results into EF's change tracker directly; if you need to update an entity you queried via Dapper, re-query it with EF or attach it carefully.",
+      "source": { "section": "### Pitfalls & best practices" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does the Dapper SQL select `p.Id AS ProductId` when the column is called `Id`?",
+      "options": [
+        "SQL Server doesn't allow selecting `Id` in a `GROUP BY` query",
+        "EF Core needs the alias to track the row",
+        "Dapper requires every column to be aliased",
+        "So the column name matches the `ProductSalesDto.ProductId` property it maps to"
+      ],
+      "answer": 3,
+      "explanation": "When raw SQL returns a non-entity DTO, map column aliases to the DTO property names (or use Dapper attribute mappings) rather than relying on EF conventions.",
+      "source": { "section": "### Pitfalls & best practices" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "lesson": "ef-configuration-and-automapper",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Where does the lesson put rules such as \"`Title` is required, max length 100\", and why?",
+      "options": [
+        "As `[Required]` and `[MaxLength]` attributes on `TaskItem`, so the rules sit next to the data",
+        "In a `TaskConfig : IEntityTypeConfiguration<TaskItem>` class in Infrastructure, so the domain entity stays clean",
+        "In the controller, before calling the service",
+        "Directly inside `OnModelCreating`, so every rule is in one file"
+      ],
+      "answer": 1,
+      "explanation": "The goal is to keep Domain clean and move DB rules to configuration classes, one per entity. Putting everything inside the DbContext is called out as bad.",
+      "source": { "section": "Fluent API configurations with separate configuration class" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does `modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly)` give you over calling `modelBuilder.ApplyConfiguration(new TaskConfig())` for each entity?",
+      "options": [
+        "It runs the migrations automatically",
+        "It makes the configurations apply only in Development",
+        "It picks up every configuration class automatically, so it scales as the project grows",
+        "It removes the need for `DbSet<T>` properties"
+      ],
+      "answer": 2,
+      "explanation": "Listing each configuration by hand is manual and error-prone; scanning the assembly picks up all of them.",
+      "source": { "section": "Fluent API configurations with separate configuration class" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put what happens internally, from entity to database, in order.",
+      "steps": [
+        "Entity (Domain)",
+        "Fluent configuration (Infrastructure)",
+        "DbContext builds the model",
+        "Migration generates SQL",
+        "Database schema is created"
+      ],
+      "explanation": "The configuration classes shape the model the DbContext builds; `dotnet ef migrations add` turns that model into SQL and `dotnet ef database update` creates the schema.",
+      "source": { "section": "Fluent API configurations with separate configuration class" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "For a PATCH/update endpoint, which AutoMapper call does the lesson recommend?",
+      "options": [
+        "`DTO = _mapper.Map<ProjectDTO>(objProject);`, because it sets every property",
+        "Either one; they behave the same",
+        "Neither; AutoMapper can't be used for updates",
+        "`_mapper.Map(objProject, dto);`, because it merges into the existing instance and keeps values that aren't provided"
+      ],
+      "answer": 3,
+      "explanation": "Mapping into an existing instance only overwrites what the source provides. Creating a new instance fills missing values with defaults, which would overwrite existing data on update.",
+      "source": { "section": "Map into existing instance vs create new instance" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "predict-output",
+      "prompt": "The source property is shown below, and the destination's `Id` is a non-nullable `Guid`. What value does the destination `Id` get after mapping?",
+      "code": { "lang": "csharp", "source": "Guid? Id = null" },
+      "options": [
+        "`null`",
+        "A new random `Guid`",
+        "`00000000-0000-0000-0000-000000000000`",
+        "AutoMapper throws a mapping exception"
+      ],
+      "answer": 2,
+      "explanation": "The destination can't hold `null`, so AutoMapper maps it to `Guid.Empty`, which prints as all zeros, even though the source was `null`.",
+      "source": { "section": "Why this is happening" },
+      "reviewed": false
+    }
+  ]
+}

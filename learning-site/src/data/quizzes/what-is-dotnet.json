@@ -1,0 +1,65 @@
+{
+  "lesson": "what-is-dotnet",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What are the two major components of the .NET Framework?",
+      "options": [
+        "The Just-in-Time compiler and the C# compiler",
+        "The Common Language Runtime (CLR) and the .NET Framework Class Library",
+        "Visual Studio and the NuGet package manager",
+        "MSIL and the Windows operating system"
+      ],
+      "answer": 1,
+      "explanation": "The note names the Common Language Runtime and the .NET Framework Class Library as the two major components of the .NET Framework.",
+      "source": { "section": ".Net Framework Architecture" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which of these is a job of the Base Class Library (BCL) rather than of the CLR?",
+      "options": [
+        "Running garbage collection",
+        "Managing threads while the application runs",
+        "Providing APIs for reading and writing files and connecting to databases",
+        "Converting IL code into machine code"
+      ],
+      "answer": 2,
+      "explanation": "The BCL provides types and APIs for common functionality such as strings, dates, files and databases. Garbage collection, thread management and running code are services of the CLR, the execution engine.",
+      "source": { "section": ".Net Framework Architecture" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put the steps from source code to running program in order.",
+      "steps": [
+        "Write the source code in C#, F# or VB",
+        "Compile the source code into intermediate language (IL / MSIL / CIL)",
+        "Store the compiled code in an assembly with a .dll or .exe extension",
+        "When the application runs, the CLR takes the assembly",
+        "The JIT compiler converts the IL into machine code for the computer's architecture"
+      ],
+      "explanation": "Source code is compiled to IL and stored in an assembly; at run time the CLR uses the Just-in-Time compiler to turn that IL into machine code for the specific architecture.",
+      "source": { "section": ".Net Framework Architecture" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which statement matches the note's comparison of .NET Core and the .NET Framework?",
+      "options": [
+        ".NET Core is cross-platform (Windows, Mac OS X, Linux), while the .NET Framework was designed for Windows",
+        ".NET Core runs only on Windows, while the .NET Framework is cross-platform",
+        "Both run only on Windows, but .NET Core is open source",
+        "Both are cross-platform, but only the .NET Framework is free"
+      ],
+      "answer": 0,
+      "explanation": "The note describes .NET Core as a free, open-source, cross-platform framework for Windows, Mac OS X and Linux, and the .NET Framework as a platform for building and running Windows applications.",
+      "source": { "section": "Dot net Core" },
+      "reviewed": false
+    }
+  ]
+}

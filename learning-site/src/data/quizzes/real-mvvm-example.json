@@ -1,0 +1,90 @@
+{
+  "lesson": "real-mvvm-example",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why does the `Transaction` model have no `INotifyPropertyChanged` and no UI logic?",
+      "options": [
+        "DataGrid cannot display classes that implement `INotifyPropertyChanged`",
+        "It is pure data for the DB table; UI behavior belongs in the ViewModel",
+        "EF Core forbids entity classes from implementing any interfaces",
+        "The model is only ever used in unit tests, never in the UI"
+      ],
+      "answer": 1,
+      "explanation": "The Model represents the database table and is pure data: no `INotifyPropertyChanged` and no UI logic. Notification and UI state live in the ViewModel.",
+      "source": {
+        "section": "1️⃣ MODEL (Database entity)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What is the benefit of putting the database access behind `ITransactionService`?",
+      "options": [
+        "The DB logic is isolated and can be swapped for EF Core or Dapper",
+        "It lets the View call the database directly through the interface",
+        "It makes the `Transaction` class raise change notifications",
+        "It removes the need for an `ObservableCollection`"
+      ],
+      "answer": 0,
+      "explanation": "The service isolates the DB logic (here simulated with an in-memory list), so it can be replaced with EF Core or Dapper later without touching the ViewModel's logic.",
+      "source": {
+        "section": "2️⃣ DATA ACCESS (Repository / Service)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How does `TransactionViewModel` know which row the user has selected in the DataGrid?",
+      "options": [
+        "Code-behind handles `SelectionChanged` and passes the row to the ViewModel",
+        "The ViewModel reads `DataGrid.SelectedItem` through a reference to the window",
+        "`SelectedItem` is bound to the ViewModel's `SelectedTransaction`",
+        "The Delete button passes the row with `CommandParameter`"
+      ],
+      "answer": 2,
+      "explanation": "The View binds `SelectedItem=\"{Binding SelectedTransaction}\"`, so the selection flows into the ViewModel without any code-behind or UI reference.",
+      "source": {
+        "section": "5️⃣ VIEW (DataGrid UI)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The ViewModel's `Delete()` calls `_service.Delete(SelectedTransaction.Id)` and then `Transactions.Remove(SelectedTransaction)`. Why the second call?",
+      "options": [
+        "The service call only marks the row; `Remove` actually deletes it from the database",
+        "Without it, `CanDelete()` would throw on the next check",
+        "It is needed so `LoadCommand` can run again later",
+        "Removing it from the `ObservableCollection` updates the DataGrid"
+      ],
+      "answer": 3,
+      "explanation": "The service removes the record from the data store, and removing it from the bound `ObservableCollection<Transaction>` makes the DataGrid update automatically.",
+      "source": {
+        "section": "3️⃣ VIEWMODEL (UI Brain)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "Put the path of a Delete action through the app in order.",
+      "steps": [
+        "The user clicks the Delete button",
+        "The button's `DeleteCommand` executes",
+        "The ViewModel's `Delete()` runs",
+        "The service deletes the record",
+        "The UI updates automatically"
+      ],
+      "explanation": "The lesson's delete flow is Button → Command → ViewModel → Service → UI updates automatically.",
+      "source": {
+        "section": "6️⃣ Flow (How data moves)"
+      },
+      "reviewed": false
+    }
+  ]
+}

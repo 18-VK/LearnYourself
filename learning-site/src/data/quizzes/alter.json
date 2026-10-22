@@ -1,0 +1,65 @@
+{
+  "lesson": "alter",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How do you rename the `Email` column of `Students` to `StudentEmail` in SQL Server?",
+      "options": [
+        "`ALTER TABLE Students RENAME COLUMN Email TO StudentEmail;`",
+        "`ALTER TABLE Students ALTER COLUMN Email StudentEmail;`",
+        "`EXEC sp_rename 'Students.Email', 'StudentEmail', 'COLUMN';`",
+        "`UPDATE Students SET Email = StudentEmail;`"
+      ],
+      "answer": 2,
+      "explanation": "Renaming columns and tables goes through the `sp_rename` system procedure, with `'COLUMN'` as the object type for a column.",
+      "source": { "section": "➤ Rename Column" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`ALTER TABLE Students ALTER COLUMN Email NVARCHAR(100) NOT NULL;` fails. What is the most likely reason the lesson gives?",
+      "options": [
+        "The column still contains NULL values",
+        "`NOT NULL` can only be set when the table is created",
+        "`NVARCHAR` columns can't be `NOT NULL`",
+        "A DEFAULT constraint must be dropped first"
+      ],
+      "answer": 0,
+      "explanation": "A column can't be made `NOT NULL` while NULL data exists in it; the existing NULLs must be fixed first.",
+      "source": { "section": "➤ Change NULL to NOT NULL" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You need to switch off the foreign key `FK_Students_Department` temporarily and switch it back on later. Which pair of statements does that?",
+      "options": [
+        "`DROP CONSTRAINT` and then `ADD CONSTRAINT`",
+        "`DISABLE CONSTRAINT` and `ENABLE CONSTRAINT`",
+        "`SET READ_ONLY` and `SET READ_WRITE`",
+        "`ALTER TABLE Students NOCHECK CONSTRAINT FK_Students_Department;` and then `CHECK CONSTRAINT`"
+      ],
+      "answer": 3,
+      "explanation": "`NOCHECK CONSTRAINT` disables the constraint and `CHECK CONSTRAINT` re-enables it, without dropping and recreating it.",
+      "source": { "section": "➤ Disable Constraint" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which of these does the lesson list as something you cannot do with `ALTER`?",
+      "options": [
+        "Add a CHECK constraint to an existing table",
+        "Directly add `IDENTITY` to an existing column",
+        "Rename a database",
+        "Rebuild all indexes on a table"
+      ],
+      "answer": 1,
+      "explanation": "The important notes say you can't directly add `IDENTITY` to an existing column, drop a PK referenced by an FK, or make a column `NOT NULL` while NULLs exist.",
+      "source": { "section": "🚨 Important Notes" },
+      "reviewed": false
+    }
+  ]
+}

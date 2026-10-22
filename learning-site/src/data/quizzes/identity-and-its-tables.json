@@ -1,0 +1,80 @@
+{
+  "lesson": "identity-and-its-tables",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which of these does ASP.NET Core Identity NOT give you out of the box?",
+      "options": [
+        "Password hashing with PBKDF2",
+        "Account lockout after failed attempts",
+        "JWT generation",
+        "External login linking (Google, Microsoft)"
+      ],
+      "answer": 2,
+      "explanation": "Identity is a membership system: it handles who the user is and whether the password is correct. You write JWT generation yourself, and OAuth2/OIDC flows are OpenIddict's or Duende's job.",
+      "source": { "section": "ASP.NET Core Identity" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What is the `SecurityStamp` column on the user for?",
+      "options": [
+        "It changes on password or security changes, which invalidates stale sessions",
+        "It is the optimistic concurrency token for the user row",
+        "It stores the salt used for the password hash",
+        "It records when the user's lockout ends"
+      ],
+      "answer": 0,
+      "explanation": "`SecurityStamp` changes when security data changes, invalidating old sessions and tokens. Optimistic concurrency on the row is `ConcurrencyStamp`'s job.",
+      "source": { "section": "IdentityUser<TKey> — the user model" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Your `AppDbContext` derives from `IdentityDbContext<ApplicationUser, ApplicationRole, int>` and overrides `OnModelCreating` to rename tables. What must the override do first?",
+      "options": [
+        "Call `EnsureCreated()` so the Identity tables exist",
+        "Call `base.OnModelCreating(builder)`, which configures all the Identity tables",
+        "Register each Identity entity with `DbSet<T>` properties",
+        "Nothing; Identity tables are configured in `Program.cs`, not in the context"
+      ],
+      "answer": 1,
+      "explanation": "`IdentityDbContext`'s `OnModelCreating` sets up the Identity table names, keys, indexes and relationships, so the base call must come before your own customisations.",
+      "source": { "section": "IdentityDbContext" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You declare `ApplicationUser : IdentityUser<int>` but write `AppDbContext : IdentityDbContext<ApplicationUser>` without specifying `int`. What happens?",
+      "options": [
+        "It compiles, and Identity converts the keys to `string` at runtime",
+        "It compiles, but the roles table is skipped",
+        "It won't compile, because every Identity type must use the same `TKey`",
+        "It compiles and works, because `int` is inferred from the user class"
+      ],
+      "answer": 2,
+      "explanation": "EF Core's Identity model builder wires the types together through generics, so a `TKey` mismatch between the user and the context won't compile.",
+      "source": { "section": "IdentityDbContext" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How does Identity store which users have which roles?",
+      "options": [
+        "A `RoleId` column on `AspNetUsers`",
+        "The junction table `AspNetUserRoles`, with a composite primary key (UserId, RoleId)",
+        "A comma-separated list in `AspNetRoles.Name`",
+        "Rows in `AspNetUserTokens` named after each role"
+      ],
+      "answer": 1,
+      "explanation": "Users and roles are many-to-many, so `AspNetUserRoles` maps them with foreign keys to `AspNetUsers.Id` and `AspNetRoles.Id` and a composite key on the pair.",
+      "source": { "section": "3. AspNetUserRoles" },
+      "reviewed": false
+    }
+  ]
+}

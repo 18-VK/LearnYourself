@@ -1,0 +1,89 @@
+{
+  "lesson": "creating-and-signing-jwts",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why should every JWT you issue have a short expiration?",
+      "options": [
+        "Once issued, a stateless JWT can't easily be revoked, so a short lifetime limits the damage if it is stolen",
+        "Short tokens are smaller to send",
+        "The signing key changes every few minutes",
+        "Browsers delete tokens after 15 minutes anyway"
+      ],
+      "answer": 0,
+      "explanation": "The server keeps no state about issued JWTs, so it cannot easily take one back; 15 minutes to 2 hours is the standard practice the lesson gives.",
+      "source": {
+        "section": "Key Components Explained"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "An attacker compromises one of your APIs and steals the key it uses to validate tokens. Why is this much worse with HS256 than with RS256?",
+      "options": [
+        "HS256 tokens never expire",
+        "HS256 keys are always shorter than RS256 keys",
+        "RS256 tokens are encrypted, HS256 tokens are not",
+        "With HS256 the API holds the shared secret, so the attacker can forge tokens; with RS256 the API has only the public key, which can't sign"
+      ],
+      "answer": 3,
+      "explanation": "Symmetric keys are shared by issuer and validator. With asymmetric keys only the auth server holds the private key, and APIs get the public key.",
+      "source": {
+        "section": "Types of Signing Keys"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Put the steps of setting up RS256 signing with OpenSSL in order.",
+      "steps": [
+        "Generate the private key: `openssl genrsa -out private.pem 2048`",
+        "Extract the public key: `openssl rsa -in private.pem -pubout -out public.pem`",
+        "The auth server loads `private.pem` into an `RSA` object and signs tokens with `SecurityAlgorithms.RsaSha256`",
+        "The APIs verify token signatures with the shared `public.pem`"
+      ],
+      "explanation": "The public key is derived from the private key; the auth server keeps the private key to sign, and only the public key is shared with the APIs.",
+      "source": {
+        "section": "Generating keys : Symmetric Keys and Asymmetric Keys"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What is the difference between the `.pfx` and the `.cer` file produced in the certificate example?",
+      "options": [
+        "`.pfx` holds only the public key; `.cer` holds the private key",
+        "They hold the same data in different encodings",
+        "`.pfx` holds the certificate plus the private key, protected with a password; `.cer` is the public certificate only and is safe to share with the API",
+        "`.cer` is for HS256 keys and `.pfx` for RS256 keys"
+      ],
+      "answer": 2,
+      "explanation": "Keep the password-protected `.pfx` private on the signing side; give the API the `.cer`, which contains no private key.",
+      "source": {
+        "section": "Option B — Generate Certificate (.pfx) ⭐ (Recommended)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How do asymmetric keys allow key rotation with zero downtime?",
+      "options": [
+        "By keeping a \"current\" and a \"previous\" key active at the same time for a short period",
+        "By signing each token with two private keys",
+        "By turning off signature validation during the switch",
+        "By copying the new private key to every API first"
+      ],
+      "answer": 0,
+      "explanation": "While both keys are active, tokens signed with the previous key still validate as the new key takes over.",
+      "source": {
+        "section": "Best Practices for Key Management"
+      },
+      "reviewed": false
+    }
+  ]
+}

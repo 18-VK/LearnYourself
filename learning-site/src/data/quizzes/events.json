@@ -1,0 +1,98 @@
+{
+  "lesson": "events",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does declaring a delegate field with the `event` keyword restrict?",
+      "options": [
+        "It stops the publisher class itself from raising the event",
+        "It limits the event to a single handler",
+        "It makes the handlers run on a background thread",
+        "External code can mainly only subscribe (`+=`) and unsubscribe (`-=`)"
+      ],
+      "answer": 3,
+      "explanation": "Events are encapsulated delegates; the `event` keyword restricts access so that external code is primarily allowed only to subscribe with `+=` and unsubscribe with `-=`.",
+      "source": { "section": "Events" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the stages of the publisher-subscriber model in order.",
+      "steps": [
+        "The publisher declares an event using a delegate type",
+        "The subscriber registers its handler with the event using `+=`",
+        "The publisher's `On<EventName>` method invokes the event, calling all registered handlers",
+        "The subscriber detaches its handler with `-=` when it no longer needs notifications"
+      ],
+      "explanation": "The publisher declares the event, subscribers attach handlers with `+=`, raising the event calls every registered handler, and subscribers can later detach with `-=`.",
+      "source": { "section": "How it works (Publisher-Subscriber Model)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "What does this program print?",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Button\n{\n    // 2. Declare an event using the delegate\n    public event ButtonClickHandler Click;\n\n    // 3. Method to raise the event\n    public void SimulateClick()\n    {\n        Console.WriteLine(\"Button is being clicked...\");\n        // Check if there are any subscribers before raising the event\n        Click?.Invoke(this, EventArgs.Empty); \n    }\n}\n\npublic class Program\n{\n    public static void Main(string[] args)\n    {\n        Button myButton = new Button();\n\n        // 4. Subscribe an event handler\n        myButton.Click += MyButton_Click;\n\n        // 5. Simulate the event\n        myButton.SimulateClick();\n\n        // 6. Unsubscribe the event handler\n        myButton.Click -= MyButton_Click;\n\n        // Simulate again, no output from handler\n        myButton.SimulateClick(); \n    }\n\n    // 4. Event handler method\n    private static void MyButton_Click(object sender, EventArgs e)\n    {\n        Console.WriteLine(\"Button was clicked! (Handler executed)\");\n    }\n}"
+      },
+      "options": [
+        "\"Button is being clicked...\", then \"Button was clicked! (Handler executed)\", then \"Button is being clicked...\"",
+        "\"Button is being clicked...\", then \"Button was clicked! (Handler executed)\", printed twice",
+        "\"Button is being clicked...\" twice, with no handler output",
+        "It throws a `NullReferenceException` on the second click, because the event has no subscribers"
+      ],
+      "answer": 0,
+      "explanation": "The first click runs the handler. After `-=` removes it, `Click` has no subscribers, and `Click?.Invoke(...)` safely skips the call, so the second click prints only its own line.",
+      "source": { "section": "How it works (Publisher-Subscriber Model)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does `OnTemperatureChanged` copy the event into a local variable (`var handler = TemperatureChanged;`) before invoking it?",
+      "options": [
+        "To make the event run faster",
+        "To avoid race conditions when the event is raised (thread-safety)",
+        "Because events can only be invoked through local variables",
+        "To stop subscribers from unsubscribing"
+      ],
+      "answer": 1,
+      "explanation": "The best practices say to copy the delegate locally before invoking to avoid race conditions: `var h = Event; h?.Invoke(...)`.",
+      "source": { "section": "Best-practice patterns" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A short-lived UI control subscribes to an event on a long-lived service and never unsubscribes. What is the risk?",
+      "options": [
+        "The service stops raising the event",
+        "The event handler runs twice",
+        "The control is leaked, because the publisher keeps a reference to it; unsubscribe in `Dispose` or use a weak-event pattern",
+        "Nothing; the garbage collector removes the handler automatically"
+      ],
+      "answer": 2,
+      "explanation": "If the subscriber's lifetime is shorter than the publisher's, you must unsubscribe or use weak references, otherwise the subscriber leaks. The typical fix is unsubscribing in `Dispose`.",
+      "source": { "section": "Unsubscribe and memory leaks" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "An event has three handlers and the second one throws an exception. What happens?",
+      "options": [
+        "Further handlers are stopped unless you handle the exception",
+        "The exception is ignored and all three handlers finish",
+        "The first handler is rolled back",
+        "The handlers are retried in reverse order"
+      ],
+      "answer": 0,
+      "explanation": "Events are multicast; if one handler throws, it stops further handlers unless you handle exceptions, which is why libraries often iterate handlers manually.",
+      "source": { "section": "Multicast and ordering" },
+      "reviewed": false
+    }
+  ]
+}

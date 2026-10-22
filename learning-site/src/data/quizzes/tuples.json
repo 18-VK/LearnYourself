@@ -1,0 +1,65 @@
+{
+  "lesson": "tuples",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which reason for using a tuple does the note give?",
+      "options": [
+        "It lets a method return multiple values without creating a class or struct",
+        "It is the only way to store values of different types together",
+        "It makes its elements dynamically typed",
+        "It replaces the need for collections like `List<T>`"
+      ],
+      "answer": 0,
+      "explanation": "A tuple groups multiple values so a method can return them without defining a separate class or struct, and it reads better than `out`/`ref` parameters while staying strongly typed.",
+      "source": { "section": "Why Use a Tuple?" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does the C# 7.0+ syntax `var person = (Id: 1, Name: \"Aman\");` offer over `new Tuple<int, string>(1, \"Aman\")`?",
+      "options": [
+        "It allows more than eight elements without nesting",
+        "It turns the tuple into a class you can inherit from",
+        "Named elements such as `person.Id` and `person.Name` instead of `.Item1` and `.Item2`",
+        "It stops the elements from being strongly typed"
+      ],
+      "answer": 2,
+      "explanation": "Old-style tuples are accessed with `.Item1`, `.Item2` and so on; modern tuples can be declared with names and accessed as named properties like `.Id` and `.Name`.",
+      "source": { "section": "Accessing Tuple Elements" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Given `var nestedTuple = (1, \"Aman\", (85, \"Math\"));`, which expression reads `85`?",
+      "options": [
+        "`nestedTuple.Item1`",
+        "`nestedTuple.Item3.Item1`",
+        "`nestedTuple.Item3`",
+        "`nestedTuple.Item1.Item3`"
+      ],
+      "answer": 1,
+      "explanation": "The third element is itself a tuple `(85, \"Math\")`, so `nestedTuple.Item3.Item1` is 85 and `nestedTuple.Item3.Item2` is `Math`.",
+      "source": { "section": "Nested Tuples" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does the note say about storing more than 7 values in a tuple?",
+      "options": [
+        "It is impossible; tuples hold at most 7 values",
+        "You must switch to `ArrayList`",
+        "Every value after the seventh is silently dropped",
+        "Tuples have a direct capacity of 8 elements, so the 8th element must itself be a nested tuple"
+      ],
+      "answer": 3,
+      "explanation": "Tuples have a maximum direct capacity of 8 elements; to store more than 7 values, the 8th element must be a nested tuple.",
+      "source": { "section": "Nested Tuples" },
+      "reviewed": false
+    }
+  ]
+}

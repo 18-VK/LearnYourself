@@ -1,0 +1,65 @@
+{
+  "lesson": "calling-stored-procedures",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In ADO.NET you create `new SqlCommand(\"GetProductsByCategory\", conn)`. What must you also set so it runs as a stored procedure?",
+      "options": [
+        "`cmd.CommandText = \"EXEC\"`",
+        "`cmd.CommandType = CommandType.StoredProcedure`",
+        "`cmd.Parameters.Clear()`",
+        "`conn.ChangeDatabase(\"ShopDB\")`"
+      ],
+      "answer": 1,
+      "explanation": "With ADO.NET you handle the command type yourself: `CommandType = CommandType.StoredProcedure` is required, and the parameters must match the procedure's signature.",
+      "source": { "section": "### 1. Using ADO.NET" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Compared with the Dapper version, what extra work does the ADO.NET version do with the results?",
+      "options": [
+        "It reads each column from the `SqlDataReader` and maps the data by hand",
+        "It has to open a transaction before reading",
+        "It converts the result to JSON before printing",
+        "Nothing; both map rows to `Product` automatically"
+      ],
+      "answer": 0,
+      "explanation": "ADO.NET returns raw data that you read and map manually (`reader[\"Name\"]`), while Dapper automatically maps the result set to your model class.",
+      "source": { "section": "### 1. Using ADO.NET" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How does the lesson call `GetProductsByCategory` with Dapper?",
+      "options": [
+        "`connection.Execute(\"EXEC GetProductsByCategory 2\")`",
+        "`connection.Query<Product>(\"GetProductsByCategory\")` with a `SqlCommand` attached",
+        "`connection.Query<Product>(\"GetProductsByCategory\", new { categoryId = 2 }, commandType: CommandType.StoredProcedure)`",
+        "`connection.QueryMultiple(\"GetProductsByCategory\", 2)`"
+      ],
+      "answer": 2,
+      "explanation": "With Dapper you pass the procedure name, an anonymous object for the parameters and `commandType: CommandType.StoredProcedure`, and the result set is mapped to `Product` automatically.",
+      "source": { "section": "### 2. Using Dapper" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The stored procedure `UpdateProductPrice` changes data and returns no rows. Which EF Core call fits?",
+      "options": [
+        "`context.Products.FromSqlRaw(\"EXEC UpdateProductPrice ...\").ToList()`",
+        "`context.Products.Find(10)`",
+        "`context.SaveChanges(\"UpdateProductPrice\")`",
+        "`context.Database.ExecuteSqlRaw(\"EXEC UpdateProductPrice @productId, @newPrice\", ...)`"
+      ],
+      "answer": 3,
+      "explanation": "EF Core uses `FromSqlRaw()` for stored procedures that return entities and `ExecuteSqlRaw()` for non-queries such as INSERT, UPDATE and DELETE.",
+      "source": { "section": "### 3. Using Entity Framework Core" },
+      "reviewed": false
+    }
+  ]
+}

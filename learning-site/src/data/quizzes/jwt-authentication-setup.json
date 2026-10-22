@@ -1,0 +1,91 @@
+{
+  "lesson": "jwt-authentication-setup",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the full runtime flow of a JWT-secured request in order.",
+      "steps": [
+        "The client sends a request with the JWT in the `Authorization` header",
+        "The authentication middleware runs",
+        "The JWT handler validates the signature, issuer, audience and expiry",
+        "The user is created in `HttpContext`",
+        "The authorization middleware checks roles and policies",
+        "The controller executes"
+      ],
+      "explanation": "Authentication turns a valid token into `HttpContext.User`; authorization then decides whether that user can reach the controller. An invalid token stops at 401.",
+      "source": {
+        "section": "Full Runtime Flow (IMPORTANT)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does the API itself need in order to validate incoming JWTs?",
+      "options": [
+        "Only its JWT configuration (issuer, audience, signing key), which it uses as the source of truth",
+        "A database of every user and every token it has issued",
+        "A call to the auth server for every request",
+        "The user's password"
+      ],
+      "answer": 0,
+      "explanation": "The API does not store users or tokens; it validates each token against its configuration, and `JwtBearerHandler` does the work.",
+      "source": {
+        "section": "Authentication"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "With RS256, what does your API do with the public key?",
+      "options": [
+        "It signs new tokens for the client",
+        "It shares it with the client so the client can sign requests",
+        "It encrypts the payload before sending it back",
+        "It verifies the signature already in the token; the API never creates a signature"
+      ],
+      "answer": 3,
+      "explanation": "Private key signs, public key verifies: the API reverses the signature with the public key and checks it against a hash it computes from the token.",
+      "source": {
+        "section": "How Validation Happens (RUNTIME FLOW)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `ValidateAudience = true` with `ValidAudience` protect against?",
+      "options": [
+        "Tokens signed with a weak key",
+        "A token generated for \"Service A\" being used to access \"Service B\"",
+        "Expired tokens",
+        "Requests over plain HTTP"
+      ],
+      "answer": 1,
+      "explanation": "It checks the token's `aud` claim, ensuring the token was intended for this API and preventing reuse in another one.",
+      "source": {
+        "section": "Configuration (App Setup)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is `ClockSkew = TimeSpan.FromMinutes(1)` for?",
+      "options": [
+        "It gives a small grace period when checking `exp`, to allow for slight time differences between systems",
+        "It refreshes the token automatically one minute before expiry",
+        "It makes every token expire after one minute",
+        "It delays the first request by one minute"
+      ],
+      "answer": 0,
+      "explanation": "Distributed systems often have slightly different clocks; `ClockSkew` adds a tiny grace period (here one minute) to the lifetime check.",
+      "source": {
+        "section": "Configuration (App Setup)"
+      },
+      "reviewed": false
+    }
+  ]
+}

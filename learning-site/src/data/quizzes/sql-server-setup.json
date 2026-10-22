@@ -1,0 +1,79 @@
+{
+  "lesson": "sql-server-setup",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Right after a fresh install, can you connect with the `sa` login?",
+      "options": [
+        "Yes, `sa` has a default password you can look up",
+        "Yes, `sa` is enabled whenever Windows Authentication is",
+        "No, `sa` doesn't exist on Express editions",
+        "No, installs default to Windows Authentication only; `sa` stays disabled until you enable Mixed Mode and set its password"
+      ],
+      "answer": 3,
+      "explanation": "There is no default SQL username/password waiting for you. Your Windows account is added as `sysadmin`, and `sa` exists only as a disabled account name.",
+      "source": { "section": "2. Server-Level Logins: Default vs. Ones You Create" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which system database is the template for every new database you create?",
+      "options": [
+        "`master`",
+        "`model`",
+        "`msdb`",
+        "`tempdb`"
+      ],
+      "answer": 1,
+      "explanation": "`model` is the template. `master` tracks server-wide config and logins, `msdb` is used by SQL Server Agent, and `tempdb` is scratch space rebuilt on every restart.",
+      "source": { "section": "1. What You Get When You Install SQL Server" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "SQL Server is installed as the named instance `SQLEXPRESS` on your machine. Which server name connects to it from SSMS?",
+      "options": [
+        "`.\\SQLEXPRESS`",
+        "`.` on its own",
+        "`SQLEXPRESS.localhost`",
+        "`master\\SQLEXPRESS`"
+      ],
+      "answer": 0,
+      "explanation": "A named instance is accessed as `.\\SQLEXPRESS` (or `localhost\\SQLEXPRESS`, `MACHINE\\SQLEXPRESS`). Just `.` or `localhost` reaches the default instance `MSSQLSERVER`.",
+      "source": { "section": "1. What You Get When You Install SQL Server" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the steps for creating a dedicated SQL login for your API in order.",
+      "steps": [
+        "Enable Mixed Mode authentication in the server properties and restart the SQL Server service",
+        "Create the login with `CREATE LOGIN AppUser WITH PASSWORD = ...`",
+        "In the app's database, run `CREATE USER AppUser FOR LOGIN AppUser` and add it to `db_datareader` / `db_datawriter`",
+        "Reconnect in SSMS with SQL Server Authentication to test the login"
+      ],
+      "explanation": "SQL logins need Mixed Mode first. A login alone can't touch any database, so it must be mapped to a database user with least-privilege roles before testing.",
+      "source": { "section": "3. How to Create a Server Login to Use" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You can already connect with Windows Authentication. Why might your ASP.NET Core API still need a SQL login?",
+      "options": [
+        "Windows Authentication is slower for queries",
+        "SQL logins bypass all permission checks",
+        "The API is a background process that needs its own identity, and once it runs where Windows Auth doesn't reach, it needs a SQL login",
+        "EF Core can't use Windows Authentication at all"
+      ],
+      "answer": 2,
+      "explanation": "Windows Auth works for the app only while it runs under an account SQL Server trusts on the same domain or machine. Elsewhere, an app service account uses SQL Server Authentication.",
+      "source": { "section": "if i can access.. server instance with windows authentication... why should i create a login?" },
+      "reviewed": false
+    }
+  ]
+}

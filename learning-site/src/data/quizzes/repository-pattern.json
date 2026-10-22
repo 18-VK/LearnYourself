@@ -1,0 +1,80 @@
+{
+  "lesson": "repository-pattern",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "`OrderService` depends on `IRepository<Order>` instead of `AppDbContext`. Which benefit from the lesson does that give most directly?",
+      "options": [
+        "Queries run faster because EF Core is bypassed",
+        "The database schema is created automatically",
+        "The service is easy to unit test, because `IRepository<Order>` can be mocked",
+        "`SaveChanges` is no longer needed"
+      ],
+      "answer": 2,
+      "explanation": "Without a repository, EF Core code is spread everywhere and mocking `DbContext` is painful. Behind `IRepository<T>` the service has no EF Core code and the interface is easy to mock.",
+      "source": { "section": "### Why do we need IRepository?" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Order the layers a request passes through in the repository pattern structure, from the UI down to the database.",
+      "steps": [
+        "UI / ViewModel / Controller",
+        "Service",
+        "`IRepository<T>`",
+        "EF Core (`DbContext`)",
+        "Database"
+      ],
+      "explanation": "The UI calls a service, the service talks only to `IRepository<T>`, and the repository implementation uses EF Core's `DbContext` to reach the database.",
+      "source": { "section": "### Repository pattern structure" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why does the lesson register the repository with `AddScoped`?",
+      "options": [
+        "`DbContext` is scoped per request/operation, and the repository should share that lifetime",
+        "Scoped services are created only once for the whole application",
+        "Generic types can only be registered as scoped",
+        "Scoped registration makes `Save()` run automatically at the end of a request"
+      ],
+      "answer": 0,
+      "explanation": "Under \"Why Scoped?\" the lesson explains that `DbContext` is scoped per request or operation, so the repository that wraps it should have the same lifetime.",
+      "source": { "section": "#### 5️⃣ Injecting Repository using DI" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "When would you register a closed generic such as `services.AddScoped<IRepository<Order>, EfRepository<Order>>()` instead of the open generic `typeof(IRepository<>)`?",
+      "options": [
+        "Whenever the app has many entities",
+        "When you need special repository logic or a different implementation for one entity",
+        "Always, because open generics can't be resolved",
+        "When the `DbContext` is not registered"
+      ],
+      "answer": 1,
+      "explanation": "The open generic registration is the best practice for a generic repository with many entities; a closed generic is the special case for one entity or a different implementation per entity.",
+      "source": { "section": "### When to use which?" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is wrong with `services.AddScoped(typeof(IRepository<>), typeof(OrderRepository));` when `OrderRepository` is not generic?",
+      "options": [
+        "Nothing; it registers `OrderRepository` for every entity",
+        "It should use `AddSingleton` instead",
+        "`IRepository<>` must be written as `IRepository<object>`",
+        "An open generic registration needs a generic implementation"
+      ],
+      "answer": 3,
+      "explanation": "Registering an open generic with a non-generic implementation is listed as a common mistake: the implementation must also be generic, like `EfRepository<>`.",
+      "source": { "section": "### Common mistakes ❌" },
+      "reviewed": false
+    }
+  ]
+}
