@@ -10,4 +10,8 @@ export const REGISTRY: Record<string, VizLoader> = {
   AsyncTimelineVisualizer: () => import('./AsyncTimelineVisualizer') as Promise<VizModule>,
   ThreadInterleavingVisualizer: () => import('./ThreadInterleavingVisualizer') as Promise<VizModule>,
   LinqPipelineVisualizer: () => import('./LinqPipelineVisualizer') as Promise<VizModule>,
+  DiLifetimesVisualizer: () => import('./DiLifetimesVisualizer') as Promise<VizModule>,
+  EfCoreVisualizer: () => import('./EfCoreVisualizer') as Promise<VizModule>,
+  InvocationListVisualizer: () => import('./InvocationListVisualizer') as Promise<VizModule>,
+  CallStackVisualizer: () => import('./CallStackVisualizer') as Promise<VizModule>,
 };
