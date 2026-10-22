@@ -80,13 +80,16 @@ public sealed class Checker
             var reason = missing.Count > 0 ? $"uses {string.Join(", ", missing)}" : $"{compiled.Errors.First().Id}: {compiled.Errors.First().Message}";
             return Excluded(p, missing.Count > 0 ? "not-in-runner" : "compile-error", reason, program.Shape, used, [.. compiled.Errors]);
         }
-        var readsInput = Classifier.ReadsInput(_runner.CreateCompilation(program));
+        var runnerCompilation = _runner.CreateCompilation(program);
+        var readsInput = Classifier.ReadsInput(runnerCompilation);
+        var nondeterminism = Classifier.Nondeterminism(runnerCompilation);
         return new CheckVerdict
         {
             Id = p.Id,
             Runnable = true,
             Shape = program.Shape.ToString(),
             ReadsInput = readsInput,
+            VariesReason = nondeterminism is null ? null : $"uses {nondeterminism}",
             Assemblies = used,
             Assembly = compiled.Assembly,
             Pdb = compiled.Pdb,

@@ -92,10 +92,14 @@ for (let i = 0; i < 3; i++) {
 }
 
 // ── 3. runaway loop: stopped by terminating the worker; the page stays responsive ───────────────
-await editTo(page, 'while (true) { }');
+// keep the method the harness calls, but make it loop forever
+await editTo(page, ['void InsertionSort(int[] arr)', '{', '    while (true) { }', '}'].join('\n'));
 const loopStart = Date.now();
 await frame(page).getByRole('button', { name: /^Run / }).click();
-await page.waitForFunction((id) => document.querySelector(`.runner[data-run-id="${id}"] .runner-status`)?.textContent === 'Running…', entry.id, { timeout: 120_000 });
+await page.waitForFunction((id) => /^Running/.test(document.querySelector(`.runner[data-run-id="${id}"] .runner-status`)?.textContent ?? ''), entry.id, { timeout: 120_000 }).catch(async (e) => {
+  console.error('status:', await panel(page).locator('.runner-status').textContent(), 'outcome:', await panel(page).getAttribute('data-outcome'));
+  throw e;
+});
 const ticks = await page.evaluate(
   () =>
     new Promise((resolve) => {

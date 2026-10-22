@@ -68,11 +68,13 @@ foreach (var v in verdicts)
     bool same = a.Stdout == b.Stdout && a.Outcome == b.Outcome && a.Error?.Type == b.Error?.Type && a.Error?.Message == b.Error?.Message;
     bool hostData = host.Any(h => a.Stdout.Contains(h, StringComparison.OrdinalIgnoreCase) || (a.Error?.Message.Contains(h, StringComparison.OrdinalIgnoreCase) ?? false));
     bool needsInput = v.ReadsInput && string.IsNullOrEmpty(stdinOf[v.Id]);
+    bool varies = !same || hostData || v.VariesReason is not null;
     final.Add(v with
     {
-        Varies = !same || hostData,
+        Varies = varies,
+        VariesReason = v.VariesReason ?? (!same ? "the two runs printed different output" : hostData ? "the output contains details of the build machine" : null),
         Runs = [a, b],
-        Expected = same && !hostData && !needsInput ? a : null,
+        Expected = !varies && !needsInput ? a : null,
     });
 }
 

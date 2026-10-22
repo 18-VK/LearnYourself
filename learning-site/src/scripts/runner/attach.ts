@@ -216,7 +216,13 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
         panel.dataset.outcome = 'nothing';
         return;
       }
-      setStatus(`It doesn't compile: ${plural(errors.length, 'error')}.`, 'error');
+      const onlyHarness = errors.every((d) => d.file === 'harness.cs');
+      setStatus(
+        onlyHarness
+          ? `It doesn't compile: ${plural(errors.length, 'error')} in the harness, which calls the note's code. Keep the names it uses, or press Reset.`
+          : `It doesn't compile: ${plural(errors.length, 'error')}.`,
+        'error',
+      );
       showDiagnostics(r.diagnostics ?? []);
       panel.dataset.outcome = 'compile-error';
       // show the messages on their lines

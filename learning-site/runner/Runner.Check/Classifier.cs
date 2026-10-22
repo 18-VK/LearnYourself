@@ -200,6 +200,39 @@ public sealed class Classifier
     private static bool UnsupportedInBrowserSelf(ISymbol s) => s.GetAttributes().Any(a =>
         a.AttributeClass?.Name == "UnsupportedOSPlatformAttribute" && a.ConstructorArguments.FirstOrDefault().Value is string p && p.StartsWith("browser", StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// Does the output depend on the clock or on randomness? Then two runs in a row may agree today and still differ
+    /// from what a learner sees later (an age computed from DateTime.Today), so no expected output is shown.
+    /// Returns what it uses, or null. A <c>Random</c> with a seed is deterministic and doesn't count.
+    /// </summary>
+    public static string? Nondeterminism(CSharpCompilation compilation)
+    {
+        foreach (var tree in compilation.SyntaxTrees)
+        {
+            var model = compilation.GetSemanticModel(tree);
+            foreach (var node in tree.GetRoot().DescendantNodes())
+            {
+                if (node is not (MemberAccessExpressionSyntax or IdentifierNameSyntax or ObjectCreationExpressionSyntax or ImplicitObjectCreationExpressionSyntax)) continue;
+                var s = model.GetSymbolInfo(node).Symbol;
+                var type = s?.ContainingType;
+                if (type is null || type.ContainingNamespace?.ToDisplayString() is not ("System" or "System.Diagnostics")) continue;
+                switch (type.Name, s)
+                {
+                    case ("DateTime" or "DateTimeOffset", { Name: "Now" or "Today" or "UtcNow" }):
+                    case ("Guid", { Name: "NewGuid" }):
+                    case ("Environment", { Name: "TickCount" or "TickCount64" }):
+                    case ("Stopwatch", _):
+                    case ("TimeProvider", { Name: "System" }):
+                    case ("Random", { Name: "Shared" }):
+                        return $"{type.Name}.{s!.Name}";
+                    case ("Random", IMethodSymbol { MethodKind: MethodKind.Constructor, Parameters.Length: 0 }):
+                        return "new Random()";
+                }
+            }
+        }
+        return null;
+    }
+
     /// <summary>Does the program read standard input (so its output depends on what the learner types)?</summary>
     public static bool ReadsInput(CSharpCompilation compilation)
     {

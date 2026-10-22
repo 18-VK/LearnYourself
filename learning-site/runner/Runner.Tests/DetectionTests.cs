@@ -86,6 +86,19 @@ public sealed class DetectionTests
         Assert.True(Check("Console.WriteLine(Path.GetExtension(\"a.txt\"));", force: "on").Runnable);
     }
 
+    [Theory]
+    [InlineData("Console.WriteLine(DateTime.Today.Year - 2000);", true)]
+    [InlineData("Console.WriteLine(new Random().Next(10));", true)]
+    [InlineData("Console.WriteLine(Guid.NewGuid());", true)]
+    [InlineData("Console.WriteLine(new Random(42).Next(10));", false)]
+    [InlineData("Console.WriteLine(new DateTime(2000, 1, 1).Year);", false)]
+    public void Clock_and_randomness_mean_the_output_varies(string code, bool varies)
+    {
+        var v = Check(code);
+        Assert.True(v.Runnable, v.Reason);
+        Assert.Equal(varies, v.VariesReason is not null);
+    }
+
     [Fact]
     public void Reading_stdin_is_detected()
     {

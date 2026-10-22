@@ -41,6 +41,8 @@ public sealed record CheckVerdict
     public string? Shape { get; init; }
     public bool ReadsInput { get; init; }
     public bool Varies { get; init; }
+    /// <summary>Why the output varies: the semantic check (clock, randomness), different runs, or host data.</summary>
+    public string? VariesReason { get; init; }
     public List<string> Assemblies { get; init; } = [];
     public List<CompileDiagnostic> Diagnostics { get; init; } = [];
     public List<RunRecord> Runs { get; init; } = [];

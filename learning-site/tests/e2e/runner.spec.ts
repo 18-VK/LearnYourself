@@ -174,7 +174,8 @@ test('harness is behind "Show harness" and marked as added code', async ({ page 
   await page.goto(`${harnessed!.lesson}/`);
   await expect(page.locator('body')).toHaveAttribute('data-runner-ready', 'true');
   const panel = panelOf(page, harnessed!.id);
-  const toggle = panel.getByRole('button', { name: 'Show harness' });
+  const toggle = panel.locator('.runner-harness-toggle');
+  await expect(toggle).toHaveText('Show harness');
   await toggle.scrollIntoViewIfNeeded();
   await expect(panel.locator('.runner-harness')).toBeHidden();
   await toggle.click();
@@ -182,6 +183,7 @@ test('harness is behind "Show harness" and marked as added code', async ({ page 
   await expect(panel.locator('.runner-harness')).toContainText('Added code, not from the note');
   await expect(panel.locator('.runner-harness pre')).toHaveText(harnessed!.harness!);
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(toggle).toHaveText('Hide harness');
 });
 
 test('runner controls fit a 360 px screen', async ({ page }) => {
@@ -190,8 +192,14 @@ test('runner controls fit a 360 px screen', async ({ page }) => {
   await page.goto(`${plain!.lesson}/`);
   await expect(page.locator('body')).toHaveAttribute('data-runner-ready', 'true');
   const frame = frameOf(page, plain!.id);
-  await frame.scrollIntoViewIfNeeded();
-  for (const name of [/^Edit /, /^Run /]) await expect(frame.getByRole('button', { name })).toBeInViewport();
+  for (const name of [/^Edit /, /^Run /, /^Copy /]) {
+    const btn = frame.getByRole('button', { name });
+    await btn.scrollIntoViewIfNeeded();
+    await expect(btn).toBeInViewport();
+    const box = (await btn.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(360);
+  }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
