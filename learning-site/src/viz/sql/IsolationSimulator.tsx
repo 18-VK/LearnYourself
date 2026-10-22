@@ -68,7 +68,7 @@ function Timeline({ st, names }: { st: IsoState; names: Record<Sess, string> }) 
       })}
       {hasNext && (
         <>
-          <div className="t last" role="rowheader">next</div>
+          <div className="t last" role="rowheader" title="Next statement">▸<span className="sql-vh">next</span></div>
           {sess.map((s) => {
             const n = st.next[s];
             const cls = ['c', 'last', st.upNext === s ? 'is-current' : n?.waiting ? 'is-wait' : 'is-future'].join(' ');
