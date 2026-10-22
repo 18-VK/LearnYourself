@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { countMarkers } from '../../src/markdown/html-policy';
+import { buildRoadmap } from '../../src/viz/roadmap/extract';
 import { VERBATIM_CHECKS } from '../../src/viz/verbatim';
 import { processAssets, type AssetOut } from './assets';
 import { writeCoverage, type CoverageData, type LessonCoverage, type NoteCoverage } from './coverage';
@@ -185,6 +186,8 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   const lessonSlugs = new Map<string, string>();
   const moduleIds = new Set<string>();
   const plans: LessonPlan[] = [];
+  /** "<note>:<fence line>" → the placement that wraps that code block */
+  const wrappedBlocks = new Map<string, string>();
   const vizFence = (p: Placement, id: string, wraps: boolean) =>
     '```viz\n' + JSON.stringify({ name: p.viz ?? 'FlowDiagram', props: p.diagram ? { diagram: p.diagram, ...(p.props ?? {}) } : (p.props ?? {}), tier: p.tier ?? 1, wraps, id }) + '\n```';
 
@@ -247,6 +250,11 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
               }
               line = f.start;
               wraps = true;
+              // two placements wrapping one block would nest the second placeholder inside the first
+              const key = `${r.rel}:${f.start}`;
+              const other = wrappedBlocks.get(key);
+              if (other) errors.push(`${id}: placement ${pi + 1} (${p.viz ?? p.diagram}) wraps the same code block as ${other}; use one placement per block`);
+              wrappedBlocks.set(key, `${id} placement ${pi + 1} (${p.viz ?? p.diagram})`);
             }
             const list = inserts.get(r.rel) ?? [];
             list.push({ line, text: vizFence(p, `${id}#${pi + 1}`, wraps) });
@@ -426,6 +434,15 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     return exactCaseExists(joined) ? githubBlobUrl(repo, joined) : null;
   };
   const titleOf = new Map(plans.map((p) => [p.id, p.lesson.title]));
+  // Roadmap graph links (nodeLinks): a lesson, or a module (its first lesson; planned modules are "coming soon")
+  const resolveNodeLink = (ref: string) => {
+    if (titleOf.has(ref)) return { title: titleOf.get(ref)!, href: `${ref}/`, planned: false };
+    const [cid, mid] = ref.split('/');
+    const m = courses.find((c) => c.id === cid)?.modules.find((x) => x.id === mid);
+    if (!m || ref.split('/').length !== 2) return null;
+    const planned = m.status === 'planned';
+    return { title: m.title, href: planned || !m.lessons[0] ? '' : `${ref}/${m.lessons[0].id}/`, planned };
+  };
   const courseTitle = new Map(courses.map((c) => [c.id, c.title]));
   const lessonCoverage: LessonCoverage[] = [];
   const lessonRecords: LessonRecord[] = [];
@@ -441,6 +458,18 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
       const lessons = [];
       for (const plan of coursePlans.filter((p) => p.module.id === mod.id)) {
         const { lesson } = plan;
+        // Roadmap lessons (and the checklists of a roadmap course) open with an interactive graph built
+        // from the note's own headings (src/viz/roadmap/extract.ts). It counts as one more visualizer.
+        const hasGraph = lesson.kind === 'roadmap' || (course.kind === 'roadmap' && lesson.kind === 'checklist');
+        if (hasGraph) {
+          const first = plan.slices[0]!;
+          const markdown = plan.slices
+            .map((r) => loadNote(r.rel).lines.slice(r.start, r.end).filter((_, k) => !omitted.get(r.rel)?.has(r.start + k)).join('\n'))
+            .join('\n\n');
+          const props = buildRoadmap({ lessonId: plan.id, markdown, nodeLinks: lesson.nodeLinks, resolve: resolveNodeLink, fallbackTitle: lesson.title });
+          const graph = vizFence({ viz: 'RoadmapGraph', props: props as unknown as Record<string, unknown>, tier: 1, at: { section: '' } }, `${plan.id}#roadmap`, false);
+          plan.inserts.set(first.rel, [{ line: first.start, text: graph }, ...(plan.inserts.get(first.rel) ?? [])]);
+        }
         const sourceTexts: string[] = [];
         const bodies: string[] = [];
         const interviewHeadings: string[] = [];
@@ -471,7 +500,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
         if (gen.tables !== src.tables) errors.push(`${plan.id}: generated ${gen.tables} tables but the notes have ${src.tables}`);
         if (gen.headings !== src.headings) errors.push(`${plan.id}: generated ${gen.headings} headings but the notes have ${src.headings}`);
         const minutes = readingMinutes(gen);
-        const vizCount = lesson.place.length;
+        const vizCount = lesson.place.length + (hasGraph ? 1 : 0);
         courseMinutes += minutes;
         courseViz += vizCount;
 

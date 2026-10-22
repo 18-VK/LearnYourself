@@ -1,0 +1,66 @@
+import { diagram, src } from '../build';
+
+// SQL Server › SQLTutorial/1.Notes_SQL.md › "## High-level logical tree (big picture)": the tree exactly as
+// drawn; the steps walk it top to bottom.
+const n = (id: string, label: string) => ({ id, label });
+const e = (from: string, to: string) => ({ id: `${from}-${to}`, from, to, plain: true });
+
+export default diagram({
+  id: 'sql-server-hierarchy',
+  title: 'High-level logical tree (big picture)',
+  source: src('Phase2-ASP.NetAndBackend/SQLTutorial/1.Notes_SQL.md', '## High-level logical tree (big picture)'),
+  layout: 'tree',
+  nodes: [
+    n('instance', 'SQL Server Instance'),
+    n('logins', 'Logins (Server-level security)'),
+    n('dbA', 'Database A'),
+    n('usersA', 'Users (Database-level security)'),
+    n('schemasA', 'Schemas'),
+    n('dbo', 'dbo'),
+    n('tables', 'Tables'),
+    n('views', 'Views'),
+    n('procs', 'Stored Procedures'),
+    n('sales', 'sales'),
+    n('hr', 'hr'),
+    n('rolesA', 'Roles'),
+    n('dbB', 'Database B'),
+    n('usersB', 'Users'),
+    n('schemasB', 'Schemas'),
+    n('rolesB', 'Roles'),
+  ],
+  edges: [
+    e('instance', 'logins'),
+    e('instance', 'dbA'),
+    e('dbA', 'usersA'),
+    e('dbA', 'schemasA'),
+    e('schemasA', 'dbo'),
+    e('dbo', 'tables'),
+    e('dbo', 'views'),
+    e('dbo', 'procs'),
+    e('schemasA', 'sales'),
+    e('schemasA', 'hr'),
+    e('dbA', 'rolesA'),
+    e('instance', 'dbB'),
+    e('dbB', 'usersB'),
+    e('dbB', 'schemasB'),
+    e('dbB', 'rolesB'),
+  ],
+  narration: {
+    0: 'SQL Server Instance: the top of the tree.',
+    1: 'Logins (Server-level security) hang directly off the instance.',
+    2: 'Database A sits under the instance.',
+    3: 'Users (Database-level security) belong to Database A.',
+    4: 'Schemas belong to Database A.',
+    5: 'dbo is one of its schemas.',
+    6: 'Tables sit inside the dbo schema.',
+    7: 'Views sit inside the dbo schema.',
+    8: 'Stored Procedures sit inside the dbo schema.',
+    9: 'sales is another schema in Database A.',
+    10: 'hr is another schema in Database A.',
+    11: 'Roles belong to Database A.',
+    12: 'Database B sits under the same instance.',
+    13: 'Database B has its own Users…',
+    14: '…its own Schemas…',
+    15: '…and its own Roles.',
+  },
+});

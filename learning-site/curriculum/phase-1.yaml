@@ -45,6 +45,10 @@ modules:
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Dot Net_CLI.md"
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/Note.md"
+        place:
+          - diagram: cicd-publish-flow
+            tier: 1
+            at: { section: "### Industry CI/CD Publish Flow", codeBlock: 1 }
         cheatsheets: [dotnet-cli]
 
   - id: language-basics
@@ -237,6 +241,10 @@ modules:
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Notes_3.md"
             from: "# Records"
+        place:
+          - diagram: dictionary-lookup
+            tier: 1
+            at: { section: "## How Lookup Works", codeBlock: 2 }
 
       - id: pattern-matching
         title: "Pattern matching"
@@ -475,6 +483,13 @@ modules:
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Notes.md"
             from: "# Indexes"
+        place:
+          - diagram: optimistic-concurrency-flow
+            tier: 1
+            at: { section: "## If you want real optimistic concurrency", codeBlock: 1 }
+          - diagram: concurrency-conflict-pattern
+            tier: 1
+            at: { section: "### Microsoft's Recommended Pattern", codeBlock: 1 }
         related: [sql-server/indexes-and-performance/indexes-and-keys]
 
       - id: ef-core-model-config-and-loading
@@ -512,6 +527,13 @@ modules:
             from: "# EF Core Migrations"
             until: "# SQL Raw Query"
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore_Migration_Deployment_Summary.md"
+        place:
+          - diagram: migration-deployment-flow
+            tier: 1
+            at: { section: "## 4. Production Deployment Flow", codeBlock: 1 }
+          - diagram: migration-production-workflow
+            tier: 1
+            at: { section: "## Production Workflow", codeBlock: 1 }
         cheatsheets: [ef-core-migrations]
 
       - id: ef-core-raw-sql-iqueryable-concurrency
@@ -544,6 +566,10 @@ modules:
         title: "The repository pattern with EF Core"
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/IRepositoryWithEFCore.md"
+        place:
+          - diagram: repository-pattern-layers
+            tier: 1
+            at: { section: "## Repository pattern structure", codeBlock: 1 }
 
       - id: logging
         title: "Logging: ILogger & Serilog"

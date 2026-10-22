@@ -117,6 +117,18 @@ Found while building the Phase 2 visualizers (`src/viz/aspnet/`). Numbered A1, A
 | A7 | `Phase2-ASP.NetAndBackend/ASP.Net Core/6.ASP_ClientCallingWebAPI.md` › Problems Solved by IHttpClientFactory | Says IHttpClientFactory manages the lifetimes of `HttpClientMessageHandler` instances. The type is `HttpMessageHandler` (as 7.ASP_HttpClientClassNMore.md and [Microsoft Learn](https://learn.microsoft.com/aspnet/core/fundamentals/http-requests) say). | The HttpClient pooling visualizer calls it the pooled handler and follows Microsoft Learn. | open |
 | A8 | `Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API/Src/API/Middlewares/GlobalExceptionMiddleware.cs` › HandleException | `NotFoundException` maps to status 404 with the title "Bad request, Value not found"; the title describes a 400. (Code, not a note: recorded so the visualizer's output isn't mistaken for a site error.) | The ProblemDetails visualizer shows the code's real output. | info |
 
+## Diagrams, roadmaps and WPF visualizers
+
+Found while converting ASCII diagrams (`curriculum/FLOW_DIAGRAMS.md`), building the roadmap graphs and the WPF visualizers. Numbered F1… so they don't clash with entries added elsewhere.
+
+| # | File › heading | Observation | Site behaviour | Status |
+|---|---|---|---|---|
+| F1 | `20.WFA_and_WPF/DebounceSearch.md` › In WPF | The `SearchText` setter never assigns `_searchText = value`, so `_searchText` stays `null`: the getter always returns `null` and `if (_searchText != value)` is always true. The Stop/Start timer logic, which the note is about, is unaffected. | The debounce visualizer shows the code as written and animates only the timer: keystroke → `Stop()` → `Start()` → `Tick` → `ApplySearch()`. Its narration never says the value is stored. | open |
+| F2 | `WPF_Tutorial/4.MVVMandDataBindings.md` › Example how to setup things | Two comments in the `MainViewModel` block wrap onto a new line (`nameof` / `(Rating)` and `// calling for each` / `property`), so the block would not compile as written. | The data binding visualizer's code panel shows only the `Name` and `Status` properties, which are intact. | info |
+| F3 | `WPF_Tutorial/4.MVVMandDataBindings.md` › MVVM in WPF | In the ASCII diagram the arrow down to Model starts under the gap between View and ViewModel, not under either box. | The animated version draws it from ViewModel, because the bullets under the diagram say the View never talks to the Model directly. The original ASCII is one click away ("Show text version"). | info |
+| F4 | `ASP.Net Core/11.ASP_MoreOnAuth.md` › Before any code… 3 parties | The diagram has no Client ↔ Resource API arrow, but step 5 of the flow right under it is "Client calls Resource API". | That step highlights both boxes without drawing an arrow, so the diagram stays as drawn. | info |
+| F5 | `BackendRoadmap/database-design-roadmap.md` › For actual hands-on practice… | A top-level `#` heading in the middle of the note (after the design checklist). | The roadmap graph shows it as a top-level stop next to the stages, with the practice sites as its branches. | info |
+
 ## Found while writing quizzes, cheat sheets and interview questions (Checkpoint 5)
 
 Reported by the agents that wrote the 871 quiz questions, 14 cheat sheets and 464 interview questions.

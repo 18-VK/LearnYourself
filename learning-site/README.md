@@ -117,6 +117,13 @@ loads the visualizer's code only when it scrolls into view.
 With `codeBlock`, the original text stays on the page behind a "Show text version" toggle. It is also what
 shows if the visualizer isn't built yet; the slot then says an interactive version is planned.
 
+A `diagram: <id>` placement shows `src/viz/flow/diagrams/<id>.ts` in the `FlowDiagram` component. To turn
+another ASCII diagram into one, copy its labels exactly (the unit tests check them against the note) and
+follow "Adding one later" in `curriculum/FLOW_DIAGRAMS.md`, which also lists every flow-style block and why it
+was or wasn't converted. Roadmap lessons (`kind: roadmap`, and the checklists of a `kind: roadmap` course) need
+no placement: the pipeline puts a `RoadmapGraph` built from the note's headings at the top of the lesson, and
+its ticks are the same ones as the page checklist.
+
 ## Add a visualizer to the engine
 
 1. **Trace generator** (pure TypeScript, `src/viz/<area>/traces/`): run the algorithm on an input and return every

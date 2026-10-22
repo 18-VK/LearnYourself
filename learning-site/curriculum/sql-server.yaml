@@ -28,6 +28,9 @@ modules:
           - diagram: sql-server-hierarchy
             tier: 2
             at: { section: "## High-level logical tree (big picture)", codeBlock: 1 }
+          - diagram: sql-security-flow
+            tier: 1
+            at: { section: "## Complete security flow (end-to-end)", codeBlock: 1 }
 
       - id: databases-schemas-and-logins
         title: "Databases vs schemas, dbo & logins vs users"
@@ -46,6 +49,10 @@ modules:
         reason: "Unnumbered; continues the logins/users material from notes 1 and 1.1."
         sources:
           - file: "Phase2-ASP.NetAndBackend/SQLTutorial/DB_User_Privilege_Check.md"
+        place:
+          - diagram: login-user-permissions
+            tier: 1
+            at: { section: "## 1. What is a database user?", codeBlock: 1 }
 
   - id: data-types-and-commands
     title: "Data types & core commands"
@@ -197,6 +204,9 @@ modules:
           - viz: RecursiveCteVisualizer
             tier: 2
             at: { section: "# Recursive CTE (Very Important)" }
+          - diagram: cte-join-steps
+            tier: 1
+            at: { section: "## 2️⃣ JOIN / Derived Table Version", codeBlock: 3 }
 
       - id: sql-server-functions
         title: "SQL Server functions"

@@ -154,6 +154,9 @@ modules:
             props: { scenario: can-execute-toggle }
             tier: 2
             at: { section: "## RelayCommand / DelegateCommand" }
+          - diagram: requery-suggested-flow
+            tier: 1
+            at: { section: "## 7️⃣ What happens internally (important)", codeBlock: 1 }
 
       - id: command-parameter-and-async-commands
         title: "CommandParameter & AsyncRelayCommand"
@@ -165,12 +168,23 @@ modules:
         title: "A real MVVM example"
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/6.RealExampleofMVVM.md"
+        place:
+          - diagram: mvvm-data-flow
+            tier: 1
+            at: { section: "## 6️⃣ Flow (How data moves)", codeBlock: 1 }
+          - diagram: mvvm-command-chain
+            tier: 1
+            at: { section: "## 6️⃣ Flow (How data moves)", codeBlock: 2 }
 
       - id: project-example-with-commands
         title: "Project example with commands"
         reason: "Unnumbered worked project for notes 5–6; placed right after them."
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/ProjectExampleWithCommand.md"
+        place:
+          - diagram: relaycommand-flow-summary
+            tier: 1
+            at: { section: "# Flow summary", codeBlock: 1 }
 
       - id: observablecollection-and-validation
         title: "ObservableCollection & validation"
@@ -181,6 +195,10 @@ modules:
         title: "IDialogService, IMessageBus & the Dispatcher"
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/8.IDialogService.md"
+        place:
+          - diagram: dialog-service-layers
+            tier: 1
+            at: { section: "### 1. Introduce an interface", codeBlock: 2 }
 
       - id: wpf-summary
         title: "WPF summary"
@@ -194,12 +212,20 @@ modules:
         title: "Real app setup: DI, appsettings & the Generic Host"
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/10.RealAppSetup_mustcheck.md"
+        place:
+          - diagram: wpf-app-lifecycle
+            tier: 1
+            at: { section: "# Example", codeBlock: 1 }
         related: [phase-1/advanced-csharp/dependency-injection, phase-1/advanced-csharp/configuration]
 
       - id: window-shell-pattern
         title: "The window shell pattern"
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/11.WindowShellPattern.md"
+        place:
+          - diagram: dependency-property-flow
+            tier: 1
+            at: { section: "## What Dependency Properties fix", codeBlock: 1 }
 
       - id: templatebinding-and-custom-controls
         title: "TemplateBinding, UserControl vs CustomControl"
@@ -211,6 +237,13 @@ modules:
         title: "Communicating across the app: AppState"
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.Tips.md"
+        place:
+          - diagram: selection-state-flow
+            tier: 1
+            at: { section: "## 🧩 Real flow example", codeBlock: 1 }
+          - diagram: appstate-runtime-flow
+            tier: 1
+            at: { section: "## 4️⃣ What actually happens at runtime", codeBlock: 1 }
 
       - id: debounce-search
         title: "Debounced search in WPF & WinForms"
@@ -237,6 +270,10 @@ modules:
         title: "TaskFlow Studio: autosave, scopes & failing fast"
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio/TaskFlowStudio/Notes.md"
+        place:
+          - diagram: autosave-flow
+            tier: 1
+            at: { section: "# This is a classic autosave problem", codeBlock: 1 }
         resources:
           - asset: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio/TaskFlowStudio/Modern Wpf Practice Project — Design.pdf"
           - tryLocally: "Phase1-CSharp_And_DotNet_core_fundamental/21.TaskFlow Studio"

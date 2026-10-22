@@ -25,6 +25,27 @@ modules:
           - diagram: aspnet-architecture
             tier: 1
             at: { section: "## ASP .Net Architecture", codeBlock: 1 }
+          - diagram: middleware-request-order
+            tier: 1
+            at: { section: "### 3. Middleware", codeBlock: 1 }
+          - diagram: middleware-response-order
+            tier: 1
+            at: { section: "### 6. Response Passes Through Middleware", codeBlock: 1 }
+          - diagram: web-api-architecture
+            tier: 1
+            at: { section: "## What is ASP.NET Core Web API?", codeBlock: 1 }
+          - diagram: mvc-request-flow
+            tier: 1
+            at: { section: "## What is ASP.NET Core MVC?", codeBlock: 1 }
+          - diagram: web-api-example
+            tier: 1
+            at: { section: "## When to Use Web API", codeBlock: 1 }
+          - diagram: mvc-example
+            tier: 1
+            at: { section: "## When to Use MVC", codeBlock: 1 }
+          - diagram: web-api-popular
+            tier: 1
+            at: { section: "## Why Web API is More Popular Today", codeBlock: 1 }
 
       - id: rest-and-http-basics
         title: "REST, HTTP methods & status codes"
@@ -60,6 +81,9 @@ modules:
             props: { scenario: attribute-routes }
             tier: 2
             at: { section: "## Attribute Routing" }
+          - diagram: route-to-action
+            tier: 1
+            at: { section: "### Visual Flow", codeBlock: 1 }
         cheatsheets: [aspnet-core]
 
       - id: return-types
@@ -80,6 +104,9 @@ modules:
             props: { sources: [route, query, body, header] }
             tier: 2
             at: { section: "## How Model Binding Works" }
+          - diagram: model-binding-flow
+            tier: 1
+            at: { section: "## How Model Binding Works", codeBlock: 1 }
         cheatsheets: [aspnet-core]
 
       - id: model-validation
@@ -120,6 +147,15 @@ modules:
             props: { compare: [new-httpclient-per-call, ihttpclientfactory] }
             tier: 2
             at: { section: "## Problems Solved by IHttpClientFactory" }
+          - diagram: retry-one-line
+            tier: 1
+            at: { section: "### Add retry for failure scenario", codeBlock: 3 }
+          - diagram: retry-flow
+            tier: 1
+            at: { section: "### Add retry for failure scenario", codeBlock: 6 }
+          - diagram: api-client-layers
+            tier: 1
+            at: { section: "## Extra", codeBlock: 1 }
 
       - id: httpclient
         title: "HttpClient methods & properties"
@@ -168,6 +204,9 @@ modules:
           - viz: HttpsHstsVisualizer
             tier: 2
             at: { section: "## UseHsts — browser-side instruction, cached ahead of time" }
+          - diagram: tls-termination-chain
+            tier: 1
+            at: { section: "# Enforce it at the hosting level too (defense in depth)", codeBlock: 2 }
 
   - id: auth-fundamentals
     title: "Authentication, authorization & JWT"
@@ -178,6 +217,19 @@ modules:
         sources:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
             until: "# JWT (JSON Web Token)"
+        place:
+          - diagram: basic-auth-flow
+            tier: 1
+            at: { section: "### HTTP Basic Authentication", codeBlock: 1 }
+          - diagram: api-key-flow
+            tier: 1
+            at: { section: "### API Keys", codeBlock: 3 }
+          - diagram: oauth-spotify-example
+            tier: 1
+            at: { section: "#### OAuth 2.0", codeBlock: 1 }
+          - diagram: oauth-roles
+            tier: 1
+            at: { section: "#### OAuth 2.0", codeBlock: 2 }
         cheatsheets: [auth-jwt]
 
       - id: jwt
@@ -203,6 +255,10 @@ modules:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
             from: "# Basic API side setup of JWT : Authentication and Authorization Implementation using JWT in Web APIs"
             until: "## Authorization"
+        place:
+          - diagram: jwt-runtime-flow
+            tier: 1
+            at: { section: "### Full Runtime Flow (IMPORTANT)", codeBlock: 1 }
 
       - id: authorization-policies
         title: "Authorization: roles, claims, policies & resources"
@@ -217,6 +273,10 @@ modules:
         sources:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/10.ASP_AuthenticationNAuthorisation.md"
             from: "# ClaimsIdentity and ClaimsPrincipal"
+        place:
+          - diagram: claims-to-httpcontext-user
+            tier: 1
+            at: { section: "## How Claims Become HttpContext.User", codeBlock: 1 }
 
       - id: auth-server-concepts
         title: "Auth servers: the three parties"
@@ -228,6 +288,12 @@ modules:
           - diagram: auth-three-parties
             tier: 2
             at: { section: "## Before any code, understand the shape of the system. There are always **3 parties**:", codeBlock: 1 }
+          - diagram: auth-server-intro
+            tier: 1
+            at: { section: "## Introduction: Auth Server", codeBlock: 1 }
+          - diagram: auth-server-shared
+            tier: 1
+            at: { section: "## Why Separate the Auth Server?", codeBlock: 1 }
 
       - id: identity-providers-and-oidc
         title: "Identity providers, OAuth 2.0 & OpenID Connect"
@@ -235,6 +301,10 @@ modules:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/11.ASP_MoreOnAuth.md"
             from: "# Identity Provider"
             until: "# How to create a JWT Token : Add claim and all"
+        place:
+          - diagram: auth-server-openiddict-oauth-oidc
+            tier: 1
+            at: { section: "# How Auth Server, OpenIddict, OAuth 2.0, and OpenID Connect (OIDC) relate to each other", codeBlock: 1 }
 
       - id: creating-and-signing-jwts
         title: "Creating JWTs & managing RSA signing keys"
@@ -246,6 +316,9 @@ modules:
             props: { scenario: sign-with-private-verify-with-public }
             tier: 1
             at: { section: "## Signing key and its type" }
+          - diagram: rs256-end-to-end
+            tier: 1
+            at: { section: "# End-to-end flow", codeBlock: 1 }
         cheatsheets: [auth-jwt]
 
   - id: auth-server
@@ -282,6 +355,9 @@ modules:
             props: { showReuseDetection: true }
             tier: 2
             at: { section: "## Refresh Token" }
+          - diagram: refresh-token-protect
+            tier: 1
+            at: { section: "#### What does a refresh token contain?", codeBlock: 2 }
         cheatsheets: [auth-jwt]
 
       - id: identity-and-its-tables
@@ -311,6 +387,10 @@ modules:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/13.ASP_Custom_authServer.md"
             from: "### External logins"
             until: "## Cookie"
+        place:
+          - diagram: external-login-lookup
+            tier: 1
+            at: { section: "### External logins", codeBlock: 3 }
 
       - id: signin-and-identity-registration
         title: "Cookies, SignInManager & registering Identity"
@@ -328,6 +408,31 @@ modules:
         title: "OpenIddict & when you need a separate auth server"
         sources:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/14.ASP_OpenIddict_Auth.md"
+        place:
+          - diagram: openiddict-architecture
+            tier: 1
+            at: { section: "### Your Architecture", codeBlock: 1 }
+          - diagram: jwt-creation-steps
+            tier: 1
+            at: { section: "### 2. JWT Creation", codeBlock: 1 }
+          - diagram: openiddict-jwt-generation
+            tier: 1
+            at: { section: "### 2. JWT Creation", codeBlock: 2 }
+          - diagram: refresh-token-timeline
+            tier: 1
+            at: { section: "### 3. Refresh Tokens", codeBlock: 1 }
+          - diagram: jwks-public-keys
+            tier: 1
+            at: { section: "### 5. Public Keys (JWKS)", codeBlock: 1 }
+          - diagram: openiddict-token-validation
+            tier: 1
+            at: { section: "### 6. Token Validation", codeBlock: 1 }
+          - diagram: jwt-validation-pipeline
+            tier: 1
+            at: { section: "### Why This Matters for Your API", codeBlock: 3 }
+          - diagram: social-login-providers
+            tier: 1
+            at: { section: "### 3. Social Login (Google, Microsoft, GitHub, etc.)", codeBlock: 1 }
 
   - id: production-concerns
     title: "Rate limiting & versioning"
@@ -375,6 +480,13 @@ modules:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/DotNet_DesignPatterns.md"
             from: "# Clean Architecture"
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/CleanArchitectureNMore.md"
+        place:
+          - diagram: clean-architecture-dependencies
+            tier: 1
+            at: { section: "## 🔁 Dependency Direction (Very Important)", codeBlock: 1 }
+          - diagram: clean-architecture-model-flow
+            tier: 1
+            at: { section: "## 🔁 Flow Example", codeBlock: 1 }
         related: [phase-2/capstone/validation-filter-and-extensions]
 
   - id: capstone
@@ -401,6 +513,13 @@ modules:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Examples/Task_Management_System_API/ProjectRelatedStuff.md"
             from: "# Fluent API configurations with separate configuration class"
             until: "# Why choose AddDbContext vs AddDbContextPool"
+        place:
+          - diagram: fluent-config-to-schema
+            tier: 1
+            at: { section: "# Fluent API configurations with separate configuration class", codeBlock: 7 }
+          - diagram: automapper-flow
+            tier: 1
+            at: { section: "# AutoMapper : for object mapping", codeBlock: 5 }
 
       - id: dbcontext-options-and-concurrency
         title: "DbContext pooling, SQL options & concurrency"
