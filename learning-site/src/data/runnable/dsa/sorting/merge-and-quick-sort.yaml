@@ -1,0 +1,16 @@
+# Harnesses for the C# blocks of dsa/sorting/merge-and-quick-sort. Inputs come from the note itself.
+blocks:
+  - block: 1
+    startsWith: "void MergeSort(int[] arr, int left, int right)"
+    input: "the example array [2, 5, 7, 3] from the same note (“3. Insertion Sort”)"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      MergeSort(arr, 0, arr.Length - 1);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");
+  - block: 2
+    startsWith: "void QuickSort(int[] arr, int low, int high)"
+    input: "the sorted array [1,2,3,4,5,6,7] from “The mechanism” (the last-element-pivot worst case)"
+    harness: |
+      int[] arr = { 1, 2, 3, 4, 5, 6, 7 };
+      QuickSort(arr, 0, arr.Length - 1);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");

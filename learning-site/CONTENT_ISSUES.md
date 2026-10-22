@@ -11,6 +11,8 @@ Status: `open` (needs your call), `info` (no action needed; recorded so nothing 
 
 | # | File › heading | Observation | Site behaviour | Status |
 |---|---|---|---|---|
+| R1 | `Phase1-CSharp_And_DotNet_core_fundamental/9.C#_Tuple/Note.md` › Returning Multiple Values from a Method | The second version, `Tuple<string,int> GetPerson() { return ("Aman", 25); }`, does not compile: `("Aman", 25)` is a `ValueTuple<string, int>`, and C# has no implicit conversion to `System.Tuple<string, int>` (CS0029). `return Tuple.Create("Aman", 25);` would. Found by the C# runner's build-time check. | The block is shown as written and gets no Run button (listed as a compile error in `runnable-report.md`). | open |
+| R2 | `Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Notes_3.md` › You Can Also Set Them in a Constructor | Says that after setting the `required` properties in a constructor, `var user = new User("Aman", "aman@example.com");` "is valid". It is not: a constructor only satisfies `required` members when it is marked `[SetsRequiredMembers]` (System.Diagnostics.CodeAnalysis); otherwise the call is error CS9035 ("Required member 'User.Name' must be set in the object initializer"). Found by the C# runner's build-time check. | Both blocks are shown as written; neither gets a Run button. | open |
 | 5 | `Competitive Programming/sorting-algorithms-notes.md` › 9. Bucket Sort | "Sort each bucket individually (often with insertion sort)", while the code calls `List<float>.Sort()`, which is not stable. The stability line ("depends on the sort used within buckets") therefore means this implementation is not guaranteed stable. | Each bucket's sort is shown as a single step labelled `buckets[i].Sort()`, matching the code. | info |
 
 ## Resolved

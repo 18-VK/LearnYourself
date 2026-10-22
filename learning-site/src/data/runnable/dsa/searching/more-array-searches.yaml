@@ -1,0 +1,23 @@
+# Harnesses for the C# blocks of dsa/searching/more-array-searches. Inputs come from the same note:
+# the sorted example array of “3. Lower Bound / Upper Bound”, arr = [1, 2, 2, 2, 3], target = 2.
+# Blocks 1 (a template with placeholders), 2 (MySqrt: the note gives no value) and 6 (TernaryMaxIndex: needs a
+# mountain array, which the note doesn't give) have no harness.
+blocks:
+  - block: 3
+    startsWith: "int JumpSearch(int[] arr, int target)"
+    input: "arr = [1, 2, 2, 2, 3], target = 2 (the example in “3. Lower Bound / Upper Bound”)"
+    harness: |
+      int[] arr = { 1, 2, 2, 2, 3 };
+      Console.WriteLine(JumpSearch(arr, 2));
+  - block: 4
+    startsWith: "int InterpolationSearch(int[] arr, int target)"
+    input: "arr = [1, 2, 2, 2, 3], target = 2 (the example in “3. Lower Bound / Upper Bound”)"
+    harness: |
+      int[] arr = { 1, 2, 2, 2, 3 };
+      Console.WriteLine(InterpolationSearch(arr, 2));
+  - block: 5
+    startsWith: "int ExponentialSearch(int[] arr, int target)"
+    input: "arr = [1, 2, 2, 2, 3], target = 2 (the example in “3. Lower Bound / Upper Bound”)"
+    harness: |
+      int[] arr = { 1, 2, 2, 2, 3 };
+      Console.WriteLine(ExponentialSearch(arr, 2));

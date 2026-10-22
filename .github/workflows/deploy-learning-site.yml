@@ -1,5 +1,6 @@
 # Builds the LearnYourself site from the notes and deploys it to GitHub Pages.
-# - Pull requests: install, content pipeline, unit tests, build (with coverage + link + budget checks), smoke tests. No deploy.
+# - Pull requests: install, content pipeline, unit tests, C# runner (tests, bundle, runnable-block check), build (with
+#   coverage + link + budget checks), smoke tests. No deploy.
 # - Pushes to main (and manual runs): the same, then deploy to https://18-vk.github.io/LearnYourself/
 # One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
 name: Deploy learning site
@@ -44,7 +45,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: learning-site
@@ -66,8 +67,27 @@ jobs:
       - name: Unit tests (trace generators and pipeline)
         run: npm test
 
+      # C# runner: the .NET SDK compiles the in-browser runner and decides which C# blocks are runnable
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: C# runner unit tests (runnable-block detection, program shapes, limits)
+        working-directory: learning-site/runner
+        run: dotnet test --project Runner.Tests/Runner.Tests.csproj -c Release
+
+      - name: Build the C# runner (.NET WebAssembly + Roslyn bundle)
+        run: npx tsx scripts/runner/publish.ts
+
+      - name: Runnable-block check (compile and run every runnable C# block, record expected output)
+        run: npm run runner:check
+        env:
+          LY_REQUIRE_RUNNER: "1"
+
       - name: Build (Astro + Pagefind + output verification)
         run: npm run build
+        env:
+          LY_REQUIRE_RUNNER: "1"
 
       - name: Install Chromium for smoke tests
         run: npx playwright install --with-deps chromium
@@ -80,7 +100,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
-          path: learning-site/coverage-report.md
+          path: |
+            learning-site/coverage-report.md
+            learning-site/runnable-report.md
           if-no-files-found: ignore
 
       - name: Upload the site for GitHub Pages

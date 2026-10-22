@@ -11,10 +11,22 @@ manifests that map notes to lessons, the build pipeline, and the site itself. No
 
 - **Node 22.22 or newer** (Node 24 LTS recommended; CI uses 24). Check with `node --version`.
 - No other services: no database, no accounts, no paid APIs. Progress is stored in the browser.
+- **.NET SDK 10** (current LTS; 10.0.402 used here) for the in-browser C# runner. Optional locally: without it,
+  `npm run build` warns and builds the site without Run buttons. CI installs it and sets `LY_REQUIRE_RUNNER=1`, which
+  turns a missing SDK into an error. Check with `dotnet --list-sdks`.
 
 If your system Node is older, put a portable Node in `learning-site/.tools/node/` and run
 `source scripts/local-env.sh` (Git Bash) before the commands below. The script also keeps npm's cache,
 temp files and Playwright's browsers inside `learning-site/.cache/`. Both folders are gitignored.
+
+The same works for .NET: install a portable SDK with Microsoft's script, without touching the system install, and
+`local-env.sh` puts it first on `PATH` (with telemetry off and NuGet's cache in `.cache/nuget`):
+
+```powershell
+# Windows PowerShell; on Linux/macOS use https://dot.net/v1/dotnet-install.sh with the same options
+Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
+./dotnet-install.ps1 -Version 10.0.402 -InstallDir learning-site/.tools/dotnet -NoPath
+```
 
 ## Commands
 
@@ -30,6 +42,9 @@ Run these from `learning-site/`:
 | `npm test` | Unit tests (trace generators) |
 | `npm run test:e2e` | Playwright smoke tests against `astro preview` (every lesson, every visualizer, search, 404) |
 | `npm run check` | Type-check Astro pages and TypeScript |
+| `npm run runner` | C# runner only: publish the browser bundle to `public/runner/` and run the runnable-block check (what `npm run build` does; `npm run dev` skips it, so run this once to get Run buttons in dev) |
+| `npm run runner:check` | Only the runnable-block check; writes `runnable-report.md` |
+| `npm run test:runner` | .NET unit tests for the runner (`runner/Runner.Tests`) |
 
 Before the first `npm run test:e2e`, install the browser once: `npx playwright install chromium`.
 
@@ -41,6 +56,9 @@ notes (*.md, *.txt)         curriculum/*.yaml (manifests)
          scripts/build-content.ts   ← checks: every note mapped, anchors exist, every line used exactly once
                     |
    src/content/lessons/**.md + src/data/generated/*.json + public/generated/assets/   (all gitignored)
+                    |
+   scripts/runner/step.ts   (needs the .NET SDK) ← C# runner bundle → public/runner/; runnable-block check →
+                    |                              src/data/generated/runnable.json + runnable-report.md
                     |
    astro build  (src/markdown/* plugins: callouts, ❌/✅ cards, interview sections, visualizer slots, code frames)
                     |
@@ -56,8 +74,11 @@ notes (*.md, *.txt)         curriculum/*.yaml (manifests)
 - a lesson's rendered headings, code blocks, tables or ❌/✅/👉 markers differ from its source note;
 - an internal link, asset or `#anchor` is broken;
 - the output exceeds 200 MB or 20,000 files, or any file is over 25 MiB;
-- a binary file that isn't approved in `curriculum/_assets.yaml` ends up in the output;
-- the C# shown in a visualizer no longer matches the note it came from.
+- a binary file that isn't approved in `curriculum/_assets.yaml` ends up in the output (the C# runner's
+  `runner/_framework/*.gz` files are approved by path, and their size is reported separately);
+- the C# shown in a visualizer no longer matches the note it came from;
+- a harness or override in `src/data/runnable/` points at a block that moved or changed, or doesn't make its block
+  runnable (see below).
 
 `coverage-report.md` lists every note and where it went, per-lesson counts, recovered code blocks,
 omitted lines, exclusions and assets. CI keeps it as a build artifact.
@@ -140,6 +161,70 @@ its ticks are the same ones as the page checklist.
    Use the colour classes `is-compare`, `is-swap`, `is-active`, `is-settled` so colour meanings stay identical.
 5. **Register** it in `src/viz/registry.ts` under the name the manifests use. The smoke tests then expect
    every placement of that name to mount.
+
+## C# runner
+
+C# blocks that can run in a browser get **Edit**, **Run** and **Reset** buttons, a stdin box, an output panel and
+the output recorded at build time ("Expected output"). The code compiles and runs only in the learner's browser: the
+.NET WebAssembly runtime and Roslyn run in a Web Worker, downloaded (about 7 MB, gzip) the first time someone presses
+Run and cached after that. A run is stopped after 5 seconds or 64 KB of output. Design and reasons:
+[`runner/NOTES.md`](runner/NOTES.md); measurements: [`CHECKPOINT-3.md`](CHECKPOINT-3.md).
+
+Which blocks are runnable is decided at build time with the real .NET SDK (`runner/Runner.Check`):
+- a block is runnable if it compiles as a console program as written, or as top-level statements with the SDK's
+  standard `using`s, and then runs to completion;
+- it is never runnable if Roslyn's semantic model shows it uses ASP.NET Core, WPF/WinForms, a database or EF Core,
+  the file system, the network, threads/tasks/async/locks/timers, the host process, or an API .NET doesn't support in
+  the browser;
+- blocks that only declare methods or types need a **harness** (below);
+- every runnable block is run twice; when the two outputs differ (random numbers, the clock), the block says "output
+  varies" instead of showing an expected output.
+
+`runnable-report.md` (gitignored, kept by CI as an artifact) lists every C# block and why it is or isn't runnable.
+
+## Mark a code block runnable, or add a harness for it
+
+Overrides and harnesses live in `src/data/runnable/<lesson id>.yaml`, for example
+`src/data/runnable/dsa/sorting/stability-and-simple-sorts.yaml`. Blocks are numbered by their position among the
+lesson's **C#** blocks (1 = the first C# block on the page; other languages don't count).
+
+```yaml
+blocks:
+  # A harness: statements that call the note's code with the note's own sample input.
+  - block: 3
+    startsWith: "void InsertionSort(int[] arr)"   # guard: fails the build if the note's block changes or moves
+    input: "the example in “3. Insertion Sort”: [2, 5, 7, 3]"   # required with a harness: where the input is from
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      InsertionSort(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");
+
+  # Merge consecutive blocks into one program (the buttons go on the last one).
+  - merge: [3, 4]
+    harness: |
+      foreach (var e in staff) Console.WriteLine(e);
+
+  # Text for Console.ReadLine(), taken from the note's own example.
+  - block: 5
+    stdin: |
+      3
+      1 2 3
+
+  # Force a block off (or on). `runnable: true` skips the semantic exclusions; the block must still compile and run.
+  - block: 6
+    runnable: false
+    reason: "Prints a different result in a browser"
+```
+
+Rules:
+- **A harness may only call the note's code with inputs that appear in the note.** No invented examples. Learners see
+  it behind **Show harness**, labelled as added code, with the `input:` text.
+- Write plain statements; the runner places them: after the block's own statements, as top-level statements next to
+  its classes, or (for blocks of bare methods) inside a wrapper class that also holds the methods. Compiler messages
+  and exception lines still point at the learner's lines.
+- The build fails if a harness doesn't make its block runnable, a block number doesn't exist, or `startsWith` no
+  longer matches. Run `npm run runner:check` to try a change in seconds (results are cached per block).
+- Problems in a note's code go in `CONTENT_ISSUES.md`, never into a harness that works around them silently.
 
 ## Quizzes, cheat sheets and interview questions: the data files
 

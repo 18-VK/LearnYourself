@@ -1,0 +1,9 @@
+# Harness for the C# block of dsa/sorting/heap-sort. The input comes from the note itself.
+blocks:
+  - block: 1
+    startsWith: "void HeapSort(int[] arr)"
+    input: "the example array [2, 5, 7, 3] from the same note (“3. Insertion Sort”)"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      HeapSort(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");

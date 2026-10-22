@@ -1,0 +1,8 @@
+# Consecutive blocks of the note that only work together.
+blocks:
+  # the abstract Animal, the Dog that derives from it, and the code that uses them
+  - merge: [1, 2, 3]
+    startsWith: "public abstract class Animal"
+  # the IPrintable interface, its implementation and the code that uses them
+  - merge: [4, 5, 6]
+    startsWith: "public interface IPrintable"

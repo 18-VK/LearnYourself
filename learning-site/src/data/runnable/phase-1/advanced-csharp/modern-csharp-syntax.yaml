@@ -1,0 +1,16 @@
+# Consecutive blocks of the note that only work together.
+blocks:
+  # the class with required members and the object initializer that sets them
+  - merge: [14, 15]
+    startsWith: "public class User"
+  # methods without parameters: the harness only calls them (the note's comments give the expected output)
+  - block: 4
+    startsWith: "void Calculate()"
+    input: "none needed: Calculate() takes no arguments (the note's comment says it prints 8)"
+    harness: |
+      Calculate();
+  - block: 5
+    startsWith: "void DisplayTotal()"
+    input: "none needed: DisplayTotal() takes no arguments (the note's comment says it prints Total = 100)"
+    harness: |
+      DisplayTotal();

@@ -1,0 +1,24 @@
+<Project>
+  <!--
+    Copies reference assemblies next to the build output, for Runner.Check and its tests:
+      refs/runner/   the assemblies a learner's program compiles against in the browser (References.props; the same
+                     files Runner.Wasm embeds), from the targeting pack this project compiles against
+      refs/netcore/  the whole Microsoft.NETCore.App reference set, used only to explain why a block is not runnable
+  -->
+  <Target Name="CopyRunnerReferences" AfterTargets="Build" DependsOnTargets="ResolveTargetingPackAssets">
+    <ItemGroup>
+      <_NetCoreRef Include="@(Reference)" Condition="'%(Reference.FrameworkReferenceName)' == 'Microsoft.NETCore.App'" />
+      <_RunnerRefDirItem Include="@(_NetCoreRef->WithMetadataValue('Filename','System.Runtime')->'%(RootDir)%(Directory)')" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_RunnerRefDir>@(_RunnerRefDirItem)</_RunnerRefDir>
+    </PropertyGroup>
+    <Error Condition="'$(_RunnerRefDir)' == ''" Text="Could not find the Microsoft.NETCore.App reference assemblies." />
+    <ItemGroup>
+      <_RunnerRefFile Include="@(RunnerReference->'$(_RunnerRefDir)%(Identity).dll')" />
+    </ItemGroup>
+    <RemoveDir Directories="$(OutDir)refs/runner" />
+    <Copy SourceFiles="@(_NetCoreRef)" DestinationFolder="$(OutDir)refs/netcore" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_RunnerRefFile)" DestinationFolder="$(OutDir)refs/runner" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

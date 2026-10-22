@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Build-time check: which C# blocks in the lessons can run in the browser, and what they print.
+    Run by scripts/runner/check.ts (npm run build, npm run runner:check); see runner/NOTES.md.
+  -->
+  <Import Project="../References.props" />
+  <Import Project="../CopyReferences.targets" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>LearnYourself.Runner.Check</RootNamespace>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Runner.Core/Runner.Core.csproj" />
+    <InternalsVisibleTo Include="Runner.Tests" />
+  </ItemGroup>
+</Project>

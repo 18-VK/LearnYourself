@@ -3,7 +3,8 @@
  * 1. every lesson's rendered headings, code blocks, tables and ❌/✅/👉 markers match its source counts;
  * 2. every internal link, asset and #anchor resolves under the base path;
  * 3. size budgets: ≤ 200 MB total, ≤ 20,000 files, no file over 25 MiB (GitHub Pages / Cloudflare Pages limits);
- * 4. no binary file reaches the output unless it is on the approved list in curriculum/_assets.yaml.
+ * 4. no binary file reaches the output unless it is on the approved list in curriculum/_assets.yaml (or is part of
+ *    the C# runner bundle under runner/_framework/, whose size and file count are reported separately).
  * Writes the output counts into coverage-report.md. Exits non-zero on any failure.
  */
 import fs from 'node:fs';
@@ -50,9 +51,13 @@ for (const f of files) if (f.size > BUDGET_FILE) problems.push(`${f.rel} is ${(f
 // ── 4. binary allowlist ───────────────────────────────────────────────────────────────────
 const assets = JSON.parse(fs.readFileSync(path.join(OUT_DATA, 'assets.json'), 'utf8')) as { file: string; slug: string }[];
 const approvedSlugs = new Set(assets.map((a) => a.slug));
-const BINARY = /\.(pdf|docx?|pptx?|xlsx?|jpe?g|png|gif|webp|avif|bmp|ico|zip)$/i;
+const BINARY = /\.(pdf|docx?|pptx?|xlsx?|jpe?g|png|gif|webp|avif|bmp|ico|zip|wasm|dat|blat|gz|br|dll|pdb|exe|so)$/i;
+// the C# runner bundle: .NET WebAssembly runtime, assemblies (webcil .wasm) and ICU data, published as .gz only
+// (scripts/runner/publish.ts, runner/NOTES.md); approved by path, nowhere else
+const RUNNER_BINARY = /^runner\/_framework\/[\w.-]+\.(wasm|dat)\.gz$/;
 for (const f of files) {
   if (!BINARY.test(f.rel)) continue;
+  if (RUNNER_BINARY.test(f.rel)) continue;
   const m = /^generated\/assets\/(.+?)(?:-\d+)?\.(webp|pdf)$/.exec(f.rel);
   if (!m || !approvedSlugs.has(m[1]!)) problems.push(`Binary file not on the approved publishing list: ${f.rel}`);
 }
@@ -152,6 +157,11 @@ writeCoverage(coverage);
 // ── report ────────────────────────────────────────────────────────────────────────────────
 const mb = (total / 1048576).toFixed(1);
 console.log(`verify: ${pages.length} pages, ${files.length} files, ${mb} MB, ${checkedLinks} internal links checked, ${coverage.lessons.length} lessons compared`);
+const runnerFiles = files.filter((f) => f.rel.startsWith('runner/'));
+if (runnerFiles.length) {
+  const bytes = runnerFiles.reduce((n, f) => n + f.size, 0);
+  console.log(`verify: of which the C# runner bundle (runner/) is ${runnerFiles.length} files, ${(bytes / 1048576).toFixed(1)} MB`);
+}
 if (problems.length) {
   console.error(`\n${problems.length} problem(s):`);
   for (const p of problems.slice(0, 80)) console.error(`• ${p}`);

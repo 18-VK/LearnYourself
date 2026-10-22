@@ -1,0 +1,9 @@
+# Harnesses for the C# blocks of phase-1/oop-and-types/tuples (see README: "Mark a code block runnable…").
+blocks:
+  - block: 6
+    startsWith: "(string Name, int Age) GetPerson()"
+    input: "none needed: GetPerson() takes no arguments; the harness prints the named elements it returns"
+    harness: |
+      var person = GetPerson();
+      Console.WriteLine(person.Name);
+      Console.WriteLine(person.Age);
