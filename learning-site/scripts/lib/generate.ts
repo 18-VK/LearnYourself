@@ -383,7 +383,10 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
       continue;
     }
     const note = loadNote(check.file);
-    const blocks = note.fences.map((f) => note.lines.slice(f.start + 1, f.end).join('\n'));
+    // a note must contain the code inside a fenced block; a source file (e.g. the capstone's .cs) anywhere in its text
+    // (loadNote strips the BOM and splits on CRLF or LF, so line endings never cause a mismatch)
+    const isNote = /\.(md|txt)$/i.test(check.file);
+    const blocks = isNote ? note.fences.map((f) => note.lines.slice(f.start + 1, f.end).join('\n')) : [note.lines.join('\n')];
     if (!blocks.some((b) => b.includes(check.code))) {
       errors.push(
         `The code in the ${check.label} no longer matches ${check.file} (section "${check.heading}").\n` +
