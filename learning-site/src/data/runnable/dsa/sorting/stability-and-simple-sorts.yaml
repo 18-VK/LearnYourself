@@ -1,0 +1,24 @@
+# Harnesses for the C# blocks of dsa/sorting/stability-and-simple-sorts (see README: "Mark a code block runnable,
+# or add a harness for it"). Block numbers count C# blocks only. Inputs come from the note itself.
+blocks:
+  - block: 1
+    startsWith: "void BubbleSort(int[] arr)"
+    input: "the example array [2, 5, 7, 3] from the same note (“3. Insertion Sort”)"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      BubbleSort(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");
+  - block: 2
+    startsWith: "void SelectionSort(int[] arr)"
+    input: "the example array [2, 5, 7, 3] from the same note (“3. Insertion Sort”)"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      SelectionSort(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");
+  - block: 3
+    startsWith: "void InsertionSort(int[] arr)"
+    input: "the example in “3. Insertion Sort”: [2, 5, 7, 3] becomes [2, 3, 5, 7]"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      InsertionSort(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");

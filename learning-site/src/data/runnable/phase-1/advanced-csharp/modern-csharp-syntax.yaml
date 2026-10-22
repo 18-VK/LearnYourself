@@ -1,0 +1,7 @@
+# Consecutive blocks of the note that only work together.
+blocks:
+  # the class with required members and the object initializer that sets them
+  - merge: [14, 15]
+    startsWith: "public class User"
+  - merge: [17, 18]
+    startsWith: "public class User"

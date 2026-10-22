@@ -95,11 +95,6 @@ function copyBundle(from: string, to: string): RunnerManifest {
     fs.copyFileSync(path.join(from, name), path.join(to, name));
     fileCount++;
   }
-  // Checkpoint 3 measurement page (LY_RUNNER_SPIKE=1 only; never part of a normal build)
-  if (process.env.LY_RUNNER_SPIKE === '1') {
-    fs.mkdirSync(path.join(to, 'spike'), { recursive: true });
-    fs.copyFileSync(path.join(RUNNER_DIR, 'spike', 'index.html'), path.join(to, 'spike', 'index.html'));
-  }
   const manifest: RunnerManifest = { version: '', files, total, totalWithScripts, fileCount: fileCount + 1 };
   return manifest;
 }

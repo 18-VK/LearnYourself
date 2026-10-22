@@ -1,0 +1,30 @@
+# Harnesses for the C# blocks of dsa/searching/linear-and-binary-search. Inputs come from the note itself:
+# the example in “3. Lower Bound / Upper Bound”, arr = [1, 2, 2, 2, 3] and target = 2.
+blocks:
+  - block: 1
+    startsWith: "int LinearSearch(int[] arr, int target)"
+    input: "arr = [1, 2, 2, 2, 3], target = 2 (the example in “3. Lower Bound / Upper Bound”)"
+    harness: |
+      int[] arr = { 1, 2, 2, 2, 3 };
+      Console.WriteLine(LinearSearch(arr, 2));
+  - block: 2
+    startsWith: "int BinarySearch(int[] arr, int target)"
+    input: "arr = [1, 2, 2, 2, 3], target = 2 (the example in “3. Lower Bound / Upper Bound”)"
+    harness: |
+      int[] arr = { 1, 2, 2, 2, 3 };
+      Console.WriteLine(BinarySearch(arr, 2));
+  - block: 3
+    startsWith: "int BinarySearchRec(int[] arr, int target, int left, int right)"
+    input: "arr = [1, 2, 2, 2, 3], target = 2 (the example in “3. Lower Bound / Upper Bound”)"
+    harness: |
+      int[] arr = { 1, 2, 2, 2, 3 };
+      Console.WriteLine(BinarySearchRec(arr, 2, 0, arr.Length - 1));
+  - block: 4
+    startsWith: "int LowerBound(int[] arr, int target)"
+    input: "the example in “3. Lower Bound / Upper Bound”: arr = [1, 2, 2, 2, 3], target = 2 gives LowerBound = 1, UpperBound = 4, count 3"
+    harness: |
+      int[] arr = { 1, 2, 2, 2, 3 };
+      int target = 2;
+      Console.WriteLine($"LowerBound = {LowerBound(arr, target)}");
+      Console.WriteLine($"UpperBound = {UpperBound(arr, target)}");
+      Console.WriteLine($"Count = {UpperBound(arr, target) - LowerBound(arr, target)}");

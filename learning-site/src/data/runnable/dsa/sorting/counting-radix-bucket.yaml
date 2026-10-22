@@ -1,0 +1,31 @@
+# Harnesses for the C# blocks of dsa/sorting/counting-radix-bucket. Inputs come from the note itself.
+# Block 6 (BucketSort) has no sample input in the note (it only says values must be in [0, 1)), so it has no harness.
+blocks:
+  - block: 1
+    startsWith: "void CountingSort(int[] arr)"
+    input: "the example array [2, 5, 7, 3] from the same note (“3. Insertion Sort”)"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      CountingSort(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");
+  - block: 2
+    startsWith: "void CountingSortSimple(int[] arr)"
+    input: "the example array [2, 5, 7, 3] from the same note (“3. Insertion Sort”)"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      CountingSortSimple(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");
+  # the worked example: the Employee class and CountingSortByAge (block 3) with the note's own Input (block 4);
+  # the harness only prints the sorted array, which the note shows under "Output:"
+  - merge: [3, 4]
+    startsWith: "class Employee"
+    input: "the note's own “Input:” block (staff), which runs together with the code above it"
+    harness: |
+      foreach (var e in staff) Console.WriteLine(e);
+  - block: 5
+    startsWith: "void RadixSort(int[] arr)"
+    input: "the example array [2, 5, 7, 3] from the same note (“3. Insertion Sort”)"
+    harness: |
+      int[] arr = { 2, 5, 7, 3 };
+      RadixSort(arr);
+      Console.WriteLine("[" + string.Join(", ", arr) + "]");

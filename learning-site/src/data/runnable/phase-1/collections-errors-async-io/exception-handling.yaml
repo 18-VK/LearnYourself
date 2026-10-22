@@ -1,0 +1,5 @@
+# Consecutive blocks of the note that only work together (see README: "Mark a code block runnable…").
+blocks:
+  # the custom exception, the BankAccount that throws it, and the Program that catches it
+  - merge: [5, 6, 7]
+    startsWith: "using System;"

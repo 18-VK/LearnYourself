@@ -1,0 +1,5 @@
+# Consecutive blocks of the note that only work together.
+blocks:
+  # the delegate type, the Greeter class and the Program that uses both
+  - merge: [1, 2, 3]
+    startsWith: "public delegate void GreetDelegate(string name);"

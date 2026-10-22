@@ -1,0 +1,8 @@
+# Consecutive blocks of the note that only work together.
+blocks:
+  - merge: [2, 3]
+    startsWith: "// File: Person1.cs"
+  - merge: [4, 5, 6]
+    startsWith: "class Animal"
+  - merge: [11, 12]
+    startsWith: "public struct Point"

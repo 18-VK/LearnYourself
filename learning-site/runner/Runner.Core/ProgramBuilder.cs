@@ -103,23 +103,7 @@ public static class ProgramBuilder
         var s = Analyze(code);
         var usings = new SourceDocument(UsingsPath, UsingsText);
 
-        if (s.Statements)
-        {
-            if (harness is null) return new(ProgramShape.TopLevel, [usings, new(SnippetPath, code)], null);
-            // A harness after top-level statements: insert it before the first type declaration (statements must
-            // precede types), mapped to harness.cs so the snippet's own lines keep their numbers.
-            var lines = SplitLines(code);
-            int at = s.FirstTypeLine >= 0 ? s.FirstTypeLine : lines.Count;
-            var sb = new StringBuilder();
-            for (int i = 0; i < at; i++) sb.Append(lines[i]).Append('\n');
-            sb.Append($"#line 1 \"{HarnessPath}\"\n").Append(harness).Append('\n');
-            if (at < lines.Count)
-            {
-                sb.Append($"#line {at + 1} \"{SnippetPath}\"\n");
-                for (int i = at; i < lines.Count; i++) sb.Append(lines[i]).Append('\n');
-            }
-            return new(ProgramShape.TopLevel, [usings, new(SnippetPath, sb.ToString())], null);
-        }
+        if (s.Statements) return new(ProgramShape.TopLevel, [usings, new(SnippetPath, StatementsFirst(code, harness))], null);
 
         if (s.MainMethod && !s.Members)
         {
@@ -145,6 +129,43 @@ public static class ProgramBuilder
         }
 
         return new(ProgramShape.NothingToRun, [usings, new(SnippetPath, code)], null);
+    }
+
+    /// <summary>
+    /// C# requires top-level statements before type declarations, but notes often declare a class first and use it
+    /// below (and a harness has to go after the statements). This moves the type declarations after the statements
+    /// (and the harness), giving every moved segment a <c>#line</c> directive, so each line still reports its own
+    /// number in <c>snippet.cs</c>. Returns the code unchanged when nothing needs to move.
+    /// </summary>
+    private static string StatementsFirst(string code, string? harness)
+    {
+        var root = (CompilationUnitSyntax)CSharpSyntaxTree.ParseText(code, ParseOptions).GetRoot();
+        var text = root.SyntaxTree.GetText();
+        var lines = SplitLines(code);
+        var segments = new List<(int Start, int End, bool IsType)>();
+        foreach (var m in root.Members)
+        {
+            int start = text.Lines.GetLineFromPosition(m.FullSpan.Start).LineNumber;
+            int end = text.Lines.GetLineFromPosition(Math.Max(m.FullSpan.Start, m.FullSpan.End - 1)).LineNumber;
+            bool isType = m is BaseNamespaceDeclarationSyntax or BaseTypeDeclarationSyntax or DelegateDeclarationSyntax;
+            if (segments.Count > 0 && start <= segments[^1].End) return code; // two members share a line: leave it alone
+            segments.Add((start, end, isType));
+        }
+        bool typeBeforeStatement = segments.Select((x, i) => x.IsType && segments.Skip(i + 1).Any(y => !y.IsType)).Any(b => b);
+        if (!typeBeforeStatement && harness is null) return code;
+
+        var sb = new StringBuilder();
+        int bodyStart = segments.Count > 0 ? segments[0].Start : lines.Count;
+        for (int i = 0; i < bodyStart; i++) sb.Append(lines[i]).Append('\n'); // using directives
+        void Emit((int Start, int End, bool IsType) seg)
+        {
+            sb.Append($"#line {seg.Start + 1} \"{SnippetPath}\"\n");
+            for (int i = seg.Start; i <= seg.End && i < lines.Count; i++) sb.Append(lines[i]).Append('\n');
+        }
+        foreach (var seg in segments.Where(x => !x.IsType)) Emit(seg);
+        if (harness is not null) sb.Append($"#line 1 \"{HarnessPath}\"\n").Append(harness).Append('\n');
+        foreach (var seg in segments.Where(x => x.IsType)) Emit(seg);
+        return sb.ToString();
     }
 
     /// <summary>

@@ -1,0 +1,5 @@
+# Consecutive blocks of the note that only work together.
+blocks:
+  # the positional record and the code that compares and prints two instances
+  - merge: [2, 3]
+    startsWith: "public record Person(string FirstName, string LastName);"

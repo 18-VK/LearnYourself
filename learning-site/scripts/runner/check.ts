@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
+import type { RunnableBlockData, RunnableData } from '../../src/lib/runnable';
 import { OUT_DATA, SITE_ROOT } from '../lib/paths';
 import { allBlocks, type CsBlock } from './blocks';
 import { findDotnet, RUNNER_DIR, runDotnet, type Dotnet } from './dotnet';
@@ -70,28 +71,6 @@ export interface Verdict {
   diagnostics?: Diagnostic[];
   runs?: RunRecord[];
   expected?: RunRecord;
-}
-
-/** What a lesson page needs for one runnable program (src/lib/runnable.ts reads this). */
-export interface RunnableBlockData {
-  index: number;
-  hash: string;
-  id: string;
-  /** Earlier blocks merged into this program (their indexes), and the combined code the editor starts with. */
-  merged?: number[];
-  code?: string;
-  harness?: string;
-  input?: string;
-  stdin: string;
-  readsInput: boolean;
-  varies: boolean;
-  expected?: { stdout: string; error?: { type: string; message: string; line: number }; outcome: string };
-}
-export interface RunnableData {
-  available: boolean;
-  note?: string;
-  runner: { version: string; downloadBytes: number; fileCount: number } | null;
-  lessons: Record<string, RunnableBlockData[]>;
 }
 
 export interface CheckSummary {
@@ -284,7 +263,7 @@ function writeOutputs(programs: ProgramSpec[], verdicts: Map<string, Verdict>, s
   fs.writeFileSync(RUNNABLE_JSON, JSON.stringify(data));
   const report = programs.map((p) => {
     const v = verdicts.get(p.id)!;
-    return { id: p.id, blocks: p.blocks.map((b) => b.index), harness: Boolean(p.harness), ...v, runs: undefined, firstLine: firstLine(p.code).slice(0, 80) };
+    return { ...v, id: p.id, blocks: p.blocks.map((b) => b.index), harness: Boolean(p.harness), runs: undefined, firstLine: firstLine(p.code).slice(0, 80) };
   });
   fs.writeFileSync(REPORT_JSON, JSON.stringify({ summary, programs: report }, null, 1));
 
@@ -388,6 +367,9 @@ export async function runRunnableCheck(opts: { log?: (m: string) => void } = {})
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
   const r = await runRunnableCheck();
   for (const e of r.errors) console.error(`• ${e}`);
-  if (r.skipped) console.warn('runner: no .NET SDK 10+ found; wrote runnable.json without Run buttons.');
+  if (r.skipped) {
+    console.warn('runner: no .NET SDK 10+ found; wrote runnable.json without Run buttons.');
+    if (process.env.LY_REQUIRE_RUNNER === '1') process.exit(1);
+  }
   process.exit(r.ok ? 0 : 1);
 }

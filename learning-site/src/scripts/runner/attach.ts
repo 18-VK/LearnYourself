@@ -194,6 +194,9 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
       return;
     }
     const r: WorkerResult = o.result;
+    // timings for tests and measurements (runner/spike/measure.mjs)
+    if (r.compileMs !== undefined) panel.dataset.compileMs = String(Math.round(r.compileMs));
+    if (r.run) panel.dataset.runMs = String(Math.round(r.run.ms));
     if (r.internalError) {
       setStatus('The C# runner hit an internal error. Reload the page to try again.', 'error');
       problems.replaceChildren(el('li', { textContent: r.internalError.split('\n')[0] ?? '' }));

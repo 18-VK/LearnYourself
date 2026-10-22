@@ -68,6 +68,19 @@ public sealed class PipelineTests
     }
 
     [Fact]
+    public async Task Types_declared_before_statements_are_moved_after_them_keeping_line_numbers()
+    {
+        // notes often declare a class first and use it below; C# wants statements first
+        const string code = "class Box\n{\n    public int V = 2;\n}\nvar b = new Box();\nConsole.WriteLine(b.V);\nConsole.WriteLine(b.Missing);";
+        var c = Compiler.Compile(ProgramBuilder.Build(code, null));
+        var e = Assert.Single(c.Errors);
+        Assert.Equal(7, e.Line);
+        var (_, r, output) = await RunAsync(code.Replace("\nConsole.WriteLine(b.Missing);", ""));
+        Assert.Equal("completed", r!.Outcome);
+        Assert.Equal("2\n", output);
+    }
+
+    [Fact]
     public async Task Runtime_exceptions_report_type_message_and_line()
     {
         var (_, r, output) = await RunAsync("Console.WriteLine(\"before\");\nint[] a = new int[2];\nConsole.WriteLine(a[5]);");
