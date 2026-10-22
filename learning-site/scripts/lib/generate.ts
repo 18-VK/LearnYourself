@@ -181,6 +181,8 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   };
 
   const lessonIds = new Set<string>();
+  /** short lesson id (the manifest's `id`) → full id; data files refer to lessons by the short id */
+  const lessonSlugs = new Map<string, string>();
   const moduleIds = new Set<string>();
   const plans: LessonPlan[] = [];
   const vizFence = (p: Placement, id: string, wraps: boolean) =>
@@ -209,6 +211,10 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
         const id = `${mid}/${lesson.id}`;
         if (lessonIds.has(id)) errors.push(`duplicate lesson id ${id}`);
         lessonIds.add(id);
+        if (lessonSlugs.has(lesson.id)) {
+          errors.push(`lesson id "${lesson.id}" is used twice (${lessonSlugs.get(lesson.id)} and ${id}); quizzes, cheat sheets and interview questions refer to lessons by this id, so it must be unique across courses`);
+        }
+        lessonSlugs.set(lesson.id, id);
         const slices: Range[] = [];
         for (const s of lesson.sources) {
           const r = resolveSlice(s, id);
@@ -534,7 +540,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
           minutes,
         });
         lessons.push({ id: plan.id, slug: lesson.id, title: lesson.title, kind: lesson.kind, minutes, viz: vizCount });
-        lessonRecords.push({ id: plan.id, title: lesson.title, course: course.id, courseTitle: course.title, module: mod.id, kind: lesson.kind, body, slices: plan.slices });
+        lessonRecords.push({ id: plan.id, slug: lesson.id, title: lesson.title, course: course.id, courseTitle: course.title, module: mod.id, kind: lesson.kind, body, slices: plan.slices });
       }
       modules.push({ id: mod.id, title: mod.title, status: mod.status ?? 'ready', noteFolder: mod.noteFolder ?? null, covers: mod.covers ?? [], lessons });
     }
@@ -602,6 +608,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     topics: interviewManifest.topics as { id: string; title: string; subtopics?: string[]; notCoveredYet?: boolean }[],
     interviewSlices,
     omitted,
+    recovered,
     falsePositives,
   };
   const data = checkData({ ...dataInput, errors, warnings });
@@ -612,6 +619,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     JSON.stringify({
       ...dataInput,
       omitted: Object.fromEntries([...omitted].map(([k, v]) => [k, [...v]])),
+      recovered: Object.fromEntries(recovered),
       falsePositives: [...falsePositives],
     }),
   );

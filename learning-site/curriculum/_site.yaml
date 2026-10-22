@@ -83,6 +83,10 @@ recoverUnfencedCode:
   - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/3.OtherUsefulThings.md"
   - file: "Phase1-CSharp_And_DotNet_core_fundamental/20.WFA_and_WPF/WPF_Tutorial/12.AdvanceTopics.md"
   - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_StoredProcedure.md"
+  # added at Checkpoint 5: no code in these notes is fenced (InterviewQuestion.md feeds Interview Prep)
+  - file: "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_ClauseNmore.md"
+  - file: "InterviewQuestion.md"
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/DotNet_HostedService_N_BGService.md"
 
 # Lines dropped from rendered lessons (decided 2026-10-21: drop chatbot follow-up offers and filler,
 # keep chat-style lines that carry content). Matched by the start of the line, or a whole section by its
