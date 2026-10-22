@@ -244,7 +244,7 @@ function runQuery(q: QueryDef, data: QoData): Record<Stage, StageOut> {
   } else pass('WHERE', rel, out.JOIN.tables[0]!.caption);
 
   if (q.id === 'group-count') {
-    const keys = [...new Set(rel.rows.map((r) => r.v[0]))];
+    const keys = [...new Set(rel.rows.map((r) => r.v[0] ?? null))];
     const rows = keys.flatMap((k) => rel.rows.filter((r) => r.v[0] === k));
     let at = 0;
     const groups = keys.map((k) => {
