@@ -1,0 +1,93 @@
+{
+  "lesson": "case-coalesce-and-union",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`Tasks` holds Task A (Completed), Task B (Pending), Task C (InProgress) and Task D (Pending). In what order do the statuses come out?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT Name, Status\nFROM Tasks\nORDER BY \n    CASE \n        WHEN Status = 'Pending' THEN 1\n        WHEN Status = 'InProgress' THEN 2\n        WHEN Status = 'Completed' THEN 3\n    END;"
+      },
+      "options": [
+        "Completed, InProgress, Pending, Pending",
+        "Pending, Pending, InProgress, Completed",
+        "Completed, Pending, InProgress, Pending",
+        "InProgress, Pending, Pending, Completed"
+      ],
+      "answer": 1,
+      "explanation": "Plain `ORDER BY Status` would sort alphabetically (Completed, InProgress, Pending). The CASE assigns ranks 1, 2, 3, and rows are sorted by those numbers instead.",
+      "source": { "section": "SQL CASE Clause" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "Using the same four tasks, what does this return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT \n    COUNT(CASE WHEN Status = 'Completed' THEN 1 END) AS CompletedTasks,\n    COUNT(CASE WHEN Status = 'Pending' THEN 1 END) AS PendingTasks\nFROM Tasks;"
+      },
+      "options": [
+        "CompletedTasks = 4, PendingTasks = 4",
+        "CompletedTasks = 1, PendingTasks = 1",
+        "CompletedTasks = 1, PendingTasks = 2",
+        "CompletedTasks = 0, PendingTasks = 0"
+      ],
+      "answer": 2,
+      "explanation": "For each row the CASE returns 1 when the status matches and NULL otherwise, and `COUNT` only counts the 1s: one Completed task, two Pending tasks.",
+      "source": { "section": "SQL CASE Clause" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does `COALESCE(Phone, 'Not Available')` return for a user whose `Phone` is NULL?",
+      "options": [
+        "NULL",
+        "An empty string",
+        "An error, because the types differ",
+        "`'Not Available'`"
+      ],
+      "answer": 3,
+      "explanation": "`COALESCE` returns the first non-NULL value in its list, and NULL only if every value is NULL. SQL Server's `ISNULL(Phone, 'Not Available')` does the same here.",
+      "source": { "section": "COALESCE (Handle NULLs)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "For a row where `Divisor = 0`, what does this expression produce?",
+      "code": { "lang": "sql", "source": "SELECT Value / NULLIF(Divisor, 0) \nFROM Table;" },
+      "options": [
+        "NULL",
+        "0",
+        "A divide-by-zero error",
+        "The original `Value`"
+      ],
+      "answer": 0,
+      "explanation": "`NULLIF(Divisor, 0)` turns the sentinel 0 into NULL, so the division yields NULL instead of throwing an error.",
+      "source": { "section": "NULLIF" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "predict-output",
+      "prompt": "`Employees` has names Aman and Rahul; `Managers` has Rahul and Vikas. What does this return?",
+      "code": {
+        "lang": "sql",
+        "source": "SELECT Name FROM Employees\nUNION\nSELECT Name FROM Managers;"
+      },
+      "options": [
+        "Aman, Rahul, Rahul, Vikas",
+        "Rahul",
+        "Aman, Rahul, Vikas",
+        "Aman, Vikas"
+      ],
+      "answer": 2,
+      "explanation": "`UNION` combines the results and removes duplicates, so Rahul appears once. `UNION ALL` would keep both copies and is faster because it skips the duplicate check.",
+      "source": { "section": "UNION" },
+      "reviewed": false
+    }
+  ]
+}

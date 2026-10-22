@@ -1,0 +1,103 @@
+{
+  "lesson": "views-and-stored-procedures",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does a (non-materialized) SQL Server view actually store?",
+      "options": [
+        "A copy of the rows from its base tables, refreshed nightly",
+        "Only the query definition; each query against it runs against the base tables and returns current data",
+        "An index over its base tables",
+        "The result of the first time it was queried"
+      ],
+      "answer": 1,
+      "explanation": "A view is a stored query acting as a virtual table, so changes in the base tables show up automatically. Only a materialized view stores data physically.",
+      "source": { "section": "SQL View" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does the lesson prefer `ALTER VIEW` over dropping and recreating a view?",
+      "options": [
+        "`ALTER VIEW` preserves the permissions associated with the view",
+        "`DROP VIEW` also deletes the base tables",
+        "`ALTER VIEW` makes the view store data",
+        "A view can't be dropped once it is created"
+      ],
+      "answer": 0,
+      "explanation": "Changing the view's logic with `ALTER VIEW` keeps the existing object, so its permissions stay in place.",
+      "source": { "section": "Altering a View" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "Given this procedure, what does `EXEC dbo.TestProc @Name = DEFAULT;` print?",
+      "code": {
+        "lang": "sql",
+        "source": "CREATE PROCEDURE dbo.TestProc\n    @Name NVARCHAR(50) = 'DefaultName'\nAS\nBEGIN\n    PRINT 'Hello, ' + @Name;\nEND;"
+      },
+      "options": [
+        "`Hello, DEFAULT`",
+        "An error, because `@Name` was not supplied",
+        "`Hello, DefaultName`",
+        "`Hello, NULL`"
+      ],
+      "answer": 2,
+      "explanation": "The `DEFAULT` keyword, like omitting the parameter, makes the procedure use its declared default, `'DefaultName'`.",
+      "source": { "section": "NULL Handling in Parameters" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You run `DECLARE @MyPage INT; EXEC dbo.GetEmployees @PageNumber = @MyPage;`, and `@PageNumber` has a default value. What does the procedure receive?",
+      "options": [
+        "The procedure's default value",
+        "0",
+        "An error, because `@MyPage` is unassigned",
+        "NULL, which overrides the procedure's default"
+      ],
+      "answer": 3,
+      "explanation": "An unassigned variable is NULL, and passing it sends NULL rather than the default. To get the default, omit the parameter or pass `DEFAULT`.",
+      "source": { "section": "NULL Handling in Parameters" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A procedure assigns `@ProductCount INT OUTPUT`, but the caller runs `EXEC GetProductCountByYear @ModelYear = 2023, @ProductCount = @Count;` without `OUTPUT`. What is in `@Count` afterwards?",
+      "options": [
+        "The count, because the procedure declared the parameter as `OUTPUT`",
+        "NULL, because the caller must also use the `OUTPUT` keyword",
+        "0",
+        "The model year"
+      ],
+      "answer": 1,
+      "explanation": "Capturing an output parameter needs both a declared variable and the `OUTPUT` keyword at execution; without it the variable stays NULL even though the procedure assigns a value.",
+      "source": { "section": "Creating Output Parameters" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "predict-output",
+      "prompt": "What does this print?",
+      "code": {
+        "lang": "sql",
+        "source": "DECLARE @Score INT = 75;\n\nIF @Score >= 90\n    PRINT 'Grade A';\nELSE IF @Score >= 75\n    PRINT 'Grade B';\nELSE IF @Score >= 50\n    PRINT 'Grade C';\nELSE\n    PRINT 'Fail';"
+      },
+      "options": [
+        "`Grade A`",
+        "`Grade C`",
+        "`Grade B`",
+        "`Grade B` and then `Grade C`"
+      ],
+      "answer": 2,
+      "explanation": "75 fails `>= 90` but passes `>= 75`, so that branch runs and the rest of the `ELSE IF` chain is skipped.",
+      "source": { "section": "Conditional Statements" },
+      "reviewed": false
+    }
+  ]
+}

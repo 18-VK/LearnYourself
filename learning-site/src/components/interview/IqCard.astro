@@ -1,0 +1,85 @@
+---
+/**
+ * One interview question, short answer first. `full`: the whole answer is in the page (topic pages);
+ * otherwise the card says where the full answer lives and Browse fetches it into the card on demand.
+ */
+import IqBadges from './IqBadges.astro';
+import type { QuestionView } from '../../lib/interview';
+
+interface Props {
+  q: QuestionView;
+  full?: boolean;
+  showTopic?: boolean;
+  /** Heading level of the question. */
+  level?: 2 | 3;
+}
+const { q, full = true, showTopic = false, level = 3 } = Astro.props;
+const H = `h${level}` as 'h2' | 'h3';
+---
+
+<article
+  class="iq-card"
+  id={q.id}
+  data-topic={q.topic}
+  data-subtopic={q.subtopic}
+  data-difficulty={q.difficulty}
+  data-origin={q.origin}
+  data-reviewed={q.reviewed ? 'yes' : 'no'}
+  data-lessons={q.lessonIds.join(' ')}
+>
+  <div class="iq-top">
+    <IqBadges q={q} showTopic={showTopic} />
+    <a class="iq-permalink" href={q.href} title="Link to this question" data-pagefind-ignore>Link<span class="sr-only"> to this question</span></a>
+  </div>
+  <H class="iq-q" id={full ? `${q.id}-q` : undefined} set:html={q.question} />
+  <div class="iq-short">
+    <span class="eyebrow">Short answer</span>
+    <p set:html={q.short} />
+  </div>
+  <details class="iq-more">
+    <summary>Full answer{q.code ? ', code' : ''}{q.pitfalls.length ? ', traps' : ''}{q.followUps.length ? ' and follow-ups' : ''}</summary>
+    {full ? (
+      <div class="iq-body">
+        {q.answer && <div class="prose iq-answer" set:html={q.answer} />}
+        {q.code && <div class="iq-code" set:html={q.code} />}
+        {q.pitfalls.length > 0 && (
+          <div class="iq-pitfalls">
+            <p class="eyebrow">Common traps</p>
+            <ul>{q.pitfalls.map((p) => <li><span class="iq-x" aria-hidden="true">❌</span> <span set:html={p} /></li>)}</ul>
+          </div>
+        )}
+        {q.followUps.length > 0 && (
+          <div class="iq-follow">
+            <p class="eyebrow">Likely follow-ups</p>
+            <ul>{q.followUps.map((f) => <li set:html={f} />)}</ul>
+          </div>
+        )}
+        {q.versionNote && <p class="iq-version"><span class="eyebrow">Version note</span> <span set:html={q.versionNote} /></p>}
+        <div class="iq-meta" data-pagefind-ignore>
+          {q.lessons.length > 0 && (
+            <p><span class="iq-meta-label">Taught in</span> {q.lessons.map((l, i) => <>{i > 0 && ' · '}<a href={l.href}>{l.title}</a> <span class="muted">({l.courseTitle})</span></>)}</p>
+          )}
+          <p>
+            <span class="iq-meta-label">{q.sources.length === 1 ? 'Source' : 'Sources'}</span>
+            {q.sources.map((s, i) => (
+              <>
+                {i > 0 && ' · '}
+                {s.kind === 'web' ? (
+                  <><a href={s.href} class="external" target="_blank" rel="noopener noreferrer">{s.label}</a> <span class="muted">(accessed {s.accessed})</span></>
+                ) : s.onSite ? (
+                  <><span class="muted">Note section:</span> <a href={s.href}>{s.label}</a></>
+                ) : (
+                  <><span class="muted">Note section:</span> <a href={s.href} class="external" target="_blank" rel="noopener noreferrer">{s.label}</a></>
+                )}
+              </>
+            ))}
+          </p>
+        </div>
+      </div>
+    ) : (
+      <div class="iq-body" data-iq-slot>
+        <p class="muted">The full answer is on the <a href={q.href}>{q.topicTitle} page</a>.</p>
+      </div>
+    )}
+  </details>
+</article>

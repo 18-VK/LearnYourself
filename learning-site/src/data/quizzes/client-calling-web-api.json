@@ -1,0 +1,111 @@
+{
+  "lesson": "client-calling-web-api",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which problem with using `HttpClient` directly is `IHttpClientFactory` mainly designed to solve?",
+      "options": [
+        "Socket exhaustion from badly managed `HttpClient` lifetimes, plus scattered configuration",
+        "JSON serialization being too slow",
+        "`HttpClient` not supporting `async`/`await`",
+        "`HttpClient` being unable to send `POST` requests"
+      ],
+      "answer": 0,
+      "explanation": "Improper disposal of `HttpClient` instances can exhaust sockets. The factory manages the underlying handler lifetimes and gives centralized configuration with named and typed clients.",
+      "source": {
+        "section": "Problems Solved by IHttpClientFactory"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does the lesson warn against injecting a typed client into a singleton service?",
+      "options": [
+        "Singletons cannot receive constructor parameters",
+        "Typed clients only work inside controllers",
+        "The `HttpClient` is meant to be short-lived; captured in a singleton it may not be disposed properly, defeating the purpose of the factory",
+        "Singletons always run on a different thread from the `HttpClient`"
+      ],
+      "answer": 2,
+      "explanation": "A singleton lives for the whole app, so a typed client captured inside it lives that long too, instead of being the short-lived client that `IHttpClientFactory` expects to manage.",
+      "source": {
+        "section": "Problems Solved by IHttpClientFactory"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In the production setup, where does the typed client's `BaseAddress` come from?",
+      "options": [
+        "A hardcoded string inside `ProductApiClient`",
+        "The `ApiSettings` section of `appsettings.json`, bound with `Configure<ApiSettings>` and read through `IOptions<ApiSettings>` in `AddHttpClient`",
+        "An environment variable that `HttpClient` reads automatically",
+        "The first request's `Host` header"
+      ],
+      "answer": 1,
+      "explanation": "The config section is bound to `ApiSettings`, and the `AddHttpClient` callback reads `IOptions<ApiSettings>` to set `BaseAddress` and `Timeout`, following the rule \"never hardcode URLs\".",
+      "source": {
+        "section": "Register Services (Program.cs)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "With this Polly policy, how long does the client wait before the 1st, 2nd and 3rd retries?",
+      "code": {
+        "lang": "csharp",
+        "source": ".WaitAndRetryAsync(\n    3,\n    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))\n);"
+      },
+      "options": [
+        "1 s, 2 s, 4 s",
+        "2 s, 2 s, 2 s",
+        "3 s, 6 s, 9 s",
+        "2 s, 4 s, 8 s"
+      ],
+      "answer": 3,
+      "explanation": "`retryAttempt` is 1, 2, 3, so the delay is 2¹, 2², 2³ seconds. This exponential backoff gives a struggling API more time on each attempt.",
+      "source": {
+        "section": "Add retry for failure scenario"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "A typed client has a retry policy of 3 retries with a 2-second wait, and the API fails twice before succeeding. Put the events in order.",
+      "steps": [
+        "1st call returns `500`",
+        "Polly waits 2 seconds",
+        "2nd call returns `500`",
+        "Polly waits 2 seconds again",
+        "3rd call returns `200`, and the app never sees the failures"
+      ],
+      "explanation": "`HandleTransientHttpError()` treats 5xx and network errors as transient, so each failure is followed by a wait and a retry until a call succeeds or the retries run out.",
+      "source": {
+        "section": "Add retry for failure scenario"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why does the app depend on `IProductApiClient` instead of `ProductApiClient` directly?",
+      "options": [
+        "Interfaces make HTTP calls faster",
+        "It decouples the app from the implementation, so it can be mocked in unit tests or swapped without changing dependent code",
+        "`AddHttpClient` refuses to register concrete classes",
+        "It lets the client skip retry policies"
+      ],
+      "answer": 1,
+      "explanation": "Coding against the interface makes the system more testable, maintainable and flexible: tests can mock it, and other implementations can be plugged in.",
+      "source": {
+        "section": "Extra"
+      },
+      "reviewed": false
+    }
+  ]
+}

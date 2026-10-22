@@ -1,0 +1,396 @@
+{
+  "topic": "sql-server",
+  "questions": [
+    {
+      "id": "sql-server-why-stored-procedures-over-inline-queries",
+      "topic": "sql-server",
+      "subtopic": "stored-procedures-and-functions",
+      "difficulty": "junior",
+      "question": "Why use a stored procedure instead of an inline query?",
+      "shortAnswer": "Stored Procedures are preferred over inline queries because they provide better performance, security, and maintainability.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/11.Question.md",
+        "section": "# Why use Stored Procedure instead of inline query?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/11.Question.md",
+          "section": "# Why use Stored Procedure instead of inline query?"
+        }
+      ],
+      "relatedLessons": [
+        "views-and-stored-procedures",
+        "calling-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-login-user-schema-traps",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "junior",
+      "question": "What are the common interview traps about logins, users, schemas and permissions?",
+      "shortAnswer": "Login owns tables → Wrong … Schema is the same as database → Wrong … Best practice is schema-level permissions",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/1.Notes_SQL.md",
+        "section": "## Common interview traps ❌"
+      },
+      "pitfalls": [
+        "Login owns tables → Wrong",
+        "Schema is the same as database → Wrong",
+        "User can exist without login → Sometimes, in contained databases",
+        "Permissions should always be given directly to tables → Best practice is schema-level permissions"
+      ],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/1.Notes_SQL.md",
+          "section": "## Common interview traps ❌"
+        }
+      ],
+      "relatedLessons": [
+        "server-database-schema",
+        "databases-schemas-and-logins",
+        "user-privileges-and-roles"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-dbo-and-schema-traps",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "junior",
+      "question": "Is dbo a user? Can two schemas have tables with the same name? Is a schema physical storage?",
+      "shortAnswer": "Is `dbo` a user? No, it's a schema … Can two schemas have tables with same name? Yes … Is schema physical storage? No, logical only",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/1.Notes_SQL.md",
+        "section": "### Common Interview Traps"
+      },
+      "pitfalls": [
+        "Is `dbo` a user? No, it's a schema",
+        "Is schema physical storage? No, logical only"
+      ],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/1.Notes_SQL.md",
+          "section": "### Common Interview Traps"
+        }
+      ],
+      "relatedLessons": [
+        "databases-schemas-and-logins",
+        "server-database-schema"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-users-permissions-and-roles",
+      "topic": "sql-server",
+      "subtopic": "security",
+      "difficulty": "junior",
+      "question": "How does a database user get access, and what do the main built-in roles allow?",
+      "shortAnswer": "A database user gets access through permissions and roles. Roles are groups of permissions that simplify security management.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/DB_User_Privilege_Check.md",
+        "section": "## 11. Interview-friendly explanation"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/DB_User_Privilege_Check.md",
+          "section": "## 11. Interview-friendly explanation"
+        }
+      ],
+      "relatedLessons": [
+        "user-privileges-and-roles",
+        "databases-schemas-and-logins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-where-vs-having",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "junior",
+      "question": "What is the difference between WHERE and HAVING?",
+      "shortAnswer": "Feature | WHERE | HAVING … Filters | Rows | Groups … Used before grouping? | ✅ Yes | ❌ No … Can use aggregate function? | ❌ No | ✅ Yes",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/3.SQL_commands.md",
+        "section": "### WHERE vs HAVING (Interview Question)"
+      },
+      "code": {
+        "lang": "sql",
+        "source": "SELECT CustomerName,\n       SUM(Amount)\nFROM Orders\nWHERE CreatedAt >= '2026-01-01'\nGROUP BY CustomerName\nHAVING SUM(Amount) > 5000;"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/3.SQL_commands.md",
+          "section": "### WHERE vs HAVING (Interview Question)"
+        }
+      ],
+      "relatedLessons": [
+        "aggregates-and-grouping"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-left-join-not-returning-unmatched-rows",
+      "topic": "sql-server",
+      "subtopic": "joins",
+      "difficulty": "mid",
+      "question": "Why is my LEFT JOIN not returning unmatched rows?",
+      "shortAnswer": "Because a `WHERE` condition on the right table filtered out NULL values, effectively converting the LEFT JOIN into an INNER JOIN.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/4.SQL_JoinsNMore.md",
+        "section": "## Real Interview Question"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/4.SQL_JoinsNMore.md",
+          "section": "## Real Interview Question"
+        }
+      ],
+      "relatedLessons": [
+        "joins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-not-in-vs-not-exists-with-null",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "mid",
+      "question": "Why does NOT IN fail when the subquery returns NULL, while NOT EXISTS does not?",
+      "shortAnswer": "`NOT IN` fails when the subquery returns NULL because comparisons with NULL result in UNKNOWN, causing the entire condition to fail. `NOT EXISTS` does not have this issue because it checks row existence rather than comparing values.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/5.SQL_Subqueries.md",
+        "section": "## 🧠 Interview-Level Explanation (Short Version)"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/5.SQL_Subqueries.md",
+          "section": "## 🧠 Interview-Level Explanation (Short Version)"
+        }
+      ],
+      "relatedLessons": [
+        "subqueries"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-conditional-counts-with-case",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "mid",
+      "question": "How do you use CASE inside SUM to count male and female employees per department?",
+      "shortAnswer": "SUM(CASE WHEN Gender = 'Male' THEN 1 ELSE 0 END) AS MaleCount … GROUP BY Department",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_ClauseNmore.md",
+        "section": "## Real Interview-Level Use Case"
+      },
+      "code": {
+        "lang": "sql",
+        "source": "SELECT\n    Department,\n    COUNT(*) AS TotalEmployees,\n    SUM(CASE WHEN Gender = 'Male' THEN 1 ELSE 0 END) AS MaleCount,\n    SUM(CASE WHEN Gender = 'Female' THEN 1 ELSE 0 END) AS FemaleCount\nFROM Employees\nGROUP BY Department;"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_ClauseNmore.md",
+          "section": "## Real Interview-Level Use Case"
+        }
+      ],
+      "relatedLessons": [
+        "case-coalesce-and-union",
+        "aggregates-and-grouping"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-how-to-read-an-execution-plan",
+      "topic": "sql-server",
+      "subtopic": "execution-plans",
+      "difficulty": "mid",
+      "question": "How do you read an execution plan?",
+      "shortAnswer": "To read an execution plan, analyze operators from right to left, check whether the engine uses Index Seek or Scan, compare estimated vs actual rows, and identify expensive operators.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/7.SQL_ExecutionPlanNMore.md",
+        "section": "### 🎯 Interview-Ready Answer"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/7.SQL_ExecutionPlanNMore.md",
+          "section": "### 🎯 Interview-Ready Answer"
+        }
+      ],
+      "relatedLessons": [
+        "execution-plans-and-sargability",
+        "indexes-and-keys"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-what-is-a-sargable-query",
+      "topic": "sql-server",
+      "subtopic": "indexes",
+      "difficulty": "mid",
+      "question": "What is a SARGable query?",
+      "shortAnswer": "A SARGABLE query is one that allows the database engine to use an index seek by avoiding functions or calculations on indexed columns.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/7.SQL_ExecutionPlanNMore.md",
+        "section": "## Interview-Ready Definition"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/7.SQL_ExecutionPlanNMore.md",
+          "section": "## Interview-Ready Definition"
+        }
+      ],
+      "relatedLessons": [
+        "execution-plans-and-sargability",
+        "indexes-and-keys"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-correlated-subquery-vs-join",
+      "topic": "sql-server",
+      "subtopic": "subqueries-and-ctes",
+      "difficulty": "mid",
+      "question": "Why is a JOIN usually more efficient than a correlated subquery?",
+      "shortAnswer": "Correlated subqueries execute the inner query for each row of the outer query, which can cause repeated calculations and poor performance on large datasets. A JOIN computes the aggregated values once and joins them with the main table, making it more efficient and scalable.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/9.SQL_CTE.md",
+        "section": "# Interview Answer (Short Version)"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/9.SQL_CTE.md",
+          "section": "# Interview Answer (Short Version)"
+        }
+      ],
+      "relatedLessons": [
+        "ctes",
+        "subqueries"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-types-of-functions",
+      "topic": "sql-server",
+      "subtopic": "stored-procedures-and-functions",
+      "difficulty": "junior",
+      "question": "What are the types of functions in SQL Server?",
+      "shortAnswer": "Scalar functions, Aggregate functions, Table-valued functions, Window functions, System functions",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_Functions.md",
+        "section": "## Final Interview Tip"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_Functions.md",
+          "section": "## Final Interview Tip"
+        }
+      ],
+      "relatedLessons": [
+        "sql-server-functions",
+        "window-functions"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-blocking-vs-deadlock",
+      "topic": "sql-server",
+      "subtopic": "locking-and-deadlocks",
+      "difficulty": "mid",
+      "question": "What is the difference between blocking and a deadlock?",
+      "shortAnswer": "Blocking happens when one transaction waits for another to release a lock. Deadlock happens when two or more transactions wait for each other in a circular dependency, and SQL Server terminates one transaction to resolve it.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/10.SQL_Transactions&Concurrency.md",
+        "section": "## Quick interview answer"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/10.SQL_Transactions&Concurrency.md",
+          "section": "## Quick interview answer"
+        }
+      ],
+      "relatedLessons": [
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "sql-server-what-does-alter-do",
+      "topic": "sql-server",
+      "subtopic": "indexes",
+      "difficulty": "junior",
+      "question": "What does the ALTER command do?",
+      "shortAnswer": "ALTER modifies existing database objects such as tables, columns, constraints, indexes, views, procedures, and databases without dropping and recreating them.",
+      "answerFrom": {
+        "file": "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_ALTER_Command_Guide.md",
+        "section": "# 🎯 Interview Summary"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase2-ASP.NetAndBackend/SQLTutorial/SQL_Server_ALTER_Command_Guide.md",
+          "section": "# 🎯 Interview Summary"
+        }
+      ],
+      "relatedLessons": [
+        "alter-command-guide",
+        "alter"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    }
+  ]
+}

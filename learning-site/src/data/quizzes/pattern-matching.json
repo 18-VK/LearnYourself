@@ -1,0 +1,111 @@
+{
+  "lesson": "pattern-matching",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What is the value of `result`?",
+      "code": {
+        "lang": "csharp",
+        "source": "object o = 123;\n\nstring result = o switch\n{\n    null => \"nothing\",\n    int i => $\"integer {i}\",\n    string s when s.Length > 5 => \"long string\",\n    string s => $\"short string ({s})\",\n    _ => \"unknown\"\n};"
+      },
+      "options": [
+        "unknown",
+        "short string (123)",
+        "nothing",
+        "integer 123"
+      ],
+      "answer": 3,
+      "explanation": "`o` holds an `int`, so the type pattern `int i` matches and assigns the value to `i`, giving `integer 123`. The `string` arms don't match an `int`.",
+      "source": { "section": "🔹 2. `switch` Expression Pattern" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "What is the value of `grade`?",
+      "code": {
+        "lang": "csharp",
+        "source": "int score = 85;\n\nstring grade = score switch\n{\n    >= 90 => \"A\",\n    >= 80 and < 90 => \"B\",\n    >= 70 and < 80 => \"C\",\n    < 70 => \"F\",\n    _ => \"invalid\"\n};"
+      },
+      "options": [
+        "A",
+        "B",
+        "C",
+        "invalid"
+      ],
+      "answer": 1,
+      "explanation": "85 is not `>= 90`, but it matches the relational patterns combined with `and`: `>= 80 and < 90`, so the result is `B`.",
+      "source": { "section": "🔹 4. Relational & Logical Patterns" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "What is the value of `pos`?",
+      "code": {
+        "lang": "csharp",
+        "source": "(int x, int y) point = (0, 5);\n\nstring pos = point switch\n{\n    (0, 0) => \"origin\",\n    (_, 0) => \"on X-axis\",\n    (0, _) => \"on Y-axis\",\n    (var a, var b) when a > 0 && b > 0 => \"Quadrant 1\",\n    _ => \"other\"\n};"
+      },
+      "options": [
+        "on Y-axis",
+        "on X-axis",
+        "Quadrant 1",
+        "origin"
+      ],
+      "answer": 0,
+      "explanation": "`(0, 0)` and `(_, 0)` fail because y is 5. `(0, _)` matches x = 0 with any y (the `_` discard), so the result is `on Y-axis`. `Quadrant 1` needs a > 0.",
+      "source": { "section": "🔹 5. Tuple Pattern" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "predict-output",
+      "prompt": "What is the value of `status`?",
+      "code": {
+        "lang": "csharp",
+        "source": "object o = new Person { Name = \"Ravi\", Age = 17 };\n\nstring status = o switch\n{\n    Person { Age: < 18 } p => $\"{p.Name} is a minor\",\n    Person { Age: >= 18 } p => $\"{p.Name} is an adult\",\n    _ => \"unknown\"\n};"
+      },
+      "options": [
+        "Ravi is an adult",
+        "unknown",
+        "Ravi is a minor",
+        "17 is a minor"
+      ],
+      "answer": 2,
+      "explanation": "The type + property pattern checks that `o` is a `Person` and that `Age < 18`, then binds it to `p`, so the result is `Ravi is a minor`.",
+      "source": { "section": "🔹 7. Type + Property Pattern" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "In `CalculateDiscount`, a VIP customer has `TotalPurchases` of 5,000. Which discount is returned?",
+      "options": [
+        "0.20m, because the customer is VIP",
+        "0.10m, because the `when` guard fails and the next `{ IsVip: true }` arm matches",
+        "0m, because the first VIP arm failed",
+        "It throws, because no arm matches"
+      ],
+      "answer": 1,
+      "explanation": "The first arm needs both `{ IsVip: true }` and the `when c.TotalPurchases > 10000m` guard. 5,000 fails the guard, so the plain `{ IsVip: true }` arm returns 0.10m.",
+      "source": { "section": "🔹 8. `when` Guards" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "In the summary table, what kind of pattern is `{ Age: >= 18 }`?",
+      "options": [
+        "A tuple pattern",
+        "A positional pattern",
+        "A discard pattern",
+        "A property pattern"
+      ],
+      "answer": 3,
+      "explanation": "A property pattern matches object properties, here combined with the relational pattern `>= 18`. Tuple and positional patterns use the `(x, y)` form.",
+      "source": { "section": "🔹 12. Quick Summary Table" },
+      "reviewed": false
+    }
+  ]
+}

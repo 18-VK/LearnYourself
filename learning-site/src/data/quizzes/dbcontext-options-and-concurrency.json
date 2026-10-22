@@ -1,0 +1,96 @@
+{
+  "lesson": "dbcontext-options-and-concurrency",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Your `AppDbContext` has a `private string _currentUser` field set per request, and you register it with `AddDbContextPool`. What can go wrong?",
+      "options": [
+        "Nothing; EF Core clears all fields before reuse",
+        "The app fails to start because pooled contexts can't have fields",
+        "`_currentUser` may still hold a previous request's value when the context is reused",
+        "Every request gets a brand-new context, so the field is always empty"
+      ],
+      "answer": 2,
+      "explanation": "Pooling reuses `DbContext` instances. EF Core resets tracked entities and options, but not your custom state, which is why pooling requires the context to be stateless.",
+      "source": { "section": "⚠️ Example of What Not to Do with Pooling" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In `EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)`, what do `TimeSpan.FromSeconds(10)` and `null` mean?",
+      "options": [
+        "Wait exactly 10 seconds before the first retry; `null` disables retries for deadlocks",
+        "The maximum delay between retries; `null` means use the default set of transient errors",
+        "The command timeout; `null` means no retry limit",
+        "The total time allowed for all retries; `null` means retry every error"
+      ],
+      "answer": 1,
+      "explanation": "`5` is the maximum number of retries, the `TimeSpan` is the maximum delay between retries, and `null` keeps the default list of transient error numbers.",
+      "source": { "section": "1. EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "The context is configured with `UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)`. An endpoint needs to load an entity and update it. What does the lesson say to do?",
+      "options": [
+        "Override it for that query with `.AsTracking()`",
+        "Switch the whole app back to tracking",
+        "Call `EnableSensitiveDataLogging(true)`",
+        "Nothing; NoTracking entities are saved automatically"
+      ],
+      "answer": 0,
+      "explanation": "NoTracking is faster and lighter for read-heavy GET endpoints. When you need to update entities, you override it with `.AsTracking()`.",
+      "source": { "section": "3. UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "An API maps a DTO into `new Project { Id = dto.Id, Name = dto.Name }`. Why set `_context.Entry(project).State = EntityState.Modified` before saving?",
+      "options": [
+        "It is required for every update, even on tracked entities",
+        "It makes EF insert the entity as a new row",
+        "It reloads the entity's values from the database",
+        "EF isn't tracking this detached object, so marking it Modified tells EF to update all its columns"
+      ],
+      "answer": 3,
+      "explanation": "A tracked entity loaded with `FindAsync` already knows what changed. A detached object from an API request doesn't, so `Modified` tells EF to treat it as updated.",
+      "source": { "section": "_context.Entry(updatedProject).State = EntityState.Modified;" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "order-steps",
+      "prompt": "Put the concurrency conflict and merge-retry sequence in order.",
+      "steps": [
+        "EF tries the UPDATE using the old `RowVersion`",
+        "The database rejects it and EF throws `DbUpdateConcurrencyException`",
+        "Fetch the current values with `entry.GetDatabaseValuesAsync`",
+        "Merge the database values with the client's changes",
+        "Call `entry.OriginalValues.SetValues(databaseValues)`",
+        "Retry `SaveChangesAsync`, which now compares against the new `RowVersion`"
+      ],
+      "explanation": "After merging, EF's original snapshot must be refreshed to the latest database values, or the retry compares against the stale version again.",
+      "source": { "section": "That line is central to how EF Core handles concurrency retries" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "In the retry loop, what happens if you merge the values but skip `entry.OriginalValues.SetValues(databaseValues)`?",
+      "options": [
+        "The retry succeeds, but the merge is lost",
+        "The retry throws the same `DbUpdateConcurrencyException` again, because EF still holds the stale original `RowVersion`",
+        "EF deletes the row and inserts a new one",
+        "EF ignores the concurrency token from then on"
+      ],
+      "answer": 1,
+      "explanation": "Loaded with `RowVersion = 10`, the row is now at 11. Until the snapshot is updated to 11, every retry compares against 10 and fails.",
+      "source": { "section": "That line is central to how EF Core handles concurrency retries" },
+      "reviewed": false
+    }
+  ]
+}

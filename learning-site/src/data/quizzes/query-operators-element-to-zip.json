@@ -1,0 +1,88 @@
+{
+  "lesson": "query-operators-element-to-zip",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does `new[] { 10, 20 }.SingleOrDefault()` do?",
+      "options": [
+        "Returns `10`, the first element",
+        "Returns `0`, the default for `int`",
+        "Throws, because the sequence has more than one element",
+        "Returns `20`, the last element"
+      ],
+      "answer": 2,
+      "explanation": "`SingleOrDefault()` returns the default only when the sequence is empty; it throws if there is more than one element.",
+      "source": { "section": "#### 11) `First()` / `FirstOrDefault()` / `Single()` / `SingleOrDefault()` / `ElementAt()` / `ElementAtOrDefault()`" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var numbers = new[] { 10, 20, 30 };\n\nint value = numbers.ElementAtOrDefault(10);\nConsole.WriteLine(value);"
+      },
+      "options": [
+        "`30`",
+        "`0`",
+        "It throws `ArgumentOutOfRangeException`",
+        "`10`"
+      ],
+      "answer": 1,
+      "explanation": "Index 10 is out of range, and `ElementAtOrDefault()` returns the default value in that case, which is `0` for `int`. `ElementAt()` would throw instead.",
+      "source": { "section": "#### 11) `First()` / `FirstOrDefault()` / `Single()` / `SingleOrDefault()` / `ElementAt()` / `ElementAtOrDefault()`" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "`mixed` is an `IEnumerable<object>` holding `1`, `\"a\"` and `2`. How do `mixed.OfType<int>()` and `mixed.Cast<int>()` differ?",
+      "options": [
+        "`OfType<int>()` yields 1 and 2, skipping `\"a\"`; `Cast<int>()` throws `InvalidCastException` on `\"a\"`",
+        "Both yield 1 and 2 and silently skip `\"a\"`",
+        "`OfType<int>()` throws on `\"a\"`; `Cast<int>()` skips it",
+        "Both convert `\"a\"` to `0`"
+      ],
+      "answer": 0,
+      "explanation": "`OfType<TResult>()` keeps only elements assignable to the type and skips others silently, while `Cast<TResult>()` assumes every element can be cast and throws `InvalidCastException` if one can't.",
+      "source": { "section": "#### 12) `OfType<TResult>()` / `Cast<TResult>()`" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You need to index numbers by an `\"Even\"`/`\"Odd\"` key, so many elements share each key. Which conversion fits?",
+      "options": [
+        "`ToDictionary(n => n % 2 == 0 ? \"Even\" : \"Odd\")`",
+        "`ToArray()`",
+        "`ToList()`",
+        "`ToLookup(n => n % 2 == 0 ? \"Even\" : \"Odd\")`"
+      ],
+      "answer": 3,
+      "explanation": "`ToLookup()` allows multiple values per key and doesn't throw on duplicate keys; `ToDictionary()` throws an exception if duplicate keys exist.",
+      "source": { "section": "#### 13) `ToList()` / `ToArray()` / `ToDictionary()` / `ToLookup()`" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "predict-output",
+      "prompt": "What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var numbers = new[] { 1, 2, 3 };\nvar letters = new[] { \"A\", \"B\", \"C\", \"D\" };\n\nvar zipped = numbers.Zip(letters, (n, l) => $\"{n}-{l}\");\n\nforeach (var item in zipped)\n    Console.WriteLine(item);"
+      },
+      "options": [
+        "`1-A`, `2-B`, `3-C`, `0-D`",
+        "`1-A`, `2-B`, `3-C`, `-D`",
+        "`1-A`, `2-B`, `3-C`",
+        "It throws because the arrays have different lengths"
+      ],
+      "answer": 2,
+      "explanation": "`Zip` walks both sequences at the same time and stops when the shorter one ends, so `\"D\"` is never paired.",
+      "source": { "section": "#### 17) `Zip`" },
+      "reviewed": false
+    }
+  ]
+}

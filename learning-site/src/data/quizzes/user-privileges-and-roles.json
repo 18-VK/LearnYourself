@@ -1,0 +1,80 @@
+{
+  "lesson": "user-privileges-and-roles",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "`AppUser` belongs to a role that grants `SELECT` on `dbo.Customers`. You then run `DENY SELECT ON dbo.Customers TO AppUser;`. Can `AppUser` read the table?",
+      "options": [
+        "Yes, the role's grant wins over a user-level deny",
+        "Yes, `DENY` only removes a previous direct `GRANT`",
+        "No, `DENY` blocks access even if another role grants it",
+        "Only until the next time the user logs in"
+      ],
+      "answer": 2,
+      "explanation": "`DENY` is stronger than `REVOKE`: it blocks access even when a role grants it, which is why the best practices say to use `DENY` carefully.",
+      "source": { "section": "4. Granting database privileges" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`AppUser` has been granted `SELECT` on `dbo.Customers`. Run as `AppUser`, what does this return?",
+      "code": { "lang": "sql", "source": "SELECT HAS_PERMS_BY_NAME('dbo.Customers', 'OBJECT', 'SELECT');" },
+      "options": [
+        "`1`",
+        "`0`",
+        "`SELECT`",
+        "`GRANT`"
+      ],
+      "answer": 0,
+      "explanation": "`HAS_PERMS_BY_NAME` returns `1` when the permission exists and `0` when it doesn't.",
+      "source": { "section": "3. Common privilege checks" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "An application user must read and write rows in user tables but should not create or drop tables. Which roles fit?",
+      "options": [
+        "`db_owner`",
+        "`db_datareader` and `db_datawriter`",
+        "`db_ddladmin`",
+        "`sysadmin`"
+      ],
+      "answer": 1,
+      "explanation": "`db_datareader` reads and `db_datawriter` inserts, updates and deletes. `db_ddladmin` runs DDL, and `db_owner` or `sysadmin` would break least privilege for an app user.",
+      "source": { "section": "10. Quick summary" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the lesson's least-privilege approach to giving access in order.",
+      "steps": [
+        "Create a login",
+        "Map it to a database user",
+        "Assign the correct database role",
+        "Grant object-level permissions only if needed"
+      ],
+      "explanation": "The login authenticates, the user authorizes inside the database, roles cover most needs, and direct object grants are the exception.",
+      "source": { "section": "13. Final takeaway" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What does the lesson say about the `public` database role?",
+      "options": [
+        "Only administrators belong to it",
+        "It grants full read access, so it is a good default for apps",
+        "Every database user belongs to it, so you shouldn't rely on it for security design",
+        "It is a server-level role"
+      ],
+      "answer": 2,
+      "explanation": "`public` is a built-in role that every database user is in, with basic permissions. Security should be designed with explicit roles instead.",
+      "source": { "section": "5. Common database roles in SQL Server" },
+      "reviewed": false
+    }
+  ]
+}

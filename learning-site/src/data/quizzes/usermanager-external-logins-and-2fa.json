@@ -1,0 +1,80 @@
+{
+  "lesson": "usermanager-external-logins-and-2fa",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In an external login, what is ASP.NET Core Identity's job?",
+      "options": [
+        "Redirecting the browser to Google and handling the consent screen",
+        "Remembering the link between the external account and the local user record once the OAuth handshake succeeds",
+        "Issuing Google's access token to your frontend",
+        "Storing the user's Google password hash"
+      ],
+      "answer": 1,
+      "explanation": "OAuth middleware such as `AddGoogle` talks to the provider. `UserManager`'s external login methods are bookkeeping on the `AspNetUserLogins` table.",
+      "source": { "section": "External logins" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What should you pass as `providerKey` in `new UserLoginInfo(\"Google\", providerKey, \"Google\")`?",
+      "options": [
+        "The user's Google email address",
+        "Your local user's `Id`",
+        "The provider's stable subject identifier (the `sub` claim)",
+        "The `id_token` string itself"
+      ],
+      "answer": 2,
+      "explanation": "A user can change their Google email, but their Google account ID never changes, so `providerKey` must be the `sub`, never the email.",
+      "source": { "section": "External logins" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "Once Google redirects back to the frontend, put the API side of \"Sign in with Google\" in order.",
+      "steps": [
+        "The frontend POSTs the `id_token` to `/api/auth/google`",
+        "The API validates the token's signature, issuer and audience and extracts `sub`, `email` and `name`",
+        "The API looks for an existing link with `FindByLoginAsync(\"Google\", sub)`, then falls back to `FindByEmailAsync`",
+        "If the user is new, the API calls `CreateAsync` and `AddLoginAsync`",
+        "The API generates its own JWT and returns it to the frontend"
+      ],
+      "explanation": "The API trusts Google's token only after validating it, links or creates the local user, and then issues its own access token, not Google's.",
+      "source": { "section": "External logins" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "After the user scans the QR code, how do the phone and the server end up with the same 6-digit code?",
+      "options": [
+        "The server sends each new code to the phone every 30 seconds",
+        "The phone sends its code to the server, which stores it",
+        "Both read the code from the `AspNetUserTokens` table",
+        "Each side computes it independently from the same secret and the current time window"
+      ],
+      "answer": 3,
+      "explanation": "The QR code only carries the secret. After that nothing is transmitted between server and phone: same secret plus same time always gives the same code.",
+      "source": { "section": "Two-factor authentication (2FA)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A user loses the phone with their authenticator app. What does the lesson say is needed to set up 2FA on a new phone?",
+      "options": [
+        "Generate a brand new secret with `ResetAuthenticatorKeyAsync` and scan a new QR code",
+        "Copy the old secret from the lost phone to the new one",
+        "Nothing; the new phone downloads the codes from the server",
+        "Call `GenerateNewTwoFactorRecoveryCodesAsync`, which also moves the secret"
+      ],
+      "answer": 0,
+      "explanation": "Recovery codes are the backup plan for getting in, and re-enabling 2FA on a new phone means a new secret via `ResetAuthenticatorKeyAsync` and a new QR code.",
+      "source": { "section": "Two-factor authentication (2FA)" },
+      "reviewed": false
+    }
+  ]
+}

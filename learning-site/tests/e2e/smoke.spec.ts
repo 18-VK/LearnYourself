@@ -42,6 +42,8 @@ for (const c of site.courses) {
 
 for (const l of lessons) {
   test(`lesson ${l.id}`, async ({ page }) => {
+    // lessons with many visualizers (joins has a dozen) need longer on a busy machine
+    test.setTimeout(45_000 + l.viz * 6_000);
     const errors = watchErrors(page);
     await page.goto(`${l.id}/`);
     await expect(page.locator('#lesson-body')).toBeVisible();

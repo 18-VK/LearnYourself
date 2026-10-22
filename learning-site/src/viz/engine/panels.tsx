@@ -53,8 +53,9 @@ export function CodePanel({ code, line, title = 'C# from the notes' }: { code: s
     if (top < b.scrollTop + 32 || top + el.offsetHeight > b.scrollTop + b.clientHeight) b.scrollTop = Math.max(0, top - b.clientHeight / 2);
   }, [line]);
   return (
-    <div className="viz-code" ref={box} tabIndex={0} aria-label={`${title}, line ${line} is running`}>
-      <div className="viz-code-head"><span>{title}</span><span className="mono">line {line}</span></div>
+    <div className="viz-code" ref={box} tabIndex={0} aria-label={line > 0 ? `${title}, line ${line} is running` : title}>
+      {/* steps that aren't on a code line (line 0) show no line number */}
+      <div className="viz-code-head"><span>{title}</span>{line > 0 && <span className="mono">line {line}</span>}</div>
       <ol>
         {lines.map((l, i) => (
           <li key={i} data-line={i + 1} className={i + 1 === line ? 'is-current' : undefined} aria-current={i + 1 === line ? 'step' : undefined}>

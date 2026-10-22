@@ -1,0 +1,73 @@
+{
+  "lesson": "openapi-and-swagger",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the relationship between OpenAPI and Swagger?",
+      "options": [
+        "They are two names for the same tool",
+        "Swagger is the specification; OpenAPI is a UI that renders it",
+        "OpenAPI is the specification (the contract); Swagger is the set of tools built around it",
+        "OpenAPI is only for ASP.NET Core; Swagger is for every other language"
+      ],
+      "answer": 2,
+      "explanation": "OpenAPI is the language-agnostic standard for describing HTTP APIs, formerly known as the Swagger Specification; Swagger UI, Editor and Codegen are tools that work with it.",
+      "source": {
+        "section": "What is Swagger?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why is a single OpenAPI document useful to both backend and frontend teams?",
+      "options": [
+        "It can generate documentation, client SDKs, server stubs and tests from one contract",
+        "It replaces the need for an HTTP server",
+        "It stores the API's database schema",
+        "It encrypts requests between frontend and backend"
+      ],
+      "answer": 0,
+      "explanation": "Because the document describes endpoints, parameters, responses and auth in a standard format, the same file can drive docs, SDKs, stubs and tests and keep both sides aligned.",
+      "source": {
+        "section": "That means one file can be used to:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In the example OpenAPI document, the `id` parameter of `/products/{id}` has `in: path` and `required: true`. What does that describe?",
+      "options": [
+        "An optional query-string parameter",
+        "A value sent in the JSON request body",
+        "A request header named `id`",
+        "A mandatory part of the URL path, typed as an integer"
+      ],
+      "answer": 3,
+      "explanation": "`in: path` places the parameter in the URL (`/products/{id}`), `required: true` makes it mandatory, and its schema says it is an `integer`.",
+      "source": {
+        "section": "That means one file can be used to:"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "When does the lesson suggest using Swagger UI?",
+      "options": [
+        "To generate production database migrations",
+        "As a browser-based documentation page where developers can try endpoints manually, especially during development and for internal APIs",
+        "To replace authentication on public APIs",
+        "Only to write OpenAPI specs by hand"
+      ],
+      "answer": 1,
+      "explanation": "Swagger UI renders interactive docs in the browser from an OpenAPI file, so developers can see how the API works and call endpoints by hand. Writing specs is Swagger Editor's job.",
+      "source": {
+        "section": "When to use Swagger UI"
+      },
+      "reviewed": false
+    }
+  ]
+}

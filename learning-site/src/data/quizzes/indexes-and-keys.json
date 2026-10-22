@@ -1,0 +1,95 @@
+{
+  "lesson": "indexes-and-keys",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why can a table have only one clustered index?",
+      "options": [
+        "Because the clustered index defines the physical order of the rows, and rows can be stored in only one order",
+        "Because SQL Server limits each table to one index of any kind",
+        "Because a clustered index must be on the primary key, and there is only one",
+        "Because clustered indexes are stored in a separate file"
+      ],
+      "answer": 0,
+      "explanation": "Creating a clustered index rearranges the actual data rows into the index order. Non-clustered indexes are separate structures, so a table can have many of them.",
+      "source": { "section": "Clustered Index" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "For `SELECT Name, Salary FROM Employee WHERE Name = 'Aman'`, why is `CREATE INDEX IX_Employee_Name ON Employee(Name) INCLUDE (Salary)` a covering index?",
+      "options": [
+        "Because it makes `Name` the clustered key",
+        "Because it forces the query to use the index with a hint",
+        "Because it contains every column the query needs, so there is no Key Lookup to the main table",
+        "Because it sorts the table by `Salary`"
+      ],
+      "answer": 2,
+      "explanation": "`Name` is the key and `Salary` is included, so the plan shows an Index Seek with no Key Lookup. You run the query normally; there is no need to name the index.",
+      "source": { "section": "Covering Index" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A table has 1 clustered index and 5 non-clustered indexes. How many structures does a single INSERT have to update?",
+      "options": [
+        "1",
+        "5",
+        "2",
+        "6"
+      ],
+      "answer": 3,
+      "explanation": "Every insert updates the clustered index and every non-clustered index, so more NC indexes mean slower writes.",
+      "source": { "section": "INSERT Performance" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`Employee` has `EmployeeID` as the primary key, plus `UNIQUE` constraints on `SSN` and `Email`. What are `SSN` and `Email`?",
+      "options": [
+        "Foreign keys",
+        "Alternate keys: candidate keys that weren't chosen as the primary key",
+        "Composite keys",
+        "Surrogate keys"
+      ],
+      "answer": 1,
+      "explanation": "All three could identify a row, so they are candidate keys. Once `EmployeeID` is chosen as the PK, the other candidates are alternate keys, implemented with `UNIQUE` constraints.",
+      "source": { "section": "Candidate key / Alternate key" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does the lesson say to always index foreign key columns such as `Employee.DepartmentID`?",
+      "options": [
+        "Without it the foreign key is not enforced",
+        "It turns the foreign key into a primary key",
+        "Parent DELETE checks, JOINs and cascades must search the child table, and the index makes that fast and reduces locking",
+        "SQL Server requires it before `ON DELETE CASCADE` can be used"
+      ],
+      "answer": 2,
+      "explanation": "Deleting a parent or changing its key makes the database search the child table to verify the rule. On a large unindexed child table that becomes expensive.",
+      "source": { "section": "Best Practice (Very Important)" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "`Tickets.Status` has `DEFAULT 'Open'`. An INSERT supplies `NULL` explicitly for `Status`. What is stored?",
+      "options": [
+        "`NULL`",
+        "`'Open'`",
+        "An empty string",
+        "The insert fails"
+      ],
+      "answer": 0,
+      "explanation": "Defaults are applied only when the column is omitted or the `DEFAULT` keyword is used; an explicit NULL overrides the default.",
+      "source": { "section": "DEFAULT" },
+      "reviewed": false
+    }
+  ]
+}

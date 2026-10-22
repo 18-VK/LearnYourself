@@ -1,0 +1,107 @@
+{
+  "lesson": "rest-and-http-basics",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does **statelessness** mean in a REST API?",
+      "options": [
+        "Each request carries all the information needed, and the server keeps no client context between calls",
+        "The server never stores any data in a database",
+        "Responses can never be cached",
+        "The client must open a persistent connection for every session"
+      ],
+      "answer": 0,
+      "explanation": "In REST, requests contain all the necessary information and the server stores no client context between calls, which improves scalability.",
+      "source": {
+        "section": "Key Concepts"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which pair of HTTP methods is **idempotent but not safe**?",
+      "options": [
+        "GET and HEAD",
+        "POST and PATCH",
+        "PUT and DELETE",
+        "POST and PUT"
+      ],
+      "answer": 2,
+      "explanation": "PUT and DELETE change server state (not safe), but repeating them has the same effect as doing them once. GET and HEAD are safe and idempotent; POST is neither.",
+      "source": {
+        "section": "Http Methods"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What is the difference between `PUT` and `PATCH`?",
+      "options": [
+        "`PUT` creates a resource; `PATCH` deletes one",
+        "`PUT` replaces the whole resource with a full representation; `PATCH` sends only the changed fields",
+        "`PUT` is safe; `PATCH` is not",
+        "They are identical; `PATCH` is just the newer name"
+      ],
+      "answer": 1,
+      "explanation": "`PUT` replaces a resource entirely, so you send the full representation; `PATCH` is a partial update with only the fields that changed.",
+      "source": {
+        "section": "Http Methods"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "A `POST /orders` request creates order 834. What response does the lesson recommend?",
+      "options": [
+        "`200 OK` with no headers",
+        "`204 No Content`",
+        "`302 Found` redirecting to `/orders`",
+        "`201 Created` with a `Location: /orders/834` header"
+      ],
+      "answer": 3,
+      "explanation": "`201 Created` signals that a POST created a resource, and the `Location` header tells the client where the new resource lives.",
+      "source": {
+        "section": "2xx — Success"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A logged-in user calls an endpoint they are not allowed to use. Which status code fits, and how does it differ from `401`?",
+      "options": [
+        "`401 Unauthorized`: it covers every permission failure",
+        "`403 Forbidden`: the user is authenticated but not permitted; `401` means authentication is missing or invalid",
+        "`404 Not Found`: the endpoint should be hidden; `401` is only for expired tokens",
+        "`409 Conflict`: the user's role conflicts with the endpoint; `401` is for bad JSON"
+      ],
+      "answer": 1,
+      "explanation": "`401` is for missing or invalid authentication (with a `WWW-Authenticate` header); `403` is for a caller who is authenticated but not permitted.",
+      "source": {
+        "section": "4xx — Client errors"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "`POST` is not idempotent. How does the lesson suggest avoiding duplicate orders or payments when a client retries?",
+      "options": [
+        "Switch the endpoint to `GET`",
+        "Return `204 No Content` instead of `201`",
+        "Send an `Idempotency-Key` header with the request",
+        "Use `HEAD` before every `POST`"
+      ],
+      "answer": 2,
+      "explanation": "POST is not idempotent unless the server implements idempotency keys; an `Idempotency-Key` header on payment or order endpoints lets the server recognise a retry.",
+      "source": {
+        "section": "POST"
+      },
+      "reviewed": false
+    }
+  ]
+}

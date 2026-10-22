@@ -1,0 +1,92 @@
+{
+  "lesson": "stability-and-simple-sorts",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does it mean for a sorting algorithm to be **stable**?",
+      "options": [
+        "It always runs in the same time whatever the input",
+        "It never swaps two adjacent elements",
+        "It sorts in place without extra memory",
+        "It keeps the original relative order of elements that compare equal"
+      ],
+      "answer": 3,
+      "explanation": "A stable sort preserves the input order of ties, which matters when you sort records by one field but want equal keys to stay in their original order.",
+      "source": {
+        "section": "Quick concept: What does \"stable\" mean?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`BubbleSort` is called on the already-sorted array `{ 1, 2, 3, 4, 5 }`. How many passes of the outer `for` loop run?",
+      "code": {
+        "lang": "csharp",
+        "source": "void BubbleSort(int[] arr)\n{\n    int n = arr.Length;\n    for (int i = 0; i < n - 1; i++)\n    {\n        bool swapped = false;\n        for (int j = 0; j < n - i - 1; j++)\n        {\n            if (arr[j] > arr[j + 1])\n            {\n                (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);\n                swapped = true;\n            }\n        }\n        if (!swapped) break; // already sorted\n    }\n}"
+      },
+      "options": [
+        "4",
+        "1",
+        "5",
+        "0"
+      ],
+      "answer": 1,
+      "explanation": "The first pass makes no swap, so `swapped` stays `false` and the loop breaks. That early-exit flag is what gives bubble sort its O(n) best case on sorted input.",
+      "source": {
+        "section": "1. Bubble Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which of the three simple sorts in this lesson is **not** stable?",
+      "options": [
+        "Bubble sort",
+        "Insertion sort",
+        "Selection sort"
+      ],
+      "answer": 2,
+      "explanation": "Selection sort swaps the minimum into place, and those swaps can reorder equal elements. Bubble and insertion sort are both stable.",
+      "source": {
+        "section": "2. Selection Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Insertion sort is inserting the key `3` into the sorted portion `[2, 5, 7]`. Put the array states in order.",
+      "steps": [
+        "[2, 5, 7, 3]",
+        "[2, 5, 7, 7]",
+        "[2, 5, 5, 7]",
+        "[2, 3, 5, 7]"
+      ],
+      "explanation": "Values larger than the key are shifted one place right, from right to left: first `7`, then `5`. The scan stops at `2`, and `3` is placed after it.",
+      "source": {
+        "section": "3. Insertion Sort"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Selection sort is always O(n²). When does the lesson say it can still be a sensible choice?",
+      "options": [
+        "When writes are expensive, because it makes only O(n) swaps in total",
+        "When the input is nearly sorted",
+        "When you need a stable sort of records",
+        "When data arrives as a stream and must be sorted as it comes"
+      ],
+      "answer": 0,
+      "explanation": "Selection sort minimizes the number of swaps (O(n) total), which helps when writes are costly, such as on flash memory. Nearly-sorted and streaming data favour insertion sort.",
+      "source": {
+        "section": "2. Selection Sort"
+      },
+      "reviewed": false
+    }
+  ]
+}

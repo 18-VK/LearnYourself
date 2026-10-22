@@ -1,0 +1,95 @@
+{
+  "lesson": "signin-and-identity-registration",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the basic cookie mechanic in order.",
+      "steps": [
+        "The browser sends a request to the server",
+        "The server responds with a `Set-Cookie` header",
+        "The browser stores the cookie",
+        "Every later request to that domain automatically includes the cookie",
+        "The server reads the cookie on each request to know who is asking"
+      ],
+      "explanation": "Once the server sets the cookie, the browser attaches it to every request to that site automatically, with no JavaScript, until it expires or is cleared.",
+      "source": { "section": "Cookie" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How do `UserManager<TUser>` and `SignInManager<TUser>` divide the work?",
+      "options": [
+        "They are alternatives; an app picks one or the other",
+        "`UserManager` owns the user record; `SignInManager` owns the act of signing in and is built on top of `UserManager`",
+        "`SignInManager` owns the user record; `UserManager` writes the auth cookie",
+        "`SignInManager` replaces `UserManager` whenever cookies are used"
+      ],
+      "answer": 1,
+      "explanation": "`SignInManager` calls into `UserManager` for password and lockout checks, then adds the cookie-writing behaviour on top. They are used together.",
+      "source": { "section": "SignInManager" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A pure Web API calls `AddIdentity<ApplicationUser, ApplicationRole>()` and then configures JWT bearer auth. Which symptom does the lesson warn about?",
+      "options": [
+        "Passwords are no longer hashed",
+        "`UserManager` can't be injected into controllers",
+        "Refresh tokens stop rotating",
+        "`[Authorize]` redirects to a login page instead of returning 401"
+      ],
+      "answer": 3,
+      "explanation": "`AddIdentity` silently sets cookies as the default authentication scheme, which competes with JWT bearer. `AddIdentityCore` registers zero authentication schemes, so JWT bearer is the only one in play.",
+      "source": { "section": ".AddIdentityCore<ApplicationUser>" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You switch to `AddIdentityCore<ApplicationUser>()` but still need `RoleManager` and roles. What do you add?",
+      "options": [
+        "`.AddRoles<ApplicationRole>()`",
+        "`.AddDefaultTokenProviders()`",
+        "`.AddSignInManager()`",
+        "Nothing; `AddIdentityCore` includes roles by default"
+      ],
+      "answer": 0,
+      "explanation": "`AddIdentityCore` registers no role support by default, so you opt back in with the chained `.AddRoles<ApplicationRole>()` call.",
+      "source": { "section": ".AddIdentityCore<ApplicationUser>" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Your app sets a `FallbackPolicy` that requires an authenticated user. Why must the `refresh` endpoint be marked `[AllowAnonymous]`?",
+      "options": [
+        "Because refresh tokens are public and safe to share",
+        "Because `[AllowAnonymous]` makes the endpoint faster",
+        "Because it exists to issue a new access token after the old one expired; requiring a valid token would make it useless",
+        "Because the fallback policy never applies to POST requests"
+      ],
+      "answer": 2,
+      "explanation": "Endpoints that get a user to an authenticated state (login, register, refresh, reset password and so on) must stay public. Requiring a token to refresh means needing a valid token to get a new token.",
+      "source": { "section": "Keep these endpoints public always" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "A service reads the current user through `IHttpContextAccessor`, and the same service is reused inside a background job. What does the lesson warn about?",
+      "options": [
+        "`IHttpContextAccessor` can't be injected into services at all",
+        "`HttpContext` is `null` outside an HTTP request, so code that doesn't null-check throws a `NullReferenceException`",
+        "The background job gets the HttpContext of the last request that ran",
+        "`IHttpContextAccessor` is registered as Transient, so each call returns a new HttpContext"
+      ],
+      "answer": 1,
+      "explanation": "`IHttpContextAccessor.HttpContext` is nullable by design: there is no current request in a background job or hosted service, so always null-check.",
+      "source": { "section": "AddHttpContextAccessor" },
+      "reviewed": false
+    }
+  ]
+}

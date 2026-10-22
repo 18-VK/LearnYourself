@@ -1,0 +1,147 @@
+---
+/**
+ * "Check your understanding" (§6): the lesson's quiz from src/data/generated/quizzes.json, rendered at build
+ * time. The checking code (src/scripts/quiz.ts) loads only when the quiz nears the viewport or is touched.
+ * Sits outside #lesson-body, so the output verifier's heading/code/table counts are unaffected.
+ */
+import '../styles/quiz.css';
+import { quizzes } from '../lib/data';
+import { renderCode, renderInline, inlineText } from '../lib/markdown';
+
+interface Props {
+  /** The lesson's short id (frontmatter `lesson`), as quiz files name it. */
+  lesson: string;
+  /** The lesson's full id (its URL path), which progress is keyed by. */
+  pageId: string;
+}
+const { lesson, pageId } = Astro.props;
+const list = quizzes[lesson] ?? [];
+
+/** A stable shuffle (same order on every build) that never returns the correct order. */
+function shuffled(n: number, seed: string): number[] {
+  let h = 2166136261;
+  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  const rand = () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+  const order = [...Array(n).keys()];
+  for (let tries = 0; tries < 8; tries++) {
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [order[i], order[j]] = [order[j]!, order[i]!];
+    }
+    if (order.some((v, i) => v !== i)) return order;
+  }
+  return [...order.slice(1), order[0]!];
+}
+
+const items = await Promise.all(
+  list.map(async (q, i) => ({
+    q,
+    n: i + 1,
+    prompt: renderInline(q.prompt),
+    explanation: renderInline(q.explanation),
+    code: q.type === 'predict-output' ? await renderCode(q.code.source, q.code.lang, `quiz-${q.id}`) : null,
+    options: q.type === 'order-steps' ? [] : q.options.map((o) => renderInline(o)),
+    steps: q.type === 'order-steps' ? shuffled(q.steps.length, `${lesson}/${q.id}`).map((k) => ({ k, html: renderInline(q.steps[k]!), text: inlineText(q.steps[k]!) })) : [],
+  })),
+);
+const sectionTitle = (s: string) => s.replace(/^\s*#{1,6}\s+/, '');
+---
+
+{items.length > 0 && (
+  <section class="quiz" id="ly-quiz" aria-labelledby="ly-quiz-title" data-quiz={pageId} data-pagefind-ignore>
+    <header class="quiz-head">
+      <div>
+        <p class="eyebrow">Quiz · {items.length} questions</p>
+        <h2 id="ly-quiz-title">Check your understanding</h2>
+      </div>
+      <p class="quiz-best muted" data-quiz-best hidden></p>
+    </header>
+    <ol class="quiz-list">
+      {items.map(({ q, n, prompt, explanation, code, options, steps }) => (
+        <li class="quiz-q" data-qid={q.id} data-type={q.type} data-answer={q.type === 'order-steps' ? undefined : q.answer}>
+          <div class="quiz-q-head">
+            <span class="quiz-num">Question {n} of {items.length}</span>
+            {q.type === 'predict-output' && <span class="quiz-kind">Predict the output</span>}
+            {q.type === 'order-steps' && <span class="quiz-kind">Put in order</span>}
+            {!q.reviewed && <span class="quiz-unreviewed" title="The author hasn't checked this question yet">Not yet reviewed</span>}
+          </div>
+          {q.type === 'order-steps' ? (
+            <div class="quiz-order" role="group" aria-labelledby={`ly-quiz-${q.id}-p`} aria-describedby={`ly-quiz-${q.id}-hint`}>
+              <p class="quiz-prompt" id={`ly-quiz-${q.id}-p`} set:html={prompt} />
+              <p class="quiz-hint muted" id={`ly-quiz-${q.id}-hint`}>Drag the steps by their handle, or use the arrow buttons.</p>
+              <ol class="quiz-steps">
+                {steps.map((s) => (
+                  <li class="quiz-step" data-step={s.k}>
+                    <span class="quiz-grip" aria-hidden="true">
+                      <svg viewBox="0 0 10 16" width="10" height="16"><circle cx="2.5" cy="3" r="1.4" /><circle cx="7.5" cy="3" r="1.4" /><circle cx="2.5" cy="8" r="1.4" /><circle cx="7.5" cy="8" r="1.4" /><circle cx="2.5" cy="13" r="1.4" /><circle cx="7.5" cy="13" r="1.4" /></svg>
+                    </span>
+                    <span class="quiz-step-text" set:html={s.html} />
+                    <span class="quiz-step-btns">
+                      <button type="button" class="quiz-move" data-dir="-1" aria-label={`Move up: ${s.text}`}>↑</button>
+                      <button type="button" class="quiz-move" data-dir="1" aria-label={`Move down: ${s.text}`}>↓</button>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p class="sr-only" aria-live="polite" data-steps-live></p>
+            </div>
+          ) : (
+            <fieldset class="quiz-choice">
+              <legend class="quiz-prompt" set:html={prompt} />
+              {code && <div class="quiz-code" set:html={code} />}
+              <div class="quiz-options">
+                {options.map((o, k) => (
+                  <label class="quiz-opt">
+                    <input type="radio" name={`ly-quiz-${q.id}`} value={k} />
+                    <span set:html={o} />
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <div class="quiz-feedback" hidden>
+            <p class="quiz-verdict"></p>
+            {q.type === 'order-steps' && (
+              <ol class="quiz-solution" hidden>
+                {q.steps.map((s) => <li set:html={renderInline(s)} />)}
+              </ol>
+            )}
+            <p class="quiz-expl" set:html={explanation} />
+            {q.source.anchor && (
+              <p class="quiz-src">
+                <a href={`#${q.source.anchor}`}>Read it in the lesson: {sectionTitle(q.source.section)}</a>
+              </p>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
+    <div class="quiz-actions">
+      <button type="button" class="btn btn-primary" data-quiz-check>Check answers</button>
+      <button type="button" class="btn" data-quiz-retry hidden>Try again</button>
+      <p class="quiz-result" role="status" aria-live="polite" tabindex="-1" data-quiz-result></p>
+    </div>
+    <noscript><p class="muted">Checking answers needs JavaScript.</p></noscript>
+  </section>
+)}
+
+<script>
+  // Load the quiz code only when it is needed: near the viewport, or as soon as the learner touches it.
+  const el = document.querySelector<HTMLElement>('.quiz[data-quiz]');
+  if (el) {
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      io.disconnect();
+      void import('../scripts/quiz').then((m) => m.initQuiz(el));
+    };
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && start(), { rootMargin: '800px 0px' });
+    io.observe(el);
+    el.addEventListener('pointerdown', start, { once: true });
+    el.addEventListener('focusin', start, { once: true });
+  }
+</script>

@@ -1,0 +1,197 @@
+id: collections-big-o
+title: 'C# collections & Big-O'
+summary: 'Which C# collection to reach for and what each operation costs, from the DSA collections cheat sheet, the collections notes and the array notes.'
+groups:
+  - title: Quick decision guide
+    table:
+      columns: [Need, Use]
+      from: { lesson: collections-cheatsheet, section: '10. Quick Decision Guide' }
+      rows:
+        - ['O(1) lookup / dedup', '`HashSet<T>` / `Dictionary<TKey,TValue>`']
+        - ['Sorted order + O(log n) ops', '`SortedSet<T>` / `SortedDictionary<TKey,TValue>`']
+        - ['Min/max repeatedly', '`PriorityQueue<TElement,TPriority>`']
+        - ['FIFO', '`Queue<T>`']
+        - ['LIFO', '`Stack<T>`']
+        - ['Sliding window min/max', '`LinkedList<T>` as deque, or `PriorityQueue` with lazy deletion']
+        - ['Graph adjacency', '`Dictionary<int, List<int>>`']
+        - ['Building strings in a loop', '`StringBuilder`']
+        - ['Constraints suggest overflow', '`long`']
+
+  - title: Complexity at a glance
+    table:
+      columns: [Collection, Operation cost, Typical use]
+      from: { lesson: collections-cheatsheet, section: 'C# Data Types & Collections Cheat Sheet for LeetCode / DSA' }
+      rows:
+        - cells: ['`T[]`', 'Access O(1)', 'Fixed-size storage, matrix problems, frequency counts']
+          from: { lesson: collections-cheatsheet, section: '1. Arrays & Basic Types' }
+        - cells: ['`List<T>`', 'Add O(1) amortized · Insert/Remove(i) O(n) · Index O(1)', 'Dynamic array, the general-purpose default']
+          from: { lesson: collections-cheatsheet, section: '2. Lists & Dynamic Arrays' }
+        - cells: ['`LinkedList<T>`', 'Add/Remove O(1) if you hold the node · Find O(n) · no index access', 'Frequent insert/delete at ends or middle (rarely beats `List<T>`)']
+          from: { lesson: collections-cheatsheet, section: '2. Lists & Dynamic Arrays' }
+        - cells: ['`HashSet<T>`', 'Add/Contains/Remove O(1) avg', 'Membership checks, dedup, "seen" sets']
+          from: { lesson: collections-cheatsheet, section: '3. Hashing — Fast Lookup' }
+        - cells: ['`Dictionary<TKey,TValue>`', 'Get/Set O(1) avg', 'Frequency maps, memoization, adjacency lists, index lookups']
+          from: { lesson: collections-cheatsheet, section: '3. Hashing — Fast Lookup' }
+        - cells: ['`SortedSet<T>`', 'Add/Remove/Contains O(log n)', 'Sorted unique elements, range queries (`GetViewBetween`)']
+          from: { lesson: collections-cheatsheet, section: '4. Ordered / Sorted Structures' }
+        - cells: ['`SortedDictionary<TKey,TValue>`', 'O(log n) per op', 'Sorted key-value map, ordered iteration']
+          from: { lesson: collections-cheatsheet, section: '4. Ordered / Sorted Structures' }
+        - cells: ['`SortedList<TKey,TValue>`', 'O(log n) lookup · O(n) insert', 'Sorted map with binary-search lookup; less memory than `SortedDictionary` for smaller n']
+          from: { lesson: collections-cheatsheet, section: '4. Ordered / Sorted Structures' }
+        - cells: ['`Stack<T>`', 'Push/Pop/Peek O(1)', 'Iterative DFS, balanced parentheses, monotonic stack, backtracking']
+          from: { lesson: collections-cheatsheet, section: '5. Stack, Queue, Deque' }
+        - cells: ['`Queue<T>`', 'Enqueue/Dequeue O(1)', 'BFS, level-order traversal']
+          from: { lesson: collections-cheatsheet, section: '5. Stack, Queue, Deque' }
+        - cells: ['`PriorityQueue<TElement,TPriority>` (.NET 6+)', 'Enqueue/Dequeue O(log n)', 'Dijkstra, k-th largest/smallest, merge k sorted lists, scheduling']
+          from: { lesson: collections-cheatsheet, section: '6. Heaps / Priority Queues' }
+        - cells: ['`StringBuilder`', 'Append O(1) amortized', 'Building strings in a loop (avoids O(n²) concatenation)']
+          from: { lesson: collections-cheatsheet, section: '7. Strings & Text' }
+
+  - title: Arrays and spans
+    items:
+      - term: 'Array basics'
+        desc: 'Same-type elements in contiguous memory; fixed size; zero-based; stored on the heap; derives from `System.Array`.'
+        from: { lesson: arrays-and-arraylist, section: 'Key Characteristics' }
+      - term: 'Rectangular `int[,]` vs jagged `int[][]`'
+        desc: 'Rectangular: one contiguous block, every row the same length. Jagged: an array of arrays, each row a separate object, so rows can differ in length.'
+        from: { lesson: arrays-and-arraylist, section: 'Jagged vs Multi-Dimensional array' }
+      - term: '`Length` / `Rank`'
+        desc: '`Length` is the total number of elements in all dimensions; `Rank` is the number of dimensions (`int[,]` → 2).'
+        from: { lesson: arrays-and-arraylist, section: 'Common Properties of Array' }
+      - term: '`Span<T>` / `ReadOnlySpan<T>`'
+        desc: 'Stack-only `ref struct` views over contiguous memory: slicing is O(1) and allocation-free. Cannot be boxed, used as fields or captured by async methods. Writes go through to the original.'
+        code: |
+          int[] numbers = { 1, 2, 3, 4, 5, 6 };
+
+          Span<int> all = numbers;             // view over the whole array
+          Span<int> middle = all.Slice(1, 3);  // { 2, 3, 4 } - no copy
+          middle[0] = 99;                      // writes through to the original array
+
+          Console.WriteLine(numbers[1]);       // 99
+        lang: csharp
+        from: { lesson: collections-cheatsheet, section: '1. Arrays & Basic Types' }
+      - term: '`long` / `ulong`'
+        desc: 'Default to `long` when constraints suggest values above 2³¹ (overflow-prone sums, products, counts).'
+        from: { lesson: collections-cheatsheet, section: '1. Arrays & Basic Types' }
+    table:
+      columns: ['`Array` static method', Does]
+      from: { lesson: arrays-and-arraylist, section: 'Common Methods of Array' }
+      rows:
+        - ['`Array.Sort(array)`', 'Sorts in ascending order']
+        - ['`Array.Reverse(array)`', 'Reverses the elements']
+        - ['`Array.IndexOf(array, value)` / `LastIndexOf`', 'Index of the first / last occurrence']
+        - ['`Array.Copy(source, destination, length)`', 'Copies elements to another array']
+        - ['`Array.Clear(array, startIndex, length)`', 'Sets a range to the default value']
+        - ['`Array.Resize(ref array, newSize)`', 'Changes the size of a 1D array']
+        - ['`Array.BinarySearch(array, value)`', 'Binary search (array must be sorted)']
+        - cells: ['`(int[])original.Clone()`', 'Copies the array']
+          from: { lesson: arrays-and-arraylist, section: '10. Clone an Array' }
+
+  - title: '`List<T>` and `LinkedList<T>`'
+    items:
+      - term: '`List<T>`'
+        desc: 'Type-safe, resizable array in insertion order; O(1) index access; allows duplicates and `null` (reference types); no boxing. The modern replacement for `ArrayList`.'
+        from: { lesson: collections, section: 'List in C#' }
+      - term: '`RemoveAt(index)` vs `Remove(value)`'
+        desc: '`RemoveAt` removes by index and shifts the following elements left. `Remove` searches for the value, removes only the first match and returns `true`/`false`.'
+        from: { lesson: collections-cheatsheet, section: '2. Lists & Dynamic Arrays' }
+      - term: 'Key `List<T>` methods'
+        desc: '`Add`, `AddRange`, `Insert`, `InsertRange`, `Remove`, `RemoveAt`, `RemoveRange`, `Clear` · `Contains`, `Find`, `FindAll`, `IndexOf`, `LastIndexOf`, `Exists` · `Sort`, `Reverse` · `Count`, `Capacity`, `TrimExcess` · `ToArray`, `AsReadOnly`, `CopyTo`.'
+        from: { lesson: collections, section: 'Methods of list class' }
+      - term: '`Find` with no match'
+        desc: 'Returns `null` for reference types, or the default value of the type.'
+        from: { lesson: collections, section: 'Methods of list class' }
+      - term: '`LinkedList<T>` key points'
+        desc: 'Doubly linked; nodes are `LinkedListNode<T>` with `Previous`/`Next`. A node belongs to one list only; modifying inside `foreach` throws; extra memory per node and poor cache locality; not thread-safe. Classic use: LRU cache (`Dictionary` of nodes + `LinkedList`).'
+        from: { lesson: collections-cheatsheet, section: 'Key points' }
+    table:
+      columns: ['`LinkedList<T>` operation', Cost, Note]
+      from: { lesson: collections-cheatsheet, section: 'Complexity' }
+      rows:
+        - ['`AddFirst`, `AddLast`', 'O(1)', '']
+        - ['`AddBefore`, `AddAfter`', 'O(1)', 'Only if you already hold the node']
+        - ['`RemoveFirst`, `RemoveLast`, `Remove(node)`', 'O(1)', '']
+        - ['`Find`, `Contains`, `Remove(value)`', 'O(n)', 'Linear search']
+        - ['Insert in middle by position', '**O(n)**', 'Walking there is O(n); the insert itself is O(1)']
+        - ['`First`, `Last`, `Count`', 'O(1)', '']
+
+  - title: Hashing
+    items:
+      - term: '`Dictionary<TKey,TValue>` rules'
+        desc: 'Hash-table map: keys unique and non-null (adding an existing key throws); values may repeat or be null.'
+        from: { lesson: collections, section: 'Dictionary in C#' }
+      - term: '`HashSet<T>` rules'
+        desc: 'Unordered, no duplicates (adding one has no effect, `Add` returns `false`); allows `null` for reference types.'
+        from: { lesson: collections, section: 'HashSet<T>' }
+    table:
+      columns: [Member, Does]
+      from: { lesson: collections, section: 'Dictionary<TKey, TValue> Methods in C#' }
+      rows:
+        - ['`dict.Add(key, value)`', 'Adds a pair; throws if the key exists']
+        - ['`dict.TryAdd(key, value)`', 'Adds only if the key doesn''t exist (returns `false` otherwise)']
+        - ['`dict[key] = value`', 'Adds or updates']
+        - ['`dict.TryGetValue(key, out value)`', 'Safe read']
+        - ['`dict.ContainsKey` / `ContainsValue`', 'Existence checks']
+        - ['`dict.Keys` / `Values` / `Count`', 'Collections of keys and values; number of pairs']
+        - cells: ['`set.UnionWith` / `IntersectWith` / `ExceptWith`', 'Modify the set to the union / intersection / difference with another collection']
+          from: { lesson: collections, section: 'Methods' }
+        - cells: ['`set.SymmetricExceptWith`', 'Keep elements in either set but not both']
+          from: { lesson: collections, section: 'Methods' }
+        - cells: ['`set.IsSubsetOf` / `IsSupersetOf` / `Overlaps` / `SetEquals`', 'Set comparisons']
+          from: { lesson: collections, section: 'Methods' }
+        - cells: ['`set.RemoveWhere(predicate)`', 'Removes all matching elements']
+          from: { lesson: collections, section: 'Methods' }
+
+  - title: Sorted structures, stacks, queues and heaps
+    items:
+      - term: 'No built-in multiset'
+        desc: '`SortedSet<T>` disallows duplicates. For duplicates, pair the value with an index/tiebreaker, or use `SortedDictionary<T, int>` as value → count.'
+        from: { lesson: collections-cheatsheet, section: '4. Ordered / Sorted Structures' }
+      - term: 'Deque'
+        desc: 'No built-in type: simulate with `LinkedList<T>` (O(1) at both ends) or a circular array.'
+        from: { lesson: collections-cheatsheet, section: '5. Stack, Queue, Deque' }
+      - term: '`Queue<T>` / `Stack<T>` members'
+        desc: '`Enqueue`, `Dequeue`, `Peek` / `Push`, `Pop`, `Peek`; both also have `Contains`, `Clear`, `Count`, `ToArray`. `Queue<T>` is a circular array and not thread-safe (use `ConcurrentQueue<T>`).'
+        from: { lesson: collections, section: 'Queue<T>' }
+      - term: '`PriorityQueue` is a min-heap'
+        desc: '`Dequeue` returns the lowest priority first; negate the priority for a max-heap.'
+        code: |
+          var pq = new PriorityQueue<int, int>();
+          pq.Enqueue(item: 5, priority: 5);
+          pq.Dequeue(); // returns min-priority item — it's a min-heap by default
+
+          // For a max-heap, negate the priority:
+          pq.Enqueue(item, -priority);
+        lang: csharp
+        from: { lesson: collections-cheatsheet, section: '6. Heaps / Priority Queues' }
+
+  - title: Strings, tuples and bits
+    table:
+      columns: [Type, Use]
+      from: { lesson: collections-cheatsheet, section: '7. Strings & Text' }
+      rows:
+        - ['`string.ToCharArray()`', 'Character-level edits: strings are immutable, so convert to work in place']
+        - ['`Span<char>` / `ReadOnlySpan<char>`', 'Substring checks without allocation (palindrome/substring-heavy problems)']
+        - cells: ['`(int, int)` value tuple', 'Pairing coordinates; storing pairs in a queue/stack, e.g. BFS `(row, col, distance)`']
+          from: { lesson: collections-cheatsheet, section: '8. Tuples & Multi-Value Returns' }
+        - cells: ['Custom `record` / `struct`', 'When a tuple gets unreadable (3+ named fields)']
+          from: { lesson: collections-cheatsheet, section: '8. Tuples & Multi-Value Returns' }
+        - cells: ['`int` / `long` bitmask', 'Subset enumeration, DP over bitmask, visited-state tracking']
+          from: { lesson: collections-cheatsheet, section: '9. Bit Manipulation' }
+        - cells: ['`BitArray`', 'Large memory-efficient boolean arrays (e.g. a big sieve)']
+          from: { lesson: collections-cheatsheet, section: '9. Bit Manipulation' }
+
+  - title: Legacy non-generic collections
+    note: 'They store `object`: not type-safe, value types are boxed, and retrieving needs a cast. Use them only for compatibility with older APIs.'
+    table:
+      columns: [Legacy (`System.Collections`), Use instead]
+      from: { lesson: collections, section: '2) Non-Generic Collections (System.Collections)' }
+      rows:
+        - ['`ArrayList`', '`List<T>`']
+        - ['`Hashtable`', '`Dictionary<TKey,TValue>`']
+        - ['`Queue`', '`Queue<T>`']
+        - ['`Stack`', '`Stack<T>`']
+    items:
+      - term: '`ArrayList` vs `List<T>`'
+        desc: '`ArrayList` is non-generic, stores any type (boxing for value types), is slower for large data and not thread-safe (`ArrayList.Synchronized()`); `List<T>` is generic, type-safe and has no boxing.'
+        from: { lesson: arrays-and-arraylist, section: 'Comparison with List<T>' }

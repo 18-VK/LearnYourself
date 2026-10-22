@@ -1,0 +1,79 @@
+{
+  "lesson": "linq-basics",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How do LINQ query syntax (`from x in ... select ...`) and method syntax (`.Where(...).Select(...)`) relate?",
+      "options": [
+        "Query syntax runs against databases only; method syntax runs in memory only",
+        "Both compile to the same underlying calls, and you can mix them",
+        "Method syntax is translated into query syntax at run time",
+        "Query syntax is faster because it is compiled to SQL"
+      ],
+      "answer": 1,
+      "explanation": "The two styles are just different spellings: both compile to the same underlying extension-method calls, and you can mix them in one query.",
+      "source": { "section": "### Basics & syntax" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "Which values does `q` produce?",
+      "code": {
+        "lang": "csharp",
+        "source": "var nums = new[] {1,2,3};\nvar q = from n in nums\n        select n * 2;"
+      },
+      "options": ["`{1,2,3}`", "`{2,4,6}`", "`{2}`", "`{1,4,9}`"],
+      "answer": 1,
+      "explanation": "`from` introduces the range variable `n` over `nums`, and `select n * 2` projects each element into a new value, giving 2, 4 and 6.",
+      "source": { "section": "#### 1) `from`" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which situation does the lesson list as a reason **not** to use LINQ?",
+      "options": [
+        "Paging API results with `Skip`/`Take`",
+        "Grouping and aggregating data for a report",
+        "A very hot inner loop where a simple loop can be faster and clearer",
+        "Joining orders to customers in memory"
+      ],
+      "answer": 2,
+      "explanation": "Very hot inner-loop code with micro-optimizations is listed under \"When not to use LINQ\"; paging, grouping and joining are listed as cases where LINQ shines.",
+      "source": { "section": "### When not to use LINQ" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`from c in customers from o in c.Orders select new { c.Name, o.Id }` uses two `from` clauses. Which method-syntax operator is it equivalent to?",
+      "options": [
+        "`SelectMany`",
+        "`Join`",
+        "`GroupJoin`",
+        "`Zip`"
+      ],
+      "answer": 0,
+      "explanation": "Multiple `from` clauses flatten nested collections to enumerate the inner elements, which is the query form of `.SelectMany(...)`.",
+      "source": { "section": "#### 8) `from ... in ...` (multiple `from`) — query form of `SelectMany`" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does this query use `let words = s.Split(' ')`?\n\n`from s in sentences let words = s.Split(' ') where words.Length > 3 select new { s, WordCount = words.Length }`",
+      "options": [
+        "`let` makes the query run immediately instead of deferred",
+        "`let` is required before any `where` clause",
+        "`let` groups the sentences by their word count",
+        "`let` stores the split result in a temporary range variable, so it isn't recomputed"
+      ],
+      "answer": 3,
+      "explanation": "`let` introduces a temporary range variable to store a sub-expression result, which avoids recomputing it in `where` and `select` and improves readability.",
+      "source": { "section": "#### 7) `let`" },
+      "reviewed": false
+    }
+  ]
+}

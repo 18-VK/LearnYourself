@@ -1,0 +1,378 @@
+id: auth-jwt
+title: 'Auth & JWT'
+summary: 'Authentication vs authorization, JWT structure and validation settings, roles/claims/policies and the fallback policy, signing keys and JWKS, OAuth 2.0 / OIDC with PKCE, refresh-token rotation, ASP.NET Core Identity and when to run a separate auth server.'
+groups:
+  - title: Authentication vs authorization
+    items:
+      - term: 'Authentication (AuthN)'
+        desc: 'Verifies identity: "Who are you?"'
+        from: { lesson: authn-and-authz-basics, section: 'Authentication and authorization' }
+      - term: 'Authorization (AuthZ)'
+        desc: 'Decides what the authenticated caller may do or access: "What are you allowed to do?"'
+        from: { lesson: authn-and-authz-basics, section: 'Authentication and authorization' }
+      - term: '401 vs 403'
+        desc: '**401 Unauthorized** = not authenticated (no or invalid token). **403 Forbidden** = authenticated but missing the role/claim. The fallback policy usually causes 401; role/claim policies cause 403.'
+        from: { lesson: authorization-policies, section: 'Important difference: 401 vs 403' }
+      - term: 'APIs return, not redirect'
+        desc: 'A JWT-secured API validates the token and returns 401/403 instead of redirecting to a login page.'
+        from: { lesson: jwt-authentication-setup, section: 'Basic API side setup of JWT : Authentication and Authorization Implementation using JWT in Web APIs' }
+    table:
+      columns: [Method, How it works, Typical use]
+      from: { lesson: authn-and-authz-basics, section: 'Authentication Methods' }
+      rows:
+        - cells: ['HTTP Basic', 'Username + password Base64-encoded in a header; server checks the password hash. Always over HTTPS', 'Simple / internal apps']
+          from: { lesson: authn-and-authz-basics, section: 'HTTP Basic Authentication' }
+        - cells: ['API key', 'Static random secret (e.g. `x-api-key`) looked up server-side; carries no user information', 'Server-to-server, limited access, per-key rate limits']
+          from: { lesson: authn-and-authz-basics, section: 'API Keys' }
+        - cells: ['JWT', 'Signed token issued at login, sent as `Authorization: Bearer`; validated without a DB lookup per request', 'Stateless, scalable APIs']
+          from: { lesson: authn-and-authz-basics, section: 'JSON Web Tokens (JWT)' }
+        - cells: ['OAuth 2.0 / OIDC', 'OAuth 2.0 = delegated authorization without sharing the password; OIDC = identity layer on top', '"Sign in with Google", third-party access']
+          from: { lesson: authn-and-authz-basics, section: 'OAuth 2.0 / OpenID Connect (OIDC)' }
+
+  - title: Authorization in ASP.NET Core
+    table:
+      columns: [Style, Example, Use when]
+      from: { lesson: authorization-policies, section: 'Authorization' }
+      rows:
+        - cells: ['Role-based (RBAC)', '`[Authorize(Roles = "Admin")]`', 'Fixed user categories, admin panels; can''t express "only your own data"']
+          from: { lesson: authorization-policies, section: '1. Role-Based Authorization (RBAC)' }
+        - cells: ['Claim-based', '`policy.RequireClaim("EmployeeNumber")`', 'Fine-grained rules based on user data']
+          from: { lesson: authorization-policies, section: '2. Claim-Based Authorization' }
+        - cells: ['Policy-based (recommended)', '`policy.RequireRole("Admin"); policy.RequireClaim("Department", "HR");` (both must hold)', 'Production APIs: centralized, reusable rules']
+          from: { lesson: authorization-policies, section: '3. Policy-Based Authorization (Recommended)' }
+        - cells: ['Resource-based', 'Compare `User.FindFirst("id")` with the record owner, else `return Forbid();`', 'Ownership / per-record checks']
+          from: { lesson: authorization-policies, section: '4. Resource-Based Authorization' }
+        - cells: ['ABAC (model)', 'Attributes of user, resource, action, time, location', '"Your access depends on multiple conditions"']
+          from: { lesson: authn-and-authz-basics, section: 'Attribute-Based Access Control (ABAC)' }
+        - cells: ['PBAC (model)', 'A policy engine evaluates centrally written rules', '"Access is decided by a policy rule set"']
+          from: { lesson: authn-and-authz-basics, section: 'Policy-Based Access Control (PBAC)' }
+    items:
+      - term: 'Secure by default: the fallback policy'
+        desc: 'Every endpoint without explicit authorization metadata now requires an authenticated user; public endpoints opt out with `[AllowAnonymous]`.'
+        code: |
+          builder.Services.AddAuthorization(options =>
+          {
+              options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                  .RequireAuthenticatedUser()
+                  .Build();
+
+              options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+              options.AddPolicy("EmployeeOnly", policy => policy.RequireClaim("EmployeeNumber"));
+          });
+        lang: csharp
+        from: { lesson: authorization-policies, section: 'Configuration (App Setup)' }
+      - term: '`[AllowAnonymous]` endpoints'
+        desc: 'Everything that gets a user *to* an authenticated state: login, register, refresh, forgot/reset password, confirm email, external-login callback. A locked refresh endpoint would need a valid token to get a new token.'
+        from: { lesson: signin-and-identity-registration, section: 'Keep these endpoints public always' }
+      - term: 'Pipeline order'
+        desc: '`app.UseAuthentication();` then `app.UseAuthorization();` then `app.MapControllers();`'
+        from: { lesson: authorization-policies, section: 'Project Startup (Program.cs)' }
+
+  - title: JWT structure
+    items:
+      - term: '`Header.Payload.Signature`'
+        desc: 'Three Base64Url parts joined by dots: metadata, claims, and a signature that proves integrity and origin.'
+        from: { lesson: jwt, section: 'JWT Structure' }
+      - term: 'Header'
+        desc: '`alg` signing algorithm (HS256, RS256) · `typ` token type `"JWT"` · `kid` key id used to pick the right public key from the JWKS.'
+        from: { lesson: jwt, section: '1. Header' }
+      - term: 'Signature (HS256)'
+        code: |
+          HMACSHA256(
+              base64UrlEncode(header) + "." + base64UrlEncode(payload),
+              secret
+          )
+        lang: text
+        from: { lesson: jwt, section: '3. Signature' }
+      - term: 'Signed, not encrypted'
+        desc: 'Anyone holding a JWT can decode and read its claims; they just can''t forge a valid signature. Keep it small and put no sensitive data in it.'
+        from: { lesson: claims-identity-and-principal, section: 'Yes, you can encrypt data using a public key, but a JSON Web Token (JWT) is signed, not encrypted' }
+      - term: 'Why JWTs'
+        desc: 'Stateless (no session store, good for microservices), cryptographically signed, compact enough for headers/URLs.'
+        from: { lesson: jwt, section: 'Why JWTs are Popular' }
+      - term: 'Short expiry'
+        desc: 'A JWT can''t easily be revoked once issued, so keep `expires` short (15 min to 2 h) and pair it with refresh tokens.'
+        from: { lesson: creating-and-signing-jwts, section: 'Key Components Explained' }
+    table:
+      columns: [Claim, Meaning, Example]
+      from: { lesson: jwt, section: '2. Payload' }
+      rows:
+        - ['`iss`', 'Issuer', '`https://auth.company.com`']
+        - ['`sub`', 'Subject (user ID)', '`12345`']
+        - ['`aud`', 'Audience (intended API/client)', '`TaskManagementAPI`']
+        - ['`exp`', 'Expiration time', 'Unix timestamp']
+        - ['`nbf`', 'Not valid before', 'Unix timestamp']
+        - ['`iat`', 'Issued at', 'Unix timestamp']
+        - ['`jti`', 'Unique token ID', '`3f8d7a9b...`']
+
+  - title: Validating JWTs & HttpContext.User
+    items:
+      - term: 'Runtime flow'
+        code: |
+          Client sends request
+             ↓
+          Authorization Header (JWT)
+             ↓
+          Authentication Middleware
+             ↓
+          JWT Handler validates:
+             - Signature ✅
+             - Issuer ✅
+             - Audience ✅
+             - Expiry ✅
+             ↓
+          User created in HttpContext
+             ↓
+          Authorization Middleware checks roles/policies
+             ↓
+          Controller executes
+        lang: text
+        from: { lesson: jwt-authentication-setup, section: 'Full Runtime Flow (IMPORTANT)' }
+      - term: '`AddJwtBearer` setup'
+        code: |
+          builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+              .AddJwtBearer(options =>
+              {
+                  options.RequireHttpsMetadata = true;
+                  options.TokenValidationParameters = new TokenValidationParameters
+                  {
+                      ValidateIssuer = true,
+                      ValidIssuer = builder.Configuration["Jwt:Issuer"],
+
+                      ValidateAudience = true,
+                      ValidAudience = builder.Configuration["Jwt:Audience"],
+
+                      ValidateLifetime = true,
+                      ValidateIssuerSigningKey = true,
+
+                      IssuerSigningKey = new SymmetricSecurityKey(
+                          Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!)),
+
+                      ClockSkew = TimeSpan.FromMinutes(1)
+                  };
+              });
+        lang: csharp
+        from: { lesson: jwt-authentication-setup, section: 'Configuration (App Setup)' }
+      - term: 'Managed identity provider'
+        desc: 'With Auth0 / Entra ID the API only sets `options.Authority` and `options.Audience`; keys and metadata come from the provider.'
+        from: { lesson: auth-server-approaches-and-oauth2, section: 'Approach 3 — Managed identity provider (don''t run your own server at all)' }
+      - term: '`options.MapInboundClaims = false`'
+        desc: 'Keeps raw `sub` / `role` claim names instead of mapping them to long `ClaimTypes.NameIdentifier` / `ClaimTypes.Role` URIs.'
+        from: { lesson: claims-identity-and-principal, section: 'A gotcha worth knowing for your JWT work' }
+      - term: 'Common mistakes'
+        desc: 'Weak `SigningKey` · `ValidateIssuer = false` (skipping validation) · hardcoded secrets in source: use environment variables.'
+        from: { lesson: jwt-authentication-setup, section: 'appsettings.json' }
+      - term: 'Hierarchy'
+        code: |
+          ClaimsPrincipal (the "user")
+           └── ClaimsIdentity[] (one per auth scheme)
+                 └── Claim[] (the actual data)
+        lang: text
+        from: { lesson: claims-identity-and-principal, section: 'So the hierarchy is:' }
+      - term: 'What the JwtBearer handler does'
+        desc: 'Parses the payload → builds a `ClaimsIdentity` from its claims → wraps it in a `ClaimsPrincipal` → assigns `HttpContext.User` (the `User` property in controllers).'
+        from: { lesson: claims-identity-and-principal, section: 'How they work together in .NET' }
+      - term: 'Reading claims'
+        code: |
+          var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+          var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        lang: csharp
+        from: { lesson: claims-identity-and-principal, section: 'Practical Usage in a Controller' }
+      - term: '`IsAuthenticated` gotcha'
+        desc: '`new ClaimsIdentity(claims)` without an `authenticationType` gives `IsAuthenticated == false`; pass one, e.g. `"Bearer"`.'
+        from: { lesson: claims-identity-and-principal, section: 'Multiple identities on one principal' }
+      - term: 'Authentication types'
+        desc: '`"Bearer"` Web APIs (JWT) · `"Cookies"` MVC/Blazor web apps · `"Windows"` intranet / Active Directory · `"Basic"` legacy APIs.'
+        from: { lesson: claims-identity-and-principal, section: 'ClaimsIdentity : AuthenticationType' }
+      - term: 'Claims outside controllers'
+        desc: '`builder.Services.AddHttpContextAccessor();` registers `IHttpContextAccessor` (singleton, backed by `AsyncLocal<T>`) so services can reach the current user.'
+        from: { lesson: signin-and-identity-registration, section: 'AddHttpContextAccessor' }
+    table:
+      columns: [Setting, Checks / does]
+      from: { lesson: jwt-authentication-setup, section: 'Configuration (App Setup)' }
+      rows:
+        - ['`ValidateIssuer` + `ValidIssuer`', '`iss` is an authority you trust (prevents fake tokens)']
+        - ['`ValidateAudience` + `ValidAudience`', '`aud` is this API (a token for Service A can''t be used on Service B)']
+        - ['`ValidateIssuerSigningKey` + `IssuerSigningKey`', 'Signature verifies, so the payload wasn''t tampered with (most critical)']
+        - ['`ValidateLifetime`', '`exp` is still in the future']
+        - ['`ClockSkew`', 'Grace period for small clock differences between servers']
+        - ['`RequireHttpsMetadata`', 'Metadata / public keys are only fetched over HTTPS']
+
+  - title: Signing keys & JWKS
+    table:
+      columns: [Key type, How, Pros / cons, Use for]
+      from: { lesson: creating-and-signing-jwts, section: 'Types of Signing Keys' }
+      rows:
+        - cells: ['Symmetric (HS256)', 'One shared secret signs and verifies', 'Simple, fast; a compromised API can forge tokens and rotation means updating every service', 'Learning, small internal apps']
+          from: { lesson: creating-and-signing-jwts, section: 'Symmetric Keys (HS256)' }
+        - cells: ['Asymmetric (RS256 / ES256)', 'Private key signs (auth server), public key verifies (API)', 'APIs never see the private key; supports rotation via `/.well-known/jwks.json`', 'Production, public APIs, distributed systems']
+          from: { lesson: creating-and-signing-jwts, section: 'Asymmetric Keys (RS256 / ES256)' }
+    items:
+      - term: 'Generate an RSA key pair'
+        code: |
+          openssl genrsa -out private.pem 2048
+          openssl rsa -in private.pem -pubout -out public.pem
+        lang: bash
+        from: { lesson: creating-and-signing-jwts, section: 'Generating Asymmetric Keys (RS256)' }
+      - term: 'Sign with the private key'
+        code: |
+          var rsa = RSA.Create();
+          rsa.ImportFromPem(File.ReadAllText("private.pem"));
+          var key = new RsaSecurityKey(rsa);
+          var credentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256);
+        lang: csharp
+        from: { lesson: creating-and-signing-jwts, section: 'How to Use These Keys in .NET' }
+      - term: 'Key management'
+        desc: 'Never commit raw keys; use Key Vault / KMS in production; during rotation keep the current and previous key active together.'
+        from: { lesson: creating-and-signing-jwts, section: 'Best Practices for Key Management' }
+      - term: '`.pfx` vs `.cer`'
+        desc: '`.pfx` = certificate + private key (password-protected, stays with the signer); `.cer` = public certificate only, safe to share with the API.'
+        from: { lesson: creating-and-signing-jwts, section: 'Code approach' }
+      - term: 'JWK'
+        desc: 'A key as JSON: `kty` key type, `kid` key id, `n` & `e` the RSA public-key components, `use: "sig"`.'
+        from: { lesson: jwk-jwks-and-pkce, section: 'What is a JWK (JSON Web Key)?' }
+      - term: 'JWKS'
+        desc: 'Set of public keys at a public endpoint (`/.well-known/jwks.json`). The API takes the `kid` from the JWT header and verifies with the matching key.'
+        from: { lesson: jwk-jwks-and-pkce, section: 'JWKS' }
+
+  - title: OAuth 2.0, OIDC & PKCE
+    items:
+      - term: 'Four roles'
+        desc: '**Resource Owner** (the user) · **Client** (your app) · **Authorization Server** (issues tokens) · **Resource Server** (the protected API).'
+        from: { lesson: auth-server-approaches-and-oauth2, section: 'OAuth2.0' }
+      - term: 'Authorization code flow'
+        desc: '1) redirect to the authorize endpoint with `client_id`, `redirect_uri`, `response_type=code`, `scope`, `state` · 2) user logs in and consents · 3) redirect back with a one-time `code` · 4) server exchanges `code` + `client_secret` at the token endpoint (back channel) · 5) call APIs with the access token.'
+        from: { lesson: auth-server-approaches-and-oauth2, section: 'Authorization Code Flow — step by step' }
+      - term: '`state`'
+        desc: 'Random value stored in session and checked on the callback: protects the OAuth flow against CSRF.'
+        from: { lesson: auth-server-approaches-and-oauth2, section: 'Authorization Code Flow — step by step' }
+      - term: 'Why `code` AND `client_secret`'
+        desc: 'The code proves a user just consented; the secret proves it is really your app asking. A leaked code is useless without the secret, and the secret alone has no consent to redeem.'
+        from: { lesson: openid-connect, section: 'How they''re related — why BOTH are required together' }
+      - term: 'OIDC adds identity'
+        desc: 'Add `openid` to the scope and the token response also contains an `id_token`: a signed JWT with `iss`, `sub`, `aud`, `exp`, `iat`, email, name. Store `sub` (immutable), never key users by email.'
+        from: { lesson: openid-connect, section: 'OpenID Connect (OIDC)' }
+      - term: 'UserInfo & discovery'
+        desc: '`GET /userinfo` with the access token for extra claims; `/.well-known/openid-configuration` lists endpoints, scopes, algorithms and `jwks_uri` so middleware configures itself.'
+        from: { lesson: openid-connect, section: 'OpenID Connect (OIDC)' }
+      - term: 'PKCE'
+        desc: 'Client makes a random `code_verifier`, sends its SHA-256 `code_challenge` (`code_challenge_method=S256`) with the authorize request, then the raw verifier at token exchange. An intercepted code can''t be redeemed without it.'
+        from: { lesson: jwk-jwks-and-pkce, section: 'PKCE' }
+      - term: 'OpenIddict flows'
+        desc: 'Authorization Code + PKCE (web and mobile) · Client Credentials (machine-to-machine) · Refresh Token · Device Authorization.'
+        from: { lesson: openiddict, section: '7. Standard OAuth Flows' }
+    table:
+      columns: [Client type, Can hide a secret?, Use]
+      from: { lesson: jwk-jwks-and-pkce, section: 'PKCE vs client_secret — when to use what?' }
+      rows:
+        - ['Angular / React SPA', 'No', 'PKCE, `ClientType` = `Public`']
+        - ['Backend API → another backend', 'Yes', 'Client secret, Client Credentials grant']
+        - ['Mobile app', 'No', 'PKCE']
+        - ['Server-rendered MVC app', 'Yes', 'Client secret + PKCE (OpenIddict allows both)']
+
+  - title: Refresh tokens & rotation
+    items:
+      - term: 'Why they exist'
+        desc: 'Access tokens are short-lived (e.g. 15 min) so a leak has a small window; a longer-lived refresh token (e.g. 14 days) gets a new access token without re-entering the password.'
+        from: { lesson: refresh-tokens, section: 'Why refresh tokens exist in the first place' }
+      - term: 'Lifecycle'
+        desc: 'Issued with the first access token at login → client uses the access token until `401` → `POST /api/auth/refresh` → server issues a new pair.'
+        from: { lesson: refresh-tokens, section: 'Refresh Token' }
+      - term: 'Store only the hash'
+        desc: 'The raw refresh token exists only in the response and the client; the database keeps `SHA256(token)`, like a password.'
+        from: { lesson: refresh-tokens, section: 'Why refresh tokens exist in the first place' }
+      - term: 'Rotation'
+        desc: 'Each refresh revokes the presented token (`RevokedAtUtc`, `ReplacedByTokenId`) and issues a new one in the same token family.'
+        from: { lesson: refresh-tokens, section: 'Why refresh tokens exist in the first place' }
+      - term: 'Reuse detection'
+        desc: 'An already-revoked token presented again means a stolen copy: revoke the whole family and force a fresh login. Rotation and reuse detection only work together.'
+        from: { lesson: refresh-tokens, section: 'Why refresh tokens exist in the first place' }
+      - term: 'When tokens are revoked'
+        desc: 'Logout or revoked app access · rotation · lifetime limit reached · password change or detected reuse · per-user quota exceeded (oldest removed).'
+        from: { lesson: refresh-tokens, section: 'Refresh Token' }
+      - term: 'OpenIddict refresh tokens'
+        desc: 'Self-contained but *encrypted* with ASP.NET Core Data Protection, so the claims are unreadable without the server''s keys; multi-instance servers need a shared key ring.'
+        from: { lesson: refresh-tokens, section: 'What does a refresh token contain?' }
+
+  - title: ASP.NET Core Identity
+    items:
+      - term: 'What Identity is'
+        desc: 'A membership system: users, roles, password hashing (PBKDF2), lockout, confirmation tokens, 2FA, external logins. Not a JWT library, not an OAuth server.'
+        from: { lesson: identity-and-its-tables, section: 'ASP.NET Core Identity' }
+      - term: '`AddIdentityCore` vs `AddIdentity`'
+        desc: 'Separate SPA/mobile frontend + REST API → `AddIdentityCore` + JWT bearer (no cookie schemes). Same app renders UI and API → `AddIdentity` + cookies + `SignInManager` (it sets cookies as the default scheme).'
+        code: |
+          builder.Services.AddIdentityCore<ApplicationUser>(options =>
+          {
+              options.Password.RequiredLength = 8;
+          })
+          .AddRoles<ApplicationRole>()              // add roles back in manually, since Core doesn't include them
+          .AddEntityFrameworkStores<AppDbContext>()
+          .AddDefaultTokenProviders();
+        lang: csharp
+        from: { lesson: signin-and-identity-registration, section: '.AddIdentityCore<ApplicationUser>' }
+      - term: '`AddEntityFrameworkStores<TContext>()`'
+        desc: 'Registers the EF Core `UserStore`/`RoleStore`; without it `UserManager` has no `IUserStore<TUser>` and throws at runtime.'
+        from: { lesson: signin-and-identity-registration, section: 'AddEntityFrameworkStores' }
+      - term: '`AddDefaultTokenProviders()`'
+        desc: 'Token providers behind password reset, email confirmation, 2FA and OTP; those methods throw without it.'
+        from: { lesson: signin-and-identity-registration, section: 'AddDefaultTokenProviders' }
+      - term: '`UserManager` vs `SignInManager`'
+        desc: '`UserManager<TUser>` owns the user record; `SignInManager<TUser>` owns signing in (password + lockout + 2FA checks, then the auth cookie). JWT APIs mostly use `UserManager` only.'
+        from: { lesson: signin-and-identity-registration, section: 'SignInManager' }
+      - term: 'Custom user / key type'
+        desc: '`public class ApplicationUser : IdentityUser<Guid>` adds your own fields; `SecurityStamp` changes on security changes and invalidates stale sessions.'
+        from: { lesson: identity-and-its-tables, section: 'IdentityUser<TKey> — the user model' }
+      - term: 'Seed roles at startup'
+        desc: '`roleManager.RoleExistsAsync(name)` / `CreateAsync(new ApplicationRole { Name = name })` inside `app.Services.CreateScope()`.'
+        from: { lesson: signin-and-identity-registration, section: 'Seed the roles (one-time, at startup)' }
+    table:
+      columns: [Table, Class, Holds]
+      from: { lesson: identity-and-its-tables, section: 'ASP.NET Core Identity - User Related Tables with Interfaces' }
+      rows:
+        - ['`AspNetUsers`', '`IdentityUser<TKey>`', 'User accounts']
+        - ['`AspNetRoles`', '`IdentityRole<TKey>`', 'Role definitions']
+        - ['`AspNetUserRoles`', '`IdentityUserRole<TKey>`', 'User ↔ role mapping, PK (UserId, RoleId)']
+        - ['`AspNetUserClaims`', '`IdentityUserClaim<TKey>`', 'Per-user claims']
+        - ['`AspNetUserLogins`', '`IdentityUserLogin<TKey>`', 'External login providers (Google…)']
+        - ['`AspNetUserTokens`', '`IdentityUserToken<TKey>`', 'Tokens per user / provider']
+
+  - title: UserManager methods
+    table:
+      columns: [Task, Methods]
+      from: { lesson: usermanager-users-and-passwords, section: 'UserManager<TUser>' }
+      rows:
+        - cells: ['Create / update / delete', '`CreateAsync(user, password)` (hashes it) · `UpdateAsync` · `DeleteAsync`']
+          from: { lesson: usermanager-users-and-passwords, section: 'Creating & deleting users' }
+        - cells: ['Find', '`FindByIdAsync` · `FindByNameAsync` · `FindByEmailAsync` · `FindByLoginAsync` · `GetUserAsync(User)`']
+          from: { lesson: usermanager-users-and-passwords, section: 'Finding users' }
+        - cells: ['Passwords', '`CheckPasswordAsync` · `ChangePasswordAsync` · `GeneratePasswordResetTokenAsync` + `ResetPasswordAsync`']
+          from: { lesson: usermanager-users-and-passwords, section: 'Password management' }
+        - cells: ['Confirmation', '`GenerateEmailConfirmationTokenAsync` + `ConfirmEmailAsync` · `IsEmailConfirmedAsync`']
+          from: { lesson: usermanager-confirmation-roles-claims-lockout, section: 'Email & phone confirmation' }
+        - cells: ['Roles', '`AddToRoleAsync` · `RemoveFromRoleAsync` · `GetRolesAsync` · `IsInRoleAsync` · `GetUsersInRoleAsync`']
+          from: { lesson: usermanager-confirmation-roles-claims-lockout, section: 'Roles' }
+        - cells: ['Claims', '`AddClaimAsync` · `GetClaimsAsync` · `ReplaceClaimAsync` · `RemoveClaimAsync`']
+          from: { lesson: usermanager-confirmation-roles-claims-lockout, section: 'Claims' }
+        - cells: ['Lockout', '`AccessFailedAsync` (auto-locks at `MaxFailedAccessAttempts`) · `ResetAccessFailedCountAsync` · `IsLockedOutAsync` · `SetLockoutEndDateAsync`']
+          from: { lesson: usermanager-confirmation-roles-claims-lockout, section: 'Lockout' }
+        - cells: ['External logins', '`AddLoginAsync(user, info)` · `RemoveLoginAsync` · `GetLoginsAsync`']
+          from: { lesson: usermanager-external-logins-and-2fa, section: 'External logins' }
+        - cells: ['2FA', '`SetTwoFactorEnabledAsync` · `GetAuthenticatorKeyAsync` · `VerifyTwoFactorTokenAsync` · `GenerateNewTwoFactorRecoveryCodesAsync`']
+          from: { lesson: usermanager-external-logins-and-2fa, section: 'Two-factor authentication (2FA)' }
+
+  - title: Build, adopt or outsource the auth server
+    table:
+      columns: [Approach, Fits when, Trade-off]
+      from: { lesson: auth-server-approaches-and-oauth2, section: 'Approach for creating Auth Server' }
+      rows:
+        - cells: ['Fully custom (Identity + your `TokenService`)', 'One API, one frontend, you control both', 'Full control, but every security edge case (revocation, replay, key rotation) is yours']
+          from: { lesson: auth-server-approaches-and-oauth2, section: 'Approach 1 — Fully custom, build-it-yourself (what we''ve been building)' }
+        - cells: ['OpenIddict / Duende IdentityServer', 'Real OAuth2/OIDC: several client apps, SSO, external developers', 'Spec-compliant flows out of the box; steeper learning curve. OpenIddict is free, Duende commercial above some usage']
+          from: { lesson: auth-server-approaches-and-oauth2, section: 'Approach 2 — Off-the-shelf identity server: Duende IdentityServer / OpenIddict' }
+        - cells: ['Managed IdP (Auth0, Entra ID, Cognito, Firebase)', 'Small teams, or an enterprise already standardized on one', 'Zero auth code; per-user pricing, vendor lock-in']
+          from: { lesson: auth-server-approaches-and-oauth2, section: 'Approach 3 — Managed identity provider (don''t run your own server at all)' }
+    items:
+      - term: 'When a separate auth server pays off'
+        desc: 'Several apps share one login · SSO across products · social login · third-party apps need scoped access to your APIs · centralized MFA, auditing and compliance.'
+        from: { lesson: openiddict, section: 'When Does a Separate Authorization Server Make Sense?' }

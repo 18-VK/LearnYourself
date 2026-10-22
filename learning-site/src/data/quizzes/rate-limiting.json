@@ -1,0 +1,95 @@
+{
+  "lesson": "rate-limiting",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A fixed window limiter allows 100 requests per minute. What is its main weakness?",
+      "options": [
+        "It needs a queue, which adds latency",
+        "Bursts at the window edge can let up to 2x the limit through, such as 100 at 0:59 and 100 at 1:00",
+        "It uses a lot of memory per client",
+        "It can never reject a request"
+      ],
+      "answer": 1,
+      "explanation": "The counter resets at each interval boundary, so traffic isn't smoothed and up to double the limit can slip through around the boundary. Sliding window fixes this.",
+      "source": { "section": "Fixed Window" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You need a strict, constant throughput to protect a fragile downstream system that can't handle spiky traffic. Which algorithm does the rule of thumb suggest?",
+      "options": [
+        "Fixed window",
+        "Token bucket",
+        "Leaky bucket",
+        "Sliding window"
+      ],
+      "answer": 2,
+      "explanation": "Leaky bucket processes requests at a constant outflow rate regardless of burst size. Token bucket is the common default because it tolerates bursts.",
+      "source": { "section": "Rule of Thumb" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How does `options.GlobalLimiter` differ from a named policy such as `AddTokenBucketLimiter(\"token\", ...)`?",
+      "options": [
+        "`GlobalLimiter` runs on every request automatically; a named policy applies only where it is attached with `.RequireRateLimiting` or `[EnableRateLimiting]`",
+        "`GlobalLimiter` only applies to anonymous requests",
+        "A named policy runs on every request; `GlobalLimiter` must be attached per endpoint",
+        "They are the same thing with different names"
+      ],
+      "answer": 0,
+      "explanation": "The middleware checks `GlobalLimiter` unconditionally, in addition to any named policy the endpoint also has.",
+      "source": { "section": "3. Per-User / Per-IP Limiting (Partitioned)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the end-to-end flow of one request through the partitioned global limiter in order.",
+      "steps": [
+        "The middleware calls the global limiter",
+        "The lambda checks `context.User.Identity` and picks the username or IP as the key",
+        "`PartitionedRateLimiter` looks up the bucket for that key, creating one only if the key is new",
+        "`AcquireAsync` is called on that bucket",
+        "The request proceeds if a lease is acquired; otherwise, with `QueueLimit = 0`, it fails with 429"
+      ],
+      "explanation": "The factory runs only the first time a key is seen; after that the same bucket instance and its remaining tokens are reused, which is what makes the limit per client.",
+      "source": { "section": "Putting It Together — End-to-End Flow for One Request" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Each client gets a token bucket with `TokenLimit = 20`, `TokensPerPeriod = 5`, `ReplenishmentPeriod = 10s` and `QueueLimit = 0`. What does that allow?",
+      "options": [
+        "Exactly 5 requests per 10 seconds, with no bursts",
+        "20 requests per second, queuing the rest",
+        "Unlimited requests, because `AutoReplenishment` refills instantly",
+        "A burst of up to 20, then about 0.5 requests per second, with rejection as soon as the bucket is empty"
+      ],
+      "answer": 3,
+      "explanation": "The bucket holds 20 tokens and refills 5 every 10 seconds. `QueueLimit = 0` means no queuing, so an empty bucket rejects immediately.",
+      "source": { "section": "3. Per-User / Per-IP Limiting (Partitioned)" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Your API runs as three instances behind a load balancer, using the built-in limiters. What is the problem, and the lesson's fix?",
+      "options": [
+        "The built-in limiters refuse to start on more than one instance; switch to a fixed window",
+        "Limiter state is in memory, so each instance counts separately; use Redis-backed rate limiting as shared state",
+        "The load balancer resets all buckets; disable `AutoReplenishment`",
+        "There is no problem; instances share counters automatically"
+      ],
+      "answer": 1,
+      "explanation": "Built-in limiter state doesn't sync across instances. A Redis-backed limiter such as `AddRedisTokenBucketLimiter` lets all instances see the same counters.",
+      "source": { "section": "4. Distributed Rate Limiting (Redis)" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "lesson": "configuration",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "With `Host.CreateDefaultBuilder(args)`, put the configuration sources in order from lowest to highest priority.",
+      "steps": [
+        "`appsettings.json`",
+        "`appsettings.{Environment}.json`",
+        "User Secrets (in Development only)",
+        "Environment variables",
+        "Command-line arguments"
+      ],
+      "explanation": "Later sources override earlier ones: the base JSON file is overridden by the environment file, then user secrets, then environment variables, and command-line arguments have the highest priority.",
+      "source": { "section": "Configuration Precedence (from lowest → highest priority)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`appsettings.json` sets `App:Name` to `MyApp` and `App:MaxItems` to 50. `appsettings.Development.json` sets only `App:MaxItems` to 20. In Development, what values does the app see?",
+      "options": [
+        "`Name` is missing and `MaxItems` is 20, because the environment file replaces the whole `App` section",
+        "`Name` is `MyApp` and `MaxItems` is 50, because `appsettings.json` wins",
+        "`Name` is `MyApp` and `MaxItems` is 20, because JSON keys merge and matching keys are overridden",
+        "The app fails to start, because the key is defined twice"
+      ],
+      "answer": 2,
+      "explanation": "JSON keys merge; values in `appsettings.{ENV}.json` override `appsettings.json` only for matching keys, so `Name` keeps its default and `MaxItems` becomes 20.",
+      "source": { "section": "Key points" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Do you need to rebuild the app to run it with a different `ASPNETCORE_ENVIRONMENT` value?",
+      "options": [
+        "Yes; the environment is compiled into the binaries",
+        "No; the environment is read when the app starts, so the same build only needs a restart",
+        "Yes, unless you delete the other `appsettings.*.json` files",
+        "No, and the app picks up the new value without a restart"
+      ],
+      "answer": 1,
+      "explanation": "ASP.NET Core reads the environment at run time, at startup, not at build time. The same build can be deployed everywhere; only a restart is required after changing the variable.",
+      "source": { "section": "How ASP.NET Core Actually Works" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which environment variable should a console or Worker app use to pick its environment?",
+      "options": [
+        "`ASPNETCORE_ENVIRONMENT`",
+        "`APPSETTINGS_ENVIRONMENT`",
+        "`DOTNET_ENVIRONMENT`",
+        "`HOST_ENVIRONMENT`"
+      ],
+      "answer": 2,
+      "explanation": "The note lists `ASPNETCORE_ENVIRONMENT` for ASP.NET Core web apps and `DOTNET_ENVIRONMENT` for console / Worker apps; using the wrong one is a common mistake.",
+      "source": { "section": "2. Using wrong variable name" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which configuration key does `config.GetConnectionString(\"Default\")` read?",
+      "options": [
+        "`ConnectionStrings:Default`",
+        "`Default:ConnectionString`",
+        "`App:Default`",
+        "The environment variable `DEFAULT`"
+      ],
+      "answer": 0,
+      "explanation": "`GetConnectionString(\"Default\")` is the common pattern for reading `ConnectionStrings:Default`.",
+      "source": { "section": "OPTION 2 — Manual ConfigurationBuilder (small tools or early bootstrap)" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "What do you get from `new ConfigurationBuilder()...Build()` compared with `Host.CreateDefaultBuilder()`?",
+      "options": [
+        "The same features, but with a shorter startup",
+        "Only `IConfiguration`; you must set up DI, logging, app lifetime and hosted services yourself",
+        "DI and logging, but no `appsettings.json` support",
+        "A full application host, including background services"
+      ],
+      "answer": 1,
+      "explanation": "`ConfigurationBuilder` is a low-level, configuration-only builder: it gives `IConfiguration` but no DI, logging or lifetime management. `Host.CreateDefaultBuilder()` sets all of these up automatically.",
+      "source": { "section": "ConfigurationBuilder – LOW LEVEL" },
+      "reviewed": false
+    }
+  ]
+}

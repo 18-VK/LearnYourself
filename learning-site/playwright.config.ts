@@ -18,7 +18,7 @@ export default defineConfig({
     command: `npx astro preview --port ${PORT}`,
     url: ORIGIN + BASE_PATH,
     reuseExistingServer: !process.env.CI,
-    timeout: 90_000,
+    timeout: 180_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });

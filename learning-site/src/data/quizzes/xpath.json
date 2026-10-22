@@ -1,0 +1,84 @@
+{
+  "lesson": "xpath",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In the sample library XML, every `<book>` sits inside a `<section>`. Which expression returns all three `<book>` elements?",
+      "options": [
+        "`/library/book`",
+        "`/book`",
+        "`//book`",
+        "`./book`"
+      ],
+      "answer": 2,
+      "explanation": "`//` is descendant-or-self, so `//book` finds book nodes anywhere below, no matter how deeply they are nested. `/` only steps to direct children.",
+      "source": { "section": "#### 1. `//` — descendant-or-self" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`doc` holds the lesson's sample library XML (titles: *Mastering C#*, *XML Basics*, *Space Odyssey*). What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "foreach (XmlNode n in doc.SelectNodes(\"//book[contains(title,'XML')]\"))\n    Console.WriteLine(n[\"title\"].InnerText);"
+      },
+      "options": [
+        "`XML Basics`",
+        "`Mastering C#` and `XML Basics`",
+        "All three titles",
+        "Nothing, because `contains()` needs an attribute"
+      ],
+      "answer": 0,
+      "explanation": "`contains(title,'XML')` keeps only books whose title contains \"XML\", which is book B2, so its title `XML Basics` is printed.",
+      "source": { "section": "#### 7. Functions" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does `//section/@name` return for the sample XML?",
+      "options": [
+        "The two `<section>` elements with all their books",
+        "The values `Programming` and `Fiction`",
+        "Every `name` element inside a section",
+        "Only `Programming`, the first match"
+      ],
+      "answer": 1,
+      "explanation": "`@` selects attributes, so the expression returns the `name` attribute of each `<section>`: `Programming` and `Fiction`.",
+      "source": { "section": "#### 4. `@` — attribute selector" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The books cost 49.99 (B1), 29.50 (B2) and 19.99 (B3). What does `//book[price > 30]` return?",
+      "options": [
+        "Books B2 and B3",
+        "The `<price>` element 49.99",
+        "All three books, with prices compared as text",
+        "Book B1"
+      ],
+      "answer": 3,
+      "explanation": "A predicate `[...]` filters the selected nodes; only B1 has a price greater than 30, and the expression returns the `<book>` itself, not its price.",
+      "source": { "section": "#### 6. Predicates `[...]` — filters" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You have already selected a `<title>` node. What does `../@id` return?",
+      "options": [
+        "The `id` attribute of its parent `<book>`",
+        "The `id` attribute of the `<title>` itself",
+        "Every `id` attribute in the document",
+        "The text of the `<title>`"
+      ],
+      "answer": 0,
+      "explanation": "`..` moves to the parent node, so `../@id` reads the parent book's `id` attribute; `.` would stay on the current node.",
+      "source": { "section": "#### 3. `.` and `..` — current node and parent" },
+      "reviewed": false
+    }
+  ]
+}

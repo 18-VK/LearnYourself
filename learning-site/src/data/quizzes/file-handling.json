@@ -1,0 +1,95 @@
+{
+  "lesson": "file-handling",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "You must never overwrite an existing file. Which `FileMode` should you open the `FileStream` with?",
+      "options": [
+        "`FileMode.Create`",
+        "`FileMode.CreateNew`",
+        "`FileMode.Truncate`",
+        "`FileMode.OpenOrCreate`"
+      ],
+      "answer": 1,
+      "explanation": "`CreateNew` throws if the file exists and otherwise creates a new one, which is the safe choice. `Create` creates a new file or overwrites an existing one.",
+      "source": { "section": "FileMode — meanings & when to use" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A folder holds millions of files and you want to stop after the first few matches. Which method fits better?",
+      "options": [
+        "`Directory.GetFiles`, because it returns a `string[]` with every match at once",
+        "`Directory.CreateDirectory`, because it lists files as it creates the folder",
+        "`Directory.EnumerateFiles`, because it returns files lazily as you iterate",
+        "`File.ReadAllText`, because it reads the whole folder"
+      ],
+      "answer": 2,
+      "explanation": "`GetFiles` is eager and loads the entire result set into memory. `EnumerateFiles` returns an `IEnumerable<string>` evaluated lazily, which suits huge directories and stopping early.",
+      "source": { "section": "`Directory.GetFiles(path, pattern)` vs `Directory.EnumerateFiles(path, pattern)`" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "When should you use `FileStream` directly rather than `StreamReader` / `StreamWriter`?",
+      "options": [
+        "For binary files such as images or PDFs, because `FileStream` works with bytes",
+        "For text files, because `FileStream` handles encodings",
+        "For JSON and config files, because `FileStream` reads lines",
+        "Never; `StreamReader` / `StreamWriter` handle both bytes and text"
+      ],
+      "answer": 0,
+      "explanation": "`FileStream` works with bytes and has no encoding handling, so it suits binary files. `StreamReader` / `StreamWriter` work with characters and strings, handle encodings and suit text files like logs or JSON.",
+      "source": { "section": "🔑 Where They Fit vs FileStream" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You write lines with a `StreamWriter`, but the file still looks empty. Which behavior explains this?",
+      "options": [
+        "`StreamWriter` only writes when the file already exists",
+        "`WriteLine` writes to the console, not to the file",
+        "`StreamWriter` writes bytes, so text is not visible",
+        "`StreamWriter` buffers content, so it may not be written until `Flush()` or `Close()`"
+      ],
+      "answer": 3,
+      "explanation": "`StreamWriter` has buffering: content may not be written to the file until `Flush()` or `Close()` (disposing it with `using` closes it).",
+      "source": { "section": "2. StreamWriter" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You open a file with `FileShare.None`. What can other processes do with it while you hold it?",
+      "options": [
+        "They can read it but not write to it",
+        "They can't open it at all",
+        "They can delete it",
+        "They can read and write it freely"
+      ],
+      "answer": 1,
+      "explanation": "`FileShare` controls what others may do while you hold the file; `None` means no other process or stream may open it.",
+      "source": { "section": "FileShare — concurrency control" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "How does `File.ReadLines(path)` differ from `File.ReadAllText(path)`?",
+      "options": [
+        "`ReadLines` returns an `IEnumerable<string>` and reads lazily line by line; `ReadAllText` reads the entire file into one string",
+        "`ReadLines` is asynchronous; `ReadAllText` is synchronous",
+        "`ReadLines` only works with binary files",
+        "There is no difference; both return a `string[]`"
+      ],
+      "answer": 0,
+      "explanation": "`File.ReadLines` returns an `IEnumerable<string>` that reads lazily line by line, while `File.ReadAllText` reads the entire file and suits small files.",
+      "source": { "section": "1) Simple text file — synchronous" },
+      "reviewed": false
+    }
+  ]
+}

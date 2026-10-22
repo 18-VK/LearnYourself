@@ -1,0 +1,94 @@
+{
+  "lesson": "hash-bfs-dfs",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`graph` is `{ 1: [2, 3], 2: [4], 3: [4], 4: [] }`. What does `BFS(graph, 1, 4)` return?",
+      "code": {
+        "lang": "csharp",
+        "source": "int BFS(Dictionary<int, List<int>> graph, int start, int target)\n{\n    var queue = new Queue<(int node, int dist)>();\n    var visited = new HashSet<int> { start };\n    queue.Enqueue((start, 0));\n\n    while (queue.Count > 0)\n    {\n        var (node, dist) = queue.Dequeue();\n        if (node == target) return dist;\n\n        foreach (int next in graph.GetValueOrDefault(node, new List<int>()))\n            if (visited.Add(next))               // Add returns false if already present\n                queue.Enqueue((next, dist + 1));\n    }\n    return -1;\n}"
+      },
+      "options": [
+        "2",
+        "3",
+        "-1",
+        "1"
+      ],
+      "answer": 0,
+      "explanation": "BFS explores level by level: nodes 2 and 3 are at distance 1, and node 4 is first reached from 2 at distance 2, which is the shortest path length.",
+      "source": {
+        "section": "Breadth-First Search (BFS)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In the BFS code, what does `if (visited.Add(next))` achieve?",
+      "options": [
+        "It sorts the neighbours before they are enqueued",
+        "It removes the node from the graph once visited",
+        "It enqueues a node only the first time it is seen, because `Add` returns `false` if it is already present",
+        "It throws if the graph contains a cycle"
+      ],
+      "answer": 2,
+      "explanation": "`HashSet<T>.Add` returns `false` for a value already in the set, so the same check both marks the node visited and stops it being enqueued twice.",
+      "source": {
+        "section": "Breadth-First Search (BFS)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You need the shortest path in an unweighted grid. Which search does the lesson pick?",
+      "options": [
+        "DFS",
+        "BFS",
+        "Binary search",
+        "Hash lookup"
+      ],
+      "answer": 1,
+      "explanation": "BFS explores level by level with a `Queue<T>`, so the first time it reaches the target is along a shortest path in an unweighted graph.",
+      "source": {
+        "section": "Breadth-First Search (BFS)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The graph is very deep and recursive DFS risks a stack overflow. What does the lesson suggest?",
+      "options": [
+        "Sort the adjacency lists first",
+        "Use a `HashSet<T>` instead of a graph",
+        "Increase the recursion depth with a larger `visited` set",
+        "Use BFS or an iterative DFS"
+      ],
+      "answer": 3,
+      "explanation": "The quick-pick table lists BFS or iterative DFS (with an explicit `Stack<T>`) for very deep graphs, and DFS for very wide graphs where a BFS queue would be memory heavy.",
+      "source": {
+        "section": "Depth-First Search (DFS)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Hash-based search is O(1) on average. Which of these is one of its drawbacks?",
+      "options": [
+        "It needs the input to be sorted",
+        "It cannot answer ordering or range queries such as \"next greater\" or \"between a and b\"",
+        "It is O(log n) per lookup",
+        "It only works on integer keys"
+      ],
+      "answer": 1,
+      "explanation": "Hashing jumps straight to a bucket, so it keeps no order: no range queries. It also uses extra memory, relies on correct `Equals`/`GetHashCode`, and can hit O(n) with heavy collisions.",
+      "source": {
+        "section": "9. Hash-Based Search"
+      },
+      "reviewed": false
+    }
+  ]
+}

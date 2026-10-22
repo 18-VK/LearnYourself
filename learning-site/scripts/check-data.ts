@@ -23,6 +23,7 @@ const raw = JSON.parse(fs.readFileSync(ctxFile, 'utf8')) as {
   topics: { id: string; title: string; subtopics?: string[]; notCoveredYet?: boolean }[];
   interviewSlices: { rel: string; start: number; end: number }[];
   omitted: Record<string, number[]>;
+  recovered?: Record<string, { start: number; end: number; lang: string; labelLine?: number }[]>;
   falsePositives: string[];
 };
 const errors: string[] = [];
@@ -30,6 +31,7 @@ const warnings: string[] = [];
 const result = checkData({
   ...raw,
   omitted: new Map(Object.entries(raw.omitted).map(([k, v]) => [k, new Set(v)])),
+  recovered: new Map(Object.entries(raw.recovered ?? {})),
   falsePositives: new Set(raw.falsePositives),
   errors,
   warnings,

@@ -1,0 +1,80 @@
+{
+  "lesson": "race-conditions-and-deadlocks",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In `DeadlockDemo`, `t1` runs `lock (lockA) { ... lock (lockB) ... }` and `t2` runs `lock (lockB) { ... lock (lockA) ... }`. Why can the program hang forever?",
+      "options": [
+        "`Thread.Sleep(100)` inside a `lock` is not allowed and freezes the thread",
+        "Each thread holds its first lock while waiting for the lock the other holds",
+        "`Join()` is called before the threads have started",
+        "Two `lock` statements can never be nested in C#"
+      ],
+      "answer": 1,
+      "explanation": "`t1` locks `lockA` then waits for `lockB`, while `t2` locks `lockB` then waits for `lockA`; neither releases its first lock, so both wait permanently. The fix is a consistent lock order.",
+      "source": { "section": "#### Classic deadlock: inconsistent lock ordering" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does replacing `lock` with `Monitor.TryEnter(lockA, 1000)` give you?",
+      "options": [
+        "It acquires both locks atomically, so ordering no longer matters",
+        "It makes the lock reentrant across threads",
+        "It gives up after the timeout, so the thread can handle it instead of waiting permanently",
+        "It releases the lock automatically after one second of work"
+      ],
+      "answer": 2,
+      "explanation": "`Monitor.TryEnter` with a timeout returns `false` if the lock isn't acquired in time, so the code can handle the timeout and avoid a permanent wait; acquired locks are released in `finally`.",
+      "source": { "section": "#### Fix 2 — use `Monitor.TryEnter` with timeout (avoid permanent wait)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Ten threads each run `counter++` 100,000 times on a shared `static int counter`, with no locking. Why is the final value usually less than 1,000,000?",
+      "options": [
+        "`counter++` is not atomic, so concurrent updates overwrite each other and increments are lost",
+        "`int` overflows before it reaches 1,000,000",
+        "`Join()` stops some threads before they finish their loops",
+        "Each thread works on its own copy of a `static` field"
+      ],
+      "answer": 0,
+      "explanation": "This is a race condition: several threads modify shared data concurrently and `counter++` is not atomic, so updates are lost.",
+      "source": { "section": "#### Example: lost increments" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "For a simple shared counter, which fix does the lesson call fast and atomic?",
+      "options": [
+        "Marking the loop body with `Thread.Sleep(0)`",
+        "Starting each thread with `IsBackground = true`",
+        "Calling `Monitor.TryEnter` without a timeout",
+        "`Interlocked.Increment(ref counter)`"
+      ],
+      "answer": 3,
+      "explanation": "Fix B, `Interlocked`, is described as fast and atomic and best for simple atomic operations; Fix A wraps `counter++` in a `lock`.",
+      "source": { "section": "#### Fix B — `Interlocked` (fast, atomic)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A WPF method calls `GetDataAsync().Result` on the UI thread and hangs. What is the first fix the lesson gives?",
+      "options": [
+        "Call `.Wait()` instead of `.Result`",
+        "Don't block: `await GetDataAsync()` all the way up",
+        "Run the method inside `lock (this)`",
+        "Increase the `Task.Delay` so the UI thread finishes first"
+      ],
+      "answer": 1,
+      "explanation": "`.Result` blocks the UI thread while the continuation tries to resume on that same captured context. The fix is not to block and use `await` all the way; library code can also use `ConfigureAwait(false)`.",
+      "source": { "section": "#### Async/await deadlock (UI or legacy SynchronizationContext)" },
+      "reviewed": false
+    }
+  ]
+}

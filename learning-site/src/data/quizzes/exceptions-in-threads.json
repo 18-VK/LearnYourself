@@ -1,0 +1,65 @@
+{
+  "lesson": "exceptions-in-threads",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In `Practice5()`, each worker thread calls `cts.Token.ThrowIfCancellationRequested()`, and `Main` wraps `thrdlow.Join()` and `thrdHigh.Join()` in a `try/catch (OperationCanceledException)`. Why does that catch never run?",
+      "options": [
+        "`Join()` swallows every exception thrown by the thread it waits for",
+        "The exception is thrown on the worker thread, and threads don't pass exceptions to the caller",
+        "`ThrowIfCancellationRequested()` never throws inside a `while` loop",
+        "The catch only works if the threads are started in the opposite order"
+      ],
+      "answer": 1,
+      "explanation": "The `try/catch` surrounds `Join()` on the main thread, but the exception is thrown in the worker thread, and threads do not propagate exceptions automatically to the caller.",
+      "source": { "section": "### 1️⃣ Key observation" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "With a thread created via `new Thread(...)`, how can the main thread catch an exception that the thread throws and doesn't handle?",
+      "options": [
+        "By wrapping `t.Start()` in a `try/catch`",
+        "By wrapping `t.Join()` in a `try/catch`",
+        "By setting `IsBackground = true` before starting it",
+        "It can't with a normal `try/catch`; the thread must handle it or you use a `Task`"
+      ],
+      "answer": 3,
+      "explanation": "The main thread cannot catch exceptions from other threads using a normal `try/catch`, and in .NET Core an unhandled one may terminate the process; the fixes are to catch inside the thread or to use `Task`.",
+      "source": { "section": "### 2️⃣ Behavior of exceptions in threads" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You must keep using a raw `Thread`. Where should the `try/catch` for `OperationCanceledException` go?",
+      "options": [
+        "Inside the thread's delegate, around the loop and the `ThrowIfCancellationRequested()` call",
+        "Around the `new Thread(...)` constructor call",
+        "Around `cts.Cancel()` on the main thread",
+        "In a `finally` block after `Join()`"
+      ],
+      "answer": 0,
+      "explanation": "Option A puts the `try/catch` inside the thread itself, so the thread that throws the exception is the one that handles it.",
+      "source": { "section": "#### Option A: Catch inside the thread itself" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does switching the workers from `Thread` to `Task.Run` let the main thread see their exceptions?",
+      "options": [
+        "Tasks run on the main thread, so there is only one thread",
+        "Tasks never throw; they return an error code instead",
+        "A `Task` propagates its exception to the caller when you `Wait()` or `await` it",
+        "`Task.Run` retries the delegate until it stops throwing"
+      ],
+      "answer": 2,
+      "explanation": "`Task` automatically propagates exceptions to the calling thread when you `Wait()` or `await` it, so the exception bubbles to the main thread.",
+      "source": { "section": "#### Option B: Use `Task` instead of `Thread`" },
+      "reviewed": false
+    }
+  ]
+}

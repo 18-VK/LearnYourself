@@ -1,0 +1,106 @@
+{
+  "lesson": "winforms-dialogs",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "You build a custom tool window as a `Form` and want the user to keep working in the main form while it is open. How should you display it?",
+      "options": [
+        "Call `ShowDialog(this)` and check the `DialogResult`",
+        "Call `Show()` so it opens as a modeless window",
+        "Call `MessageBox.Show(...)` with the form as the owner"
+      ],
+      "answer": 1,
+      "explanation": "Modeless windows allow interaction with other windows while open and are shown with `Show()`. `ShowDialog()` is modal and blocks the calling window until the dialog closes.",
+      "source": {
+        "section": "Modal vs Modeless dialogs — quick note"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the steps of the standard pattern for showing a WinForms dialog in order.",
+      "steps": [
+        "Create the dialog (for example `new OpenFileDialog()`)",
+        "Optionally set properties such as `Filter`, `InitialDirectory` or `Title`",
+        "Call `ShowDialog(this)` and inspect the returned `DialogResult`",
+        "If accepted, read the results (file path, selected color, …)",
+        "Dispose the dialog (with `using` or `Dispose()`)"
+      ],
+      "explanation": "The lesson's pattern is create → configure → `ShowDialog(this)` and check the result → read the results if accepted → dispose.",
+      "source": {
+        "section": "Modal vs Modeless dialogs — quick note"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "An `OpenFileDialog` has `Multiselect = true`. After `ShowDialog` returns `DialogResult.OK`, where do you read every file the user picked?",
+      "options": [
+        "`ofd.FileName`",
+        "`ofd.SelectedPath`",
+        "`ofd.InitialDirectory`",
+        "`ofd.FileNames`"
+      ],
+      "answer": 3,
+      "explanation": "`FileName` holds a single selection, while `FileNames` is the array of all selected files, which the lesson loops over with `foreach (var file in ofd.FileNames)`.",
+      "source": {
+        "section": "2) OpenFileDialog — pick file(s) to open"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why does the Save button's handler call `this.ValidateChildren()` before saving?",
+      "options": [
+        "It forces `Validating`/`Validated` on all children, even ones never focused",
+        "It clears every error icon the `ErrorProvider` set, so the form starts clean again",
+        "It shows one MessageBox that lists each invalid field by name",
+        "It turns `AutoValidate` back on so every later focus change validates the field"
+      ],
+      "answer": 0,
+      "explanation": "`ValidateChildren()` forces validation on all child controls by triggering their `Validating` and `Validated` events, so fields that never lost focus are still checked before saving.",
+      "source": {
+        "section": "7) ErrorProvider — inline validation UI (not a modal dialog)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Using the lesson's `Prompt.ShowDialog(text, caption)` helper, what does the call return if the user clicks **Cancel**?",
+      "options": [
+        "An empty string",
+        "`DialogResult.Cancel`",
+        "`null`",
+        "Whatever was typed in the text box"
+      ],
+      "answer": 2,
+      "explanation": "The helper returns `prompt.ShowDialog() == DialogResult.OK ? inputBox.Text : null`, and the Cancel button's `DialogResult` is `Cancel`, so it returns `null`. That is why the usage checks `if (name != null)`.",
+      "source": {
+        "section": "8) Custom Input Dialog (InputBox) — simple modal prompt"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Which `Filter` string gives the dialog a single \"Images\" entry that matches both `.png` and `.jpg` files?",
+      "options": [
+        "`\"Images|*.png|*.jpg\"`",
+        "`\"Images (*.png;*.jpg)|*.png;*.jpg\"`",
+        "`\"Images (*.png,*.jpg)|*.png,*.jpg\"`",
+        "`\"*.png;*.jpg|Images\"`"
+      ],
+      "answer": 1,
+      "explanation": "A filter is a list of description | extension pairs separated by `|`, and several extensions in one pair are separated by `;`, as in `Images (*.png;*.jpg)|*.png;*.jpg`.",
+      "source": {
+        "section": "Filter"
+      },
+      "reviewed": false
+    }
+  ]
+}

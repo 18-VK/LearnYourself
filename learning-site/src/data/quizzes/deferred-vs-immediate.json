@@ -1,0 +1,88 @@
+{
+  "lesson": "deferred-vs-immediate",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "The source list changes after the query is defined but before it is iterated. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var numbers = new List<int> { 1, 2, 3, 4 };\n\n// Query definition (not executed yet)\nvar query = numbers.Where(n => n > 2);\n\n// Modify the source BEFORE iterating\nnumbers.Add(5);\n\n// Now execution happens during iteration\nforeach (var n in query)\n{\n    Console.WriteLine(n);\n}"
+      },
+      "options": [
+        "`3`, `4`",
+        "`3`, `4`, `5`",
+        "`1`, `2`, `3`, `4`, `5`",
+        "`5`"
+      ],
+      "answer": 1,
+      "explanation": "`Where` is deferred: the query runs only during the `foreach`, after `5` was added, so the new element is included.",
+      "source": { "section": "#### 🕓 Deferred Execution Example" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "This time the query ends with `ToList()`. What does it print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var numbers = new List<int> { 1, 2, 3, 4 };\n\n// Query executed immediately by ToList()\nvar result = numbers.Where(n => n > 2).ToList();\n\n// Modify the source\nnumbers.Add(5);\n\n// Iterating over the result\nforeach (var n in result)\n{\n    Console.WriteLine(n);\n}"
+      },
+      "options": [
+        "`3`, `4`, `5`",
+        "`1`, `2`, `3`, `4`",
+        "`5`",
+        "`3`, `4`"
+      ],
+      "answer": 3,
+      "explanation": "`ToList()` executed the query immediately and stored the results, so adding `5` to the source afterwards doesn't affect `result`.",
+      "source": { "section": "#### ⚡ Immediate Execution Example" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "`var query = numbers.Where(n => n > 2);` has been defined. Which of these makes it execute?",
+      "options": [
+        "Calling `query.Count()`",
+        "Assigning it to another variable: `var q2 = query;`",
+        "Calling `numbers.Add(5)`",
+        "Nothing; it already ran when it was defined"
+      ],
+      "answer": 0,
+      "explanation": "A deferred query runs only when you iterate it or call a method that forces execution, such as materialization methods (`ToList()`, `ToArray()`) or aggregation methods (`Count()`, `Sum()`, `First()`, `Any()`).",
+      "source": { "section": "### 🧭 3️⃣ How to Trigger Immediate Execution" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "According to the comparison table, what is a cost of immediate execution compared with deferred execution?",
+      "options": [
+        "It always reflects the latest data, so results can change unexpectedly",
+        "It re-runs the query every time you loop over the result",
+        "It uses more memory, because it stores all the results",
+        "It cannot be used with `Count()` or `Sum()`"
+      ],
+      "answer": 2,
+      "explanation": "Immediate execution stores all results (higher memory) and uses a snapshot taken at query time, while deferred execution streams results and reflects the latest data.",
+      "source": { "section": "### Why It Matters" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How does `ToLookup()` differ from `GroupBy()`?",
+      "options": [
+        "`ToLookup()` is deferred, while `GroupBy()` runs immediately",
+        "`ToLookup()` executes immediately and returns a read-only `ILookup` you can reuse",
+        "`ToLookup()` allows only one value per key",
+        "`ToLookup()` returns a mutable `Dictionary<TKey, List<TElement>>`"
+      ],
+      "answer": 1,
+      "explanation": "`ToLookup()` groups like `GroupBy()`, but it executes immediately and returns an immutable one-to-many `ILookup<TKey, TElement>` that is already evaluated and can be reused efficiently.",
+      "source": { "section": "### `ToLookup()`" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "lesson": "dialog-service-and-message-bus",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why does `MainViewModel` take an `IDialogService` in its constructor instead of calling `MessageBox.Show(\"Saved\")` directly?",
+      "options": [
+        "`MessageBox.Show` cannot be called from inside a command's action",
+        "`IDialogService` is a built-in WPF interface that shows dialogs faster",
+        "It depends on an interface, so it stays free of UI types and testable",
+        "It lets the ViewModel open any Window by calling `Window.Show()`"
+      ],
+      "answer": 2,
+      "explanation": "`IDialogService` is a custom abstraction, not built into WPF. Calling `MessageBox.Show` in a ViewModel couples it to the UI, breaks MVVM and is hard to unit test; depending on the interface avoids all three.",
+      "source": {
+        "section": "Want to communicate between windows? - use IDialogService Interface"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`InputDialogViewModel` has no reference to its Window. How does clicking OK close the dialog?",
+      "options": [
+        "It raises `RequestClose`, which is wired to `window.Close()`",
+        "`Accept()` calls `Application.Current.MainWindow.Close()` directly",
+        "The OK button's `IsDefault` property closes the window automatically",
+        "The DialogService polls `DialogResult` until it is no longer `null`"
+      ],
+      "answer": 0,
+      "explanation": "The ViewModel only raises `RequestClose`. When the DialogService creates the window it wires `vm.RequestClose += () => window.Close();`, so the ViewModel never touches the Window.",
+      "source": {
+        "section": "4. Dialog Service implementation (WPF-only)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why must `IMessageBus` be registered with `services.AddSingleton<IMessageBus, MessageBus>()`?",
+      "options": [
+        "Singletons are the only lifetime that can hold a `lock` object",
+        "So publishers and subscribers all share the same bus instance",
+        "Because `MessageBus` references WPF types such as the Dispatcher",
+        "So each ViewModel gets its own private copy of the handlers"
+      ],
+      "answer": 1,
+      "explanation": "Subscribers are stored inside the bus instance. If each component got its own bus, a publisher's messages would never reach subscribers registered on a different instance.",
+      "source": {
+        "section": "2. Register in DI (singleton)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put one successful pass of the `AutoSaveService` loop in order.",
+      "steps": [
+        "Wait `_intervalSeconds` with `Task.Delay`",
+        "Check `_tracker.HasChanges` (skip the rest if nothing changed)",
+        "Call `_repository.SaveChangesAsync()`",
+        "Call `_tracker.MarkClean()`",
+        "Publish `new AutoSaveStatus(DateTime.Now, true, \"Autosave completed\")` on the bus"
+      ],
+      "explanation": "Each pass delays, skips if the tracker is clean, saves, marks the tracker clean, then publishes an `AutoSaveStatus` that subscribers such as `MainViewModel` react to.",
+      "source": {
+        "section": "1. Background autosave service"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`AutoSaveService` publishes from a background thread, and the subscriber updates `StatusText`, which is bound to the UI. If the bus calls `handler?.Invoke(message);` directly, what happens?",
+      "options": [
+        "WPF automatically switches the handler over to the UI thread",
+        "The message waits in a queue until the window is next activated",
+        "Nothing goes wrong, because property changes are thread-safe",
+        "It runs on the background thread and can crash on UI-bound state"
+      ],
+      "answer": 3,
+      "explanation": "Direct invocation runs on the current thread with no thread switch. WPF has thread affinity, so UI-bound state must be updated through `Dispatcher.Invoke`/`BeginInvoke`, which forces execution on the UI thread.",
+      "source": {
+        "section": "What each line actually does"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Where should `_host.StopAsync()` be called in a WPF app that uses the Generic Host?",
+      "options": [
+        "Only in `App.OnExit()`, in `App.xaml.cs`",
+        "In the main ViewModel's Close command",
+        "Inside each BackgroundService when it finishes",
+        "In the main Window's `Closing` event handler"
+      ],
+      "answer": 0,
+      "explanation": "Stopping the host signals cancellation to all BackgroundServices, waits for them, flushes logs and disposes services, which is application-level work. Call it only in `App.OnExit()`, never from ViewModels, Windows or BackgroundServices.",
+      "source": {
+        "section": "✅ Short answer (memorize this)"
+      },
+      "reviewed": false
+    }
+  ]
+}

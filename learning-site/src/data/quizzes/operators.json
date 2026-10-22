@@ -1,0 +1,77 @@
+{
+  "lesson": "operators",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "int a = 5;\nConsole.WriteLine(a++);"
+      },
+      "options": [
+        "5",
+        "6",
+        "4",
+        "It does not compile"
+      ],
+      "answer": 0,
+      "explanation": "Postfix `a++` uses the current value first and then increments, so it prints `5` and `a` becomes 6 afterwards.",
+      "source": { "section": "5. Unary Operators" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "What does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "int a = 5, b = 3;\nConsole.WriteLine(a & b);"
+      },
+      "options": [
+        "7",
+        "8",
+        "6",
+        "1"
+      ],
+      "answer": 3,
+      "explanation": "`&` is bitwise AND, and the table shows `5 & 3` → 1. (`5 | 3` is 7 and `5 ^ 3` is 6.)",
+      "source": { "section": "6. Bitwise Operators" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "What does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "string name = null;\nConsole.WriteLine(name ?? \"Default\");"
+      },
+      "options": [
+        "An empty line",
+        "Default",
+        "null",
+        "It throws a `NullReferenceException`"
+      ],
+      "answer": 1,
+      "explanation": "`??` returns the left-hand operand if it is not null, otherwise the right-hand one. `name` is null, so the output is `Default`.",
+      "source": { "section": "8. Null-Coalescing Operators" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `obj?.MethodName();` do?",
+      "options": [
+        "It calls `MethodName` only if `obj` is not null, avoiding a `NullReferenceException`",
+        "It always calls `MethodName` and returns null if the method fails",
+        "It checks whether `MethodName` exists on `obj` at run time",
+        "It creates `obj` first if it is null and then calls `MethodName`"
+      ],
+      "answer": 0,
+      "explanation": "`?.` is null-conditional access: it avoids `NullReferenceException` and is used for safe access to properties or methods of objects that might be null.",
+      "source": { "section": "8. Null-Coalescing Operators" },
+      "reviewed": false
+    }
+  ]
+}

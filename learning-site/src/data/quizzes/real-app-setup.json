@@ -1,0 +1,107 @@
+{
+  "lesson": "real-app-setup",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why does the DI setup start by removing `StartupUri=\"MainWindow.xaml\"` from `App.xaml`?",
+      "options": [
+        "Because `StartupUri` only works in .NET Framework WPF projects",
+        "So `App.xaml.cs` creates the window with an injected ViewModel",
+        "Because App.xaml may not contain any attributes once DI is used",
+        "So the app starts faster by skipping the XAML parsing step"
+      ],
+      "answer": 1,
+      "explanation": "Removing `StartupUri` means WPF no longer creates the window for you, so `OnStartup` can build the container, create `MainWindow` with `DataContext = Services.GetRequiredService<MainViewModel>()` and show it.",
+      "source": {
+        "section": "Step 1 — Remove StartupUri"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "order-steps",
+      "prompt": "Put the steps of `OnStartup` in `App.xaml.cs`, used as the composition root, in order.",
+      "steps": [
+        "Create a `ServiceCollection`",
+        "Register services and ViewModels (`AddSingleton`, `AddTransient`)",
+        "Build the provider with `services.BuildServiceProvider()`",
+        "Create `MainWindow` with `DataContext = Services.GetRequiredService<MainViewModel>()`",
+        "Call `mainWindow.Show()`"
+      ],
+      "explanation": "The composition root registers services, builds the DI container, then creates the main window with an injected ViewModel and shows it.",
+      "source": {
+        "section": "Step 2 — Use App.xaml.cs as Composition Root"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why does this lesson call `<Window.DataContext><vm:MainViewModel /></Window.DataContext>` a common mistake?",
+      "options": [
+        "XAML cannot create objects from classes in your own namespaces",
+        "It creates two ViewModel instances for every window you open",
+        "It silently turns every binding in the window into OneTime",
+        "There is no constructor injection, so no DI and poor testability"
+      ],
+      "answer": 3,
+      "explanation": "A ViewModel created in XAML gets no constructor injection, so it cannot receive services from DI and is hard to test. The composition root should resolve and inject it instead.",
+      "source": {
+        "section": "Common mistake ❌"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "In which shutdown scenario is `OnExit` **not** called?",
+      "options": [
+        "The app crashes with an unhandled exception",
+        "The user clicks the window's close button",
+        "Code calls `Application.Shutdown()`",
+        "Windows shuts down while the app is open"
+      ],
+      "answer": 0,
+      "explanation": "`OnExit` runs on normal close, `Application.Shutdown()` and Windows shutdown, but not on an unhandled crash, which is why logging and global exception handlers are critical.",
+      "source": {
+        "section": "Common shutdown scenarios (important)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "With the \"prevent multiple instances\" version of `WindowService.Show<TViewModel>()`, what happens when the user opens Settings while the Settings window is already open?",
+      "options": [
+        "A second Settings window opens on top of the first one",
+        "`Show` throws an `InvalidOperationException` for the duplicate",
+        "The open window is found in `_openWindows` and activated",
+        "The existing window is closed and a fresh one is created"
+      ],
+      "answer": 2,
+      "explanation": "`Show` checks `_openWindows.TryGetValue(type, out var existing)` and calls `existing.Activate()`; a window is only removed from the dictionary by its `Closed` handler.",
+      "source": {
+        "section": "Note : Prevent multiple instances of same window (common need)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "After `services.Configure<ApplicationSettings>(Configuration.GetSection(\"Application\"))`, how does `MainViewModel` read the app name from `appsettings.json`?",
+      "options": [
+        "It reads `App.Configuration[\"Application:Name\"]` from the static property",
+        "It injects `IOptions<ApplicationSettings>` and reads `options.Value.Name`",
+        "It parses `appsettings.json` itself with `File.ReadAllText`",
+        "It is given the value through a XAML `StaticResource`"
+      ],
+      "answer": 1,
+      "explanation": "The settings section is bound to a strongly typed POCO, and ViewModels receive it through `IOptions<T>` constructor injection, keeping them clean and testable.",
+      "source": {
+        "section": "3. Use appsettings in ViewModels (clean MVVM)"
+      },
+      "reviewed": false
+    }
+  ]
+}

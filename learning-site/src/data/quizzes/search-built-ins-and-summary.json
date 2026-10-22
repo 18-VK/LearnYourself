@@ -1,0 +1,94 @@
+{
+  "lesson": "search-built-ins-and-summary",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`arr` is the sorted array `{ 1, 3, 5, 9, 11 }`. What is `insertPos` after this code runs?",
+      "code": {
+        "lang": "csharp",
+        "source": "int idx = Array.BinarySearch(arr, 7);\nif (idx < 0)\n{\n    int insertPos = ~idx;   // bitwise complement gives where it WOULD be inserted\n}"
+      },
+      "options": [
+        "-4",
+        "4",
+        "3",
+        "2"
+      ],
+      "answer": 2,
+      "explanation": "`7` is not in the array, so `Array.BinarySearch` returns a negative value, the complement of the insertion index. `~idx` recovers that index: 3, between `5` and `9`.",
+      "source": {
+        "section": "Built-in C# Search Methods"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which built-in search requires the collection to be sorted first?",
+      "options": [
+        "`Array.BinarySearch(arr, x)`",
+        "`list.Contains(x)`",
+        "`Array.IndexOf(arr, x)`",
+        "`HashSet<T>.Contains`"
+      ],
+      "answer": 0,
+      "explanation": "`Array.BinarySearch` and `list.BinarySearch` need sorted input and run in O(log n). `IndexOf` and `Contains` are linear scans, and `HashSet<T>.Contains` is O(1) on average.",
+      "source": {
+        "section": "Built-in C# Search Methods"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A problem asks for \"the minimum X such that a condition holds\". Which technique does the cheat guide point to?",
+      "options": [
+        "Lower/upper bound on the input array",
+        "DFS with backtracking",
+        "`HashSet<T>` lookups",
+        "Binary search on answer"
+      ],
+      "answer": 3,
+      "explanation": "\"Minimum X such that condition holds\" and \"maximum minimum\" problems search the answer space, which is binary search on answer.",
+      "source": {
+        "section": "When to Use What (LeetCode Cheat Guide)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "According to the summary table, which search has an O(log log n) average but an O(n) worst case?",
+      "options": [
+        "Exponential search",
+        "Jump search",
+        "Interpolation search",
+        "Ternary search"
+      ],
+      "answer": 2,
+      "explanation": "Interpolation search is very fast on uniformly distributed numbers but falls to O(n) on skewed data.",
+      "source": {
+        "section": "Summary Table"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You need \"nearest\", \"next greater\" or range lookups on data that keeps changing. Which structure does the cheat guide suggest?",
+      "options": [
+        "`SortedSet<T>`",
+        "`HashSet<T>`",
+        "`Queue<T>`",
+        "`Dictionary<TKey,TValue>`"
+      ],
+      "answer": 0,
+      "explanation": "`SortedSet<T>` keeps its elements sorted, so it supports ordered and range queries (for example `GetViewBetween`) that hash-based structures cannot.",
+      "source": {
+        "section": "When to Use What (LeetCode Cheat Guide)"
+      },
+      "reviewed": false
+    }
+  ]
+}

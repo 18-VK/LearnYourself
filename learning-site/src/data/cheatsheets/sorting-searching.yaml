@@ -1,0 +1,212 @@
+id: sorting-searching
+title: 'Sorting & searching complexity'
+summary: 'Time and space complexity, stability and when-to-use guidance for the classic sorts and searches, plus .NET''s built-in sort and search methods and the binary search templates.'
+groups:
+  - title: Sorting algorithms
+    table:
+      columns: [Algorithm, Best, Average, Worst, Space, Stable, In-place]
+      from: { lesson: sorting-summary, section: 'Summary Table' }
+      rows:
+        - ['Bubble', 'O(n)', 'O(n²)', 'O(n²)', 'O(1)', 'Yes', 'Yes']
+        - ['Selection', 'O(n²)', 'O(n²)', 'O(n²)', 'O(1)', 'No', 'Yes']
+        - ['Insertion', 'O(n)', 'O(n²)', 'O(n²)', 'O(1)', 'Yes', 'Yes']
+        - ['Merge', 'O(n log n)', 'O(n log n)', 'O(n log n)', 'O(n)', 'Yes', 'No']
+        - ['Quick', 'O(n log n)', 'O(n log n)', 'O(n²)', 'O(log n)', 'No', 'Yes']
+        - ['Heap', 'O(n log n)', 'O(n log n)', 'O(n log n)', 'O(1)', 'No', 'Yes']
+        - ['Counting', 'O(n+k)', 'O(n+k)', 'O(n+k)', 'O(n+k)', 'Yes', 'No']
+        - ['Radix', 'O(d(n+b))', 'O(d(n+b))', 'O(d(n+b))', 'O(n+b)', 'Yes', 'No']
+        - ['Bucket', 'O(n+k)', 'O(n+k)', 'O(n²)', 'O(n+k)', 'Depends', 'No']
+
+  - title: Which sort to use
+    table:
+      columns: [Situation, Use]
+      from: { lesson: sorting-summary, section: 'When to Use What (LeetCode Context)' }
+      rows:
+        - ['Default, "just sort it"', '`Array.Sort()` / `list.Sort()`: introsort, O(n log n) worst case, in place']
+        - ['Need stability (keep the order of equal elements)', 'Merge sort, or LINQ `OrderBy()` (stable); `Array.Sort()` is not guaranteed stable']
+        - ['Small known integer range (e.g. 0–100)', 'Counting sort']
+        - ['Nearly sorted data or very small n (< 20)', 'Insertion sort']
+        - ['Guaranteed worst case with O(1) space', 'Heap sort']
+        - ['Fixed-width large integers, huge n', 'Radix sort']
+        - ['Whiteboard: write a sort from memory', 'Quick sort or merge sort']
+
+  - title: Sorting facts worth remembering
+    items:
+      - term: 'Stable sort'
+        desc: 'Keeps the original relative order of elements that compare equal: matters when sorting records by one field.'
+        from: { lesson: stability-and-simple-sorts, section: 'Quick concept: What does "stable" mean?' }
+      - term: '`Array.Sort()` is introsort'
+        desc: 'Quicksort that falls back to heapsort when recursion gets too deep, with insertion sort for small partitions.'
+        from: { lesson: merge-and-quick-sort, section: '5. Quick Sort' }
+      - term: 'Quicksort worst case'
+        desc: 'A sorted (or reverse-sorted) array with a naive first/last pivot splits n−1 / 0 every time: n levels × O(n) = n(n−1)/2 = O(n²). A random or median-of-three pivot avoids it.'
+        from: { lesson: merge-and-quick-sort, section: 'Why quicksort is O(n²) on a sorted array' }
+      - term: 'Merge sort'
+        desc: 'Guaranteed O(n log n) and stable, but O(n) extra space for arrays. Good for linked lists and external (on-disk) sorting; slower than quicksort in practice on arrays.'
+        from: { lesson: merge-and-quick-sort, section: '4. Merge Sort' }
+      - term: 'Heap sort'
+        desc: 'O(n log n) with O(1) extra space, but poor cache locality makes it slower than quicksort in practice; not stable.'
+        from: { lesson: heap-sort, section: '6. Heap Sort' }
+      - term: 'Insertion sort'
+        desc: 'Adaptive (O(n) on sorted input), stable and online; used inside hybrid sorts below ~16–32 elements.'
+        from: { lesson: stability-and-simple-sorts, section: '3. Insertion Sort' }
+      - term: 'Selection sort'
+        desc: 'Always O(n²), but only O(n) swaps: useful when writes are expensive.'
+        from: { lesson: stability-and-simple-sorts, section: '2. Selection Sort' }
+      - term: 'Counting sort: stable or simple?'
+        desc: 'Plain integers: the simple "count, then write back" version is fine. Objects by key with ties in original order: use the stable cumulative-count version.'
+        from: { lesson: counting-radix-bucket, section: 'Rule of thumb' }
+      - term: 'Radix sort'
+        desc: 'Digit by digit from the least significant, with a stable counting sort per digit. The notes'' version needs a non-empty array of non-negative integers.'
+        from: { lesson: counting-radix-bucket, section: '8. Radix Sort' }
+      - term: 'Bucket sort'
+        desc: 'Near-linear on uniformly distributed input over a known range (the notes'' version assumes [0, 1)); degrades to O(n²) when values cluster in one bucket.'
+        from: { lesson: counting-radix-bucket, section: '9. Bucket Sort' }
+      - term: '`List<T>.Sort(Comparison<T>)`'
+        desc: 'Sorts with a custom comparison delegate; uses `Array.Sort` (introsort), is unstable and O(n log n).'
+        docs: { url: 'https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1.sort', title: 'List<T>.Sort Method (System.Collections.Generic)', accessed: '2026-10-22' }
+
+  - title: Searching algorithms
+    table:
+      columns: [Algorithm, Time (avg), Time (worst), Space, Needs sorted?, Best for]
+      from: { lesson: search-built-ins-and-summary, section: 'Summary Table' }
+      rows:
+        - ['Linear search', 'O(n)', 'O(n)', 'O(1)', 'No', 'Small / unsorted data']
+        - ['Binary search', 'O(log n)', 'O(log n)', 'O(1)', 'Yes', 'Sorted arrays']
+        - ['Lower/upper bound', 'O(log n)', 'O(log n)', 'O(1)', 'Yes', 'Duplicates, insertion point, counts']
+        - ['Binary search on answer', 'O(log R · f)', 'O(log R · f)', 'O(1)', 'Monotonic condition', 'Min/max optimization problems']
+        - ['Jump search', 'O(√n)', 'O(√n)', 'O(1)', 'Yes', 'Backward traversal is expensive']
+        - ['Interpolation search', 'O(log log n)', 'O(n)', 'O(1)', 'Yes (uniform)', 'Uniformly distributed numbers']
+        - ['Exponential search', 'O(log n)', 'O(log n)', 'O(1)', 'Yes', 'Unbounded / target near start']
+        - ['Ternary search', 'O(log n)', 'O(log n)', 'O(1)', 'Unimodal function', 'Peak / valley finding']
+        - ['Hash lookup', 'O(1)', 'O(n)', 'O(n)', 'No', 'Fast membership / frequency']
+        - ['BFS', 'O(V+E)', 'O(V+E)', 'O(V)', '—', 'Shortest path (unweighted)']
+        - ['DFS', 'O(V+E)', 'O(V+E)', 'O(V)', '—', 'Backtracking, connectivity']
+
+  - title: Which search to use
+    table:
+      columns: [Problem says, Use]
+      from: { lesson: search-built-ins-and-summary, section: 'When to Use What (LeetCode Cheat Guide)' }
+      rows:
+        - ['"Find element in sorted array"', 'Binary search']
+        - ['"First / last occurrence", "count of X", "insert position"', 'Lower/upper bound']
+        - ['"Minimum X such that condition holds" / "maximum minimum"', 'Binary search on answer']
+        - ['"Rotated sorted array"', 'Modified binary search: compare `arr[mid]` with `arr[left]` / `arr[right]` to find the sorted half']
+        - ['"Peak element" / "mountain array"', 'Binary search comparing `arr[mid]` with `arr[mid+1]`']
+        - ['"Does X exist?" in unsorted data, repeated queries', '`HashSet<T>`']
+        - ['"Two Sum"-style pair lookups', '`Dictionary<TKey,TValue>`']
+        - ['"Nearest / next greater / range in dynamic data"', '`SortedSet<T>`']
+        - ['"Shortest path in grid / unweighted graph"', 'BFS']
+        - ['"Find any path / explore all combinations"', 'DFS / backtracking']
+        - ['Tiny arrays or a single query', 'Linear search is fine']
+
+  - title: Built-in C# search methods
+    table:
+      columns: [Method, Requires sorted?, Complexity, Notes]
+      from: { lesson: search-built-ins-and-summary, section: 'Built-in C# Search Methods' }
+      rows:
+        - ['`Array.IndexOf(arr, x)`', 'No', 'O(n)', 'Linear scan']
+        - ['`list.Contains(x)` / `list.IndexOf(x)`', 'No', 'O(n)', 'Linear scan']
+        - ['`Array.BinarySearch(arr, x)`', '**Yes**', 'O(log n)', 'Returns a **negative** value (`~insertionIndex`) if not found']
+        - ['`list.BinarySearch(x)`', '**Yes**', 'O(log n)', 'Same negative-complement convention']
+        - ['`HashSet<T>.Contains`', 'No', 'O(1) avg', '']
+        - ['`Dictionary.ContainsKey` / `TryGetValue`', 'No', 'O(1) avg', '']
+        - ['`SortedSet<T>.Contains`', 'No (self-sorted)', 'O(log n)', '`GetViewBetween` for range queries']
+        - ['`SortedSet<T>.Min` / `Max`', '—', 'O(log n)', '']
+    items:
+      - term: 'Insertion point from `BinarySearch`'
+        code: |
+          int idx = Array.BinarySearch(arr, 7);
+          if (idx < 0)
+          {
+              int insertPos = ~idx;   // bitwise complement gives where it WOULD be inserted
+          }
+        lang: csharp
+        from: { lesson: search-built-ins-and-summary, section: 'Built-in C# Search Methods' }
+
+  - title: Binary search templates
+    items:
+      - term: 'Classic binary search'
+        desc: 'Use `left + (right - left) / 2`: `left + right` can overflow `int`. Iterative is O(1) space, recursive O(log n).'
+        code: |
+          int BinarySearch(int[] arr, int target)
+          {
+              int left = 0, right = arr.Length - 1;
+              while (left <= right)
+              {
+                  int mid = left + (right - left) / 2;   // avoids int overflow
+                  if (arr[mid] == target) return mid;
+                  if (arr[mid] < target) left = mid + 1;
+                  else right = mid - 1;
+              }
+              return -1;
+          }
+        lang: csharp
+        from: { lesson: linear-and-binary-search, section: '2. Binary Search' }
+      - term: 'Lower bound'
+        desc: 'First index where `arr[i] >= target`. Upper bound is the same with `arr[mid] <= target`, giving the first index where `arr[i] > target`.'
+        code: |
+          int LowerBound(int[] arr, int target)
+          {
+              int left = 0, right = arr.Length;      // right = Length (exclusive)
+              while (left < right)
+              {
+                  int mid = left + (right - left) / 2;
+                  if (arr[mid] < target) left = mid + 1;
+                  else right = mid;
+              }
+              return left;
+          }
+        lang: csharp
+        from: { lesson: linear-and-binary-search, section: '3. Lower Bound / Upper Bound (Binary Search Variants)' }
+      - term: 'Binary search on the answer'
+        desc: 'When the condition is monotonic (false…false, true…true), search the answer range. Cost: O(log(range) × cost of `IsFeasible`). Cast to `long` before `mid * mid`-style products.'
+        code: |
+          int lo = minPossible, hi = maxPossible;
+          while (lo < hi)
+          {
+              int mid = lo + (hi - lo) / 2;
+              if (IsFeasible(mid)) hi = mid;      // try smaller
+              else lo = mid + 1;                  // need bigger
+          }
+          return lo;
+        lang: csharp
+        from: { lesson: more-array-searches, section: '4. Binary Search on Answer (Very Common in LeetCode)' }
+    table:
+      columns: [Want, Formula]
+      from: { lesson: linear-and-binary-search, section: '3. Lower Bound / Upper Bound (Binary Search Variants)' }
+      rows:
+        - ['First occurrence', '`LowerBound(target)`, valid if `arr[lower] == target`']
+        - ['Last occurrence', '`UpperBound(target) - 1`']
+        - ['Count of target', '`UpperBound(target) - LowerBound(target)`']
+        - ['Insertion position', '`LowerBound(target)`']
+
+  - title: BFS vs DFS
+    table:
+      columns: [Need, Use]
+      from: { lesson: hash-bfs-dfs, section: 'Depth-First Search (DFS)' }
+      rows:
+        - ['Shortest path (unweighted)', 'BFS (`Queue<T>`, level by level)']
+        - ['Explore all possibilities / backtracking', 'DFS (recursion or `Stack<T>`)']
+        - ['Very deep graph (stack overflow risk)', 'BFS or iterative DFS']
+        - ['Very wide graph (memory-heavy queue)', 'DFS']
+    items:
+      - term: 'BFS with a visited set'
+        desc: '`HashSet.Add` returns `false` if the node was already seen, so it marks and tests in one call.'
+        code: |
+          var queue = new Queue<(int node, int dist)>();
+          var visited = new HashSet<int> { start };
+          queue.Enqueue((start, 0));
+
+          while (queue.Count > 0)
+          {
+              var (node, dist) = queue.Dequeue();
+              if (node == target) return dist;
+
+              foreach (int next in graph.GetValueOrDefault(node, new List<int>()))
+                  if (visited.Add(next))               // Add returns false if already present
+                      queue.Enqueue((next, dist + 1));
+          }
+          return -1;
+        lang: csharp
+        from: { lesson: hash-bfs-dfs, section: 'Breadth-First Search (BFS)' }

@@ -1,0 +1,94 @@
+{
+  "lesson": "authorization-policies",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "The policy `\"AdminOrHR\"` calls `policy.RequireRole(\"Admin\")` and `policy.RequireClaim(\"Department\", \"HR\")`. Despite its name, what does it require?",
+      "options": [
+        "Either the Admin role or the HR department claim",
+        "Only the Admin role; the claim is ignored",
+        "Both the Admin role and the `Department` claim with value `HR`",
+        "Only that the user is authenticated"
+      ],
+      "answer": 2,
+      "explanation": "The policy combines a role check and a claim check, and the user must be Admin **and** belong to HR, so the name is misleading.",
+      "source": {
+        "section": "3. Policy-Based Authorization (Recommended)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A `FallbackPolicy` requiring an authenticated user is configured. What happens to a controller action that has no `[Authorize]` attribute?",
+      "options": [
+        "It stays public, because it has no attribute",
+        "It still requires an authenticated user; to make it public you must mark it `[AllowAnonymous]`",
+        "It requires the Admin role",
+        "It returns 404 until an attribute is added"
+      ],
+      "answer": 1,
+      "explanation": "The fallback policy is a \"secure by default\" global rule: endpoints without explicit authorization still require a valid user, and `[AllowAnonymous]` opts out.",
+      "source": {
+        "section": "The Fallback Policy"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "predict-output",
+      "prompt": "A logged-in user who does **not** have the Admin role calls `GET /api/admin/dashboard`. What status code comes back?",
+      "code": {
+        "lang": "csharp",
+        "source": "[ApiController]\n[Route(\"api/[controller]\")]\n[Authorize(Policy = \"AdminOnly\")]\npublic class AdminController : ControllerBase\n{\n    [HttpGet(\"dashboard\")]\n    public IActionResult Dashboard()\n    {\n        return Ok(\"Admin dashboard\");\n    }\n}"
+      },
+      "options": [
+        "200 OK",
+        "401 Unauthorized",
+        "404 Not Found",
+        "403 Forbidden"
+      ],
+      "answer": 3,
+      "explanation": "The user is authenticated but lacks the role that `AdminOnly` requires, so the result is 403. An anonymous caller would get 401 instead.",
+      "source": {
+        "section": "Effect on controllers"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which kind of authorization handles the rule \"a user can only edit their own profile\"?",
+      "options": [
+        "Role-based authorization",
+        "Resource-based authorization, comparing the current user's id with the record being edited",
+        "The fallback policy",
+        "Claim-based authorization with `RequireClaim(\"EmployeeNumber\")`"
+      ],
+      "answer": 1,
+      "explanation": "Roles are too coarse for ownership rules. Resource-based authorization decides per record, for example returning `Forbid()` when the user id doesn't match.",
+      "source": {
+        "section": "4. Resource-Based Authorization"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What does the `\"EmployeeOnly\"` policy, `policy.RequireClaim(\"EmployeeNumber\")`, actually check?",
+      "options": [
+        "That the user has the role `EmployeeNumber`",
+        "That `EmployeeNumber` equals the user's id",
+        "That the JWT contains a claim named `EmployeeNumber`, whatever its value",
+        "That the user is anonymous"
+      ],
+      "answer": 2,
+      "explanation": "It is a claim-based check that ignores roles and only requires the claim to exist; an authenticated user without it gets 403.",
+      "source": {
+        "section": "Custom Policies"
+      },
+      "reviewed": false
+    }
+  ]
+}

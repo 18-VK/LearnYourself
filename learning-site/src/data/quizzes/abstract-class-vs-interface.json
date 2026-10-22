@@ -1,0 +1,80 @@
+{
+  "lesson": "abstract-class-vs-interface",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which can an abstract class contain that an interface is not meant to provide?",
+      "options": [
+        "Method signatures that implementing classes must follow",
+        "Fields, constructors and shared state",
+        "Members that are public",
+        "Nothing; the two are identical apart from the keyword"
+      ],
+      "answer": 1,
+      "explanation": "The differences table says an abstract class can contain fields and constructors and hold shared state, while an interface primarily defines a contract and usually does not hold instance state.",
+      "source": { "section": "Main Differences" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`A` and `B` are both abstract classes. Can `public class C : A, B` compile?",
+      "options": [
+        "Yes, because abstract classes behave like interfaces",
+        "Yes, as long as `C` overrides every abstract member",
+        "No, because C# supports single class inheritance; `C` can inherit only one class",
+        "No, because a class can never inherit from an abstract class"
+      ],
+      "answer": 2,
+      "explanation": "C# supports single class inheritance, so a class cannot inherit multiple abstract classes. It can inherit one class and implement multiple interfaces.",
+      "source": { "section": "7. Can a class inherit multiple abstract classes?" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "`Pet` is abstract and inherits the abstract class `Animal`, which declares `abstract void MakeSound()`. Which class must implement `MakeSound()`?",
+      "options": [
+        "`Pet`, because it inherits `Animal` directly",
+        "Nobody; abstract members never need an implementation",
+        "`Animal`, because it declared the method",
+        "The first concrete class, such as `Dog : Pet`"
+      ],
+      "answer": 3,
+      "explanation": "`Pet` does not have to implement `MakeSound()` because it is also abstract. A concrete class like `Dog` must implement all inherited abstract members.",
+      "source": { "section": "Abstract Class Inheriting Another Abstract Class" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "An abstract class cannot be instantiated. Can it still have a constructor?",
+      "options": [
+        "Yes; its constructor runs when a derived-class object is created",
+        "No; constructors are only allowed in concrete classes",
+        "Yes, but only a `public` one that callers use with `new`",
+        "No; it must use a static factory method instead"
+      ],
+      "answer": 0,
+      "explanation": "An abstract class can have a constructor, and it runs when a derived-class object is created, as with `Dog(string name) : base(name)`.",
+      "source": { "section": "4. Can an abstract class have a constructor?" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`CreditCardPayment` and `CashPayment` are unrelated classes that both need a `Pay()` capability. What does the note recommend?",
+      "options": [
+        "An abstract base class, because they share state",
+        "An interface such as `IPayment`, because different classes need the same capability",
+        "Copying `Pay()` into both classes without a shared type",
+        "Making one class inherit from the other"
+      ],
+      "answer": 1,
+      "explanation": "Use an interface when different classes need to follow the same capability; use an abstract class when there is a strong parent-child relationship with shared code or state.",
+      "source": { "section": "When to Use" },
+      "reviewed": false
+    }
+  ]
+}

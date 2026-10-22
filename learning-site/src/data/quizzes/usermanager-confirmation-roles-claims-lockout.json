@@ -1,0 +1,95 @@
+{
+  "lesson": "usermanager-confirmation-roles-claims-lockout",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "How does the email confirmation token compare with the password reset token?",
+      "options": [
+        "It is a 6-digit code the user types in, unlike the reset token",
+        "It is stored in `AspNetUserTokens`, unlike the reset token",
+        "It never expires, unlike the reset token",
+        "It is the same mechanism, with a different internal purpose string"
+      ],
+      "answer": 3,
+      "explanation": "Email confirmation has the identical shape: a `SecurityStamp`-based token, URL-encoded into a link, with a frontend page in between. Only the purpose string differs (`\"EmailConfirmation\"` instead of `\"ResetPassword\"`).",
+      "source": { "section": "Email confirmation — yes, same pattern as password reset" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How does the OTP pattern differ from the email confirmation link?",
+      "options": [
+        "`GenerateTwoFactorTokenAsync` with `TokenOptions.DefaultEmailProvider` produces a short numeric code the user types in, so there is no link or URL encoding",
+        "OTP tokens are long encrypted blobs that must be URL-encoded twice",
+        "OTP codes are stored in plain text in the `AspNetUsers` table",
+        "OTP skips Identity's token machinery entirely and uses `Random`"
+      ],
+      "answer": 0,
+      "explanation": "The OTP is sent as plain text and verified with `VerifyTwoFactorTokenAsync`. It still uses Identity's token machinery, but the email provider produces a short code rather than an encrypted blob.",
+      "source": { "section": "OTP — completely different pattern, no link involved" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You set `Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(2))`. What is the effect?",
+      "options": [
+        "Only password reset tokens last 2 hours",
+        "Only email confirmation tokens last 2 hours",
+        "Password reset and email confirmation tokens both last 2 hours",
+        "All tokens, including OTP codes and refresh tokens, last 2 hours"
+      ],
+      "answer": 2,
+      "explanation": "Both token types come from `DataProtectorTokenProvider` and share its single options class, so one `TokenLifespan` applies to both. Independent lifespans need separate named providers.",
+      "source": { "section": "Set Token lifespan" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "After registering a custom `\"PasswordReset\"` provider and generating tokens with `GenerateUserTokenAsync(user, \"PasswordReset\", \"ResetPassword\")`, why can't you just call `ResetPasswordAsync`?",
+      "options": [
+        "`ResetPasswordAsync` only accepts tokens shorter than 6 characters",
+        "The built-in method is hardcoded to the default provider, so you verify with `VerifyUserTokenAsync` and reset the password manually",
+        "Custom providers can't be used for passwords at all",
+        "`ResetPasswordAsync` requires the old password as well"
+      ],
+      "answer": 1,
+      "explanation": "`ResetPasswordAsync` and `ConfirmEmailAsync` look for tokens from the default provider under specific internal purpose strings, so tokens from custom-named providers aren't recognised.",
+      "source": { "section": "Solution: register custom named providers, each with its own lifespan" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A system account has `LockoutEnabled = false`, and a script fails its password 10 times. What happens?",
+      "options": [
+        "The account is locked for `DefaultLockoutTimeSpan` after the 5th failure",
+        "The account is locked permanently",
+        "`AccessFailedCount` stays at 0 because failures aren't counted",
+        "The failures are still counted, but `IsLockedOutAsync` stays false"
+      ],
+      "answer": 3,
+      "explanation": "`LockoutEnabled` is a per-user switch. With it off, `AccessFailedAsync` still increments the counter, but no lockout is enforced.",
+      "source": { "section": "Lockout" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "With `MaxFailedAccessAttempts = 5` and `LockoutEnabled = true`, what does `AccessFailedAsync` do on the 5th bad attempt?",
+      "options": [
+        "Deletes the user's password so they must reset it",
+        "Increments the count and sets `LockoutEnd` to now plus `DefaultLockoutTimeSpan`",
+        "Resets `AccessFailedCount` to 0 without locking",
+        "Sets `LockoutEnabled` to false"
+      ],
+      "answer": 1,
+      "explanation": "Once the count reaches the threshold, `AccessFailedAsync` calls `SetLockoutEndDateAsync(user, UtcNow.Add(DefaultLockoutTimeSpan))` for you. A user is locked out while `LockoutEnd` is in the future.",
+      "source": { "section": "Lockout" },
+      "reviewed": false
+    }
+  ]
+}

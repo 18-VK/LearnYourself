@@ -1,0 +1,112 @@
+{
+  "lesson": "global-exception-handling",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "Inside `GlobalExceptionHandler.TryHandleAsync`, `exception` is `new KeyNotFoundException(\"Task 7 not found\")` and the request path is `/api/tasks/7`. What `ProblemDetails` is built?",
+      "code": {
+        "lang": "csharp",
+        "source": "var (statusCode, title) = exception switch\n{\n    UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, \"Unauthorized\"),\n    KeyNotFoundException => (StatusCodes.Status404NotFound, \"Resource Not Found\"),\n    _ => (StatusCodes.Status500InternalServerError, \"Internal Server Error\")\n};\n\n// 3. Create a standardized ProblemDetails response (RFC 7807)\nvar problemDetails = new ProblemDetails\n{\n    Status = statusCode,\n    Title = title,\n    Detail = exception.Message, // CAUTION: Use generic messages in production for 500 errors\n    Instance = httpContext.Request.Path\n};"
+      },
+      "options": [
+        "Status 500, Title \"Internal Server Error\", Detail \"Task 7 not found\", Instance \"/api/tasks/7\"",
+        "Status 401, Title \"Unauthorized\", Detail \"Task 7 not found\", Instance \"/api/tasks/7\"",
+        "Status 404, Title \"Task 7 not found\", Detail \"Resource Not Found\", Instance \"/api/tasks/7\"",
+        "Status 404, Title \"Resource Not Found\", Detail \"Task 7 not found\", Instance \"/api/tasks/7\""
+      ],
+      "answer": 3,
+      "explanation": "The `switch` matches `KeyNotFoundException`, giving 404 and \"Resource Not Found\"; `Detail` is the exception message and `Instance` is the request path.",
+      "source": {
+        "section": "By Create a sealed class that implements IExceptionHandler"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does returning `true` from `IExceptionHandler.TryHandleAsync` mean?",
+      "options": [
+        "The exception should be rethrown",
+        "The exception has been handled and the response has been written",
+        "The request should be retried",
+        "Logging succeeded, but the response is still empty"
+      ],
+      "answer": 1,
+      "explanation": "The handler logs, maps the exception, writes a `ProblemDetails` response and returns `true` to indicate that the exception has been handled.",
+      "source": {
+        "section": "By Create a sealed class that implements IExceptionHandler"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Why can a `try`/`catch` around `await _next(context)` in a middleware catch an exception thrown inside a controller?",
+      "options": [
+        "Because ASP.NET Core copies the exception to every middleware",
+        "Because controllers run before middleware",
+        "Because the middleware wraps everything after it, so the exception travels back up the pipeline to it",
+        "Because `_next` swallows exceptions and returns an error code"
+      ],
+      "answer": 2,
+      "explanation": "Each middleware wraps the next one; `_next(context)` runs the rest of the pipeline, so an exception thrown further down propagates back into the caller's `catch`.",
+      "source": {
+        "section": "Custom middleware concept (example : Global exception handling) - Recommended"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the execution of a request through the global exception middleware in order when the controller throws.",
+      "steps": [
+        "Request arrives and `ExceptionMiddleware.InvokeAsync()` runs",
+        "Inside the `try`, it calls `_next(context)`",
+        "The controller executes and an exception occurs",
+        "Control returns to the middleware",
+        "The `catch` block runs and logs the error",
+        "A custom error response is returned"
+      ],
+      "explanation": "The middleware's `try` wraps the rest of the pipeline; when the controller throws, control comes back to the middleware, whose `catch` logs and writes the response.",
+      "source": {
+        "section": "Full Execution Flow"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A custom middleware class implements no interface. How does `app.UseMiddleware<GlobalExceptionMiddleware>()` know what to call?",
+      "options": [
+        "By convention: a constructor taking a `RequestDelegate`, and a method named exactly `Invoke` or `InvokeAsync` that returns `Task` and takes `HttpContext` first, found with reflection",
+        "It calls the class's `ToString()` method",
+        "It requires the class to be marked `[Middleware]`",
+        "It calls every public method on the class in alphabetical order"
+      ],
+      "answer": 0,
+      "explanation": "`UseMiddleware` is hard-coded to look for those exact names using reflection at startup, so no interface is needed.",
+      "source": {
+        "section": "If you are using a custom middleware class (like one named GlobalExceptionMiddleware) rather than the built-in IExceptionHandler interface"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "Why does the lesson move checks like \"user must be 18+\" and \"email already exists\" out of the controller?",
+      "options": [
+        "Controllers cannot return `BadRequest`",
+        "It makes the request faster because services run in parallel",
+        "EF Core queries are not allowed in controllers",
+        "Business logic in the controller is hard to reuse and unit test and gets duplicated; a service keeps the controller thin"
+      ],
+      "answer": 3,
+      "explanation": "The service enforces the rules (throwing `BusinessException` in the example), and the controller only handles the request and response.",
+      "source": {
+        "section": "✅ Correct: Move to Service Layer"
+      },
+      "reviewed": false
+    }
+  ]
+}

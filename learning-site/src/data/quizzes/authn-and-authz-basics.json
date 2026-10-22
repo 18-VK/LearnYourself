@@ -1,0 +1,89 @@
+{
+  "lesson": "authn-and-authz-basics",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the difference between authentication and authorization?",
+      "options": [
+        "Authentication decides what you may do; authorization checks who you are",
+        "They are two names for the same check",
+        "Authentication verifies who the user or client is; authorization decides what that authenticated caller is allowed to do",
+        "Authentication is only for APIs; authorization is only for web pages"
+      ],
+      "answer": 2,
+      "explanation": "Authentication answers \"Who are you?\" and authorization answers \"What are you allowed to do?\"; they are distinct but work together.",
+      "source": {
+        "section": "Authentication and authorization"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How does an API key differ from a JWT?",
+      "options": [
+        "An API key carries the user's name and roles inside it",
+        "An API key is usually just a random identifier; the server looks it up in its database to find the owner, status and limits",
+        "An API key is signed with the server's private key",
+        "An API key expires every 15 minutes"
+      ],
+      "answer": 1,
+      "explanation": "Unlike a JWT, an API key contains no user information. The server checks the key against its key store to learn which application is calling and what it may do.",
+      "source": {
+        "section": "API Keys"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "How do OAuth 2.0 and OpenID Connect relate?",
+      "options": [
+        "OAuth 2.0 is an authentication protocol; OIDC adds authorization on top",
+        "They are unrelated; OIDC is a token format like JWT",
+        "OIDC replaced OAuth 2.0, which is no longer used",
+        "OAuth 2.0 is mainly an authorization framework for delegated access; OIDC is an identity layer built on top of it for verifying who the user is"
+      ],
+      "answer": 3,
+      "explanation": "OAuth lets a user grant an app limited access without sharing a password, but it is not authentication by itself; OIDC adds a standard way to verify identity.",
+      "source": {
+        "section": "OAuth 2.0 / OpenID Connect (OIDC)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "order-steps",
+      "prompt": "Put the \"Login with Google\" steps for Spotify in order.",
+      "steps": [
+        "The user chooses \"Login with Google\" in Spotify",
+        "Google asks: \"Allow Spotify to access your profile?\"",
+        "The user clicks Allow",
+        "Spotify receives an access token"
+      ],
+      "explanation": "With OAuth the user grants consent at the authorization server (Google), and the client app (Spotify) receives an access token instead of the user's password.",
+      "source": {
+        "section": "OAuth 2.0"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "In a hospital system, a doctor may view a patient record only if they are assigned to that patient and are on the hospital network. Which authorization model is this?",
+      "options": [
+        "Role-Based Access Control (RBAC)",
+        "Attribute-Based Access Control (ABAC)",
+        "HTTP Basic Authentication",
+        "API key authentication"
+      ],
+      "answer": 1,
+      "explanation": "The decision depends on several attributes of the user, the resource and the environment, which is ABAC; RBAC would decide on the job title alone.",
+      "source": {
+        "section": "Attribute-Based Access Control (ABAC)"
+      },
+      "reviewed": false
+    }
+  ]
+}

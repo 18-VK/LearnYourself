@@ -1,0 +1,65 @@
+{
+  "lesson": "var-and-dynamic",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "After `var x = 10;`, what is true about `x`?",
+      "options": [
+        "Its type is decided at run time from whatever is assigned last",
+        "It can later hold a string, because `var` accepts any type",
+        "It is inferred as `int` at compile time, and that type is fixed",
+        "It is stored as `object` and cast back to `int` when used"
+      ],
+      "answer": 2,
+      "explanation": "`var` is implicitly typed: the compiler infers the type at compile time from the right-hand expression, and the type can't change afterwards.",
+      "source": { "section": "`var` type" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What do you give up by declaring a variable as `dynamic`?",
+      "options": [
+        "The ability to assign a value of a different type later",
+        "Compile-time type checking, so mistakes show up as run-time exceptions",
+        "The ability to call methods on the variable",
+        "Nothing; `dynamic` is just a shorter way to write `var`"
+      ],
+      "answer": 1,
+      "explanation": "`dynamic` is resolved at run time and the compiler skips type checking, so it is not type safe and risks run-time exceptions. In exchange, its type can change on the fly.",
+      "source": { "section": "Comparison" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which statement about performance and tooling matches the comparison table?",
+      "options": [
+        "`var` is fast with full IntelliSense; `dynamic` is slower because it uses the runtime binder and has limited IntelliSense",
+        "`dynamic` is faster because it skips compile-time checks",
+        "Both have the same speed and IntelliSense, because both are resolved at compile time",
+        "`var` is slower because the compiler must infer the type on every call"
+      ],
+      "answer": 0,
+      "explanation": "The table marks `var` as fast (no binding needed) with full IntelliSense, and `dynamic` as slower (uses the runtime binder) with limited IntelliSense.",
+      "source": { "section": "Comparison" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which job is the note's example of a good fit for `dynamic` rather than `var`?",
+      "options": [
+        "Holding an anonymous type such as `new { Name = \"Aman\", Age = 25 }`",
+        "Avoiding redundant typing for `new Dictionary<string, List<int>>()`",
+        "Storing the result of a LINQ query",
+        "COM interop, such as creating `Excel.Application` and setting `excel.Visible = true`"
+      ],
+      "answer": 3,
+      "explanation": "The usage section lists JSON/`ExpandoObject`, reflection or late-bound APIs and COM interop under `dynamic`; anonymous types, LINQ queries and avoiding redundant typing are listed under `var`.",
+      "source": { "section": "Usage" },
+      "reviewed": false
+    }
+  ]
+}

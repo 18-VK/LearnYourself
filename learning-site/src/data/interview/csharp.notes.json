@@ -1,0 +1,730 @@
+{
+  "topic": "csharp",
+  "questions": [
+    {
+      "id": "csharp-create-object-of-abstract-class",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can we create an object of an abstract class?",
+      "shortAnswer": "No. However, we can create a derived-class object and store it in an abstract-class reference",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "## Common Interview Questions",
+        "until": "### 2. Can we create an object of an interface?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "Animal animal = new Dog(\"Bruno\");"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "## Common Interview Questions",
+          "until": "### 2. Can we create an object of an interface?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-create-object-of-interface",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can we create an object of an interface?",
+      "shortAnswer": "No. Use an implementing class",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 2. Can we create an object of an interface?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "IPrintable item = new Report();"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 2. Can we create an object of an interface?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-abstract-class-inherit-another-class",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can an abstract class inherit another class?",
+      "shortAnswer": "Yes. It can inherit from one concrete or abstract class. It can also implement multiple interfaces.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 3. Can an abstract class inherit another class?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public abstract class Employee : Person, IWorker, IDisposable\n{\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 3. Can an abstract class inherit another class?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-abstract-class-constructor",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can an abstract class have a constructor?",
+      "shortAnswer": "Yes. Its constructor runs when a derived-class object is created",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 4. Can an abstract class have a constructor?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public abstract class Base\n{\n    protected Base()\n    {\n        Console.WriteLine(\"Base constructor\");\n    }\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 4. Can an abstract class have a constructor?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-abstract-class-non-abstract-methods",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can an abstract class contain non-abstract methods?",
+      "shortAnswer": "Yes",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 5. Can an abstract class contain non-abstract methods?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public abstract class Shape\n{\n    public abstract double Area();\n\n    public void Display()\n    {\n        Console.WriteLine(\"This is a shape\");\n    }\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 5. Can an abstract class contain non-abstract methods?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-abstract-class-inherit-interface",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can an abstract class inherit an interface?",
+      "shortAnswer": "Yes",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 6. Can an abstract class inherit an interface?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public interface IWorker\n{\n    void Work();\n}\n\npublic abstract class Employee : IWorker\n{\n    public abstract void Work();\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 6. Can an abstract class inherit an interface?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-inherit-multiple-abstract-classes",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can a class inherit multiple abstract classes?",
+      "shortAnswer": "No. C# supports single class inheritance",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 7. Can a class inherit multiple abstract classes?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "// public class C : A, B // ❌ Not allowed if A and B are classes"
+      },
+      "pitfalls": [
+        "`public class C : A, B` ❌ Not allowed if A and B are classes"
+      ],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 7. Can a class inherit multiple abstract classes?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-implement-multiple-interfaces",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can a class implement multiple interfaces?",
+      "shortAnswer": "Yes",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 8. Can a class implement multiple interfaces?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public class Printer : IPrintable, IDisposable\n{\n    public void Print() { }\n    public void Dispose() { }\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 8. Can a class implement multiple interfaces?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-interface-default-implementation",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "mid",
+      "question": "Can an interface contain implementation?",
+      "shortAnswer": "Modern C# interfaces can contain default method implementations, but interfaces are still primarily used to define contracts",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 9. Can an interface contain implementation?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public interface ILogger\n{\n    void Log(string message)\n    {\n        Console.WriteLine(message);\n    }\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 9. Can an interface contain implementation?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "modern-csharp-syntax"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-abstract-class-or-interface",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "mid",
+      "question": "Abstract class or interface: which should you choose?",
+      "shortAnswer": "Choose an abstract class when you need shared code, fields, constructors, or state. … Choose an interface when you need a common capability across different types.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+        "section": "### 10. Abstract class or interface: which should you choose?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/AbstractClass_vs_Interface.md",
+          "section": "### 10. Abstract class or interface: which should you choose?"
+        }
+      ],
+      "relatedLessons": [
+        "abstract-class-vs-interface",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-vs-class-main-difference",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "What is the main difference between a struct and a class?",
+      "shortAnswer": "A struct is a value type, while a class is a reference type. Struct assignment copies the value; class assignment copies the reference.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "## Interview Questions",
+        "until": "### 2. Are structs always stored on the stack and classes always stored on the heap?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "## Interview Questions",
+          "until": "### 2. Are structs always stored on the stack and classes always stored on the heap?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-stack-class-heap",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "mid",
+      "question": "Are structs always stored on the stack and classes always stored on the heap?",
+      "shortAnswer": "No. Storage depends on context. … The key distinction is value semantics versus reference semantics.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 2. Are structs always stored on the stack and classes always stored on the heap?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 2. Are structs always stored on the stack and classes always stored on the heap?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-inheritance",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can a struct inherit from a class or another struct?",
+      "shortAnswer": "No. A struct cannot inherit from user-defined classes or structs. It implicitly derives from `System.ValueType`, but it can implement multiple interfaces.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 3. Can a struct inherit from a class or another struct?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 3. Can a struct inherit from a class or another struct?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class",
+        "oop"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-class-implement-interface",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can a class implement an interface?",
+      "shortAnswer": "Yes. A class can inherit from one base class and implement multiple interfaces.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 4. Can a class implement an interface?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 4. Can a class implement an interface?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class",
+        "abstract-class-vs-interface"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-implement-interface",
+      "topic": "csharp",
+      "subtopic": "oop",
+      "difficulty": "junior",
+      "question": "Can a struct implement an interface?",
+      "shortAnswer": "Yes",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 5. Can a struct implement an interface?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public struct Point : IComparable<Point>\n{\n    public int X { get; set; }\n    public int Y { get; set; }\n\n    public int CompareTo(Point other)\n    {\n        return X.CompareTo(other.X);\n    }\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 5. Can a struct implement an interface?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class",
+        "abstract-class-vs-interface"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-members",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "Can a struct contain methods, properties, and constructors?",
+      "shortAnswer": "Yes. A struct can contain fields, properties, methods, constructors, events, and operators.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 6. Can a struct contain methods, properties, and constructors?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 6. Can a struct contain methods, properties, and constructors?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-parameterless-constructor",
+      "topic": "csharp",
+      "subtopic": "modern-features",
+      "difficulty": "mid",
+      "question": "Can a struct have a parameterless constructor?",
+      "shortAnswer": "Modern C# allows a struct to declare a parameterless constructor. Structs also have a default initialization in which fields receive their default values.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 7. Can a struct have a parameterless constructor?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "public struct Counter\n{\n    public int Value { get; }\n\n    public Counter()\n    {\n        Value = 10;\n    }\n}"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 7. Can a struct have a parameterless constructor?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-null",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "Can a struct be null?",
+      "shortAnswer": "A normal struct cannot be null. Use a nullable value type",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 8. Can a struct be null?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "Point? point = null;"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 8. Can a struct be null?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-class-assignment",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "What happens when a class object is assigned to another variable?",
+      "shortAnswer": "The reference is copied. Both variables refer to the same object.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 9. What happens when a class object is assigned to another variable?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 9. What happens when a class object is assigned to another variable?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-struct-assignment",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "What happens when a struct is assigned to another variable?",
+      "shortAnswer": "The value is copied. The two variables are independent values.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 10. What happens when a struct is assigned to another variable?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 10. What happens when a struct is assigned to another variable?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-what-is-boxing",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "junior",
+      "question": "What is boxing?",
+      "shortAnswer": "Boxing converts a value type into an `object` or interface reference by wrapping a copy of the value in an object.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 11. What is boxing?"
+      },
+      "code": {
+        "lang": "csharp",
+        "source": "int number = 10;\nobject value = number;"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 11. What is boxing?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class",
+        "collections"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-why-immutable-structs",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "mid",
+      "question": "Why are structs usually recommended to be immutable?",
+      "shortAnswer": "Because structs are copied by value.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 12. Why are structs usually recommended to be immutable?"
+      },
+      "pitfalls": [
+        "Mutable structs can lead to accidental modifications of a copy rather than the original value, especially when returned from properties or collections."
+      ],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 12. Why are structs usually recommended to be immutable?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-when-to-choose-class-over-struct",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "mid",
+      "question": "When should you choose a class instead of a struct?",
+      "shortAnswer": "Choose a class when the type is large, needs inheritance, has identity, requires shared state, or is expensive to copy.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 13. When should you choose a class instead of a struct?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 13. When should you choose a class instead of a struct?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-when-to-choose-struct-over-class",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "mid",
+      "question": "When should you choose a struct instead of a class?",
+      "shortAnswer": "Choose a struct for a small, value-like type that is usually immutable and does not require inheritance.",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 14. When should you choose a struct instead of a class?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 14. When should you choose a struct instead of a class?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "csharp-equals-for-classes-vs-structs",
+      "topic": "csharp",
+      "subtopic": "types-and-memory",
+      "difficulty": "mid",
+      "question": "What is the difference between `Equals()` for classes and structs?",
+      "shortAnswer": "Classes use reference equality by default unless equality is overridden. Structs inherit value-based equality behavior, comparing their fields by default",
+      "answerFrom": {
+        "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+        "section": "### 15. What is the difference between `Equals()` for classes and structs?"
+      },
+      "pitfalls": [],
+      "followUps": [],
+      "origin": "notes",
+      "sources": [
+        {
+          "file": "Phase1-CSharp_And_DotNet_core_fundamental/6.C#_OOP/Struct_vs_Class.md",
+          "section": "### 15. What is the difference between `Equals()` for classes and structs?"
+        }
+      ],
+      "relatedLessons": [
+        "struct-vs-class",
+        "records-equality-partial"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    }
+  ]
+}

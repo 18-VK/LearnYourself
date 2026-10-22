@@ -1,4 +1,5 @@
 /** Lesson page behaviour. Visualizer code is only fetched when a visualizer scrolls into view. */
+import { itemKeys, liText } from '../viz/roadmap/keys';
 import { loadProgress, updateProgress } from './progress';
 
 interface LessonData {
@@ -89,16 +90,14 @@ onScroll();
 // ── Persistent checklists (checklist and roadmap lessons) ─────────────────────────────────
 const body = document.getElementById('lesson-body');
 if (body && (data.kind === 'checklist' || data.kind === 'roadmap')) {
-  const keyOf = (li: HTMLElement) => {
-    const t = (li.firstChild?.textContent ?? li.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
-    let h = 0;
-    for (let i = 0; i < t.length; i++) h = (Math.imul(31, h) + t.charCodeAt(i)) | 0;
-    return `k${(h >>> 0).toString(36)}`;
-  };
-  const items = [...body.querySelectorAll<HTMLLIElement>('li')].filter((li) => !li.closest('pre, .code-frame'));
+  // Keys come from each item's own text (src/viz/roadmap/keys.ts), the same keys the roadmap graph uses,
+  // so a tick in either place is the same stored entry. Items inside visualizers are not checklist items.
+  const items = [...body.querySelectorAll<HTMLLIElement>('li')].filter((li) => !li.closest('pre, .code-frame, .viz-slot'));
+  const texts = items.map(liText);
+  const keys = itemKeys(texts);
   const checks: HTMLInputElement[] = [];
   const saved = loadProgress().checklists[data.id] ?? {};
-  for (const li of items) {
+  items.forEach((li, i) => {
     let box = li.querySelector<HTMLInputElement>(':scope > input[type="checkbox"]');
     if (!box) {
       box = document.createElement('input');
@@ -108,12 +107,12 @@ if (body && (data.kind === 'checklist' || data.kind === 'roadmap')) {
       li.style.marginLeft = '-1.3em';
     }
     box.disabled = false;
-    const key = keyOf(li);
+    const key = keys[i]!;
     box.dataset.key = key;
     box.checked = Boolean(saved[key]);
-    box.setAttribute('aria-label', (li.textContent ?? '').trim().slice(0, 80));
+    box.setAttribute('aria-label', texts[i]!.replace(/\s+/g, ' ').trim().slice(0, 80));
     checks.push(box);
-  }
+  });
   const status = document.createElement('p');
   status.className = 'muted';
   status.style.fontSize = '14px';
@@ -131,6 +130,12 @@ if (body && (data.kind === 'checklist' || data.kind === 'roadmap')) {
       if (box.checked) list[box.dataset.key!] = true;
       else delete list[box.dataset.key!];
     });
+    renderStatus();
+  });
+  // ticks made in the roadmap graph (or in another tab) show up here too
+  window.addEventListener('ly:progress', () => {
+    const now = loadProgress().checklists[data.id] ?? {};
+    for (const c of checks) c.checked = Boolean(now[c.dataset.key!]);
     renderStatus();
   });
   renderStatus();

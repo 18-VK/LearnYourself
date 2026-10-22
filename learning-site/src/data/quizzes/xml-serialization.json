@@ -1,0 +1,99 @@
+{
+  "lesson": "xml-serialization",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which members of an object does `XmlSerializer` write to XML?",
+      "options": [
+        "Its public fields and properties, but not methods, private fields or read-only properties",
+        "All fields and properties, including private ones, but not methods",
+        "Only members marked with `[XmlElement]` or `[XmlAttribute]`",
+        "Its public methods and properties, but not fields"
+      ],
+      "answer": 0,
+      "explanation": "XML serialization converts an object's public state (fields and properties) into XML; it does not include methods, private fields or read-only properties.",
+      "source": { "section": "## XML serialization and deserialization" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "Ignoring the `<?xml ...?>` declaration and whitespace, what XML does this write to `person.xml`?",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Person {\n    public string Name;\n    public int Age;\n}\n\n// Create a person object.\nvar person = new Person { Name = \"Alice\", Age = 30 };\n\n// Create an XmlSerializer for the Person type.\nvar serializer = new XmlSerializer(typeof(Person));\n\n// Serialize to a file.\nusing (var writer = new StreamWriter(\"person.xml\"))\n{\n    serializer.Serialize(writer, person);\n}"
+      },
+      "options": [
+        "`<Person Name=\"Alice\" Age=\"30\" />`",
+        "`<person><name>Alice</name><age>30</age></person>`",
+        "`<Person><Name>Alice</Name><Age>30</Age></Person>`",
+        "`<Person><string>Alice</string><int>30</int></Person>`"
+      ],
+      "answer": 2,
+      "explanation": "`XmlSerializer` uses the class and member names by default, and public fields become elements, so the output is `<Person>` with `<Name>` and `<Age>` children.",
+      "source": { "section": "### Basic Serialization" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In this class, `ID` is marked `[XmlAttribute]`. How is a `Product` with `ID = 123` serialized?\n\n`public class Product { [XmlAttribute] public int ID; public string Name; }`",
+      "options": [
+        "`<Product><ID>123</ID><Name>...</Name></Product>`",
+        "`<Product ID=\"123\"><Name>...</Name></Product>`",
+        "`<Product ID=\"123\" Name=\"...\" />`",
+        "`<ID Product=\"123\"><Name>...</Name></ID>`"
+      ],
+      "answer": 1,
+      "explanation": "`[XmlAttribute]` serializes that one member as an XML attribute; the other public members stay elements by default.",
+      "source": { "section": "#### `[XmlAttribute]`" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "A `Team` class has `[XmlArray(\"Players\")]` and `[XmlArrayItem(\"Player\")]` on its `List<string> Members`. What does the list serialize to?",
+      "options": [
+        "`<Members><string>Alice</string><string>Bob</string></Members>`",
+        "`<Player><Players>Alice</Players><Players>Bob</Players></Player>`",
+        "`<Members><Player>Alice</Player><Player>Bob</Player></Members>`",
+        "`<Players><Player>Alice</Player><Player>Bob</Player></Players>`"
+      ],
+      "answer": 3,
+      "explanation": "`[XmlArray]` renames the outer wrapper element and `[XmlArrayItem]` renames each item, giving `<Players><Player>…</Player></Players>`.",
+      "source": { "section": "#### `[XmlArray]` and `[XmlArrayItem]`" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You want an `XmlWriter` to write an XML fragment that has no single root element. Which `XmlWriterSettings` property do you change?",
+      "options": [
+        "`ConformanceLevel`, set to `Fragment`",
+        "`OmitXmlDeclaration`, set to `true`",
+        "`NamespaceHandling`, set to `OmitDuplicates`",
+        "`CheckCharacters`, set to `false`"
+      ],
+      "answer": 0,
+      "explanation": "`ConformanceLevel` is `Document` by default; the lesson says to use `Fragment` for writing fragments (no root). `OmitXmlDeclaration` only drops the `<?xml ... ?>` prolog.",
+      "source": { "section": "#### Key `XmlWriterSettings` properties (what they do)" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "In `<order xmlns=\"http://example.com/order\"><name>John</name></order>`, what namespace does the unprefixed `<name>` element belong to?",
+      "options": [
+        "No namespace, because it has no prefix",
+        "`http://example.com/order`, the default namespace",
+        "A namespace named `order`, taken from the parent element",
+        "No namespace until it is declared with `xmlns:name`"
+      ],
+      "answer": 1,
+      "explanation": "A namespace declared without a prefix is the default: all child elements without their own prefix belong to it (attributes, however, don't inherit it).",
+      "source": { "section": "#### 4. Default Namespace" },
+      "reviewed": false
+    }
+  ]
+}

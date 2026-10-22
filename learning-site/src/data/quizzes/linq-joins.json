@@ -1,0 +1,80 @@
+{
+  "lesson": "linq-joins",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "`orderItems.Join(products, item => item.ProductId, product => product.Id, ...)` runs over an order item whose `ProductId` matches no product. What happens to that order item?",
+      "options": [
+        "It is returned with `ProductName` set to `null`",
+        "It is left out, because `Join` returns only elements with matching keys in both collections",
+        "`Join` throws because a key is missing",
+        "It is returned in a separate group of unmatched items"
+      ],
+      "answer": 1,
+      "explanation": "`Join` is an inner join: only elements that have matching keys in both collections are returned, like `INNER JOIN` in SQL.",
+      "source": { "section": "### Join — Inner Join (one-to-one / many-to-one)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`departments.GroupJoin(employees, dept => dept.Id, emp => emp.DepartmentId, (dept, emps) => ...)` runs over a department that has no employees. What does the result contain for it?",
+      "options": [
+        "Nothing; departments without employees are dropped",
+        "One entry per employee, with a `null` department",
+        "The department with an empty group of employees",
+        "The department paired with every employee"
+      ],
+      "answer": 2,
+      "explanation": "`GroupJoin` groups the matches, and even if there's no match the outer element is still included with an empty group, so every department appears.",
+      "source": { "section": "### GroupJoin — Left Outer Join (grouped results)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In the left outer join query, what is the job of `from dept in empDeptGroup.DefaultIfEmpty()`?",
+      "options": [
+        "It removes employees whose department is missing",
+        "It sorts each employee's departments",
+        "It turns the join into an inner join",
+        "It keeps employees with no matching department, giving `dept` a null/default value"
+      ],
+      "answer": 3,
+      "explanation": "A left outer join returns every element of the left collection; when there is no match, the right side is null or default, which is why the query uses `dept != null ? dept.DepartmentName : \"N/A\"`.",
+      "source": { "section": "#### 2) Left Outer Join" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "How does the lesson suggest doing a right outer join in LINQ?",
+      "options": [
+        "Swap the collections and do a left join",
+        "Call the built-in `RightJoin` operator",
+        "Use `Intersect` on the two collections",
+        "Use `GroupJoin` without `into`"
+      ],
+      "answer": 0,
+      "explanation": "LINQ doesn't support a right join directly, but you can swap the collections and do a left join; a full outer join is simulated with a left join, a right join and `Union`.",
+      "source": { "section": "#### 4) Simulating Right Outer Join" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "`seq1` is `{1, 2, 3}` and `seq2` is `{2, 3, 4}`. Which call returns only `{1}`?",
+      "options": [
+        "`seq1.Intersect(seq2)`",
+        "`seq1.Union(seq2)`",
+        "`seq1.Except(seq2)`",
+        "`seq2.Except(seq1)`"
+      ],
+      "answer": 2,
+      "explanation": "`Except` returns elements in the first sequence but not in the second. `Intersect` would give `{2, 3}`, `Union` `{1, 2, 3, 4}`, and `seq2.Except(seq1)` `{4}`.",
+      "source": { "section": "#### `Except` — Elements in the first but not in the second" },
+      "reviewed": false
+    }
+  ]
+}

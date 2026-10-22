@@ -1,0 +1,65 @@
+{
+  "lesson": "auth-module-readme",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "After generating `jwt_private.pem` and `jwt_public.pem`, how should each be handled?",
+      "options": [
+        "Commit both to source control so every developer has the same keys",
+        "Keep the public key secret and share the private key with each resource server",
+        "Store the private key where only the auth server process can read it; distribute the public key to resource servers",
+        "Reuse the dev key pair in production so tokens stay valid"
+      ],
+      "answer": 2,
+      "explanation": "The private key signs tokens and belongs in a mounted secret or a vault. The public key only validates, so it can be shared more freely. Dev keys should not be reused in production, and `*.pem` goes in `.gitignore`.",
+      "source": { "section": "1. Generate the RSA signing key pair" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why must the `Member` role be seeded before registration works?",
+      "options": [
+        "Because `RegisterAsync` assigns the `\"Member\"` role by default",
+        "Because the migration fails without it",
+        "Because the JWT bearer scheme reads roles at startup",
+        "Because `/api/auth/login` only accepts members"
+      ],
+      "answer": 0,
+      "explanation": "The module's `RegisterAsync` puts every new user in `\"Member\"`, so that role (and any others your app uses, such as `Admin`) has to exist first.",
+      "source": { "section": "4. Seed roles and create the migration" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which of the module's endpoints requires the caller to already be authenticated?",
+      "options": [
+        "`POST /api/auth/register`",
+        "`POST /api/auth/login`",
+        "`POST /api/auth/refresh`",
+        "`POST /api/auth/revoke`"
+      ],
+      "answer": 3,
+      "explanation": "Revoke (logout) requires auth. Register and login are entry points, and refresh takes the refresh token in the body instead of an access token.",
+      "source": { "section": "5. Endpoints exposed" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "How should your existing task endpoints get the current user once the module is wired in?",
+      "options": [
+        "Parse the `Authorization` header manually in each action",
+        "Read it through `ICurrentUserService`, so Application handlers stay testable without a web host",
+        "Call `/api/auth/login` again from the controller",
+        "Read `HttpContext` directly inside the Application layer handlers"
+      ],
+      "answer": 1,
+      "explanation": "The controllers just need `[Authorize]`. Reading the user via `ICurrentUserService` rather than touching `HttpContext` keeps the Application layer free of web dependencies.",
+      "source": { "section": "6. Protecting your existing Task endpoints" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "lesson": "concurrent-collections",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "Ten parallel iterations update the same key. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var cache = new ConcurrentDictionary<string, int>();\n\n// parallel to simulate 10 tasks \nParallel.For(0, 10, i =>\n{\n    // atomic add-or-increment\n    cache.AddOrUpdate(\"count\", 1, (k, old) => old + 1);\n    /*\n        If \"count\" doesn’t exist → insert \"count\" = 1.\n        If \"count\" already exists → update it using the function (k, old) => old + 1.\n    */\n});\n\nif (cache.TryGetValue(\"count\", out var total))\n    Console.WriteLine($\"count = {total}\");"
+      },
+      "options": [
+        "`count = 1`",
+        "A value below 10 that varies between runs",
+        "`count = 9`",
+        "`count = 10`"
+      ],
+      "answer": 3,
+      "explanation": "`AddOrUpdate` is an atomic add-or-update: the first call inserts 1 and every later call applies `old + 1`, so after 10 iterations the value is 10.",
+      "source": { "section": "### 1) `ConcurrentDictionary<TKey,TValue>`" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "var stack = new ConcurrentStack<int>();\nstack.Push(1);\nstack.Push(2);\n\nif (stack.TryPop(out var top))\n    Console.WriteLine($\"Popped {top}\");"
+      },
+      "options": [
+        "`Popped 2`",
+        "`Popped 1`",
+        "`Popped 1` then `Popped 2`",
+        "Nothing, because `TryPop` needs a lock"
+      ],
+      "answer": 0,
+      "explanation": "`ConcurrentStack<T>` is LIFO: `TryPop` removes the top item, which is the last one pushed (2).",
+      "source": { "section": "### 3) `ConcurrentStack<T>`" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "A `BlockingCollection<int>` was created with `boundedCapacity: 3` and already holds 3 items. What happens when the producer calls `Add(4)`?",
+      "options": [
+        "It throws because the collection is full",
+        "It drops the oldest item to make room",
+        "It blocks until the consumer removes an item, then adds 4",
+        "It returns `false` and the producer moves on"
+      ],
+      "answer": 2,
+      "explanation": "When the collection reaches its bound, the next `Add` blocks until space becomes available; once the consumer takes an item, the blocked `Add(4)` completes.",
+      "source": { "section": "#### 2️⃣ What happens when producer and consumer run" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "A consumer loops with `foreach (var item in bc.GetConsumingEnumerable())`. When does that loop end?",
+      "options": [
+        "As soon as the collection is momentarily empty",
+        "After `CompleteAdding()` has been called and the collection is empty",
+        "When the bounded capacity is reached",
+        "Never; you must break out of it manually"
+      ],
+      "answer": 1,
+      "explanation": "`GetConsumingEnumerable()` iterates until the collection is completed: it stops when `CompleteAdding` has been called and no items remain.",
+      "source": { "section": "### 5) `BlockingCollection<T>`" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which concurrent collection keeps a local store per thread and may \"steal\" items from another thread's store in `TryTake`?",
+      "options": [
+        "`ConcurrentQueue<T>`",
+        "`ConcurrentStack<T>`",
+        "`ConcurrentDictionary<TKey,TValue>`",
+        "`ConcurrentBag<T>`"
+      ],
+      "answer": 3,
+      "explanation": "Only `ConcurrentBag<T>` has a per-thread local bag: `TryTake` looks in the current thread's bag first and steals from another thread's if it's empty. The others are single shared structures.",
+      "source": { "section": "### Other Concurrent Collections" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "lesson": "struct-vs-class",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "`Point` is a struct with `X` and `Y` properties. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "Point first = new Point { X = 10, Y = 20 };\nPoint second = first;\n\nsecond.X = 100;\n\nConsole.WriteLine(first.X);"
+      },
+      "options": [
+        "100",
+        "10",
+        "0",
+        "It does not compile"
+      ],
+      "answer": 1,
+      "explanation": "A struct is a value type, so `second = first` creates an independent copy. Changing `second` does not change `first`, which still has `X = 10`.",
+      "source": { "section": "Struct" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`Person` is a class with a `Name` property. What does this print?",
+      "code": {
+        "lang": "csharp",
+        "source": "Person first = new Person { Name = \"Aman\" };\nPerson second = first;\n\nsecond.Name = \"Rahul\";\n\nConsole.WriteLine(first.Name);"
+      },
+      "options": [
+        "Rahul",
+        "Aman",
+        "An empty line",
+        "It throws a `NullReferenceException`"
+      ],
+      "answer": 0,
+      "explanation": "A class is a reference type, so `second = first` copies the reference. Both variables refer to the same object, so the change through `second` is visible through `first`.",
+      "source": { "section": "Class" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Is it accurate to say that structs live on the stack and classes live on the heap?",
+      "options": [
+        "Yes; that is exactly where each one is always stored",
+        "No; it is the other way round",
+        "Yes, except that classes can also be stored on the stack",
+        "It is an oversimplification; a struct can be inline in an object, in an array, on the stack or boxed, and the real difference is value vs reference semantics"
+      ],
+      "answer": 3,
+      "explanation": "The note calls stack-vs-heap an oversimplification: storage depends on context, and the important difference is value semantics versus reference semantics.",
+      "source": { "section": "Memory Behavior" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`Container.Location` is a property of struct type `Point`. Why does the note avoid `container.Location.X = 10;`?",
+      "options": [
+        "Because struct properties can never be changed after creation",
+        "Because it changes every `Point` in the program",
+        "Because the property returns a copy, so the change would not update the stored value; copy it, change it and assign it back instead",
+        "Because `X` is private by default"
+      ],
+      "answer": 2,
+      "explanation": "A property that returns a struct usually returns a copy, and mutating that copy does not update the original. The note copies the value, changes it and assigns the modified copy back.",
+      "source": { "section": "Important Struct Behavior" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which type is the best fit for a struct, according to the note?",
+      "options": [
+        "A small, usually immutable `Temperature` value that needs no inheritance",
+        "A `Customer` entity with a distinct identity",
+        "A `FileService` that other classes share",
+        "A large `Order` that is expensive to copy"
+      ],
+      "answer": 0,
+      "explanation": "Use a struct for a small value-like type that is usually immutable, cheap to copy and does not need inheritance; `Customer`, `Order`, `BankAccount` and `FileService` are the note's examples for classes.",
+      "source": { "section": "When to Use a Struct" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "What does the note say about structs and inheritance?",
+      "options": [
+        "A struct can inherit from one class but not from another struct",
+        "A struct cannot inherit from a user-defined class or struct, but it can implement interfaces; all structs implicitly derive from `System.ValueType`",
+        "A struct can inherit from other structs, but it cannot implement interfaces",
+        "A struct can neither inherit nor implement interfaces"
+      ],
+      "answer": 1,
+      "explanation": "Structs cannot inherit from user-defined classes or structs. They implicitly derive from `System.ValueType` (which derives from `System.Object`) and can implement interfaces such as `IPrintable`.",
+      "source": { "section": "Inheritance" },
+      "reviewed": false
+    }
+  ]
+}

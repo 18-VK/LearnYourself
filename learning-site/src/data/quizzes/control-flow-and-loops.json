@@ -1,0 +1,73 @@
+{
+  "lesson": "control-flow-and-loops",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "What does this loop print?",
+      "code": {
+        "lang": "csharp",
+        "source": "for (int i = 0; i < 5; i++) {\n    if (i == 2) continue;\n    if (i == 4) break;\n    Console.WriteLine(i);\n}"
+      },
+      "options": [
+        "0, 1, 2 and 3",
+        "0 and 1",
+        "0, 1 and 3",
+        "0, 1, 3 and 4"
+      ],
+      "answer": 2,
+      "explanation": "`continue` skips the rest of the iteration when `i` is 2, and `break` exits the loop when `i` reaches 4, so only 0, 1 and 3 are printed.",
+      "source": { "section": "5. `break` and `continue` (Control Statements)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "If `number` is 20, what does this `switch` print?",
+      "code": {
+        "lang": "csharp",
+        "source": "switch (number) \n{\n    case 5:\n        Console.WriteLine(\"case 5\");\n        break;\n    case 10:\n        Console.WriteLine(\"case 10\");\n        break;\n    case 20:\n        Console.WriteLine(\"case 20\");\n\n        // goto statement transfers \n        // control to case 5\n        goto case 5;\n\n    default:\n        Console.WriteLine(\"No match found\");\n        break; \n}"
+      },
+      "options": [
+        "Only `case 20`",
+        "`case 20` and then `case 5`",
+        "`case 20` and then `No match found`",
+        "`case 5` and then `case 20`"
+      ],
+      "answer": 1,
+      "explanation": "Case 20 prints its line, then `goto case 5` transfers control to the `case 5` label, which prints `case 5` and breaks.",
+      "source": { "section": "Types of Jump Statements" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which loop is exit controlled, so its body always runs at least once?",
+      "options": [
+        "`for`",
+        "`while`",
+        "`foreach`",
+        "`do-while`"
+      ],
+      "answer": 3,
+      "explanation": "`for` and `while` are entry controlled loops, while `do-while` is exit controlled: it checks the condition after the body, so it fits when the loop must execute at least once.",
+      "source": { "section": "Types of Loops in C#" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "According to the note, when is a `while` loop a better fit than a `for` loop?",
+      "options": [
+        "When the number of iterations is unknown",
+        "When the number of iterations is known in advance",
+        "When you need to iterate over every item of an array",
+        "When the body must run at least once"
+      ],
+      "answer": 0,
+      "explanation": "The note gives `for` for a known number of iterations and `while` for an unknown number; `foreach` is for collections and `do-while` for running at least once.",
+      "source": { "section": "2. `while` Loop" },
+      "reviewed": false
+    }
+  ]
+}

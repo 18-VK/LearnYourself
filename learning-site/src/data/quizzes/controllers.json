@@ -1,0 +1,94 @@
+{
+  "lesson": "controllers",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A controller has `[ApiController]`, and a client POSTs `{ \"price\": 100 }` to an action that takes `ProductDto` (where `Name` is `[Required]`). What happens?",
+      "options": [
+        "The action runs with `Name = null`, and you must check `ModelState` yourself",
+        "The action returns `200 OK` with the product",
+        "The request fails with `500 Internal Server Error`",
+        "ASP.NET Core returns `400 Bad Request` automatically, without any validation code in the action"
+      ],
+      "answer": 3,
+      "explanation": "`[ApiController]` enables automatic model validation: an invalid request body gets a `400 Bad Request` with structured errors before the action runs.",
+      "source": {
+        "section": "1. Automatic Model Validation"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "A client sends `GET /api/products/10` to this controller. What does the response body contain?",
+      "code": {
+        "lang": "csharp",
+        "source": "[ApiController]\n[Route(\"api/[controller]\")]\npublic class ProductsController : ControllerBase\n{\n    [HttpGet]\n    public IActionResult GetProducts()\n    {\n        return Ok(\"All products\");\n    }\n\n    [HttpGet(\"{id}\")]\n    public IActionResult GetProduct(int id)\n    {\n        return Ok($\"Product {id}\");\n    }"
+      },
+      "options": [
+        "All products",
+        "Product 10",
+        "Product {id}",
+        "Nothing; the route does not match"
+      ],
+      "answer": 1,
+      "explanation": "`[controller]` becomes `products`, so the base route is `api/products`; `{id}` on `GetProduct` matches `10`, which is bound to `id` and interpolated into the string.",
+      "source": {
+        "section": "3️⃣ Example Controller"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What URL does `[Route(\"api/[controller]\")]` give a class named `ProductsController`?",
+      "options": [
+        "`api/products`",
+        "`api/productscontroller`",
+        "`api/[controller]`",
+        "`products/api`"
+      ],
+      "answer": 0,
+      "explanation": "`[controller]` is a token that ASP.NET replaces with the controller name without the `Controller` suffix, so the final route is `api/products`.",
+      "source": {
+        "section": "[Route(\"api/[controller]\")]"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why do Web API controllers usually inherit from `ControllerBase` instead of `Controller`?",
+      "options": [
+        "`Controller` cannot handle HTTP `POST` requests",
+        "`ControllerBase` is required for `[ApiController]` to compile",
+        "`Controller` inherits from `ControllerBase` and adds view (Razor) support, which a pure API does not need",
+        "`ControllerBase` makes every action asynchronous"
+      ],
+      "answer": 2,
+      "explanation": "`Controller` is `ControllerBase` plus view rendering. An API that returns data uses `ControllerBase` directly; `Controller` is for controllers that also serve views.",
+      "source": {
+        "section": "Key Conventions"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "With `[ApiController]`, where does the `id` parameter of `[HttpGet(\"{id}\")] GetProduct(int id)` come from?",
+      "options": [
+        "The JSON request body",
+        "The URL route, for example `/api/products/10`",
+        "A request header named `id`",
+        "A form field"
+      ],
+      "answer": 1,
+      "explanation": "`[ApiController]` infers binding sources: a parameter that matches a route template token such as `{id}` is taken from the URL.",
+      "source": {
+        "section": "2. Automatic Parameter Binding"
+      },
+      "reviewed": false
+    }
+  ]
+}

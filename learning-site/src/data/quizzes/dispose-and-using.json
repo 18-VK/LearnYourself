@@ -1,0 +1,80 @@
+{
+  "lesson": "dispose-and-using",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why does `Dispose()` exist if .NET has a garbage collector?",
+      "options": [
+        "The GC never runs unless `Dispose()` is called",
+        "`Dispose()` frees managed objects faster than the GC",
+        "Unmanaged resources such as file handles and DB connections are not cleaned up automatically, so `Dispose()` frees them explicitly",
+        "`Dispose()` is required on every class so it can be garbage collected"
+      ],
+      "answer": 2,
+      "explanation": "The GC cleans up managed objects automatically, but unmanaged resources like OS file handles, native memory or DB connections are not; `Dispose()` lets you free them explicitly instead of waiting for finalization.",
+      "source": { "section": "Why `Dispose()` Exists" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "An exception is thrown inside `using (var reader = new StreamReader(\"data.txt\")) { ... }`. Is `reader` disposed?",
+      "options": [
+        "No; `Dispose()` runs only when the block finishes normally",
+        "Yes; the `using` statement disposes the object when the block ends, even if an exception occurs",
+        "Only if you also call `reader.Dispose()` in a `catch` block",
+        "No; the object is disposed later by the garbage collector"
+      ],
+      "answer": 1,
+      "explanation": "The `using` statement ensures the `IDisposable` object is disposed automatically when the block ends, even if an exception occurs. It is a cleaner alternative to calling `Dispose()` in try/finally.",
+      "source": { "section": "2) `using` Statement – Automatic Resource Cleanup (`IDisposable`)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "With a using declaration (C# 8+) such as `using StreamReader reader = File.OpenText(\"data.txt\");`, when is `reader` disposed?",
+      "options": [
+        "Immediately after the line runs",
+        "Only when the program exits",
+        "Never; declarations need an explicit `Dispose()` call",
+        "Automatically at the end of the enclosing method scope"
+      ],
+      "answer": 3,
+      "explanation": "A using declaration has no braces; the object is disposed automatically at the end of the method scope.",
+      "source": { "section": "2️⃣ using Statement (Resource Management)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You can't use `using` for an `IDisposable` object. What does the note recommend instead?",
+      "options": [
+        "Wrap the work in `try`/`finally` and call `.Dispose()` in the `finally` block",
+        "Call `.Dispose()` at the end of the `try` block",
+        "Call `GC.Collect()` after you are done",
+        "Set the variable to `null` so the resource is released"
+      ],
+      "answer": 0,
+      "explanation": "If you skip `using`, wrap the object in a `try`/`finally` block and call `.Dispose()` in `finally` to guarantee cleanup even if exceptions occur.",
+      "source": { "section": "⚠️ Best Practice" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What does a `global using` directive do?",
+      "options": [
+        "It disposes every object in the project automatically",
+        "It imports static members of a type",
+        "It applies the namespace import to all files in the project",
+        "It creates an alias for a long type name"
+      ],
+      "answer": 2,
+      "explanation": "`global using` applies to all files in the project, which the note recommends in .NET 6+ projects to reduce boilerplate.",
+      "source": { "section": "1️⃣ using Directive (Namespace Import / Alias)" },
+      "reviewed": false
+    }
+  ]
+}

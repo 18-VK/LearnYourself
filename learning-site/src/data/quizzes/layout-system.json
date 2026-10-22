@@ -1,0 +1,107 @@
+{
+  "lesson": "layout-system",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "WPF panels lay out their children in two passes. What happens in each one?",
+      "options": [
+        "Arrange decides how big children want to be; Measure places them",
+        "Measure applies styles; Arrange applies data bindings",
+        "Measure asks how big children want to be; Arrange places them",
+        "Measure runs once at startup; Arrange runs only when the window is resized"
+      ],
+      "answer": 2,
+      "explanation": "Panels measure and arrange their children in two layout passes: Measure (how big children want to be) and Arrange (where children are placed).",
+      "source": {
+        "section": "Layout system — quick overview"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "A Grid has `<ColumnDefinition Width=\"*\"/>` and `<ColumnDefinition Width=\"2*\"/>`. How is the width shared?",
+      "options": [
+        "Space is shared proportionally: the second column is twice as wide",
+        "The first column is 1 pixel wide and the second is 2 pixels wide",
+        "Both columns size to their content and the stars are ignored",
+        "The second column takes all the space and the first collapses"
+      ],
+      "answer": 0,
+      "explanation": "Star sizing (`*`, `2*`) shares the remaining space proportionally; `Auto` sizes to content and a plain number is fixed pixels.",
+      "source": {
+        "section": "Grid (the workhorse)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In the DockPanel application shell, the final `<Grid>` has no `DockPanel.Dock` value. Where does it end up?",
+      "options": [
+        "Docked at the top, because `Top` is the default `DockPanel.Dock` value",
+        "Stacked underneath the 200-wide left navigation StackPanel",
+        "Hidden, because every DockPanel child must set a dock value",
+        "Filling the remaining space, since `LastChildFill` defaults to `true`"
+      ],
+      "answer": 3,
+      "explanation": "By default the last child of a DockPanel fills the remaining space (`LastChildFill=true`), which is why the main content Grid goes last after the Menu, ToolBar, StatusBar and side panel.",
+      "source": {
+        "section": "DockPanel"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Why is a plain StackPanel a poor host for a huge list of items?",
+      "options": [
+        "It can only stack vertically, so wide items get clipped on the right",
+        "It measures children with infinite space, which defeats virtualization",
+        "It ignores the `Margin` set on its children when it arranges them",
+        "It cannot be placed inside a ScrollViewer to make it scroll"
+      ],
+      "answer": 1,
+      "explanation": "StackPanel gives children infinite space in the stacking direction during measure, which is not ideal for virtualization or huge lists; use a `VirtualizingStackPanel` inside an ItemsControl instead.",
+      "source": {
+        "section": "StackPanel"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "You have several stacked forms, each in its own Grid, and want their label columns to line up at the same width. What does the lesson suggest?",
+      "options": [
+        "Wrap all the Grids in a single UniformGrid",
+        "Give every label column `Width=\"Auto\"`",
+        "`SharedSizeGroup` on the columns, `SharedSizeScope` on the parent",
+        "Replace the Grids with StackPanels set to `Orientation=\"Horizontal\"`"
+      ],
+      "answer": 2,
+      "explanation": "Use `SharedSizeGroup` when columns across separate Grids should line up: set `SharedSizeGroup` on the column definitions and `SharedSizeScope` where the Grid is defined.",
+      "source": {
+        "section": "Grid (the workhorse)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "You are building a calculator keypad where every button must be exactly the same size, with no row or column definitions to maintain. Which panel fits best?",
+      "options": [
+        "`Canvas`",
+        "`UniformGrid`",
+        "`WrapPanel`",
+        "`DockPanel`"
+      ],
+      "answer": 1,
+      "explanation": "`UniformGrid` gives each cell equal size and needs no row/column definitions, which is why the lesson uses it for a calculator keypad.",
+      "source": {
+        "section": "UniformGrid"
+      },
+      "reviewed": false
+    }
+  ]
+}

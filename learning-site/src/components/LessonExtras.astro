@@ -1,0 +1,65 @@
+---
+/**
+ * Lesson page cards for the study sections: related cheat sheets (the manifest's `cheatsheets` plus sheets
+ * whose items cite this lesson) and "Interview questions on this topic" (interview.json byLesson).
+ */
+import { difficultyLabel, originLabel, questionsForLesson, questionUrl, sheetsFor, topicById } from '../lib/data';
+import { inlineText } from '../lib/markdown';
+import { url } from '../lib/site';
+
+interface Props {
+  /** The lesson's short id (frontmatter `lesson`). */
+  slug: string;
+  sheets: { id: string; title: string }[];
+}
+const { slug, sheets: manifest } = Astro.props;
+const sheets = sheetsFor([slug], manifest);
+const qs = questionsForLesson(slug);
+const SHOW = 6;
+---
+
+{(sheets.length > 0 || qs.length > 0) && (
+  <section class="side-cards lesson-extras" aria-label="Revision for this lesson" data-pagefind-ignore>
+    {qs.length > 0 && (
+      <div class="side-card" id="ly-interview-questions">
+        <p class="eyebrow">Interview questions on this topic</p>
+        <ul class="lx-questions">
+          {qs.slice(0, SHOW).map((q) => (
+            <li>
+              <a href={questionUrl(q)}>{inlineText(q.question)}</a>
+              <span class="muted"> · {difficultyLabel(q.difficulty)} · {originLabel(q)}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="lx-more">
+          <a href={url(`interview-prep/browse/?lesson=${encodeURIComponent(slug)}`)}>
+            {qs.length > SHOW ? `All ${qs.length} questions` : 'Browse them'} in Interview Prep
+          </a>
+          {qs.length > 0 && <span class="muted"> · {[...new Set(qs.map((q) => topicById.get(q.topic)?.title ?? q.topic))].join(', ')}</span>}
+        </p>
+      </div>
+    )}
+    {sheets.length > 0 && (
+      <div class="side-card">
+        <p class="eyebrow">Cheat {sheets.length === 1 ? 'sheet' : 'sheets'} for revision</p>
+        <ul>
+          {sheets.map((s) => (
+            <li>
+              <a href={s.url}>{s.title}</a>
+              {!s.ready && <span class="muted"> · coming soon</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </section>
+)}
+
+<style>
+  .lesson-extras { margin-top: 2.4em; max-width: 70ch; }
+  :global(.side-cards) + .lesson-extras { margin-top: 12px; }
+  .lx-questions li { line-height: 1.4; }
+  .lx-questions li + li { margin-top: 6px; }
+  .lx-questions .muted { font-size: 13px; }
+  .lx-more { margin-top: 10px; font-size: 14.5px; }
+</style>

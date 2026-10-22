@@ -1,0 +1,88 @@
+---
+/**
+ * Gallery: the approved Interview Prep images and PDFs (curriculum/_assets.yaml, usedBy interview-prep/…).
+ * View-only by the owner's decision: no download links. Third-party work is credited under each item.
+ */
+import '../../styles/interview.css';
+import IqNav from '../../components/interview/IqNav.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { galleryAssets, humanize } from '../../lib/gallery';
+import { url } from '../../lib/site';
+
+const { images, pdfs } = galleryAssets();
+const credit = (a: { credit: string | null; authorship: string }) => (a.credit ? `Credit: ${a.credit}` : a.authorship === 'yours' ? 'From the notes' : 'Author unknown');
+const srcset = (s?: string) => s?.split(', ').map((part) => url(part)).join(', ');
+---
+
+<BaseLayout title="Interview Prep gallery" description="Interview cheat sheets, infographics and question lists collected while studying, with credits." nav="interview">
+  <IqNav current="gallery" />
+  <header class="iq-head">
+    <p class="eyebrow">Interview Prep</p>
+    <h1>Gallery</h1>
+    <p class="iq-lede">Infographics and question lists collected while studying. They are shown here for reading only, each with its credit.</p>
+  </header>
+
+  {images.length === 0 && pdfs.length === 0 && <p class="iq-empty-state" role="status">No images or PDFs are approved for publishing yet.</p>}
+
+  {images.length > 0 && (
+    <section aria-labelledby="gl-images">
+      <h2 id="gl-images" class="gl-h">Images <span class="muted">{images.length}</span></h2>
+      <ul class="gl-grid">
+        {images.map((a) => (
+          <li>
+            <figure class="gl-fig">
+              <button type="button" class="gl-open" data-full={url(a.src!)} data-alt={a.alt ?? humanize(a.title)} data-caption={`${a.alt ?? humanize(a.title)} · ${credit(a)}`} aria-label={`View larger: ${a.alt ?? humanize(a.title)}`}>
+                <img src={url(a.src!)} srcset={srcset(a.srcset)} sizes="(min-width: 1100px) 340px, (min-width: 700px) 45vw, 92vw" width={a.width} height={a.height} alt={a.alt ?? humanize(a.title)} loading="lazy" decoding="async" />
+              </button>
+              <figcaption>
+                <span>{a.alt ?? humanize(a.title)}</span>
+                <span class="gl-credit">{credit(a)}</span>
+              </figcaption>
+            </figure>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {pdfs.length > 0 && (
+    <section aria-labelledby="gl-pdfs">
+      <h2 id="gl-pdfs" class="gl-h">PDFs <span class="muted">{pdfs.length}</span></h2>
+      <div class="resource-list gl-pdfs">
+        {pdfs.map((a) => (
+          <div class="resource">
+            <p><strong>{humanize(a.title)}</strong> <span class="muted">(PDF · {credit(a)})</span></p>
+            <iframe src={`${url(a.src!)}#toolbar=0&navpanes=0`} title={`${humanize(a.title)} (PDF)`} loading="lazy"></iframe>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <dialog class="gl-dialog" id="gl-dialog" aria-label="Image viewer">
+    <form method="dialog" class="gl-dialog-bar">
+      <p class="gl-dialog-cap" id="gl-dialog-cap"></p>
+      <button class="btn" value="close">Close</button>
+    </form>
+    <img id="gl-dialog-img" alt="" />
+  </dialog>
+  <script>
+    const dialog = document.getElementById('gl-dialog') as HTMLDialogElement | null;
+    const img = document.getElementById('gl-dialog-img') as HTMLImageElement | null;
+    const cap = document.getElementById('gl-dialog-cap');
+    let opener: HTMLElement | null = null;
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.gl-open');
+      if (btn && dialog && img && cap) {
+        opener = btn;
+        img.src = btn.dataset.full ?? '';
+        img.alt = btn.dataset.alt ?? '';
+        cap.textContent = btn.dataset.caption ?? '';
+        dialog.showModal();
+        return;
+      }
+      if (e.target === dialog) dialog?.close(); // click on the backdrop
+    });
+    dialog?.addEventListener('close', () => opener?.focus());
+  </script>
+</BaseLayout>

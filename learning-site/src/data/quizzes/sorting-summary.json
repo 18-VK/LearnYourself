@@ -1,0 +1,73 @@
+{
+  "lesson": "sorting-summary",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "You must sort records in C# and keep equal keys in their original order. What does the lesson suggest instead of `Array.Sort()`?",
+      "options": [
+        "Heap sort, because it is in-place",
+        "Quick sort with a median-of-three pivot",
+        "`Array.Sort()` twice in a row",
+        "Merge sort, or LINQ `OrderBy()`, which is stable"
+      ],
+      "answer": 3,
+      "explanation": "`Array.Sort()` is not guaranteed stable. Merge sort and LINQ's `OrderBy()` are stable, so ties keep their original order.",
+      "source": {
+        "section": "When to Use What (LeetCode Context)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "According to the summary table, which two algorithms are both **stable** and **in-place**?",
+      "options": [
+        "Merge sort and counting sort",
+        "Bubble sort and insertion sort",
+        "Quick sort and heap sort",
+        "Selection sort and radix sort"
+      ],
+      "answer": 1,
+      "explanation": "Bubble and insertion sort are stable with O(1) space. Merge, counting and radix sort are stable but not in-place; quick, heap and selection sort are in-place but not stable.",
+      "source": {
+        "section": "Summary Table"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Your constraint is a guaranteed worst-case running time with O(1) extra space. Which sort fits?",
+      "options": [
+        "Heap sort",
+        "Merge sort",
+        "Counting sort",
+        "Quick sort"
+      ],
+      "answer": 0,
+      "explanation": "Heap sort is O(n log n) in every case with O(1) space. Quick sort's worst case is O(n²), and merge and counting sort need extra space.",
+      "source": {
+        "section": "When to Use What (LeetCode Context)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "The data is nearly sorted, or `n` is very small (under 20). Which sort does the lesson pick?",
+      "options": [
+        "Heap sort",
+        "Radix sort",
+        "Insertion sort",
+        "Bucket sort"
+      ],
+      "answer": 2,
+      "explanation": "Insertion sort's best case is O(n) and it does very little work on nearly-sorted or tiny inputs.",
+      "source": {
+        "section": "When to Use What (LeetCode Context)"
+      },
+      "reviewed": false
+    }
+  ]
+}

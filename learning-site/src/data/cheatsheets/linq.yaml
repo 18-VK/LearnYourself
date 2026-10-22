@@ -1,0 +1,240 @@
+id: linq
+title: 'LINQ operators, deferred vs immediate'
+summary: 'LINQ query keywords, the standard operators by family, deferred vs immediate execution, joins and set operators, and IQueryable vs IEnumerable.'
+groups:
+  - title: Two syntaxes, one query
+    items:
+      - term: 'Query syntax (SQL-like)'
+        code: |
+          from x in collection where ... select ...
+        lang: csharp
+        from: { lesson: linq-basics, section: 'Basics & syntax' }
+      - term: 'Method (fluent) syntax'
+        desc: 'Extension methods. Both syntaxes compile to the same calls and can be mixed.'
+        code: |
+          collection.Where(...).Select(...).OrderBy(...)
+        lang: csharp
+        from: { lesson: linq-basics, section: 'Basics & syntax' }
+      - term: 'Use LINQ for'
+        desc: 'Filtering and transforming collections, composable pipelines, EF Core queries that become SQL, grouping and reporting, pagination with `Skip`/`Take`, projecting to DTOs, joining related collections.'
+        from: { lesson: linq-basics, section: 'Use cases — when LINQ shines' }
+      - term: 'Skip LINQ for'
+        desc: 'Hot inner loops (a plain loop can be faster), very stateful transforms, and cases needing fine-grained SQL control.'
+        from: { lesson: linq-basics, section: 'When not to use LINQ' }
+
+  - title: Query-expression keywords
+    table:
+      columns: [Keyword, Does, Method syntax]
+      from: { lesson: linq-basics, section: 'Query-expression keywords (SQL-like)' }
+      rows:
+        - cells: ['`from`', 'Introduces a range variable and the data source; every query starts with one', '—']
+          from: { lesson: linq-basics, section: '1) from' }
+        - cells: ['`where`', 'Filters by a predicate', '`.Where(...)`']
+          from: { lesson: linq-basics, section: '2) where' }
+        - cells: ['`select`', 'Projects each element into a new form', '`.Select(...)`']
+          from: { lesson: linq-basics, section: '3) select' }
+        - cells: ['`orderby … descending, … ascending`', 'Sorts by one or more keys; ascending by default', '`.OrderBy` / `.OrderByDescending` / `.ThenBy`']
+          from: { lesson: linq-basics, section: '4) orderby / ascending / descending' }
+        - cells: ['`join … in … on … equals …`', 'Inner join on matching keys; add `into` for group/outer joins', '`.Join(...)`']
+          from: { lesson: linq-basics, section: '5) join' }
+        - cells: ['`group … by … into g`', 'Groups by a key into `IGrouping<TKey, TElement>`', '`.GroupBy(...)`']
+          from: { lesson: linq-basics, section: '6) group / by' }
+        - cells: ['`let`', 'Temporary range variable for a sub-expression (avoids recomputing)', '—']
+          from: { lesson: linq-basics, section: '7) let' }
+        - cells: ['multiple `from`', 'Flattens nested collections', '`.SelectMany(...)`']
+          from: { lesson: linq-basics, section: '8) from ... in ... (multiple from) — query form of SelectMany' }
+        - cells: ['`into`', 'Names an intermediate result (after `group` or `join`) so the query can continue', '—']
+          from: { lesson: linq-basics, section: '9) into' }
+    items:
+      - term: 'Group and count'
+        code: |
+          var q = from p in products
+                  group p by p.Category into g
+                  select new { Category = g.Key, Count = g.Count() };
+        lang: csharp
+        from: { lesson: linq-basics, section: '6) group / by' }
+
+  - title: Filter, project, sort, page
+    table:
+      columns: [Operator, Does, Note]
+      from: { lesson: query-operators-filtering-to-aggregation, section: 'Standard query operators (method/fluent syntax)' }
+      rows:
+        - cells: ['`Where(predicate)`', 'Elements that satisfy the predicate', 'Deferred; runs when enumerated']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '1) Where(predicate)' }
+        - cells: ['`Select(selector)`', 'Projects each element', 'Shape DTOs or anonymous types']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '2) Select(selector)' }
+        - cells: ['`SelectMany(selector)`', 'Projects each element to a sequence and flattens', '`Select` gives a sequence of sequences; `SelectMany` gives one sequence']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '3) SelectMany(selector)' }
+        - cells: ['`OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending`', 'Sort by a key, then by secondary keys', '`people.OrderBy(p => p.LastName).ThenBy(p => p.FirstName)`']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '4) OrderBy(keySelector) / OrderByDescending(...) / ThenBy(...)' }
+        - cells: ['`Take(n)` / `Skip(n)`', 'First n elements / bypass the first n', 'Combine for paging']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '5) Take(n) / Skip(n)' }
+        - cells: ['`TakeWhile` / `SkipWhile`', 'Take/skip while the predicate holds', 'Order-sensitive']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '6) TakeWhile(predicate) / SkipWhile(predicate)' }
+        - cells: ['`Distinct()`', 'Removes duplicates', 'Uses the element type''s `Equals`/`GetHashCode`']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '7) Distinct()' }
+    items:
+      - term: 'Paging'
+        code: |
+          var pageData = numbers
+                          .Skip((pageNumber - 1) * pageSize)
+                          .Take(pageSize);
+        lang: csharp
+        from: { lesson: query-operators-filtering-to-aggregation, section: '5) Take(n) / Skip(n)' }
+
+  - title: Quantifiers and aggregates
+    note: 'These execute immediately (not deferred).'
+    table:
+      columns: [Operator, Returns]
+      from: { lesson: query-operators-filtering-to-aggregation, section: '9) Count() / LongCount() / Sum(selector) / Min(selector) / Max(selector) / Average(selector)' }
+      rows:
+        - cells: ['`Any(predicate?)`', '`true` if any element matches; without a predicate, `true` if the sequence is non-empty']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '8) Any(predicate?) / All(predicate) / Contains(item)' }
+        - cells: ['`All(predicate)`', '`true` if every element matches']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '8) Any(predicate?) / All(predicate) / Contains(item)' }
+        - cells: ['`Contains(item)`', 'Membership check']
+          from: { lesson: query-operators-filtering-to-aggregation, section: '8) Any(predicate?) / All(predicate) / Contains(item)' }
+        - ['`Count()`', '`int`; fine while the count fits in `int.MaxValue`']
+        - ['`LongCount()`', '`long`, for more than `int.MaxValue` elements']
+        - ['`Sum` / `Min` / `Max` / `Average(selector)`', 'Sum, minimum, maximum, average of the selected values']
+    items:
+      - term: '`Aggregate(seed?, func, resultSelector?)`'
+        desc: 'Applies an accumulator over the sequence. Without a seed the first element is the start value; `numbers.Aggregate(10, (acc, n) => acc + n)` starts from the seed (19); a third argument, the result selector, shapes the final value (`sum => $"The total is {sum}"`).'
+        code: |
+          var numbers = new[] { 2, 3, 4 };
+          int result = numbers.Aggregate((acc, n) => acc * n);
+          Console.WriteLine(result);  // Output: 24 (2*3*4)
+        lang: csharp
+        from: { lesson: query-operators-filtering-to-aggregation, section: '10) Aggregate(seed?, func, resultSelector?)' }
+
+  - title: Element operators
+    table:
+      columns: [Operator, Returns, Throws when]
+      from: { lesson: query-operators-element-to-zip, section: '11) First() / FirstOrDefault() / Single() / SingleOrDefault() / ElementAt() / ElementAtOrDefault()' }
+      rows:
+        - ['`First()`', 'The first element', 'No element (`InvalidOperationException`)']
+        - ['`FirstOrDefault()`', 'The first element, or default (`0`, `null`) if none', 'Never for an empty sequence']
+        - ['`Single()`', 'The only element (use when you expect exactly one match)', 'No element **or** more than one']
+        - ['`SingleOrDefault()`', 'The only element, or default if empty', 'More than one element']
+        - ['`ElementAt(i)`', 'Element at a zero-based index', 'Index out of range']
+        - ['`ElementAtOrDefault(i)`', 'Element at the index, or default if out of range', 'Never for a bad index']
+
+  - title: Conversion and other operators
+    table:
+      columns: [Operator, Does]
+      from: { lesson: query-operators-element-to-zip, section: '13) ToList() / ToArray() / ToDictionary() / ToLookup()' }
+      rows:
+        - ['`ToList()` / `ToArray()`', 'Runs the query now into a `List<T>` / array']
+        - ['`ToDictionary(key, value?)`', 'Runs now into a `Dictionary`; **throws `ArgumentException` on a duplicate key**']
+        - ['`ToLookup(key, element?)`', 'Runs now into an `ILookup` with many values per key; no exception for duplicate keys (an immediate, reusable `GroupBy`)']
+        - cells: ['`OfType<T>()`', 'Keeps only elements of that type; skips others silently']
+          from: { lesson: query-operators-element-to-zip, section: '12) OfType<TResult>() / Cast<TResult>()' }
+        - cells: ['`Cast<T>()`', 'Casts every element; throws `InvalidCastException` if one can''t be cast']
+          from: { lesson: query-operators-element-to-zip, section: '12) OfType<TResult>() / Cast<TResult>()' }
+        - cells: ['`Reverse()`', 'Reverses order; runs when enumerated and may buffer']
+          from: { lesson: query-operators-element-to-zip, section: '14) Reverse()' }
+        - cells: ['`SequenceEqual(other, comparer?)`', '`true` if same length and equal elements in the same order']
+          from: { lesson: query-operators-element-to-zip, section: '15) SequenceEqual(other)' }
+        - cells: ['`Enumerable.Range(start, count)` / `Enumerable.Repeat(value, count)`', 'Generate `{1,2,3,4,5}` / `{"x","x","x"}`']
+          from: { lesson: query-operators-element-to-zip, section: '16) Enumerable.Range(start, count) / Enumerable.Repeat(value, count)' }
+        - cells: ['`Zip(other, (a, b) => …)`', 'Pairs elements side by side; stops when the shorter sequence ends']
+          from: { lesson: query-operators-element-to-zip, section: '17) Zip' }
+    items:
+      - term: 'Consecutive pairs with `Zip` + `Skip(1)`'
+        code: |
+          var differences = dates
+              .Zip(dates.Skip(1), (prev, next) => (next - prev).Days)
+              .ToList();
+        lang: csharp
+        from: { lesson: query-operators-element-to-zip, section: '17) Zip' }
+
+  - title: Deferred vs immediate execution
+    items:
+      - term: 'Deferred'
+        desc: 'The query is a plan, not an action: it runs only when you iterate (`foreach`, `ToList()`, `Count()`…) and re-runs on the current data each time.'
+        from: { lesson: deferred-vs-immediate, section: 'Deferred Execution' }
+      - term: 'Immediate'
+        desc: 'Runs now and stores the result (list, array or scalar); later changes to the source don''t affect it.'
+        from: { lesson: deferred-vs-immediate, section: 'Immediate Execution' }
+      - term: 'What forces execution'
+        desc: 'Materialization: `ToList()`, `ToArray()`, `ToDictionary()`, `ToLookup()`. Aggregation/element: `Count()`, `Sum()`, `Average()`, `Min()`, `Max()`, `First()`, `FirstOrDefault()`, `Single()`, `Any()`.'
+        from: { lesson: deferred-vs-immediate, section: '3. How to Trigger Immediate Execution' }
+      - term: 'Deferred sees later changes'
+        desc: 'Prints 3, 4, 5. With `.ToList()` on the query line it prints 3, 4, because the results were captured before `5` was added.'
+        code: |
+          var numbers = new List<int> { 1, 2, 3, 4 };
+
+          // Query definition (not executed yet)
+          var query = numbers.Where(n => n > 2);
+
+          // Modify the source BEFORE iterating
+          numbers.Add(5);
+
+          // Now execution happens during iteration
+          foreach (var n in query)
+          {
+              Console.WriteLine(n);
+          }
+        lang: csharp
+        from: { lesson: deferred-vs-immediate, section: 'Deferred Execution Example' }
+    table:
+      columns: [Aspect, Deferred, Immediate]
+      from: { lesson: deferred-vs-immediate, section: 'Why It Matters' }
+      rows:
+        - ['Performance', 'Runs only when needed', 'May be wasteful if results are unused']
+        - ['Data freshness', 'Reflects the latest data', 'Snapshot at query time']
+        - ['Memory', 'Low (streamed as you iterate)', 'Higher (stores all results)']
+
+  - title: Joins and set operators
+    table:
+      columns: [Join, How in LINQ]
+      from: { lesson: linq-joins, section: 'Types of joins' }
+      rows:
+        - cells: ['Inner join', '`Join(inner, outerKey, innerKey, result)`: only elements with matching keys (SQL `INNER JOIN`)']
+          from: { lesson: linq-joins, section: 'Join — Inner Join (one-to-one / many-to-one)' }
+        - cells: ['Group join', '`GroupJoin(...)`: every outer element with a (possibly empty) group of matches (SQL `LEFT JOIN` + `GROUP BY`)']
+          from: { lesson: linq-joins, section: 'GroupJoin — Left Outer Join (grouped results)' }
+        - cells: ['Left outer join', '`GroupJoin` + `SelectMany(… DefaultIfEmpty())`, or `join … into g from x in g.DefaultIfEmpty()`']
+          from: { lesson: linq-joins, section: '2) Left Outer Join' }
+        - cells: ['Right outer join', 'Not built in: swap the collections and do a left join']
+          from: { lesson: linq-joins, section: '4) Simulating Right Outer Join' }
+        - cells: ['Full outer join', 'Not built in: left join `Union` right join']
+          from: { lesson: linq-joins, section: '5) Full Outer Join (Simulated)' }
+        - cells: ['`Union(other)`', 'Distinct elements in either sequence']
+          from: { lesson: linq-joins, section: 'Union — Combine without duplicates' }
+        - cells: ['`Intersect(other)`', 'Elements present in both']
+          from: { lesson: linq-joins, section: 'Intersect — Common elements only' }
+        - cells: ['`Except(other)`', 'Elements in the first but not the second']
+          from: { lesson: linq-joins, section: 'Except — Elements in the first but not in the second' }
+    items:
+      - term: 'Left outer join (query syntax)'
+        code: |
+          var leftOuterJoinQuery = from employee in employees
+                                   join department in departments on employee.DepartmentId equals department.Id into empDeptGroup
+                                   from dept in empDeptGroup.DefaultIfEmpty()
+                                   select new { employee.Name, DepartmentName = (dept != null ? dept.DepartmentName : "N/A") };
+        lang: csharp
+        from: { lesson: linq-joins, section: '2) Left Outer Join' }
+
+  - title: '`IQueryable` vs `IEnumerable`'
+    note: 'Where the query runs: in the database or in memory.'
+    table:
+      columns: [Aspect, '`IEnumerable`', '`IQueryable`']
+      from: { lesson: ef-core-raw-sql-iqueryable-concurrency, section: 'The difference between IQueryable and IEnumerable in C#' }
+      rows:
+        - ['Runs', 'In memory, client side, after data is loaded', 'At the data source; LINQ is translated to SQL']
+        - ['Execution', 'Deferred until enumeration', 'Deferred until enumeration']
+        - ['Data returned', 'Everything, then filtered locally', 'Only the filtered rows']
+        - ['Best for', 'Small sets, data already in memory', 'Large data sets, EF Core queries']
+    items:
+      - term: 'Where `Where` runs'
+        code: |
+          // IQueryable example
+          IQueryable<Tasks> queryableTasks = _appContext.Tasks.Where(t => t.IsCompleted);
+          // SQL is generated and executed only when you enumerate (e.g., ToListAsync).
+
+          // IEnumerable example
+          IEnumerable<Tasks> enumerableTasks = _appContext.Tasks.ToList().Where(t => t.IsCompleted);
+          // All rows are loaded into memory first, then filtering happens locally.
+        lang: csharp
+        from: { lesson: ef-core-raw-sql-iqueryable-concurrency, section: 'The difference between IQueryable and IEnumerable in C#' }

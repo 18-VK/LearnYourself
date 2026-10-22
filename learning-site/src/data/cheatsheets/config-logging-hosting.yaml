@@ -1,0 +1,268 @@
+id: config-logging-hosting
+title: 'Configuration, logging & hosting'
+summary: 'Configuration sources and their precedence, environments and launchSettings.json, reading values and the options pattern, Generic Host vs ConfigurationBuilder, log levels and ILogger, Serilog configuration and sinks, and hosted / background services.'
+groups:
+  - title: Configuration sources & precedence
+    note: 'Later sources override earlier ones; keys merge.'
+    table:
+      columns: [Order, Source, Notes]
+      from: { lesson: configuration, section: 'Configuration Precedence (from lowest → highest priority)' }
+      rows:
+        - ['1 (lowest)', '`appsettings.json`', 'Base/default settings for all environments']
+        - ['2', '`appsettings.{Environment}.json`', 'Overrides matching keys when the environment matches']
+        - ['3', 'User Secrets', 'Development only; developer secrets outside source control']
+        - ['4', 'Environment variables', 'Deployment overrides, e.g. `App__Name=ProdApp`']
+        - ['5 (highest)', 'Command-line arguments', 'Override everything else']
+    items:
+      - term: '`IConfiguration`'
+        desc: 'The unified abstraction in `Microsoft.Extensions.Configuration`: aggregates providers (JSON, environment variables, command line, secret stores) into one hierarchical key/value view with binding helpers.'
+        from: { lesson: configuration, section: 'WHAT IConfiguration IS' }
+      - term: '`__` → `:`'
+        desc: 'In environment variables a double underscore maps to the `:` separator: `App__MaxItemsPerRun` = `App:MaxItemsPerRun`, `ConnectionStrings__Default` = `ConnectionStrings:Default`.'
+        from: { lesson: environment-and-launchsettings, section: 'Key fields you''ll encounter' }
+      - term: 'Secrets'
+        desc: 'Never commit real passwords to JSON: keep placeholders and supply secrets via environment variables, user secrets or a secret store such as Key Vault.'
+        from: { lesson: configuration, section: 'Key points' }
+
+  - title: Reading configuration
+    items:
+      - term: 'Indexer'
+        desc: '`_config["FeatureFlags:FastMode"]` returns a string or `null`; `:` walks the JSON hierarchy.'
+        from: { lesson: configuration, section: 'How to read config inside services' }
+      - term: '`GetConnectionString("Default")`'
+        desc: 'Reads `ConnectionStrings:Default`.'
+        from: { lesson: configuration, section: 'OPTION 2 — Manual ConfigurationBuilder (small tools or early bootstrap)' }
+      - term: '`GetValue<T>(key, default)`'
+        desc: 'Typed read with a fallback: `config.GetValue<int>("App:MaxItemsPerRun", 100)`.'
+        from: { lesson: configuration, section: 'OPTION 2 — Manual ConfigurationBuilder (small tools or early bootstrap)' }
+      - term: '`GetSection(...).Get<T>()`'
+        desc: 'Binds a section to a POCO or list: `config.GetSection("App").Get<AppOptions>()`, `GetSection("Hosts").Get<List<string>>()`.'
+        from: { lesson: configuration, section: 'OPTION 2 — Manual ConfigurationBuilder (small tools or early bootstrap)' }
+      - term: '`reloadOnChange: true`'
+        desc: '`AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)` reloads when the file changes; pair it with `IOptionsMonitor<T>`.'
+        from: { lesson: configuration, section: 'OPTION 2 — Manual ConfigurationBuilder (small tools or early bootstrap)' }
+      - term: 'Options pattern'
+        desc: '`services.Configure<MyOptions>(config.GetSection("MyOptions"))` and `AddOptions<MyOptions>().Bind(...)` do the same binding; `AddOptions<T>()` returns an `OptionsBuilder<T>` that can also validate.'
+        from: { lesson: taskflow-studio, section: 'services.AddOptions<T>() vs services.Configure<T>()' }
+      - term: 'Fail fast on bad config'
+        code: |
+          services.AddOptions<ApplicationSettings>()
+              .Bind(context.Configuration.GetSection("ApplicationSettings"))
+              .ValidateDataAnnotations()
+              .ValidateOnStart();
+        lang: csharp
+        desc: '`[Required]`, `[Range]`… are checked and the app throws at startup instead of failing later.'
+        from: { lesson: taskflow-studio, section: 'Add validation so your app fails fast if config is wrong' }
+
+  - title: Environments & launchSettings.json
+    items:
+      - term: 'Choosing the environment file'
+        desc: 'The host reads `DOTNET_ENVIRONMENT` or `ASPNETCORE_ENVIRONMENT` at startup and loads `appsettings.{Environment}.json` after `appsettings.json`; environment variables still override both.'
+        from: { lesson: configuration, section: 'How .NET chooses which environment file to load' }
+      - term: 'No environment set → Production'
+        desc: 'If neither `DOTNET_ENVIRONMENT` nor `ASPNETCORE_ENVIRONMENT` is set, the app runs as `Production`, which disables most debugging features.'
+        docs: { url: 'https://learn.microsoft.com/en-us/aspnet/core/fundamentals/environments', title: 'ASP.NET Core runtime environments', accessed: '2026-10-22' }
+      - term: 'Read at runtime, not build time'
+        desc: 'Same build and binaries go to Development, Staging and Production; only the environment variable differs. Changing it needs a restart, not a rebuild.'
+        from: { lesson: configuration, section: 'How ASP.NET Core Actually Works' }
+      - term: 'Set it locally'
+        desc: 'PowerShell: `$env:DOTNET_ENVIRONMENT="Development"` then `dotnet run` · Bash: `export DOTNET_ENVIRONMENT=QA` then `dotnet run`.'
+        from: { lesson: configuration, section: 'How to set the environment locally' }
+      - term: 'Set it on a Windows server'
+        desc: '`setx ASPNETCORE_ENVIRONMENT "Production"` (or System variables in `sysdm.cpl`), then restart IIS / the app.'
+        from: { lesson: configuration, section: 'Option C: Windows (Production Server)' }
+      - term: 'Check it in code'
+        desc: '`host.Services.GetRequiredService<IHostEnvironment>().EnvironmentName`, or `app.Environment.EnvironmentName` in ASP.NET Core.'
+        from: { lesson: configuration, section: 'How to check the active environment in code' }
+      - term: '`launchSettings.json`'
+        desc: 'Developer-only file in `Properties/` used by Visual Studio / `dotnet run --launch-profile`; not used in production. Its `environmentVariables` win over Windows environment variables.'
+        from: { lesson: environment-and-launchsettings, section: 'What launchSettings.json is — short' }
+      - term: 'Key launch-profile fields'
+        desc: '`commandName` (`Project`, `IISExpress`, `Executable`, `Docker`) · `applicationUrl` (Kestrel URLs) · `environmentVariables` · `launchBrowser` / `launchUrl` · `commandLineArgs`.'
+        from: { lesson: environment-and-launchsettings, section: 'Key fields you''ll encounter' }
+      - term: 'Production practice'
+        desc: 'Use system (not user) environment variables and don''t rely on `launchSettings.json`.'
+        from: { lesson: configuration, section: 'Important' }
+    table:
+      columns: [App type, Environment variable]
+      from: { lesson: configuration, section: '2. Using wrong variable name' }
+      rows:
+        - ['ASP.NET Core web app', '`ASPNETCORE_ENVIRONMENT`']
+        - ['Console / Worker / WPF (Generic Host)', '`DOTNET_ENVIRONMENT`']
+
+  - title: Generic Host vs ConfigurationBuilder
+    table:
+      columns: [Feature, ConfigurationBuilder, Host.CreateDefaultBuilder]
+      from: { lesson: configuration, section: 'Host.CreateDefaultBuilder() vs ConfigurationBuilder()' }
+      rows:
+        - ['`appsettings.json`', '✅', '✅']
+        - ['Environment configs', '❌ manual', '✅ automatic']
+        - ['Dependency Injection', '❌', '✅']
+        - ['Logging (Console, Debug)', '❌', '✅']
+        - ['Background services', '❌', '✅']
+        - ['Graceful shutdown', '❌', '✅']
+        - ['Production-ready', '⚠', '✅']
+    items:
+      - term: 'When to use which'
+        desc: 'Generic Host for real apps (WPF included); a bare `ConfigurationBuilder` for small tools, legacy .NET Framework, libraries, or config needed before the host exists (e.g. to bootstrap Serilog).'
+        from: { lesson: configuration, section: 'ConfigurationBuilder – LOW LEVEL' }
+      - term: 'Generic Host skeleton'
+        code: |
+          var host = Host.CreateDefaultBuilder(args) // loads appsettings.json + appsettings.{env}.json + env vars + cmdline
+              .ConfigureServices((ctx, services) =>
+              {
+                  services.Configure<AppOptions>(ctx.Configuration.GetSection("App"));
+                  services.AddHostedService<Worker>();
+              })
+              .ConfigureLogging((ctx, logging) =>
+              {
+                  logging.AddConsole();
+              })
+              .Build();
+
+          await host.RunAsync();
+        lang: csharp
+        from: { lesson: configuration, section: 'How .NET chooses which environment file to load' }
+
+  - title: Log levels & ILogger
+    table:
+      columns: [Microsoft level, Serilog, Use for]
+      from: { lesson: logging, section: 'Logging levels' }
+      rows:
+        - ['`Trace`', '`Verbose`', 'Extremely detailed diagnostics; usually off in production']
+        - ['`Debug`', '`Debug`', 'Developer information while debugging']
+        - ['`Information`', '`Information`', 'Normal runtime events: startup/shutdown, user actions']
+        - ['`Warning`', '`Warning`', 'Unexpected but recoverable, degraded behavior']
+        - ['`Error`', '`Error`', 'An operation failed (handled or reported exceptions)']
+        - ['`Critical`', '`Fatal`', 'Crash or unrecoverable failure']
+    items:
+      - term: '`ILogger<T>`'
+        desc: 'Inject `ILogger<OrderService>`: `T` becomes the log category (`MyApp.Services.OrderService`), so logs can be filtered per class. A plain `ILogger` can''t be created by DI.'
+        from: { lesson: logging, section: 'What does <OrderService> actually do?' }
+      - term: 'Message templates, not interpolation'
+        desc: 'Placeholders keep the log structured and skip formatting when the level is off.'
+        code: |
+          // Good — structured
+          _logger.LogInformation("User {UserId} uploaded file {FileName} ({Size} bytes)", userId, fileName, size);
+
+          // Bad — loses structure, may evaluate even if log disabled
+          _logger.LogDebug($"User {userId} uploaded file {fileName} size {ExpensiveSizeCalc()}");
+        lang: csharp
+        from: { lesson: logging, section: 'ILogger and helper methods' }
+      - term: 'Log the exception object'
+        desc: '`_logger.LogError(ex, "Error while processing item {ItemId}", itemId);` keeps the stack trace and inner exceptions for the sinks.'
+        from: { lesson: logging, section: 'Exception logging' }
+      - term: '`IsEnabled` guard'
+        desc: 'Compute expensive values only when needed: `if (_logger.IsEnabled(LogLevel.Debug)) { … }`.'
+        from: { lesson: logging, section: 'Checking IsEnabled for expensive operations' }
+      - term: '`BeginScope`'
+        desc: '`using var scope = _logger.BeginScope("Order {OrderId}", orderId);` attaches the value to every log inside the scope.'
+        from: { lesson: logging, section: 'Logger scopes and structured state example' }
+      - term: 'Built-in providers'
+        desc: '`logging.ClearProviders(); AddConsole(); AddDebug(); SetMinimumLevel(LogLevel.Information);` There is no built-in file provider: use Serilog or NLog.'
+        from: { lesson: logging, section: 'Configuring logging (Generic Host / Console app)' }
+
+  - title: Serilog
+    items:
+      - term: 'Wire it to the host'
+        desc: 'Reads the `Serilog` section of appsettings and lets sinks/enrichers resolve services from DI.'
+        code: |
+          builder.UseSerilog((context, services, configuration) =>
+          {
+              configuration
+                  .ReadFrom.Configuration(context.Configuration)
+                  .ReadFrom.Services(services);
+          });
+        lang: csharp
+        from: { lesson: logging, section: 'How to initialise' }
+      - term: 'Code-only setup'
+        code: |
+          Log.Logger = new LoggerConfiguration()
+              .MinimumLevel.Debug()
+              .Enrich.FromLogContext()
+              .WriteTo.Console()
+              .WriteTo.File("logs/myapp-.log", rollingInterval: RollingInterval.Day)
+              .CreateLogger();
+        lang: csharp
+        desc: 'Wrap host start in `try` and call `Log.CloseAndFlush()` in `finally`.'
+        from: { lesson: logging, section: 'Example' }
+      - term: '`MinimumLevel` + overrides'
+        desc: 'Anything below the minimum is dropped everywhere. Override noisy framework namespaces: your code at Information+, `Microsoft.*` / `System.*` at Warning+.'
+        code: |
+          "MinimumLevel": {
+            "Default": "Information",
+            "Override": {
+              "Microsoft": "Warning",
+              "System": "Warning"
+            }
+          }
+        lang: json
+        from: { lesson: logging, section: '1️⃣ MinimumLevel' }
+      - term: 'Typical minimum level'
+        desc: 'Development `Debug` · QA `Information` · Production `Warning` / `Information`.'
+        from: { lesson: logging, section: 'Typical configuration' }
+      - term: 'Per-sink level'
+        desc: '`.WriteTo.File("logs/app.log", restrictedToMinimumLevel: LogEventLevel.Warning)`: the console gets more, the file only warnings and above.'
+        from: { lesson: logging, section: 'Per-sink minimum level (advanced but important)' }
+      - term: 'Sinks'
+        desc: 'Each `WriteTo` entry is a destination; one event goes to every sink that accepts its level. Rolling file: `"path": "Logs/app-.log"`, `"rollingInterval": "Day"`, `"retainedFileCountLimit": 7`.'
+        from: { lesson: logging, section: 'What does WriteTo: Console and WriteTo: File mean?' }
+      - term: 'Async sink'
+        desc: 'Wrap sinks in `Serilog.Sinks.Async` (`"Name": "Async"`, `"configure": [ … ]`) so logging doesn''t block the caller.'
+        from: { lesson: logging, section: 'Optional improvements (advanced)' }
+    table:
+      columns: [Enricher, Adds]
+      from: { lesson: logging, section: '2️⃣ Enrich' }
+      rows:
+        - ['`FromLogContext`', 'Scope properties (CorrelationId, UserId); without it scopes do nothing']
+        - ['`WithMachineName`', 'Which PC / server wrote the event']
+        - ['`WithThreadId`', 'Thread id, for multithreading / background-service debugging']
+
+  - title: Hosted & background services
+    table:
+      columns: [Feature, IHostedService, BackgroundService]
+      from: { lesson: hosted-services, section: 'Comparison: IHostedService vs BackgroundService' }
+      rows:
+        - ['Implementation', 'Manual `StartAsync` & `StopAsync`', 'Override `ExecuteAsync(CancellationToken)`']
+        - ['Best for', 'Finite control, custom lifecycle (timers, startup init)', 'Continuous / looped tasks']
+        - ['Complexity', 'More boilerplate', 'Simplified']
+        - ['Use cases', 'Timers, scoped DI tasks', 'Queue processing, monitoring']
+    items:
+      - term: '`BackgroundService` loop'
+        code: |
+          public class MyService : BackgroundService
+          {
+              protected override async Task ExecuteAsync(
+                  CancellationToken stoppingToken)
+              {
+                  while (!stoppingToken.IsCancellationRequested)
+                  {
+                      // background work
+                      await Task.Delay(1000, stoppingToken);
+                  }
+              }
+          }
+        lang: csharp
+        desc: 'Register with `services.AddHostedService<MyService>();`. Several hosted services are fine; the host manages them all.'
+        from: { lesson: hosted-services, section: 'Basic structure of BackgroundService' }
+      - term: 'Lifecycle'
+        desc: 'Host start calls `ExecuteAsync(stoppingToken)`; on `StopAsync` the host cancels the token, waits for the task to finish, then disposes the service. No forced thread aborts.'
+        from: { lesson: hosted-services, section: 'Lifecycle explained (IMPORTANT)' }
+      - term: 'Timer in `StartAsync`'
+        desc: '`new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromMinutes(5))`: callback, state, due time (first run), period (`Timeout.Infinite` = run once).'
+        from: { lesson: hosted-services, section: 'Parameters Explained' }
+      - term: 'Scoped services inside'
+        desc: 'Hosted services are singletons: inject `IServiceScopeFactory` and `CreateScope()` before resolving a `DbContext`.'
+        from: { lesson: dependency-injection, section: 'The Captive Dependency trap' }
+      - term: 'Unhandled exceptions stop the host'
+        desc: 'Since .NET 6 an exception escaping `ExecuteAsync` is logged and the host stops; set `HostOptions.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore` to keep the old behavior.'
+        docs: { url: 'https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/6.0/hosting-exception-handling', title: '.NET 6 breaking change: Exception handling in hosting', accessed: '2026-10-22' }
+      - term: 'Best practices'
+        desc: 'Don''t block in `StartAsync` (delays startup) · always honor the cancellation token · reuse dependencies via DI · log and handle errors.'
+        from: { lesson: hosted-services, section: 'Risks & Best Practices' }
+      - term: 'Worker Service template'
+        desc: '`dotnet new worker` (`Microsoft.NET.Sdk.Worker`) for standalone background apps: Windows services, containerized jobs.'
+        from: { lesson: hosted-services, section: '3. Worker Service Template' }
+      - term: 'Common mistakes'
+        desc: '`while(true)` (no cancellation) · blocking calls (app hangs on exit) · touching the UI (cross-thread crash) · business logic inside (hard to test) · static state (leaks).'
+        from: { lesson: hosted-services, section: 'Common mistakes ❌' }

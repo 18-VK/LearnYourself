@@ -1,0 +1,80 @@
+{
+  "lesson": "server-database-schema",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the end-to-end SQL Server security flow in order, from the client to the data.",
+      "steps": [
+        "Client",
+        "Login (server authentication)",
+        "User (database mapping)",
+        "Schema (permission boundary)",
+        "Object (table, view or procedure)"
+      ],
+      "explanation": "The login authenticates at the server, the user it maps to authorizes inside the database, and permissions are applied at the schema and object level.",
+      "source": { "section": "Complete security flow (end-to-end)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You create `app_login` with `CREATE LOGIN`. Can it read tables in `AppDB` straight away?",
+      "options": [
+        "Yes, a login can access every database on the server",
+        "Yes, as long as the tables are in `dbo`",
+        "No, a login doesn't automatically give database access; it needs a user mapped to it in `AppDB`",
+        "No, logins can only be used from SSMS"
+      ],
+      "answer": 2,
+      "explanation": "A login exists at server level and only authenticates. Access to a database comes from a user created `FOR LOGIN` inside that database (sysadmin is the exception).",
+      "source": { "section": "2. Login (server level)" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which of these belongs at the server level rather than inside a database?",
+      "options": [
+        "Schemas",
+        "Logins",
+        "Tables",
+        "Database users"
+      ],
+      "answer": 1,
+      "explanation": "The server holds logins, server roles and linked servers. Tables, schemas and users are database-level objects.",
+      "source": { "section": "1. Server (top level)" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`AppUser` is a contained database user in `MyDB`, with no server login. Why does a connection string with only `Server`, `User Id` and `Password` fail?",
+      "options": [
+        "Contained users can't use passwords",
+        "The connection string must use Windows Authentication",
+        "Contained users can only connect through SSMS",
+        "The database must be specified, because authentication happens inside `MyDB`"
+      ],
+      "answer": 3,
+      "explanation": "SQL Server doesn't know a contained user at server level, so the connection string must include `Database=MyDB`. With a server login, the database name is optional.",
+      "source": { "section": "2. If a database has a user without a login and I want to connect using a connection string, what happens?" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Which statement does the lesson list as best practice rather than an interview trap?",
+      "options": [
+        "Grant permissions at the schema level rather than directly on tables",
+        "A login owns the tables in a database",
+        "A schema is the same thing as a database",
+        "Permissions should always be given directly to tables"
+      ],
+      "answer": 0,
+      "explanation": "Schema-level permissions such as `GRANT SELECT, INSERT ON SCHEMA::sales TO app_user` are the recommended approach; the other statements are listed as wrong.",
+      "source": { "section": "Common interview traps ❌" },
+      "reviewed": false
+    }
+  ]
+}

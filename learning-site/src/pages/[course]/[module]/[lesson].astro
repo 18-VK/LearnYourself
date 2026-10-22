@@ -3,6 +3,11 @@ import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { runnableFor, scriptJson } from '../../../lib/runnable';
 import { courseById, courseUrl, GLYPH, lessonsOf, lessonUrl, url } from '../../../lib/site';
+// ── study sections (quiz, cheat sheets, interview questions) ──
+import LessonExtras from '../../../components/LessonExtras.astro';
+import Quiz from '../../../components/Quiz.astro';
+import { sheetsFor } from '../../../lib/data';
+// ── end study sections ──
 
 export async function getStaticPaths() {
   const entries = await getCollection('lessons');
@@ -29,6 +34,7 @@ const assets = d.resources.filter((r) => r.type === 'asset');
 const links = d.resources.filter((r) => r.type !== 'asset');
 // C# blocks that can run in the browser (decided at build time by scripts/runner/check.ts); null = none on this page
 const runnable = runnableFor(entry.id);
+const sheets = sheetsFor([d.lesson], d.cheatsheets); // study sections: manifest sheets + sheets citing this lesson
 ---
 
 <BaseLayout title={d.title} description={`${d.courseTitle} › ${d.moduleTitle}: ${d.title}`} course={d.course} searchable>
@@ -71,7 +77,7 @@ const runnable = runnableFor(entry.id);
           {d.sources.map((s, i) => (
             <a href={s.url} rel="noopener">{d.sources.length > 1 ? `Original note ${i + 1} ↗` : 'View original note ↗'}</a>
           ))}
-          {d.cheatsheets.map((s) => <a href={url(`cheat-sheets/#${s.id}`)}>Cheat sheet: {s.title}</a>)}
+          {sheets.map((s) => <a href={s.url}>Cheat sheet: {s.title}</a>)}
         </div>
       </header>
 
@@ -136,6 +142,11 @@ const runnable = runnableFor(entry.id);
           )}
         </section>
       )}
+
+      {/* ── study sections: revision cards, then the quiz (outside #lesson-body, before "Mark complete") ── */}
+      <LessonExtras slug={d.lesson} sheets={d.cheatsheets} />
+      <Quiz lesson={d.lesson} pageId={entry.id} />
+      {/* ── end study sections ── */}
 
       <div class="lesson-end" data-pagefind-ignore>
         <button type="button" class="btn btn-mark" id="mark-complete" aria-pressed="false">Mark lesson complete</button>

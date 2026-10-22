@@ -1,0 +1,96 @@
+{
+  "lesson": "data-types",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which type does the lesson recommend for an invoice total, and why?",
+      "options": [
+        "`FLOAT`, because it has the widest range",
+        "`REAL`, because it uses only 4 bytes",
+        "`DECIMAL(12,2)`, because it is exact fixed-point with no float rounding errors",
+        "`INT`, storing the amount in whole units"
+      ],
+      "answer": 2,
+      "explanation": "`DECIMAL`/`NUMERIC` are exact, which suits currency. `FLOAT`/`REAL` are approximate and not suitable for money. In `DECIMAL(p,s)`, `p` is total digits and `s` is digits after the decimal point.",
+      "source": { "section": "DECIMAL(p,s) / NUMERIC(p,s)" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "predict-output",
+      "prompt": "`Users` holds `(1, NULL)` and `(2, '')` in `MiddleName`. What does this query return?",
+      "code": { "lang": "sql", "source": "SELECT * FROM Users WHERE MiddleName = NULL;" },
+      "options": [
+        "Row 1 only",
+        "Rows 1 and 2",
+        "Row 2 only",
+        "No rows"
+      ],
+      "answer": 3,
+      "explanation": "`NULL` is not equal to anything, not even `NULL`, so the comparison never matches. Use `WHERE MiddleName IS NULL` to find row 1, and `= ''` to find the empty string in row 2.",
+      "source": { "section": "NULL vs empty vs 0" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does a SQL Server `TIMESTAMP` column actually store?",
+      "options": [
+        "A binary counter that changes whenever the row is updated; it is now called `ROWVERSION`",
+        "The date and time the row was inserted",
+        "The date and time the row was last updated, in UTC",
+        "A Unix epoch number in seconds"
+      ],
+      "answer": 0,
+      "explanation": "Despite its name, `TIMESTAMP` doesn't store date/time. Microsoft renamed it `ROWVERSION`, which is functionally identical and the future-proof choice.",
+      "source": { "section": "TIMESTAMP vs ROWVERSION" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Invoice numbers must come from one counter shared across several tables. `IDENTITY` or `SEQUENCE`?",
+      "options": [
+        "`IDENTITY`, because it can be shared by any table that references it",
+        "`SEQUENCE`, because it can be shared across multiple tables",
+        "`IDENTITY(1,1)` on each table, so the numbers match",
+        "Neither; SQL Server can't generate numbers automatically"
+      ],
+      "answer": 1,
+      "explanation": "`IDENTITY` is bound to one table and suits simple primary keys. `SEQUENCE` can be shared and used with `NEXT VALUE FOR`, which fits shared numbering like InvoiceNo.",
+      "source": { "section": "🎯 Production Advice (Important for You)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A `Name` column must hold Chinese, Japanese and Korean names. Which type, and what does it cost?",
+      "options": [
+        "`VARCHAR`, 1 byte per character",
+        "`CHAR`, padded to a fixed length",
+        "`NVARCHAR`, about 2 bytes per character",
+        "`TEXT`, unlimited length"
+      ],
+      "answer": 2,
+      "explanation": "`NVARCHAR` stores Unicode (UTF-16), at roughly double the storage of `VARCHAR`; its non-MAX limit is 4,000 characters versus 8,000 for `VARCHAR`.",
+      "source": { "section": "VARCHAR vs NVARCHAR" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "SQL Server has no array type. How does the lesson say to store several marks per student?",
+      "options": [
+        "A `Marks NVARCHAR(100)` column holding \"85,90,78\"",
+        "A separate `StudentMarks` table with a foreign key to `Students`",
+        "An `INT[]` column",
+        "One `Mark1`, `Mark2`, `Mark3` column per mark"
+      ],
+      "answer": 1,
+      "explanation": "Storing comma-separated values breaks normalization. A related table is scalable, query-friendly and follows the relational model. `INT[]` is PostgreSQL syntax.",
+      "source": { "section": "Arrays in SQL Server" },
+      "reviewed": false
+    }
+  ]
+}

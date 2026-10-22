@@ -1,0 +1,95 @@
+{
+  "lesson": "api-versioning",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which of these changes to an existing endpoint calls for a new API version?",
+      "options": [
+        "Adding a new optional field to the response",
+        "Adding a brand new endpoint",
+        "Renaming a field in the response",
+        "Adding an extra log line to the action"
+      ],
+      "answer": 2,
+      "explanation": "Removing or renaming a field, changing a type, status codes or auth requirements are breaking changes. Additive changes such as a new optional field or endpoint usually stay in the current version.",
+      "source": { "section": "Step 1: Understand why you version APIs" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why does the lesson say URL path versioning (`/api/v1/orders`) is the most common choice for internal and enterprise .NET APIs?",
+      "options": [
+        "It is explicit and simple to reason about, and easy to route",
+        "It is the most RESTfully pure option",
+        "It keeps URLs clean by moving the version to a header",
+        "It is the only scheme `Asp.Versioning.Mvc` supports"
+      ],
+      "answer": 0,
+      "explanation": "URL path versioning is explicit, cache-friendly and easy to route; its downside is that it \"pollutes\" the URL. The media type scheme is the most RESTful, and the setup can combine URL, header and query readers.",
+      "source": { "section": "Step 2: Pick a versioning scheme" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You want clients to move off v1 without breaking them yet. What does the lesson recommend?",
+      "options": [
+        "Delete `OrdersV1Controller` and let old clients get 404",
+        "Mark it `[ApiVersion(1.0, Deprecated = true)]` so the response headers tell clients to migrate",
+        "Point the v1 route at the v2 controller",
+        "Set `AssumeDefaultVersionWhenUnspecified = false`"
+      ],
+      "answer": 1,
+      "explanation": "Deprecating instead of deleting keeps v1 working while the `api-supported-versions` / `api-deprecated-versions` headers signal the change. The policy is to support N-1 and sunset older versions on a schedule.",
+      "source": { "section": "Step 6: Deprecate versions gracefully" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You register one Swagger document per version but don't add a `DocInclusionPredicate`. What do you see?",
+      "options": [
+        "Only the v1 document is generated",
+        "Swagger UI fails to load",
+        "Deprecated versions are hidden",
+        "Every version's document lists all controllers, V1 and V2 mixed together"
+      ],
+      "answer": 3,
+      "explanation": "By default Swashbuckle puts every action into every document. `DocInclusionPredicate` decides, per operation, whether it belongs in the document being built.",
+      "source": { "section": "Part 2: DocInclusionPredicate keeps versions separate" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "A health-check action has no `[ApiVersion]` attribute. Where does the lesson's `DocInclusionPredicate` put it?",
+      "options": [
+        "In every Swagger document",
+        "In no Swagger document",
+        "Only in the v1 document",
+        "Only in the newest version's document"
+      ],
+      "answer": 0,
+      "explanation": "When an action has no version metadata the predicate returns `true`, a safety fallback that includes it everywhere rather than hiding it.",
+      "source": { "section": "How the predicate works" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "What does the `SwaggerDefaultValues` operation filter do?",
+      "options": [
+        "Decides which Swagger document each operation appears in",
+        "Fills in default values for request parameters",
+        "Sets OpenAPI's `deprecated` flag on operations whose API version is marked deprecated",
+        "Adds the version dropdown to Swagger UI"
+      ],
+      "answer": 2,
+      "explanation": "`operation.Deprecated |= apiDescription.IsDeprecated()` marks each operation of a deprecated version, so Swagger UI shows it struck through. Choosing the document is the predicate's separate job.",
+      "source": { "section": "Part 1: SwaggerDefaultValues marks deprecated operations" },
+      "reviewed": false
+    }
+  ]
+}

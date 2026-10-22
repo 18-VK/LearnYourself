@@ -22,7 +22,8 @@
     "verify": "tsx scripts/verify-output.ts",
     "runner": "tsx scripts/runner/step.ts",
     "runner:check": "tsx scripts/runner/check.ts",
-    "test:runner": "cd runner && dotnet test --project Runner.Tests/Runner.Tests.csproj -c Release"
+    "test:runner": "cd runner && dotnet test --project Runner.Tests/Runner.Tests.csproj -c Release",
+    "scan:personal": "tsx scripts/scan-personal.ts"
   },
   "dependencies": {
     "@astrojs/react": "7.0.1",

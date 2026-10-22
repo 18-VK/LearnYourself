@@ -1,0 +1,107 @@
+{
+  "lesson": "dependency-properties",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A Style on `CustomControl` has `<Trigger Property=\"IsHighlighted\" Value=\"True\">` that sets the Background to Yellow. Why does this work without any C# event code?",
+      "options": [
+        "The Style re-reads every property of the control on a short timer",
+        "`IsHighlighted` is a dependency property, and WPF listens to its changes",
+        "The CLR wrapper's setter raises `PropertyChanged`, which the trigger handles",
+        "Triggers only work on properties that were declared in XAML"
+      ],
+      "answer": 1,
+      "explanation": "`IsHighlighted` is registered with the WPF property system, so the engine listens to the DP and applies the trigger's setters as soon as the value becomes `True`, with no extra C# code.",
+      "source": {
+        "section": "Dependency Property"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does a class need in order to define its own dependency property?",
+      "options": [
+        "Implement `INotifyPropertyChanged` and back the property with a private field",
+        "Be a ViewModel class that is registered in the DI container",
+        "Register it with `DependencyProperty.Register` in a `DependencyObject` class",
+        "Mark the property with a `[Dependency]` attribute so WPF can find it"
+      ],
+      "answer": 2,
+      "explanation": "Dependency properties require registration via `DependencyProperty.Register`, and the class must inherit from `DependencyObject`; the CLR wrapper then calls `GetValue`/`SetValue`.",
+      "source": {
+        "section": "Dependency vs CLR Property"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which statement about change notification is correct?",
+      "options": [
+        "Both CLR and dependency properties notify the UI automatically",
+        "DPs need `INotifyPropertyChanged`, while CLR properties notify automatically",
+        "Neither can notify the UI; bindings poll the source for changes instead",
+        "CLR properties need `INotifyPropertyChanged`; DPs have built-in notification"
+      ],
+      "answer": 3,
+      "explanation": "CLR properties do not notify changes automatically, so `INotifyPropertyChanged` is required for binding updates, while dependency properties have built-in change notification and can register callbacks.",
+      "source": {
+        "section": "Dependency vs CLR Property"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Following the lesson's rule of thumb, how should you implement a `UserName` on `LoginViewModel` and a bindable `SelectedIndex` on a custom dropdown control?",
+      "options": [
+        "`UserName`: CLR property + `INotifyPropertyChanged`; `SelectedIndex`: dependency property",
+        "`UserName`: dependency property; `SelectedIndex`: CLR property + `INotifyPropertyChanged`",
+        "Both as dependency properties, so both can be bound",
+        "Both as plain CLR properties with no notification"
+      ],
+      "answer": 0,
+      "explanation": "ViewModels (data) use CLR properties with `INotifyPropertyChanged`, which keeps them testable and free of WPF dependencies; controls (UI) use dependency properties for anything that must receive a value from a binding.",
+      "source": {
+        "section": "Use CLR Properties for your ViewModels and data models, and Dependency Properties (DP) for Custom Controls and UI elements."
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is the relationship between `TextBox.Text` and `TextBox.TextProperty`?",
+      "options": [
+        "They are two separate values that WPF keeps in sync after each change",
+        "`TextProperty` is a CLR wrapper around the `Text` dependency property",
+        "`Text` is the CLR wrapper over the static `TextProperty` DP identifier",
+        "`Text` is used only in C#, and `TextProperty` only in XAML attributes"
+      ],
+      "answer": 2,
+      "explanation": "`TextBox.Text` is the instance-level CLR property, and it delegates to the registered `TextBox.TextProperty` dependency property. In XAML you bind with the CLR name (`Text=\"{Binding ...}\"`), but the mechanism relies on `TextProperty`.",
+      "source": {
+        "section": "Dependency vs CLR Property"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "In `PasswordBoxHelper`, the `PasswordChanged` handler sets an internal `IsUpdating` flag to `true` before writing `SecurePassword` and back to `false` afterwards. Why?",
+      "options": [
+        "To make the PasswordBox read-only for as long as the user types",
+        "To stop the change being pushed back into the box (a recursive update)",
+        "To tell the ViewModel that the new password passed validation",
+        "To switch the binding to `UpdateSourceTrigger=LostFocus` for a moment"
+      ],
+      "answer": 1,
+      "explanation": "`IsUpdating` is an internal marker to prevent recursive updates; `OnSecurePasswordChanged` only updates the PasswordBox when `!GetIsUpdating(passwordBox)`, so a change that came from the user is not written back into the box.",
+      "source": {
+        "section": "Secured password Binding using Dependency property"
+      },
+      "reviewed": false
+    }
+  ]
+}

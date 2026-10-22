@@ -1,0 +1,79 @@
+{
+  "lesson": "ef-core-crud-and-relationships",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "order-steps",
+      "prompt": "Put the steps for inserting a new `Product` with EF Core in order.",
+      "steps": [
+        "Create a new instance of the context: `using (var db = new EFContext())`",
+        "Create a `Product` and assign values to its properties",
+        "Add it to the context with `db.Add(product)` or `db.Products.Add(product)`",
+        "Call `db.SaveChanges()` to persist it to the database"
+      ],
+      "explanation": "Inserting is handled by `SaveChanges`: you create the context and the entity, add the entity so the context becomes aware of it, then save.",
+      "source": { "section": "### Inserting Data" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "How does the lesson delete the product whose primary key is 1?",
+      "options": [
+        "Call `db.Products.Remove(1)` and then `SaveChanges()`",
+        "Load it with `db.Products.Find(1)`, pass it to `db.Products.Remove(product)`, then call `SaveChanges()`",
+        "Set the product's `Id` to 0 and call `SaveChanges()`",
+        "Call `db.SaveChanges()` with the id as an argument"
+      ],
+      "answer": 1,
+      "explanation": "Deleting uses the `DbSet`'s `Remove` method, which takes the entity itself, so you first get the entity (here with `Find`) and then call `Remove` and `SaveChanges`.",
+      "source": { "section": "### Delete the Record" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "An entity class has no property EF Core can recognise as a primary key. What does the lesson say happens?",
+      "options": [
+        "EF Core creates the table without a primary key",
+        "EF Core adds a hidden `Id` column automatically",
+        "`add-migration` throws an error",
+        "EF Core uses the first property of the class as the key"
+      ],
+      "answer": 2,
+      "explanation": "EF Core does not allow tables without a primary key. By convention it looks for a property named `ID` or `<className>ID`; if you don't specify one, `add-migration` throws an error.",
+      "source": { "section": "## Primary Key Convention" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "A new `Student` has two new `Course` objects added to `student.Courses`, and only `context.Students.Add(student)` is called before `SaveChanges()`. What does EF Core insert?",
+      "options": [
+        "Only the student; courses must be added to `context.Courses` separately",
+        "The student and the courses, but no join-table rows",
+        "Nothing, because the courses aren't tracked yet",
+        "The student, both courses, and the join-table rows linking them"
+      ],
+      "answer": 3,
+      "explanation": "`Add` inspects the whole object graph: the student and the untracked new courses are marked Added, and EF Core populates the join table automatically.",
+      "source": { "section": "### Many-to-Many in EF Core" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Each student–course link must store `EnrolledOn` and `Grade`. Which many-to-many design does the lesson recommend?",
+      "options": [
+        "An explicit join entity such as `Enrollment` with a composite key",
+        "An implicit join table renamed with `UsingEntity(j => j.ToTable(\"Enrollments\"))`",
+        "A single foreign key column on `Student`",
+        "An implicit join table with the extra columns added to it"
+      ],
+      "answer": 0,
+      "explanation": "An implicit join table cannot store extra fields such as `EnrolledOn` or `Grade`; use an explicit join entity when the relationship has a payload.",
+      "source": { "section": "## Explicit join table (explicit join entity class)" },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "lesson": "exception-handling",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "predict-output",
+      "prompt": "Which lines does this code print?",
+      "code": {
+        "lang": "csharp",
+        "source": "try\n{\n    Console.WriteLine(\"Before exception\");\n    int x = int.Parse(\"not-a-number\"); // throws FormatException\n    Console.WriteLine(\"This line will NOT run\");\n}\ncatch (FormatException ex)\n{\n    Console.WriteLine(\"Caught FormatException: \" + ex.Message);\n}\ncatch (Exception ex) // fallback for unexpected exceptions\n{\n    Console.WriteLine(\"General error: \" + ex.Message);\n}\nfinally\n{\n    // Runs whether or not an exception was thrown\n    Console.WriteLine(\"Finally block: cleanup here\");\n}"
+      },
+      "options": [
+        "\"Before exception\", then \"Caught FormatException: …\", then \"Finally block: cleanup here\"",
+        "\"Before exception\", then \"Caught FormatException: …\", then \"General error: …\", then \"Finally block: cleanup here\"",
+        "\"Before exception\", then \"Caught FormatException: …\" (the `finally` block is skipped because the exception was caught)",
+        "\"Before exception\", then \"This line will NOT run\", then \"Finally block: cleanup here\""
+      ],
+      "answer": 0,
+      "explanation": "`int.Parse` throws a `FormatException`, so the next line is skipped and only the first matching `catch` runs. The `finally` block runs whether or not an exception was thrown.",
+      "source": { "section": "Exception Handling in C#" },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Inside a `catch` block, why should you re-throw with `throw;` rather than `throw ex;`?",
+      "options": [
+        "`throw;` is faster because it skips the remaining catch blocks",
+        "`throw;` keeps the original stack trace, while `throw ex;` resets it to the current method",
+        "`throw ex;` does not compile inside a catch block",
+        "`throw;` converts the exception into a general `Exception`"
+      ],
+      "answer": 1,
+      "explanation": "`throw;` keeps the original stack trace so you can trace the error back to its origin; `throw ex;` resets it to the current method, which can hide the real source.",
+      "source": { "section": "⚠️ Why Use `throw;` Instead of `throw ex;`" },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "order-steps",
+      "prompt": "In the re-throwing example, `Main()` calls `ProcessData()`, which reads `numbers[5]` from a 3-element array. Put what happens in order.",
+      "steps": [
+        "`numbers[5]` causes an `IndexOutOfRangeException`",
+        "The catch block in `ProcessData()` catches it and logs a message",
+        "`throw;` re-throws the same exception",
+        "The catch block in `Main()` catches the exception and logs it again"
+      ],
+      "explanation": "The exception is caught and logged in `ProcessData()`, re-thrown with `throw;`, and then caught again in `Main()`, where it's logged once more.",
+      "source": { "section": "Re-Throwing exceptions" },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `catch (Exception ex) when (ex is InvalidOperationException || ex is FormatException)` do?",
+      "options": [
+        "It catches every exception and then re-throws the ones that don't match",
+        "It catches only exceptions thrown inside a `when` block",
+        "It enters the catch block only when the filter condition is true, which states the intent more clearly than checking inside the block",
+        "It converts both exception types into `InvalidOperationException`"
+      ],
+      "answer": 2,
+      "explanation": "An exception filter with `when` decides whether the catch block handles the exception, instead of catching and inspecting it inside the block.",
+      "source": { "section": "Exception filters (`when`)" },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "Why does `InsufficientFundsException` have a constructor that takes an `inner` exception?",
+      "options": [
+        "So the custom exception can wrap the original exception and keep its details (exception chaining)",
+        "Because every class that inherits from `Exception` must declare three constructors",
+        "So the original exception is deleted before the new one is thrown",
+        "So the exception can be caught without a `try` block"
+      ],
+      "answer": 0,
+      "explanation": "When one exception is caused by another, wrapping the original (for example a `FormatException`) inside the custom exception keeps the root cause while adding context. This is called exception chaining.",
+      "source": { "section": "🔹 Why do we need inner exception?" },
+      "reviewed": false
+    },
+    {
+      "id": "q6",
+      "type": "mcq",
+      "prompt": "In `throw new ArgumentOutOfRangeException(nameof(age), ...)`, what does `nameof(age)` produce?",
+      "options": [
+        "The current value of `age`, such as `150`",
+        "The type of `age`, `System.Int32`",
+        "The string `\"age\"`, the identifier's name",
+        "The line number where `age` is declared"
+      ],
+      "answer": 2,
+      "explanation": "`nameof(x)` returns the identifier name of `x` as a string, not its value.",
+      "source": { "section": "Custom error" },
+      "reviewed": false
+    }
+  ]
+}

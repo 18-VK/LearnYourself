@@ -1,0 +1,49 @@
+---
+/** Browse every interview question: short answers here, full answers fetched from the topic page on demand. */
+import '../../styles/interview.css';
+import IqCard from '../../components/interview/IqCard.astro';
+import IqFilters from '../../components/interview/IqFilters.astro';
+import IqNav from '../../components/interview/IqNav.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { questionsOfTopic, topics, topicUrl } from '../../lib/data';
+import { sortQuestions, viewOf } from '../../lib/interview';
+import { url } from '../../lib/site';
+
+const groups = await Promise.all(
+  topics.map(async (t) => ({ topic: t, list: await Promise.all(sortQuestions(questionsOfTopic(t.id)).map(viewOf)) })),
+);
+const total = groups.reduce((n, g) => n + g.list.length, 0);
+const withQuestions = groups.filter((g) => g.list.length);
+const lessonTitles = Object.fromEntries(groups.flatMap((g) => g.list.flatMap((v) => v.lessonIds.map((id, i) => [id, v.lessons[i]?.title ?? id]))));
+---
+
+<BaseLayout title="Browse interview questions" description="Every interview question, filterable by topic, difficulty, origin and review status, with full-text search." nav="interview">
+  <IqNav current="browse" />
+  <header class="iq-head">
+    <p class="eyebrow">Interview Prep</p>
+    <h1>Browse the questions</h1>
+    <p class="iq-lede">Short answers first. Open a card for the full answer, code, common traps and follow-ups; each links to the lessons that teach it.</p>
+  </header>
+
+  {total === 0 ? (
+    <p class="iq-empty-state" role="status">No interview questions are published yet. They are being written, notes first; <a href={url('interview-prep/')}>see the topics</a>.</p>
+  ) : (
+    <>
+      <IqFilters mode="browse" topics={withQuestions.map((g) => g.topic)} total={total} lessonTitles={lessonTitles} />
+      <div class="iq-list">
+        {withQuestions.map((g) => (
+          <section class="iq-section" aria-labelledby={`topic-${g.topic.id}`}>
+            <h2 id={`topic-${g.topic.id}`}>
+              {g.topic.title} <a class="iq-section-link" href={topicUrl(g.topic.id)}>Topic page →</a>
+            </h2>
+            {g.list.map((q) => <IqCard q={q} full={false} />)}
+          </section>
+        ))}
+      </div>
+      <p class="iq-empty-state" data-iq-empty hidden>No questions match these filters. <button type="button" class="btn" data-iq-reset>Reset filters</button></p>
+    </>
+  )}
+  <script>
+    import '../../scripts/interview-browse';
+  </script>
+</BaseLayout>
