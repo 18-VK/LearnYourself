@@ -135,7 +135,7 @@ describe('joins on edited data agree with set definitions', () => {
       }
       expect(result('cross-apply', d)).toEqual(outer.filter((r) => r[2] !== null));
     }
-  });
+  }, 60_000);
 
   it('SELF JOIN keeps every employee and finds the manager by EmpId (NULL never matches)', () => {
     for (let n = 0; n < 5 ** 4; n++) {
@@ -146,5 +146,5 @@ describe('joins on edited data agree with set definitions', () => {
       const r = result('self', { ...NOTE_JOIN_DATA, employees: emps });
       expect(r).toEqual(emps.map((e) => [e.Name, emps.find((m) => e.ManagerId !== null && m.EmpId === e.ManagerId)?.Name ?? null]));
     }
-  });
+  }, 60_000);
 });

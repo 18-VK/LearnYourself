@@ -9,4 +9,8 @@ export const REGISTRY: Record<string, VizLoader> = {
   JoinVisualizer: () => import('./JoinVisualizer') as Promise<VizModule>,
   IsolationSimulator: () => import('./IsolationSimulator') as Promise<VizModule>,
   QueryOrderVisualizer: () => import('./QueryOrderVisualizer') as Promise<VizModule>,
+  IndexVisualizer: () => import('./IndexVisualizer') as Promise<VizModule>,
+  WindowFunctionVisualizer: () => import('./WindowFunctionVisualizer') as Promise<VizModule>,
+  CorrelatedSubqueryVisualizer: () => import('./CorrelatedSubqueryVisualizer') as Promise<VizModule>,
+  RecursiveCteVisualizer: () => import('./RecursiveCteVisualizer') as Promise<VizModule>,
 };

@@ -13,6 +13,8 @@ const MARK_CLASS: Record<Mark, string> = {
   out: 'is-out',
   removed: 'is-removed',
 };
+export const markClass = (m: Mark | null | undefined): string => (m ? MARK_CLASS[m] : '');
+
 /** Text equivalents, so a row's state never depends on colour alone. */
 const MARK_SYMBOL: Record<Mark, { sym: string; label: string }> = {
   compare: { sym: '?', label: 'being checked' },
@@ -171,12 +173,12 @@ const LEGEND: Record<string, string> = {
   removed: 'Removed by this step',
 };
 
-export function SqlLegend({ items, extra }: { items: (keyof typeof LEGEND)[]; extra?: [string, string][] }) {
+export function SqlLegend({ items, extra, labels }: { items: (keyof typeof LEGEND)[]; extra?: [string, string][]; labels?: Partial<Record<string, string>> }) {
   const sw: Record<string, string> = { active: 'active', compare: 'compare', write: 'swap', settled: 'settled', removed: 'removed' };
   return (
     <ul className="legend sql-legend" aria-label="Colour legend">
       {items.map((k) => (
-        <li key={k}><span className={`sw sw-${sw[k]}`} aria-hidden="true">{k === 'removed' ? '✕' : ''}</span>{LEGEND[k]}</li>
+        <li key={k}><span className={`sw sw-${sw[k]}`} aria-hidden="true">{k === 'removed' ? '✕' : ''}</span>{labels?.[k] ?? LEGEND[k]}</li>
       ))}
       <li><span className="sw sw-null" aria-hidden="true">N</span>NULL</li>
       {extra?.map(([cls, label]) => (

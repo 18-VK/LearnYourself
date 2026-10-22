@@ -161,6 +161,8 @@ SELECT * FROM Orders WHERE CustomerId = 123;
 SELECT * FROM Orders WHERE Amount > 0;`),
   customerIdIndex: sql(NOTE.plans, '## Real Example: Before Index', `CREATE INDEX IX_Orders_CustomerID
 ON Orders(CustomerID);`),
+  indexCount: sql(NOTE.indexes, '## INSERT Performance', `1 clustered index
+5 non-clustered indexes`),
   updateClusteredKey: sql(NOTE.indexes, '### Why updating a clustered key is expensive', `UPDATE Orders
 SET OrderId = 5000
 WHERE OrderId = 100;`),
