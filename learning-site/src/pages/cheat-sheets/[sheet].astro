@@ -1,0 +1,134 @@
+---
+/**
+ * One cheat sheet, rendered from src/data/generated/cheatsheets.json by this single template (§9):
+ * grouped cards and tables, a live filter, copy buttons on snippets, a link back to the lesson section on
+ * every item and row, "From docs" labels, and a print stylesheet (src/styles/cheatsheet.css).
+ */
+import '../../styles/cheatsheet.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sheets, type Sheet } from '../../lib/data';
+import { prepareSheet } from '../../lib/cheatsheets';
+import { inlineText } from '../../lib/markdown';
+import { url } from '../../lib/site';
+
+export function getStaticPaths() {
+  return sheets.map((sheet) => ({ params: { sheet: sheet.id }, props: { sheet } }));
+}
+interface Props {
+  sheet: Sheet;
+}
+const view = await prepareSheet(Astro.props.sheet);
+const courses = [...new Set(view.lessons.map((l) => l.courseTitle))];
+// the accent follows the course most of the sheet comes from
+const tally = new Map<string, number>();
+for (const l of view.lessons) tally.set(l.course, (tally.get(l.course) ?? 0) + 1);
+const mainCourse = [...tally].sort((a, b) => b[1] - a[1])[0]?.[0];
+const pageUrl = Astro.site ? new URL(url(`cheat-sheets/${view.id}/`), Astro.site).href : url(`cheat-sheets/${view.id}/`);
+---
+
+<BaseLayout title={`${view.title} (cheat sheet)`} description={view.summary} nav="cheatsheets" course={mainCourse} searchable>
+  <article class="cs" data-sheet={view.id}>
+    <header class="cs-head">
+      <nav class="crumb" aria-label="Breadcrumb" data-pagefind-ignore><a href={url('cheat-sheets/')}>Cheat Sheets</a> › {inlineText(view.title)}</nav>
+      <h1 data-pagefind-meta="title">{inlineText(view.title)}</h1>
+      <p class="cs-summary">{view.summary}</p>
+      <p class="cs-meta" data-pagefind-ignore>
+        {view.count} items in {view.groups.length} group{view.groups.length === 1 ? '' : 's'}
+        {view.lessons.length > 0 && <> · condensed from {view.lessons.length} lesson{view.lessons.length === 1 ? '' : 's'} in {courses.join(', ')}</>}
+        {view.fromDocs > 0 && <> · {view.fromDocs} from official docs</>}
+      </p>
+      <p class="cs-printinfo">LearnYourself cheat sheet · {pageUrl}</p>
+    </header>
+
+    <div class="cs-tools" data-pagefind-ignore>
+      <label class="cs-filter">
+        <span class="sr-only">Filter this sheet</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"></path></svg>
+        <input id="cs-filter" type="search" placeholder="Filter items, e.g. stable" autocomplete="off" spellcheck="false" aria-controls="cs-groups" aria-describedby="cs-count" />
+      </label>
+      <output id="cs-count" class="cs-count" aria-live="polite" data-total={view.count}>{view.count} items</output>
+      <button type="button" class="btn" data-print>Print</button>
+    </div>
+
+    {view.groups.length > 1 && (
+      <nav class="cs-toc" aria-label="Groups on this sheet" data-pagefind-ignore>
+        {view.groups.map((g) => <a href={`#${g.id}`} set:html={g.title} />)}
+      </nav>
+    )}
+
+    <div class="cs-groups" id="cs-groups">
+      {view.groups.map((g) => (
+        <section class={`cs-group${g.table?.wide ? ' is-wide' : ''}`} aria-labelledby={g.id} data-filter-title={g.filter}>
+          <h2 id={g.id} set:html={g.title} />
+          {g.note && <p class="cs-note" set:html={g.note} />}
+          {g.items.length > 0 && (
+            <ul class="cs-items">
+              {g.items.map((it) => (
+                <li class="cs-item" data-filter={it.filter}>
+                  <div class="cs-term" set:html={it.term} />
+                  {it.desc && <div class="cs-desc" set:html={it.desc} />}
+                  {it.code && <div class="cs-code" set:html={it.code} />}
+                  {it.source?.kind === 'lesson' && <a class="cs-src" href={it.source.href} title={it.source.label}>{it.source.text}</a>}
+                  {it.source?.kind === 'docs' && (
+                    <p class="cs-src cs-src-docs">
+                      <span class="badge cs-docs">From docs</span>{' '}
+                      <a href={it.source.href} class="external" target="_blank" rel="noopener noreferrer">{it.source.label}</a>
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {g.table && (
+            <div class="cs-table-block" data-filter-table>
+              <div class="table-wrap cs-table" role="region" tabindex="0" aria-label={g.label}>
+                <table>
+                  <thead>
+                    <tr>
+                      {g.table.columns.map((c) => <th scope="col" set:html={c} />)}
+                      <th scope="col" class="cs-src-col">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.table.rows.map((r) => (
+                      <tr data-filter={r.filter}>
+                        {r.cells.map((c) => <td set:html={c} />)}
+                        <td class="cs-src-col">
+                          {r.source?.kind === 'lesson' && <a href={r.source.href} title={r.source.label} aria-label={`Lesson: ${r.source.label}`}>{r.source.short}</a>}
+                          {r.source?.kind === 'docs' && (
+                            <a href={r.source.href} class="external cs-docs-link" target="_blank" rel="noopener noreferrer" title={r.source.label} aria-label={`From docs: ${r.source.label}`}>From docs</a>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {g.table.from && <p class="cs-table-from">From <a href={g.table.from.href}>{g.table.from.label}</a></p>}
+              {g.table.docs.map((d) => (
+                <p class="cs-table-from cs-src-docs">
+                  <span class="badge cs-docs">From docs</span>{' '}
+                  <a href={d.href} class="external" target="_blank" rel="noopener noreferrer">{d.label}</a>
+                  {d.accessed && <span> (checked {d.accessed})</span>}
+                </p>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+    <p class="cs-empty" id="cs-empty" role="status" hidden>No items match this filter. <button type="button" class="btn" data-clear>Clear the filter</button></p>
+
+    <footer class="cs-foot">
+      <p>Condensed from the study notes: each item links to the lesson section it comes from. Items marked “From docs” fill gaps the notes don’t cover and link to the official page they were checked against.</p>
+      {view.lessons.length > 0 && (
+        <p class="cs-lessons" data-pagefind-ignore>
+          Lessons: {view.lessons.map((l, i) => <>{i > 0 && ' · '}<a href={l.href}>{l.title}</a></>)}
+        </p>
+      )}
+    </footer>
+  </article>
+  <script>
+    import '../../scripts/cheatsheet';
+  </script>
+</BaseLayout>

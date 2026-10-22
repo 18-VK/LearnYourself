@@ -1,0 +1,65 @@
+---
+/** Filter bar for interview questions (Browse and the topic pages); behaviour in src/scripts/interview-browse.ts. */
+import { DIFFICULTIES, difficultyLabel, type Topic } from '../../lib/data';
+
+interface Props {
+  mode: 'browse' | 'topic';
+  /** Topics offered in the topic filter (Browse only). */
+  topics?: Topic[];
+  total: number;
+  /** Lesson titles by short id, so ?lesson=… can be named. */
+  lessonTitles?: Record<string, string>;
+}
+const { mode, topics = [], total, lessonTitles = {} } = Astro.props;
+---
+
+<form class="iq-filters" role="search" aria-label="Filter questions" data-mode={mode} data-total={total} data-pagefind-ignore>
+  <label class="iq-search">
+    <span class="sr-only">Search questions and answers</span>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    <input type="search" name="q" placeholder="Search questions and answers" autocomplete="off" spellcheck="false" />
+  </label>
+  {mode === 'browse' && (
+    <label class="iq-field">
+      <span>Topic</span>
+      <select name="topic">
+        <option value="">All topics</option>
+        {topics.map((t) => <option value={t.id}>{t.title}</option>)}
+      </select>
+    </label>
+  )}
+  <label class="iq-field">
+    <span>Difficulty</span>
+    <select name="difficulty">
+      <option value="">Any</option>
+      {DIFFICULTIES.map((d) => <option value={d}>{difficultyLabel(d)}</option>)}
+    </select>
+  </label>
+  <label class="iq-field">
+    <span>Origin</span>
+    <select name="origin">
+      <option value="">Notes and web</option>
+      <option value="notes">From my notes</option>
+      <option value="web">Web-researched</option>
+    </select>
+  </label>
+  <label class="iq-field">
+    <span>Reviewed</span>
+    <select name="reviewed">
+      <option value="">Any</option>
+      <option value="yes">Reviewed</option>
+      <option value="no">Not yet reviewed</option>
+    </select>
+  </label>
+  <input type="hidden" name="lesson" value="" />
+  <button type="reset" class="btn">Reset</button>
+</form>
+<div class="iq-status" data-pagefind-ignore>
+  <p class="iq-count" role="status" aria-live="polite" data-iq-count>{total} question{total === 1 ? '' : 's'}</p>
+  <p class="iq-chip" data-iq-lesson-chip hidden>
+    <span>Lesson: <strong data-iq-lesson-name></strong></span>
+    <button type="button" class="btn" data-iq-lesson-clear>Show all lessons</button>
+  </p>
+  {mode === 'topic' && <button type="button" class="btn iq-expand" data-iq-expand aria-pressed="false">Expand all answers</button>}
+</div>
+<script type="application/json" data-iq-lessons set:html={JSON.stringify(lessonTitles)} />

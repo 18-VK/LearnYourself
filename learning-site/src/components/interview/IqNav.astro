@@ -1,0 +1,19 @@
+---
+import { url } from '../../lib/site';
+
+interface Props {
+  current: 'overview' | 'browse' | 'flashcards' | 'mock' | 'gallery' | 'topic';
+}
+const { current } = Astro.props;
+const links = [
+  { key: 'overview', href: url('interview-prep/'), label: 'Overview' },
+  { key: 'browse', href: url('interview-prep/browse/'), label: 'Browse' },
+  { key: 'flashcards', href: url('interview-prep/flashcards/'), label: 'Flashcards' },
+  { key: 'mock', href: url('interview-prep/mock/'), label: 'Mock interview' },
+  { key: 'gallery', href: url('interview-prep/gallery/'), label: 'Gallery' },
+];
+---
+
+<nav class="iq-nav" aria-label="Interview Prep" data-pagefind-ignore>
+  {links.map((l) => <a href={l.href} aria-current={current === l.key ? 'page' : undefined}>{l.label}</a>)}
+</nav>

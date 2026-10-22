@@ -1,0 +1,126 @@
+/* Cheat sheets (§9): the index, one template per sheet, and the print stylesheet. */
+
+/* ── index ─────────────────────────────────────────────────────────────────────────────────── */
+.cs-index-head { max-width: 72ch; }
+.cs-index-head h1 { font-size: clamp(1.8rem, 1.3rem + 1.6vw, 2.4rem); margin-top: 8px; }
+.cs-index-head p { margin-top: 10px; color: var(--ink-2); }
+.cs-list { list-style: none; margin: 26px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; }
+.cs-card { position: relative; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; scroll-margin-top: calc(var(--header-h) + 24px); }
+.cs-card:hover:has(a) { border-color: var(--ink-3); }
+.cs-card h2 { font-size: 1.08rem; line-height: 1.3; }
+.cs-card h2 a { color: var(--ink); text-decoration: none; }
+.cs-card h2 a::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
+.cs-card h2 a:focus-visible { outline: none; }
+.cs-card:has(h2 a:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.cs-card p { color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+.cs-card .meta { margin-top: auto; padding-top: 4px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.cs-card.is-planned { border-style: dashed; background: transparent; }
+.cs-empty-state { margin-top: 22px; border: 1px dashed var(--line); border-radius: 14px; padding: 16px 18px; color: var(--ink-2); max-width: 72ch; }
+
+/* ── one sheet ─────────────────────────────────────────────────────────────────────────────── */
+.cs-head { display: grid; gap: 8px; max-width: 80ch; }
+.cs-head h1 { font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.2rem); }
+.cs-summary { color: var(--ink-2); font-size: 1.04rem; }
+.cs-meta { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.cs-printinfo { display: none; }
+.cs-tools { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--header-h)); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 18px 0 10px; padding: 10px 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+.cs-filter { flex: 1 1 260px; max-width: 460px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 0 10px; color: var(--ink-3); }
+.cs-filter:focus-within { border-color: var(--focus); outline: 2px solid color-mix(in srgb, var(--focus) 35%, transparent); }
+.cs-filter input { flex: 1; min-width: 0; border: 0; background: none; padding: 8px 0; font: inherit; font-size: 15.5px; color: var(--ink); outline: none; }
+.cs-count { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cs-tools .btn { margin-left: auto; }
+.cs-toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.cs-toc a { font-size: 13.5px; text-decoration: none; color: var(--ink-2); border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; background: var(--surface); }
+.cs-toc a:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.cs-groups { columns: 3 340px; column-gap: 16px; }
+.cs-group { break-inside: avoid; margin: 0 0 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; display: flow-root; }
+.cs-group.is-wide { column-span: all; }
+.cs-group h2 { font-size: 1.04rem; line-height: 1.3; padding-bottom: 6px; border-bottom: 2px solid var(--accent, var(--ink-3)); scroll-margin-top: calc(var(--header-h) + 90px); }
+.cs-note { margin-top: 6px; font-size: 13.5px; color: var(--ink-3); }
+.cs-items { list-style: none; margin: 0; padding: 0; }
+.cs-item { padding: 9px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+.cs-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.cs-term { font-weight: 650; font-size: 15px; line-height: 1.35; }
+.cs-desc { margin-top: 2px; font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.cs-code { margin-top: 6px; }
+.cs-code .code-frame pre { font-size: 12.6px; padding: 8px 0; }
+.cs-code .code-frame pre .line { padding: 0 10px; }
+.cs-code .code-head { padding: 2px 6px 2px 10px; }
+.cs-src { display: inline-block; margin-top: 4px; font-size: 12.5px; color: var(--ink-3); line-height: 1.35; }
+a.cs-src { color: var(--ink-3); text-decoration-color: color-mix(in srgb, var(--ink-3) 50%, transparent); }
+a.cs-src:hover { color: var(--link); }
+a.cs-src::before { content: "↳ "; text-decoration: none; display: inline-block; margin-right: 2px; }
+.cs-src-docs a { color: var(--ink-2); }
+.cs-docs { border-color: color-mix(in srgb, var(--tip) 45%, var(--line)); color: var(--tip); background: var(--tip-bg); font-size: 10.5px; padding: 1px 6px; }
+.cs :not(pre) > code { font-size: 0.86em; background: var(--surface-2); padding: 0.06em 0.32em; border-radius: 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+.cs a.external::after { content: " ↗"; font-size: 0.85em; }
+
+.cs-table-block { margin-top: 8px; }
+.cs-table { width: 100%; max-height: none; }
+.cs-table table { width: 100%; font-size: 14px; }
+.cs-table th, .cs-table td { padding: 6px 10px; }
+.cs-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.cs-src-col { width: 1%; white-space: nowrap; font-size: 12.5px; }
+.cs-table :not(pre) > code { overflow-wrap: normal; }
+th.cs-src-col { color: var(--ink-3); font-weight: 500; }
+td.cs-src-col a { color: var(--ink-3); }
+td.cs-src-col a:hover { color: var(--link); }
+td.cs-src-col a.cs-docs-link { color: var(--tip); }
+.cs-table-from { margin-top: 6px; font-size: 12.5px; color: var(--ink-3); }
+.cs-table-from a { color: var(--ink-2); }
+
+.is-filtered-out { display: none !important; }
+.cs-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--ink-2); margin: 10px 0 24px; }
+.cs-foot { margin-top: 28px; max-width: 80ch; display: grid; gap: 8px; font-size: 14px; color: var(--ink-3); }
+.cs-lessons a { color: var(--ink-2); }
+
+@media (max-width: 560px) {
+  .cs-tools { position: static; }
+  .cs-tools .btn { margin-left: 0; }
+  .cs-group { padding: 10px 12px 12px; }
+}
+
+/* ── print: light theme, no chrome, cards kept whole where they fit ───────────────────────── */
+@media print {
+  @page { margin: 12mm 11mm; }
+  html:root,
+  html:root[data-theme],
+  html:root:not([data-theme="light"]) {
+    --bg: #fff; --surface: #fff; --surface-2: #eef1f5; --ink: #111; --ink-2: #2b3442; --ink-3: #4f5b6c; --line: #c8cfd9;
+    --link: #1d4aa8; --code-bg: #f5f7fa; --code-ink: #1d2633; --tip: #2b5fc4; --tip-bg: #fff; --good: #1d7f53; --bad: #b8343f;
+    --phase1: #6a4cd8; --desktop: #0e7f7b; --phase2: #3b55c9; --sql: #c23a5a; --dsa: #a05f08; --math: #1b8455; --backend: #b84f17;
+    color-scheme: light;
+  }
+  html:root .astro-code, html:root .astro-code span { color: var(--shiki-light) !important; }
+  body { font-size: 9.2pt; line-height: 1.38; background: #fff; color: #111; }
+  .topbar, .site-footer, .cs-tools, .cs-toc, .cs-empty, .code-copy, .toast, .search-dialog, .crumb, .cs-meta { display: none !important; }
+  main.page { padding: 0; }
+  .wrap { max-width: none; padding: 0; }
+  .cs-head { gap: 2px; margin-bottom: 4mm; max-width: none; }
+  .cs-head h1 { font-size: 17pt; }
+  .cs-summary { font-size: 10pt; }
+  .cs-printinfo { display: block; font-family: var(--mono); font-size: 7.5pt; color: var(--ink-3); }
+  .is-filtered-out { display: revert !important; }
+  .cs-groups { columns: 2; column-gap: 6mm; }
+  .cs-group { break-inside: avoid; page-break-inside: avoid; margin-bottom: 4mm; padding: 2.5mm 3mm; border-radius: 6px; }
+  .cs-group.is-wide { column-span: all; }
+  .cs-group h2 { font-size: 10.5pt; padding-bottom: 1mm; break-after: avoid; page-break-after: avoid; }
+  .cs-item, .cs-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .cs-item { padding: 1.6mm 0; }
+  .cs-term { font-size: 9.6pt; }
+  .cs-desc { font-size: 9pt; }
+  .cs-src, .cs-table-from, td.cs-src-col { font-size: 7.5pt; }
+  .cs-table table, .cs-table { font-size: 8.6pt; }
+  .cs-table th { position: static; font-size: inherit; }
+  td.cs-src-col { white-space: normal; }
+  .cs-note { font-size: 8.5pt; margin-top: 1mm; }
+  .cs-table tbody tr:nth-child(even) td { background: none; }
+  .code-frame { break-inside: avoid; }
+  .code-head { display: none; }
+  .cs-code .code-frame pre { font-size: 8pt; line-height: 1.4; padding: 1.4mm 0; white-space: pre-wrap; overflow: visible; }
+  .cs a { color: var(--link); text-decoration: underline; }
+  .cs a.cs-src::before { content: "↳ "; }
+  .cs .cs-src-docs a[href]::after { content: " (" attr(href) ")"; font-size: 0.9em; overflow-wrap: anywhere; }
+  .cs-foot { font-size: 7.5pt; margin-top: 4mm; max-width: none; }
+}

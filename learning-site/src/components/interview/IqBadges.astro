@@ -1,0 +1,20 @@
+---
+/** Origin, difficulty, subtopic and status badges for one interview question. */
+import { difficultyLabel } from '../../lib/data';
+import type { QuestionView } from '../../lib/interview';
+
+interface Props {
+  q: Pick<QuestionView, 'origin' | 'originLabel' | 'reviewed' | 'difficulty' | 'subtopicLabel' | 'notCoveredYet' | 'topicTitle'>;
+  showTopic?: boolean;
+}
+const { q, showTopic = false } = Astro.props;
+---
+
+<div class="iq-badges">
+  <span class={`badge iq-origin iq-origin-${q.origin}${q.reviewed ? ' is-reviewed' : ''}`}>{q.originLabel}</span>
+  {q.origin === 'notes' && q.reviewed && <span class="badge iq-reviewed">Reviewed</span>}
+  <span class={`badge iq-diff iq-diff-${q.difficulty}`}>{difficultyLabel(q.difficulty)}</span>
+  {showTopic && <span class="badge iq-topic">{q.topicTitle}</span>}
+  <span class="badge iq-sub">{q.subtopicLabel}</span>
+  {q.notCoveredYet && <span class="badge badge-soon" title="No lesson on this yet">No lesson yet</span>}
+</div>

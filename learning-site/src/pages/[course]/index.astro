@@ -1,7 +1,8 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { courseById, courses, courseUrl, GLYPH, lessonsOf, lessonUrl, readingTime, site, url, type CourseData } from '../../lib/site';
+import { courseById, courses, courseUrl, GLYPH, lessonsOf, lessonUrl, readingTime, site, type CourseData } from '../../lib/site';
+import { quizzes, sheetsFor } from '../../lib/data';
 
 export function getStaticPaths() {
   return courses.map((c) => ({ params: { course: c.id }, props: { course: c } }));
@@ -13,8 +14,9 @@ const { course } = Astro.props;
 const landing = (await getCollection('landing')).find((e) => e.data.course === course.id);
 const Landing = landing ? (await render(landing)).Content : null;
 const lessons = (await getCollection('lessons')).filter((e) => e.data.course === course.id);
-const sheetIds = new Map<string, string>();
-for (const l of lessons) for (const s of l.data.cheatsheets) sheetIds.set(s.id, s.title);
+// study sections: the union of the lessons' manifest sheets and sheets citing them; lessons with a quiz
+const courseSheets = sheetsFor(lessons.map((l) => l.data.lesson), lessons.flatMap((l) => l.data.cheatsheets));
+const hasQuiz = (slug: string) => Boolean(quizzes[slug]?.length);
 const ids = lessonsOf(course).map((l) => l.id);
 const kindLabel = course.kind === 'roadmap' ? 'Roadmap' : 'Course';
 let n = 0;
@@ -59,9 +61,9 @@ const coverLabel = (cover: string) => {
     </section>
   )}
 
-  {sheetIds.size > 0 && (
+  {courseSheets.length > 0 && (
     <p class="muted" style="margin-bottom:20px" data-pagefind-ignore>
-      Cheat sheets for this course: {[...sheetIds].map(([id, title], i) => <>{i > 0 && ' · '}<a href={url(`cheat-sheets/#${id}`)}>{title}</a></>)}
+      Cheat sheets for this course: {courseSheets.map((s, i) => <>{i > 0 && ' · '}<a href={s.url}>{s.title}</a></>)}
     </p>
   )}
 
@@ -86,7 +88,7 @@ const coverLabel = (cover: string) => {
                 <a href={lessonUrl(l.id)}>
                   <span class="dot" aria-hidden="true"></span>
                   <span>{l.title}</span>
-                  <span class="lmeta">{l.kind !== 'lesson' ? `${l.kind} · ` : ''}{l.minutes} min{l.viz ? ` · ${l.viz} viz` : ''}</span>
+                  <span class="lmeta">{l.kind !== 'lesson' ? `${l.kind} · ` : ''}{l.minutes} min{l.viz ? ` · ${l.viz} viz` : ''}{hasQuiz(l.slug) && <span data-quiz-badge> · quiz</span>}</span>
                 </a>
               </li>
             ))}
@@ -97,5 +99,10 @@ const coverLabel = (cover: string) => {
   </div>
   <script>
     import '../../scripts/catalogue';
+    import '../../scripts/quiz-scores';
   </script>
+  <style>
+    /* study sections: best quiz score next to a lesson */
+    :global([data-quiz-badge].quiz-full) { color: var(--good); }
+  </style>
 </BaseLayout>

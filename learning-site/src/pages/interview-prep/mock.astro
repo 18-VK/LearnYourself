@@ -1,0 +1,110 @@
+---
+/** Mock interview: a random, timed set from chosen topics; answer, reveal, rate; a summary of what to revise. */
+import '../../styles/interview.css';
+import IqNav from '../../components/interview/IqNav.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { questionsOfTopic, topics } from '../../lib/data';
+import { url } from '../../lib/site';
+
+const rows = topics.map((t) => ({ t, n: questionsOfTopic(t.id).length })).filter((r) => r.n > 0);
+const total = rows.reduce((s, r) => s + r.n, 0);
+---
+
+<BaseLayout title="Mock interview" description="A random, timed set of interview questions: answer, reveal the model answer, rate yourself, then see what to revise." nav="interview">
+  <IqNav current="mock" />
+  <header class="iq-head">
+    <p class="eyebrow">Interview Prep</p>
+    <h1>Mock interview</h1>
+    <p class="iq-lede">Pick topics, a number of questions and a time limit. Answer each question out loud or in the text box, reveal the model answer and rate yourself honestly. The summary lists what to revise and the lessons that teach it.</p>
+  </header>
+
+  {total === 0 ? (
+    <p class="iq-empty-state" role="status">No questions are published yet, so a mock interview isn't possible. <a href={url('interview-prep/')}>Back to Interview Prep</a>.</p>
+  ) : (
+    <div class="mk" data-mk>
+      <section class="iq-panel" data-mk-setup aria-labelledby="mk-setup-h">
+        <h2 id="mk-setup-h">Set up the interview</h2>
+        <fieldset class="iq-checks">
+          <legend>Topics</legend>
+          <div class="iq-check-grid">
+            {rows.map(({ t, n }) => (
+              <label><input type="checkbox" name="mk-topic" value={t.id} checked /> {t.title} <span class="muted">{n}</span></label>
+            ))}
+          </div>
+          <p class="iq-check-tools"><button type="button" class="btn" data-check-all>All topics</button> <button type="button" class="btn" data-check-none>None</button></p>
+        </fieldset>
+        <div class="iq-row">
+          <label class="iq-field">
+            <span>Questions</span>
+            <select name="mk-count">
+              {[3, 5, 10, 15, 20, 30].map((n) => <option value={n} selected={n === 10}>{n}</option>)}
+            </select>
+          </label>
+          <label class="iq-field">
+            <span>Time limit</span>
+            <select name="mk-time">
+              <option value="0">No limit</option>
+              {[5, 10, 15, 20, 30, 45, 60].map((m) => <option value={m} selected={m === 20}>{m} minutes</option>)}
+            </select>
+          </label>
+        </div>
+        <div class="iq-start">
+          <button type="button" class="btn btn-primary" data-mk-start>Start the interview</button>
+          <p class="muted" data-mk-setup-count aria-live="polite">Loading the questions…</p>
+        </div>
+        <div class="mk-history" data-mk-history-wrap hidden>
+          <h3>Past interviews</h3>
+          <ol data-mk-history></ol>
+          <button type="button" class="btn" data-mk-clear>Clear history</button>
+        </div>
+      </section>
+
+      <section data-mk-run hidden aria-label="Interview question">
+        <div class="iq-runbar">
+          <span class="iq-pos" data-mk-pos></span>
+          <span class="mk-timer" role="timer" aria-label="Time left" data-mk-timer></span>
+          <span class="iq-runbar-tools"><button type="button" class="btn" data-mk-end>End the interview</button></span>
+        </div>
+        <p class="sr-only" aria-live="assertive" data-mk-alert></p>
+        <article class="iq-panel mk-card" data-mk-card tabindex="-1">
+          <div data-mk-badges></div>
+          <h2 class="fc-q" data-mk-q></h2>
+          <label class="mk-answer">
+            <span>Your answer <span class="muted">(optional: answer out loud if you prefer)</span></span>
+            <textarea rows="5" data-mk-text></textarea>
+          </label>
+          <p><button type="button" class="btn btn-primary" data-mk-reveal>Reveal the model answer</button></p>
+          <div class="mk-model" data-mk-model hidden>
+            <div class="fc-short">
+              <span class="eyebrow">Short answer</span>
+              <p data-mk-short></p>
+            </div>
+            <div class="fc-full" data-mk-full></div>
+            <fieldset class="mk-rate">
+              <legend>How did you do?</legend>
+              <label><input type="radio" name="mk-rate" value="good" /> Got it</label>
+              <label><input type="radio" name="mk-rate" value="partial" /> Partly</label>
+              <label><input type="radio" name="mk-rate" value="missed" /> Missed it</label>
+            </fieldset>
+            <p><button type="button" class="btn btn-primary" data-mk-next disabled>Next question</button></p>
+          </div>
+        </article>
+      </section>
+
+      <section class="iq-panel" data-mk-summary hidden aria-labelledby="mk-sum-h" tabindex="-1">
+        <h2 id="mk-sum-h">Interview summary</h2>
+        <p class="mk-score" data-mk-score></p>
+        <div data-mk-weak></div>
+        <h3>Question by question</h3>
+        <ol class="mk-results" data-mk-results></ol>
+        <p class="iq-start">
+          <button type="button" class="btn btn-primary" data-mk-again>Another interview</button>
+          <a class="btn" href={url('interview-prep/flashcards/')} data-mk-flash>Practise with flashcards</a>
+        </p>
+      </section>
+    </div>
+  )}
+  <script>
+    import '../../scripts/mock-interview';
+  </script>
+</BaseLayout>

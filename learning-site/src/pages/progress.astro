@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { courses, courseUrl, lessonsOf } from '../lib/site';
+import { quizzes } from '../lib/data';
+import { courses, courseUrl, lessonsOf, lessonUrl } from '../lib/site';
 ---
 
 <BaseLayout title="Your progress" nav="none">
@@ -21,12 +22,23 @@ import { courses, courseUrl, lessonsOf } from '../lib/site';
           <h3><a href={courseUrl(c.id)}>{c.title}</a></h3>
           <div class="bar-mini" data-progress-ids={JSON.stringify(lessonsOf(c).map((l) => l.id))}><span></span></div>
           <p class="muted" style="font-size:12.5px" data-progress-text>Not started</p>
+          {lessonsOf(c).some((l) => quizzes[l.slug]?.length) && (
+            <div class="quiz-summary" data-quiz-summary>
+              <p class="muted" data-quiz-summary-text>Quizzes</p>
+              <ul>
+                {lessonsOf(c).filter((l) => quizzes[l.slug]?.length).map((l) => (
+                  <li data-lesson-id={l.id} hidden><a href={`${lessonUrl(l.id)}#ly-quiz`}>{l.title}</a><span class="muted" data-quiz-badge></span></li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       ))}
     </div>
   </section>
   <script>
     import '../scripts/catalogue';
+    import '../scripts/quiz-scores';
     import { toast } from '../scripts/global';
     import { exportProgress, importProgress } from '../scripts/progress';
 
@@ -49,4 +61,9 @@ import { courses, courseUrl, lessonsOf } from '../lib/site';
       }
     });
   </script>
+  <style>
+    .quiz-summary { position: relative; z-index: 1; display: grid; gap: 4px; font-size: 14px; }
+    .quiz-summary ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+    .quiz-summary [data-quiz-badge] { font-family: var(--mono); font-size: 12.5px; }
+  </style>
 </BaseLayout>

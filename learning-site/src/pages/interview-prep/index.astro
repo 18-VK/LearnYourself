@@ -1,22 +1,109 @@
 ---
+/** Interview Prep overview (§10): topics with counts, and the ways in (browse, flashcards, mock, gallery). */
+import '../../styles/interview.css';
+import IqNav from '../../components/interview/IqNav.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { site } from '../../lib/site';
+import { questions, questionsOfTopic, topics, topicUrl } from '../../lib/data';
+import { countsOf } from '../../lib/interview';
+import { galleryAssets } from '../../lib/gallery';
+import { url } from '../../lib/site';
+
+const all = countsOf(questions);
+const rows = topics.map((t) => ({ t, c: countsOf(questionsOfTopic(t.id)) }));
+const gallery = galleryAssets();
+const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : '0%');
 ---
 
-<BaseLayout title="Interview Prep" nav="interview">
-  <section style="max-width:80ch">
-    <p class="eyebrow">Interview Prep</p>
-    <h1 style="font-size:2rem;margin-top:8px">Question bank, flashcards and mock interviews</h1>
-    <p style="margin-top:10px;color:var(--ink-2)">
-      Questions from the notes come first; web-researched questions follow, each with sources and an origin badge. Each question links to the
-      lessons that teach it. The bank is being built; these are its topics.
-    </p>
-    <ul style="margin-top:20px;display:grid;gap:8px;list-style:none;padding:0">
-      {site.interviewTopics.map((t) => (
-        <li class="course-card" style="flex:none;padding:12px 16px">
-          <strong>{t.title}</strong> <span class="badge badge-soon">Coming soon</span>
-        </li>
-      ))}
-    </ul>
+<BaseLayout title="Interview Prep" description="Interview questions from the notes and from the web, with flashcards, mock interviews and links to the lessons that teach each answer." nav="interview">
+  <IqNav current="overview" />
+  <section class="iq-hero">
+    <div>
+      <p class="eyebrow">Interview Prep</p>
+      <h1>Question bank, flashcards and mock interviews</h1>
+      <p class="iq-lede">
+        Questions from the notes come first. Web-researched questions fill the gaps, each with its sources. Every question gives a short answer
+        first, then the full answer, common traps and likely follow-ups, and links to the lessons that teach it.
+      </p>
+      <p class="iq-legend" aria-label="Origin badges">
+        <span class="badge iq-origin iq-origin-notes">From my notes</span>
+        <span class="badge iq-origin iq-origin-web">Web-researched, unreviewed</span>
+        <span class="badge iq-origin iq-origin-web is-reviewed">Web-researched, reviewed</span>
+      </p>
+    </div>
+    <div class="facts">
+      <div><b>{all.total}</b><span>questions</span></div>
+      <div><b>{all.notes}</b><span>from the notes</span></div>
+      <div><b>{all.web}</b><span>web-researched</span></div>
+      <div><b>{all.reviewed}</b><span>reviewed</span></div>
+    </div>
   </section>
+
+  {all.total === 0 && (
+    <p class="iq-empty-state" role="status">
+      The question bank is being written: questions from the notes first, then web-researched ones with sources. The topics are planned below.
+    </p>
+  )}
+
+  <ul class="iq-entry">
+    <li>
+      <a href={url('interview-prep/browse/')}>
+        <span class="eyebrow">Browse</span>
+        <strong>All questions</strong>
+        <span>Filter by topic, difficulty, origin and review status, and search the answers.</span>
+      </a>
+    </li>
+    <li>
+      <a href={url('interview-prep/flashcards/')}>
+        <span class="eyebrow">Flashcards</span>
+        <strong>Question → short answer → full answer</strong>
+        <span>Shuffle, sort into “Know it” and “Review again”, and pick up where you stopped.</span>
+      </a>
+    </li>
+    <li>
+      <a href={url('interview-prep/mock/')}>
+        <span class="eyebrow">Mock interview</span>
+        <strong>A random, timed set</strong>
+        <span>Answer out loud or in writing, reveal the model answer, rate yourself, then see what to revise.</span>
+      </a>
+    </li>
+    <li>
+      <a href={url('interview-prep/gallery/')}>
+        <span class="eyebrow">Gallery</span>
+        <strong>{gallery.images.length} images · {gallery.pdfs.length} PDFs</strong>
+        <span>Interview cheat sheets and question lists collected while studying, with credits.</span>
+      </a>
+    </li>
+  </ul>
+
+  <div class="section-head"><h2>Topics</h2></div>
+  <div class="iq-topics">
+    {rows.map(({ t, c }) => (
+      <section class={`iq-topic${c.total ? '' : ' is-empty'}`} aria-labelledby={`t-${t.id}`}>
+        <h3 id={`t-${t.id}`}><a href={topicUrl(t.id)}>{t.title}</a></h3>
+        {t.notCoveredYet && <span class="badge badge-soon">No course yet</span>}
+        <p class="iq-topic-count"><b>{c.total}</b> question{c.total === 1 ? '' : 's'}</p>
+        {c.total > 0 ? (
+          <>
+            <div class="iq-bar" role="img" aria-label={`${c.notes} from the notes, ${c.web} web-researched`}>
+              <span class="iq-bar-notes" style={`width:${pct(c.notes, c.total)}`}></span>
+              <span class="iq-bar-web" style={`width:${pct(c.web, c.total)}`}></span>
+            </div>
+            <dl class="iq-topic-stats">
+              <div><dt>Notes</dt><dd>{c.notes}</dd></div>
+              <div><dt>Web</dt><dd>{c.web}</dd></div>
+              <div><dt>Reviewed</dt><dd>{c.reviewed}</dd></div>
+              <div><dt>Junior</dt><dd>{c.junior}</dd></div>
+              <div><dt>Mid</dt><dd>{c.mid}</dd></div>
+              <div><dt>Senior</dt><dd>{c.senior}</dd></div>
+            </dl>
+            <p class="iq-topic-links">
+              <a href={url(`interview-prep/flashcards/?topics=${t.id}`)}>Flashcards</a> · <a href={url(`interview-prep/mock/?topics=${t.id}`)}>Mock interview</a>
+            </p>
+          </>
+        ) : (
+          <p class="muted iq-topic-soon">Being written.</p>
+        )}
+      </section>
+    ))}
+  </div>
 </BaseLayout>
