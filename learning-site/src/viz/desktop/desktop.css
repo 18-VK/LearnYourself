@@ -1,0 +1,75 @@
+/* Desktop (WPF) visualizers: data binding, CanExecute and debounce. Shared colour meanings from viz.css. */
+.desk .viz-input input[type="text"] { width: 10em; margin-left: 4px; }
+.desk .viz-input label { flex-wrap: wrap; }
+
+/* data binding */
+.db-grid { display: grid; gap: 8px; }
+.db-row { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(64px, 0.5fr) minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.db-headrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.db-headrow span:nth-child(2) { text-align: center; }
+.db-cell { border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 9px; background: var(--bg); min-width: 0; display: grid; gap: 3px; align-content: start; }
+.db-ctl { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.db-value { font-family: var(--mono); font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.db-textbox { border: 1px solid var(--ink-3); border-radius: 5px; padding: 2px 6px; background: var(--surface); }
+.db-label { background: var(--surface-2); border-radius: 4px; padding: 2px 6px; }
+.db-xaml { font-size: 10.5px; color: var(--ink-3); overflow-wrap: anywhere; background: none; padding: 0; }
+.db-mode { place-items: center; text-align: center; align-content: center; border-style: dashed; }
+.db-arrow { font-size: 20px; line-height: 1; color: var(--ink-2); }
+.db-modename { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+.db-once { font-size: 10.5px; color: var(--ink-3); }
+.db-ping { font-family: var(--mono); font-size: 10.5px; color: var(--v-compare); font-weight: 700; }
+.db-row.is-flow-target .db-target, .db-row.is-flow-source .db-source { border-color: var(--v-active); background: color-mix(in srgb, var(--v-active) 12%, var(--bg)); }
+.db-row.is-flow-target .db-mode, .db-row.is-flow-source .db-mode { border-color: var(--v-active); }
+.db-row.is-flow-target .db-arrow, .db-row.is-flow-source .db-arrow { color: var(--v-active); }
+.db-row.is-heard .db-mode { border-color: var(--v-compare); background: color-mix(in srgb, var(--v-compare) 12%, var(--bg)); }
+.db-row.is-deaf .db-mode { opacity: 0.55; }
+.db-event { margin: 10px 0 0; font-size: 13.5px; padding: 6px 10px; border-radius: 8px; border: 1px dashed var(--line); }
+.db-event.is-on { border-style: solid; border-color: var(--v-compare); background: color-mix(in srgb, var(--v-compare) 10%, var(--surface)); }
+.db-event code { font-size: 12.5px; }
+@container (max-width: 480px) {
+  .db-row { grid-template-columns: minmax(0, 1fr) 64px minmax(0, 0.85fr); gap: 5px; }
+  .db-modename { font-size: 10.5px; }
+  .db-cell { padding: 6px 7px; }
+  .db-xaml { display: none; }
+  .db-value { font-size: 13px; }
+}
+
+/* CanExecute */
+.cmd-stage { gap: 12px; }
+.cmd-window { border: 1.5px solid var(--line); border-radius: 10px; padding: 10px; background: var(--bg); display: grid; gap: 10px; }
+.cmd-grid { width: 100%; border-collapse: collapse; font-size: 13.5px; font-family: var(--mono); }
+.cmd-grid th, .cmd-grid td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+.cmd-grid th { font-size: 11.5px; color: var(--ink-3); font-weight: 500; }
+.cmd-grid tr.is-selected td { background: color-mix(in srgb, var(--v-pointer) 16%, var(--surface)); }
+.cmd-buttonrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.cmd-button { display: inline-block; padding: 6px 18px; border-radius: 7px; border: 1.5px solid var(--line); color: var(--ink-3); background: var(--surface-2); font-size: 14px; user-select: none; }
+.cmd-button.is-enabled { color: var(--ink); background: var(--surface); border-color: var(--v-sorted); box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--v-sorted) 40%, transparent); }
+.cmd-button.is-clicked { transform: translateY(1px); box-shadow: none; }
+.cmd-button.is-stale { outline: 2px dashed var(--v-swap); outline-offset: 2px; }
+.cmd-bubble { font-family: var(--mono); font-size: 12px; border: 1.5px solid var(--v-active); color: var(--v-active); border-radius: 99px; padding: 1px 9px; }
+.cmd-stale { font-size: 12.5px; color: var(--v-swap); }
+.cmd-signals { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.cmd-signal, .cmd-result { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-radius: 99px; padding: 2px 9px; color: var(--ink-3); }
+.cmd-signal.is-on { border-color: var(--v-active); color: var(--ink); background: color-mix(in srgb, var(--v-active) 14%, var(--surface)); font-weight: 600; }
+.cmd-result.is-true { border-color: var(--v-sorted); color: var(--ink); }
+.cmd-result.is-false { border-color: var(--ink-3); color: var(--ink-2); }
+
+/* debounce timeline */
+.deb-wrap { width: 100%; overflow: hidden; }
+.deb-svg { display: block; }
+.deb-lane { stroke: var(--line); stroke-width: 1.5; }
+.deb-lname { font-family: var(--mono); font-size: 11.5px; fill: var(--ink-2); }
+.deb-tick line { stroke: var(--ink-3); }
+.deb-tick text { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-3); }
+.deb-key line { stroke: var(--ink); stroke-width: 2; }
+.deb-key text { font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--ink); }
+.deb-timer rect { fill: var(--v-active); }
+.deb-timer .deb-due { fill: none; stroke: var(--v-active); stroke-dasharray: 3 3; }
+.deb-timer.is-cancelled rect { fill: var(--v-idle); opacity: 0.55; }
+.deb-timer.is-fired rect { fill: var(--v-sorted); }
+.deb-x { font-size: 13px; font-weight: 700; fill: var(--ink-2); }
+.deb-search circle { fill: var(--v-sorted); }
+.deb-search text { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--ink); }
+.deb-naive { fill: var(--v-compare); }
+.deb-now { stroke: var(--v-pointer); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.desk .counters span { font-size: 11px; }

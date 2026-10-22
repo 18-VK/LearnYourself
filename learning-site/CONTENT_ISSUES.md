@@ -48,3 +48,15 @@ without editing the notes. Fencing the code in the source would make the notes r
 | 15 | `WPF_Tutorial/2.WPFNotes.md`, `WPF_Tutorial/3.OtherUsefulThings.md`, `WPF_Tutorial/12.AdvanceTopics.md` | 586 lines of unfenced XAML. Plain Markdown treats `<TextBlock … />` as HTML and drops it from the page. | Same recovery. Separately, any raw HTML tag in a note that is not on a small allow-list is escaped, so it shows as text instead of disappearing. |
 | 16 | `SQLTutorial/SQL_StoredProcedure.md`, `Phase1-…/Dot Net_CLI.md` (root copy) | Unfenced SQL and shell commands. | Same recovery. |
 | 17 | Many notes | Single line breaks inside paragraphs carry meaning (for example "Definition:" on one line, the definition on the next). | Single newlines render as line breaks. |
+
+## Diagrams, roadmaps and WPF visualizers
+
+Found while converting ASCII diagrams (`curriculum/FLOW_DIAGRAMS.md`), building the roadmap graphs and the WPF visualizers. Numbered F1… so they don't clash with entries added elsewhere.
+
+| # | File › heading | Observation | Site behaviour | Status |
+|---|---|---|---|---|
+| F1 | `20.WFA_and_WPF/DebounceSearch.md` › In WPF | The `SearchText` setter never assigns `_searchText = value`, so `_searchText` stays `null`: the getter always returns `null` and `if (_searchText != value)` is always true. The Stop/Start timer logic, which the note is about, is unaffected. | The debounce visualizer shows the code as written and animates only the timer: keystroke → `Stop()` → `Start()` → `Tick` → `ApplySearch()`. Its narration never says the value is stored. | open |
+| F2 | `WPF_Tutorial/4.MVVMandDataBindings.md` › Example how to setup things | Two comments in the `MainViewModel` block wrap onto a new line (`nameof` / `(Rating)` and `// calling for each` / `property`), so the block would not compile as written. | The data binding visualizer's code panel shows only the `Name` and `Status` properties, which are intact. | info |
+| F3 | `WPF_Tutorial/4.MVVMandDataBindings.md` › MVVM in WPF | In the ASCII diagram the arrow down to Model starts under the gap between View and ViewModel, not under either box. | The animated version draws it from ViewModel, because the bullets under the diagram say the View never talks to the Model directly. The original ASCII is one click away ("Show text version"). | info |
+| F4 | `ASP.Net Core/11.ASP_MoreOnAuth.md` › Before any code… 3 parties | The diagram has no Client ↔ Resource API arrow, but step 5 of the flow right under it is "Client calls Resource API". | That step highlights both boxes without drawing an arrow, so the diagram stays as drawn. | info |
+| F5 | `BackendRoadmap/database-design-roadmap.md` › For actual hands-on practice… | A top-level `#` heading in the middle of the note (after the design checklist). | The roadmap graph shows it as a top-level stop next to the stages, with the practice sites as its branches. | info |
