@@ -162,7 +162,7 @@ function Drawing({
   const centred = layout.mode !== 'tree';
   const summary = `${data.title}: ${data.nodes.map((n) => n.label).join(', ')}`;
   return (
-    <svg className="flow-svg" width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="img" aria-label={summary}>
+    <svg className="flow-svg" width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={summary}>
       {data.edges.map((e) => {
         const g = layout.edges.get(e.id);
         if (!g) return null;

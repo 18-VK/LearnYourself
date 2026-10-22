@@ -46,3 +46,9 @@
 @media (prefers-reduced-motion: reduce) {
   .rm-bar > span { transition: none; }
 }
+@container (max-width: 480px) {
+  .rm-branch .rm-bar { display: none; }
+  .rm-path { padding: 12px 10px 4px; }
+  .rm-root { padding-left: 38px; }
+  .rm-children { padding-left: 8px; }
+}
