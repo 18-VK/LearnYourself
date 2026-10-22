@@ -296,7 +296,11 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
       continue;
     }
     const file = r.data;
-    if (file.topic !== f.name) errors.push(`${f.file}: topic is ${file.topic} but the file name says ${f.name}`);
+    // <topic>.json, or split by origin as <topic>.notes.json / <topic>.web.json
+    const fileTopic = f.name.replace(/\.(notes|web)$/, '');
+    if (file.topic !== fileTopic) errors.push(`${f.file}: topic is ${file.topic} but the file name says ${fileTopic}`);
+    const part = /\.(notes|web)$/.exec(f.name)?.[1];
+    if (part && file.questions.some((q) => q.origin !== part)) errors.push(`${f.file}: a .${part}.json file holds only origin "${part}" questions`);
     const topic = topicById.get(file.topic);
     if (!topic) {
       errors.push(`${f.file}: topic ${file.topic} is not in curriculum/_interview.yaml`);

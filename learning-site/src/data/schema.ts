@@ -5,7 +5,8 @@
  *
  *   src/data/quizzes/<lesson-id>.json      "Check your understanding" at the end of a lesson (§6)
  *   src/data/cheatsheets/<sheet-id>.yaml   one quick-reference sheet (§9)
- *   src/data/interview/<topic-id>.json     interview questions for one topic (§10)
+ *   src/data/interview/<topic-id>.json     interview questions for one topic (§10); may be split by origin into
+ *                                          <topic-id>.notes.json and <topic-id>.web.json
  */
 import { z } from 'zod';
 
@@ -219,7 +220,7 @@ export type InterviewQuestion = z.infer<typeof InterviewQuestionSchema>;
 
 export const InterviewFileSchema = z
   .object({
-    /** Must equal the file name and an id in curriculum/_interview.yaml. */
+    /** Must equal the file name (without .notes/.web) and an id in curriculum/_interview.yaml. */
     topic: Slug,
     questions: z.array(InterviewQuestionSchema),
   })
