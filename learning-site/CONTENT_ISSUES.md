@@ -11,6 +11,7 @@ Status: `open` (needs your call), `info` (no action needed; recorded so nothing 
 
 | # | File › heading | Observation | Site behaviour | Status |
 |---|---|---|---|---|
+| R1 | `Phase1-CSharp_And_DotNet_core_fundamental/9.C#_Tuple/Note.md` › Returning Multiple Values from a Method | The second version, `Tuple<string,int> GetPerson() { return ("Aman", 25); }`, does not compile: `("Aman", 25)` is a `ValueTuple<string, int>`, and C# has no implicit conversion to `System.Tuple<string, int>` (CS0029). `return Tuple.Create("Aman", 25);` would. Found by the C# runner's build-time check. | The block is shown as written and gets no Run button (listed as a compile error in `runnable-report.md`). | open |
 | 5 | `Competitive Programming/sorting-algorithms-notes.md` › 9. Bucket Sort | "Sort each bucket individually (often with insertion sort)", while the code calls `List<float>.Sort()`, which is not stable. The stability line ("depends on the sort used within buckets") therefore means this implementation is not guaranteed stable. | Each bucket's sort is shown as a single step labelled `buckets[i].Sort()`, matching the code. | info |
 
 ## Resolved

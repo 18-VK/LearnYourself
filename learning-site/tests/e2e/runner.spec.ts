@@ -15,7 +15,7 @@ const entries = Object.entries(data?.lessons ?? {}).flatMap(([lesson, blocks]) =
 
 test.skip(!available, 'No runner in this build (no .NET SDK); the build skipped the C# runner.');
 // one worker boot is shared by the runs in a test; the first download and compile take a while
-test.setTimeout(240_000);
+test.describe.configure({ timeout: 240_000 });
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];

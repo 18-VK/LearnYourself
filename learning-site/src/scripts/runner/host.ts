@@ -10,6 +10,7 @@
 
 export const TIMEOUT_MS = 5000;
 export const MAX_OUTPUT = 64 * 1024;
+const COMPILE_TIMEOUT_MS = 60_000;
 
 export interface Diagnostic {
   id: string;
@@ -121,6 +122,7 @@ class RunnerHost {
     if (!p) return;
     if (phase === 'running') {
       p.callbacks.onPhase?.('running');
+      window.clearTimeout(p.timer); // the compile watchdog
       p.timer = window.setTimeout(() => {
         // the program is still running: stop it the only reliable way, then get a fresh runtime ready
         this.reset();
@@ -172,7 +174,12 @@ class RunnerHost {
     callbacks.onPhase?.('compiling');
     const id = this.nextId++;
     return new Promise<RunOutcome>((resolve) => {
-      this.pending.set(id, { resolve, callbacks, output: '' });
+      // watchdog for compiling (normally well under a second once warm): never leave the learner waiting forever
+      const timer = window.setTimeout(() => {
+        this.reset();
+        this.finish(id, { kind: 'fatal', message: 'the compiler did not answer within a minute', output: '' });
+      }, COMPILE_TIMEOUT_MS);
+      this.pending.set(id, { resolve, callbacks, output: '', timer });
       this.worker!.postMessage({ type: 'run', id, code: req.code, harness: req.harness ?? null, stdin: req.stdin ?? '', maxOutput: MAX_OUTPUT });
     });
   }

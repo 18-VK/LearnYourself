@@ -215,7 +215,31 @@ public sealed class Classifier
         return false;
     }
 
-    /// <summary>Assemblies the compilation actually uses, by simple name.</summary>
-    public static ImmutableArray<string> UsedAssemblies(CSharpCompilation compilation) =>
-        [.. compilation.GetUsedAssemblyReferences().Select(r => compilation.GetAssemblyOrModuleSymbol(r) is IAssemblySymbol a ? a.Name : "?").Distinct().Order()];
+    /// <summary>
+    /// Reference assemblies whose symbols the learner's code binds to, by simple name. (Walks the semantic model rather
+    /// than calling GetUsedAssemblyReferences, which reports every reference as used when the compilation has errors.)
+    /// </summary>
+    public static ImmutableArray<string> UsedAssemblies(CSharpCompilation compilation)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var tree in compilation.SyntaxTrees)
+        {
+            if (SnippetCompiler.DocumentPath(tree) == ProgramBuilder.UsingsPath) continue;
+            var model = compilation.GetSemanticModel(tree);
+            foreach (var node in tree.GetRoot().DescendantNodes())
+            {
+                if (node is not (IdentifierNameSyntax or GenericNameSyntax or MemberAccessExpressionSyntax or ObjectCreationExpressionSyntax or ImplicitObjectCreationExpressionSyntax or InvocationExpressionSyntax or PredefinedTypeSyntax or LiteralExpressionSyntax or InterpolatedStringExpressionSyntax))
+                    continue;
+                void Add(ISymbol? s)
+                {
+                    if (s is IMethodSymbol { ReducedFrom: { } r }) s = r;
+                    if (s is IArrayTypeSymbol a) s = a.ElementType;
+                    if (s?.ContainingAssembly is { } asm && asm.Name != SnippetCompiler.AssemblyName) names.Add(asm.Name);
+                }
+                Add(model.GetSymbolInfo(node).Symbol);
+                Add(model.GetTypeInfo(node).Type);
+            }
+        }
+        return [.. names.Order(StringComparer.Ordinal)];
+    }
 }
