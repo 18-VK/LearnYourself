@@ -193,6 +193,9 @@ export default function CollectionVisualizer(props: CollectionVisualizerProps) {
             <li><span className="sw sw-swap" aria-hidden="true" />Written or moved</li>
             <li><span className="sw sw-active" aria-hidden="true" />Current</li>
             <li><span className="sw sw-settled" aria-hidden="true" />Found or returned</li>
+            {(def.id === 'dictionary-buckets' || def.id === 'hash-set') && (
+              <li><span className="sw sw-bucket" aria-hidden="true" />Bucket being looked at</li>
+            )}
             {def.id === 'sorted-dictionary' && (
               <>
                 <li><span className="sw sw-black" aria-hidden="true" />Black node</li>
