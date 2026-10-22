@@ -17,6 +17,12 @@
     <UseSystemResourceKeys>false</UseSystemResourceKeys>
     <DebuggerSupport>false</DebuggerSupport>
     <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+    <!-- No PDBs or PDB paths in the published bundle: the trimmer would otherwise stamp each assembly it rewrites with
+         the path of a PDB under obj/ (a local machine path in a public site). Learner code gets its own PDB. -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>

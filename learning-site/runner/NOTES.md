@@ -87,8 +87,10 @@ Plain `Microsoft.NET.Sdk.WebAssembly` app — no Blazor. `RunnerExports` exposes
 
 Publish settings: trimmed (`TrimMode=full`, so Roslyn is trimmed to what we call), the reference/runtime assemblies
 above rooted, no threads, `UseSystemResourceKeys=false` (real exception messages: notes print `ex.Message`), ICU on with
-the culture fixed to en-US (so only the `icudt_EFIGS` shard is published). No `wasm-tools` workload: AOT would make
-compiling faster but the download several times larger.
+the culture fixed to en-US (so only the `icudt_EFIGS` shard is published), and no PDBs (`DebugType=none`,
+`TrimmerRemoveSymbols`): otherwise the trimmer stamps every assembly it rewrites with the path of a PDB under `obj/`,
+a local machine path on a public site. `publish.ts` fails the build if any published file (inflated) contains a path
+of the build machine. No `wasm-tools` workload: AOT would make compiling faster but the download several times larger.
 
 ### Hosting on a static host (`scripts/runner/publish.ts`)
 

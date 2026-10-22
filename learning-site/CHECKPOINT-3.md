@@ -47,7 +47,7 @@ latency, so add download time for a real connection (≈3 s at 20 Mbit/s).
 |---|---|
 | **Download, first visit** | **6.95 MB** over the wire (53 requests): runtime, Roslyn, BCL, ICU as gzip; `dotnet*.js` and the worker as plain JS (compressed by the host). Nothing loads until the learner presses Run (or Edit). |
 | Bundle in the site | 54 files, 7.2 MB (`dist/runner/`), counted in the 200 MB / 20,000-file budget (whole site: 732 files, 36.7 MB). Largest file: Microsoft.CodeAnalysis.CSharp, 2.0 MB gzip. |
-| **Cold start** (empty cache: download + runtime start + first compile + run) | **2.7 s** wall clock from pressing Run to output; first compile 1.4 s, run 19 ms. Under heavy load (an earlier spike run while ~15 agents were building) the same was 12.6 s: download 3.7 s, runtime start 5.1 s, first compile 7.2 s. |
+| **Cold start** (empty cache: download + runtime start + first compile + run) | **2.0–2.7 s** wall clock from pressing Run to output (two runs); first compile 1.1–1.4 s, run 11–19 ms. Under heavy load (an earlier spike run while ~15 agents were building) the same was 12.6 s: download 3.7 s, runtime start 5.1 s, first compile 7.2 s. |
 | **Warm compile + run** (same page, unchanged and edited code) | **93–306 ms** wall clock; compile 43–98 ms, run 1–5 ms. (Loaded machine: 250–400 ms.) |
 | **`while (true) { }`** | Stopped **5.2 s** after pressing Run (5 s limit from the moment execution starts) by terminating the worker; "Stopped after 5 seconds…" shown. During the loop the page painted 121 frames in 2 s (60 fps) and the theme button answered clicks in 47–95 ms. |
 | Next run after a timeout | 221 ms: a fresh worker had already booted in the background from Cache Storage. |

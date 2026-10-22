@@ -16,9 +16,11 @@
  */
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SITE_ROOT } from '../lib/paths';
+import { gunzipSync } from 'node:zlib';
+import { REPO_ROOT, SITE_ROOT } from '../lib/paths';
 import { findDotnet, RUNNER_DIR, runDotnet } from './dotnet';
 
 export const RUNNER_PUBLIC = path.join(SITE_ROOT, 'public', 'runner');
@@ -99,6 +101,30 @@ function copyBundle(from: string, to: string): RunnerManifest {
   return manifest;
 }
 
+/**
+ * The bundle ends up on a public site: no file (inflated, for .gz) may contain a path of this machine (the checkout,
+ * the home folder), such as a PDB path the trimmer stamps into each assembly it rewrites.
+ */
+function findMachineData(dir: string): string[] {
+  const markers = new Set<string>();
+  for (const p of [REPO_ROOT, SITE_ROOT, os.homedir()]) {
+    markers.add(p);
+    markers.add(p.split(path.sep).join('/'));
+  }
+  // (user and host names are not checked: on CI the user is "runner", a word the bundle legitimately contains)
+  const needles = [...markers].filter((m) => m.length >= 4).map((m) => m.toLowerCase());
+  const hits: string[] = [];
+  for (const e of fs.readdirSync(dir, { recursive: true, withFileTypes: true })) {
+    if (!e.isFile()) continue;
+    const file = path.join(e.parentPath, e.name);
+    let bytes = fs.readFileSync(file);
+    if (e.name.endsWith('.gz')) bytes = gunzipSync(bytes);
+    const text = bytes.toString('latin1').toLowerCase();
+    if (needles.some((n) => text.includes(n))) hits.push(path.relative(dir, file));
+  }
+  return hits;
+}
+
 export interface PublishResult {
   published: boolean;
   skipped?: 'no-sdk' | 'up-to-date';
@@ -119,6 +145,11 @@ export async function publishRunner(opts: { log?: (m: string) => void; force?: b
   fs.rmSync(PUBLISH_DIR, { recursive: true, force: true }); // old fingerprinted files would linger otherwise
   await runDotnet(dotnet, ['publish', 'Runner.Wasm/Runner.Wasm.csproj', '-c', 'Release', '-o', PUBLISH_DIR, '-v:minimal', '-nologo'], { quiet: true });
   const manifest = copyBundle(path.join(PUBLISH_DIR, 'wwwroot'), RUNNER_PUBLIC);
+  const leaks = findMachineData(RUNNER_PUBLIC);
+  if (leaks.length) {
+    fs.rmSync(RUNNER_PUBLIC, { recursive: true, force: true });
+    throw new Error(`the runner bundle contains paths or names of this machine, which would be published:\n  ${leaks.join('\n  ')}`);
+  }
   manifest.version = stamp;
   fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 1));
   fs.writeFileSync(STAMP, stamp);
