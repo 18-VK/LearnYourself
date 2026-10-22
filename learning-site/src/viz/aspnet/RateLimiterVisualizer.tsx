@@ -188,7 +188,7 @@ export default function RateLimiterVisualizer(props: RateLimiterProps) {
       <Controls p={p} label="Rate limiter" />
       <div className="viz-panels">
         {algo === 'leaky-bucket' ? (
-          <SourcePanel code={LEAKY_BUCKET_TEXT} lines={[1]} title="Leaky Bucket, from the note" lang="text" note="Theory only: ASP.NET Core has no built-in leaky bucket limiter." />
+          <SourcePanel code={LEAKY_BUCKET_TEXT} lines={[1]} title="Leaky Bucket, from the note" lang="text" wrap note="Theory only: ASP.NET Core has no built-in leaky bucket limiter." />
         ) : (
           <SourcePanel
             code={ALL_FOUR_LIMITERS_CODE}

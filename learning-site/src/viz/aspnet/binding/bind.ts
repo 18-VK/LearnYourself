@@ -135,6 +135,13 @@ export function paramLines(a: ActionDef, prm: Param): number[] {
   return prm.source === 'route' && a.id !== 'all-sources' ? [lineOf(a.code, '{id}'), own] : [own];
 }
 
+/** How a raw value is quoted in the narration: body JSON collapsed onto one line, other values in quotes. */
+function shown(raw: string, source: Source): string {
+  const one = raw.replace(/\s+/g, ' ').trim();
+  const cut = one.length > 70 ? `${one.slice(0, 70)}…` : one;
+  return source === 'body' ? cut : `"${cut}"`;
+}
+
 const isInt = (s: string) => /^-?\d+$/.test(s.trim()) && Number.isSafeInteger(Number(s));
 const DTO_PROPS = { name: 'Name', price: 'Price' } as const;
 
@@ -153,8 +160,9 @@ export function traceBinding(actionId: ActionDef['id'], req: RequestInput): Bind
   const query = new URLSearchParams(req.query);
   const bound: BoundValue[] = [];
   for (const prm of a.params) {
+    const PHRASE: Record<Source, string> = { route: 'route values', query: 'query string', header: 'request headers', body: 'request body' };
     const why = prm.attribute
-      ? `${prm.attribute} says: bind from the ${SOURCE_LABEL[prm.source].toLowerCase()}`
+      ? `${prm.attribute} says: bind from the ${PHRASE[prm.source]}`
       : prm.source === 'body'
         ? `${prm.type} is a complex type, so [ApiController] infers [FromBody]`
         : prm.source === 'route'
@@ -217,7 +225,7 @@ export function traceBinding(actionId: ActionDef['id'], req: RequestInput): Bind
     push(
       { flowLine: FLOW.binding, focus: prm.name, focusSource: prm.source, bound: [...bound], codeLines: paramLines(a, prm) },
       error ? 'branch' : 'write',
-      `${prm.type} ${prm.name}: ${why}. It reads the ${where}: ${raw === null ? 'nothing there' : JSON.stringify(raw.length > 60 ? `${raw.slice(0, 60)}…` : raw)}. ${error ? `Binding fails: ${error} ModelState records the error.` : `${prm.name} = ${value}.`}${extra}`,
+      `${prm.type} ${prm.name}: ${why}. It reads the ${where}: ${raw === null ? 'nothing there' : shown(raw, prm.source)}. ${error ? `Binding fails: ${error} ModelState records the error.` : `${prm.name} = ${value}.`}${extra}`,
       { question: `Where does ${prm.name} come from?`, options: (['route', 'query', 'header', 'body'] as Source[]).map((x) => SOURCE_LABEL[x]), answer: (['route', 'query', 'header', 'body'] as Source[]).indexOf(prm.source) },
     );
   }

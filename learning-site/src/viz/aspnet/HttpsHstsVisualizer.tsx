@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Controls, Narration, Variables } from '../engine/panels';
 import { usePlayer } from '../engine/usePlayer';
 import { AspLegend, ChipGroup, SourcePanel, VizShell } from './common/ui';
-import { SeqDiagram } from './common/seq';
+import { LatestHeaders, SeqDiagram } from './common/seq';
 import { HSTS_LANES, HSTS_STORIES, traceHsts, type HstsConfig } from './https/hsts';
 import { HTTPS_PROGRAM_CODE } from './sources-t2';
 
@@ -45,7 +45,10 @@ export default function HttpsHstsVisualizer(props: HttpsHstsProps) {
         </div>
       </div>
       <div className="viz-stage hs-stage">
-        <SeqDiagram lanes={HSTS_LANES} items={s.items} label="HTTPS and HSTS sequence" />
+        <div className="hs-left">
+          <SeqDiagram lanes={HSTS_LANES} items={s.items} label="HTTPS and HSTS sequence" />
+          <LatestHeaders items={s.items} />
+        </div>
         <div className="asp-card hs-cache" aria-label="The browser's HSTS cache">
           <p className="asp-card-head">Browser HSTS cache</p>
           {s.cache.length ? (

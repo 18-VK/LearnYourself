@@ -14,6 +14,7 @@
 .asp-code-col > .presets { padding: 8px 10px 0; }
 .asp-code-col > .viz-code { border-right: 0; border-bottom: 0; }
 .asp-panels-single { grid-template-columns: minmax(0, 1fr); }
+.asp-wrap li { white-space: pre-wrap; padding-left: 3.4em; text-indent: -3.4em; }
 .asp-code-note { margin: 0; padding: 4px 12px 0; font-size: 12px; color: var(--ink-3); }
 .asp-bad { color: var(--bad); font-weight: 600; }
 .asp-good { color: var(--good); font-weight: 600; }
@@ -251,7 +252,8 @@ a.asp-src { color: var(--link); }
 .cap-layer.is-done { color: var(--ink-2); }
 .cap-proj { font-size: 10.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); min-width: 7.5em; }
 .cap-dir { margin-left: auto; font-size: 12px; color: var(--ink-2); }
-.cap-card dl { display: grid; gap: 3px; margin: 0; }
+.asp-card dl:has(> .cap-field) { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 3px; margin: 0; }
+.cap-stage { align-items: start; }
 .cap-field { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; font-size: 12.5px; }
 .cap-field dt { color: var(--ink-3); }
 .cap-field dd { margin: 0; overflow-wrap: anywhere; }
@@ -279,6 +281,7 @@ a.asp-src { color: var(--link); }
 .mb-src input, .mb-src textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 3px 6px; font-family: var(--mono); font-size: 12.5px; }
 .mb-header { display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
 .mb-hint { margin: 0; font-size: 12px; }
+.mb-url { margin: 0; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
 .mb-params ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .mb-params li { display: grid; gap: 2px; border: 1.5px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 12.5px; background: var(--surface); overflow-wrap: anywhere; }
 .mb-params li.is-focus { border-color: var(--v-active); }
@@ -311,6 +314,11 @@ a.asp-src { color: var(--link); }
 .cors-stage, .hs-stage { grid-template-columns: minmax(0, 1fr); }
 .hs-stage { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
 .cors-why { margin: 0; font-size: 12.5px; }
+.seq-detail { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--code-bg); display: grid; gap: 4px; min-width: 0; }
+.seq-detail pre { margin: 0; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; background: none; border: 0; padding: 0; }
+.hs-left { display: grid; gap: 10px; min-width: 0; }
+.seq-detail-line { display: block; }
+.seq-detail-head { margin: 0; font-size: 12px; font-weight: 650; color: var(--ink-2); }
 .hs-cache ul { margin: 0; padding-left: 1.1em; font-size: 13px; }
 .hs-cache p { margin: 0; font-size: 13px; }
 
@@ -326,6 +334,14 @@ a.asp-src { color: var(--link); }
   .mb-stage { grid-template-columns: minmax(0, 1fr); }
   .hc-stage { grid-template-columns: minmax(0, 1fr); }
   .hs-stage { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 560px) {
+  .rt-table, .rt-table tbody { display: block; width: 100%; }
+  .rt-table thead { display: none; }
+  .rt-table caption { display: block; }
+  .rt-table tr { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); border-bottom: 1px solid var(--line); padding: 3px 0; }
+  .rt-table td { border: 0; padding: 1px 6px; overflow-wrap: anywhere; }
+  .rt-table td:nth-child(3), .rt-table td:nth-child(4) { grid-column: 2; }
 }
 @container (max-width: 460px) {
   .asp-row { grid-template-columns: 54px minmax(0, 1fr) 54px auto; gap: 4px; }

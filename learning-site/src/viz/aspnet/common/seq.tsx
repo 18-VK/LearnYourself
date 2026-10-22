@@ -40,7 +40,6 @@ export function SeqDiagram({ lanes, items, label }: { lanes: SeqLane[]; items: S
             return (
               <div key={i} className={`seq-self${cur ? ' is-current' : ''}${tone}`} style={{ gridColumn: `${a + 1} / ${end}`, gridRow: i + 2, ['--span' as string]: end - a - 1 }}>
                 <span>{e.label}</span>
-                {e.headers && <HeaderList headers={e.headers} />}
               </div>
             );
           }
@@ -49,7 +48,6 @@ export function SeqDiagram({ lanes, items, label }: { lanes: SeqLane[]; items: S
           return (
             <div key={i} className={`seq-msg ${b > a ? 'ltr' : 'rtl'}${cur ? ' is-current' : ''}${tone}`} style={{ gridColumn: `${lo + 1} / ${hi + 2}`, gridRow: i + 2, ['--span' as string]: hi - lo + 1 }}>
               <span className="seq-label">{e.label}</span>
-              {e.headers && <HeaderList headers={e.headers} />}
               <span className="seq-arrow" aria-hidden="true" />
             </div>
           );
@@ -59,12 +57,20 @@ export function SeqDiagram({ lanes, items, label }: { lanes: SeqLane[]; items: S
   );
 }
 
-function HeaderList({ headers }: { headers: string[] }) {
+/** The latest message's headers, shown full width under the diagram (they don't fit between narrow lanes). */
+export function LatestHeaders({ items }: { items: SeqItem[] }) {
+  const last = items.at(-1);
+  if (!last?.headers?.length) return null;
   return (
-    <span className="seq-headers mono">
-      {headers.map((h) => (
-        <span key={h}>{h}</span>
-      ))}
-    </span>
+    <div className="seq-detail" aria-label="Headers of the latest message">
+      <p className="seq-detail-head mono">{last.label}</p>
+      <pre className="mono">
+        {last.headers.map((h) => (
+          <span key={h} className="seq-detail-line">
+            {h}
+          </span>
+        ))}
+      </pre>
+    </div>
   );
 }

@@ -50,11 +50,14 @@ export function SourcePanel({
   title,
   lang = 'csharp',
   note,
+  wrap,
 }: {
   code: string;
   lines: readonly number[];
   title: string;
   lang?: 'csharp' | 'text';
+  /** wrap long lines (for prose quoted from a note) */
+  wrap?: boolean;
   /** Shown under the title, e.g. "lines from the note, in your order". */
   note?: string;
 }) {
@@ -70,7 +73,7 @@ export function SourcePanel({
   }, [first, code]);
   const where = lines.length ? `line${lines.length > 1 ? 's' : ''} ${lines.join(', ')}` : 'no line';
   return (
-    <div className="viz-code" ref={box} tabIndex={0} aria-label={`${title}, ${where} highlighted`}>
+    <div className={`viz-code${wrap ? ' asp-wrap' : ''}`} ref={box} tabIndex={0} aria-label={`${title}, ${where} highlighted`}>
       <div className="viz-code-head">
         <span>{title}</span>
         <span className="mono">{lines.length ? where : ''}</span>

@@ -50,8 +50,9 @@ export default function ModelBindingVisualizer(props: ModelBindingProps) {
       </div>
       <div className="viz-stage mb-stage">
         <div className="mb-request" role="group" aria-label="The HTTP request (editable)">
-          <p className="asp-card-head">
+          <p className="mb-url mono">
             {a.method} /{a.template.replace('{id}', applied.routeValue || '{id}')}
+            {applied.query && a.params.some((x) => x.source === 'query') ? `?${applied.query}` : ''}
           </p>
           {wanted.includes('route') &&
             box(

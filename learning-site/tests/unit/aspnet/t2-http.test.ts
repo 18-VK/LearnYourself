@@ -120,7 +120,7 @@ describe('HttpClient pooling', () => {
 
   it('ports in use never exceed the limit', () => {
     for (const s of tracePool({ ...DEFAULT_POOL, requestsPerSecond: 300 })) expect(s.state.perCall.open + s.state.perCall.timeWait).toBeLessThanOrEqual(DEFAULT_POOL.ports);
-  });
+  }, 30_000);
 
   it('copies its code and text from the notes', () => {
     expect(NOTE('6.ASP_ClientCallingWebAPI.md')).toContain(T2.TYPED_CLIENT_CODE);

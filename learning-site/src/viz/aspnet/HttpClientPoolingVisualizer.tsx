@@ -60,7 +60,7 @@ export default function HttpClientPoolingVisualizer(props: HttpClientPoolingProp
       <Controls p={p} label="HttpClient pooling" />
       <div className="viz-panels">
         <div className="asp-code-col">
-          <SourcePanel code={INSTANCE_MANAGEMENT_TEXT} lines={[1]} title="Instance Management, from the HttpClient note" lang="text" />
+          <SourcePanel code={INSTANCE_MANAGEMENT_TEXT} lines={[1]} title="Instance Management, from the HttpClient note" lang="text" wrap />
           <SourcePanel code={TYPED_CLIENT_CODE} lines={[lineOf(TYPED_CLIENT_CODE, 'AddHttpClient<IProductApiClient, ProductApiClient>')]} title="Typed HttpClient, from the note" />
         </div>
         <div className="viz-side">

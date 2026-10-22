@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Controls, Narration, Variables } from '../engine/panels';
 import { usePlayer } from '../engine/usePlayer';
 import { AspLegend, ChipGroup, SourcePanel, VizShell } from './common/ui';
-import { SeqDiagram } from './common/seq';
+import { LatestHeaders, SeqDiagram } from './common/seq';
 import { ALLOWED_ORIGIN, API_ORIGIN, CORS_LANES, CORS_PRESETS, OTHER_ORIGIN, preflightReasons, traceCors, type CorsRequest, type Method } from './cors/preflight';
 import { CORS_POLICY_CODE } from './sources';
 
@@ -53,6 +53,7 @@ export default function CorsPreflightVisualizer(props: CorsPreflightProps) {
       </div>
       <div className="viz-stage cors-stage">
         <SeqDiagram lanes={CORS_LANES} items={s.events} label="CORS sequence" />
+        <LatestHeaders items={s.events} />
         {s.outcome && (
           <p className={`asp-outcome${s.outcome.ok ? '' : ' is-blocked'}`} role="status">
             {s.outcome.text}

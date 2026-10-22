@@ -72,3 +72,24 @@ test('RS256: a forged token is rejected and Web Crypto agrees', async ({ page })
   await expect(viz.locator('.narr')).toContainText('verify() agrees: false');
   expect(errors).toEqual([]);
 });
+
+test('capstone trace: an empty title stops at the ValidationFilter with 400', async ({ page }) => {
+  const errors = watchErrors(page);
+  const viz = await mount(page, 'phase-2/capstone/validation-filter-and-extensions/', 'CapstoneTraceVisualizer');
+  await viz.getByRole('button', { name: 'Empty title (400 from ValidationFilter)' }).click();
+  await viz.locator('.viz').click({ position: { x: 5, y: 5 } });
+  for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
+  await expect(viz.locator('.cap-response')).toContainText('400');
+  await expect(viz.locator('.viz-code-head')).toContainText('ValidationFilter.cs');
+  expect(errors).toEqual([]);
+});
+
+test('route matcher: GET …/abc ends in 405 with an Allow header', async ({ page }) => {
+  const errors = watchErrors(page);
+  const viz = await mount(page, 'phase-2/controllers-and-routing/routing/', 'RouteMatcherVisualizer');
+  await viz.getByRole('button', { name: 'GET …/abc (constraint)' }).click();
+  await viz.locator('.viz').click({ position: { x: 5, y: 5 } });
+  for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowRight');
+  await expect(viz.locator('.asp-outcome')).toContainText('Allow: DELETE, PUT');
+  expect(errors).toEqual([]);
+});
