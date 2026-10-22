@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "verify": "tsx scripts/verify-output.ts"
+    "verify": "tsx scripts/verify-output.ts",
+    "scan:personal": "tsx scripts/scan-personal.ts"
   },
   "dependencies": {
     "@astrojs/react": "7.0.1",
