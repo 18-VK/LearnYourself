@@ -542,9 +542,11 @@ export function traceIsolation(opts: IsoOptions): IsoResult {
   while (pending.length && guard++ < 100) {
     const k = pending.findIndex((l) => !S[l.s].waiting && !S[l.s].victim);
     if (k < 0) break;
-    const line = pending.splice(k, 1)[0]!;
-    if (line.ask) {
-      const pre = push('call', `${names[line.s]} issues: ${line.stmt.code.replace(/\n/g, ' ')}`, -1, line.s, predictionFor(line, names, firstRead));
+    const line = pending[k]!;
+    // a predict-mode question is asked while the statement is still "next", before it runs
+    const pre = line.ask ? push('call', `${names[line.s]} issues: ${line.stmt.code.replace(/\n/g, ' ')}`, -1, line.s, predictionFor(line, names, firstRead)) : null;
+    pending.splice(k, 1);
+    if (pre) {
       const before = { blocked: counters.comparisons, reads: reads.length };
       const ran = attempt(line, false);
       pre.predict!.answer = answerFor(line, ran, before.blocked !== counters.comparisons && !ran, reads.slice(before.reads), firstRead);
