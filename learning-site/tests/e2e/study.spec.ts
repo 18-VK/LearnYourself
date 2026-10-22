@@ -210,11 +210,11 @@ test.describe('interview prep', () => {
     // search: a distinctive word from the first question
     const word = q0.question.toLowerCase().split(/[^a-z0-9]+/).sort((a, b) => b.length - a.length)[0]!;
     await page.getByRole('searchbox', { name: 'Search questions and answers' }).fill(word);
-    await expect(page.locator(`.iq-card[data-qid="${q0.id}"]`)).toBeVisible();
+    await expect(page.locator(`.iq-card[id="${q0.id}"]`)).toBeVisible();
     await expect(count).toContainText(`of ${total}`);
 
     // the full answer is fetched from the topic page into the card
-    const card = page.locator(`.iq-card[data-qid="${q0.id}"]`);
+    const card = page.locator(`.iq-card[id="${q0.id}"]`);
     await card.locator('summary').click();
     await expect(card.locator('.iq-meta')).toBeVisible({ timeout: 15_000 });
     expect(errors).toEqual([]);

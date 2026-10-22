@@ -20,8 +20,10 @@ function init(form: HTMLFormElement) {
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null;
   const NAMES = ['q', 'topic', 'difficulty', 'origin', 'reviewed', 'lesson'] as const;
 
-  // text per card: topic pages have the whole answer in the DOM; Browse adds search.json once loaded
-  const ownText = new Map(cards.map((c) => [c, (c.dataset.text ?? c.textContent ?? '').toLowerCase()]));
+  // text per card: topic pages have the whole answer in the DOM; Browse adds search.json once loaded (by card id)
+  const textOf = (c: HTMLElement) =>
+    [...c.querySelectorAll('.iq-q, .iq-short p, .iq-badges, .iq-body:not([data-iq-slot])')].map((e) => e.textContent ?? '').join(' ').toLowerCase();
+  const ownText = new Map(cards.map((c) => [c, textOf(c)]));
   let answers: Record<string, string> | null = null;
   let loadingAnswers = false;
 
@@ -52,7 +54,7 @@ function init(form: HTMLFormElement) {
         (!v.reviewed || d.reviewed === v.reviewed) &&
         (!v.lesson || (d.lessons ?? '').split(' ').includes(v.lesson));
       if (on && words.length) {
-        const text = `${ownText.get(c)} ${answers?.[d.qid ?? ''] ?? ''}`;
+        const text = `${ownText.get(c)} ${answers?.[c.id] ?? ''}`;
         on = words.every((w) => text.includes(w));
       }
       c.classList.toggle('is-filtered-out', !on);
@@ -115,12 +117,13 @@ function init(form: HTMLFormElement) {
     'toggle',
     (e) => {
       const d = e.target as HTMLDetailsElement;
-      if (!(d instanceof HTMLDetailsElement) || !d.open || !d.matches('details.iq-more[data-src]') || d.dataset.loaded) return;
+      if (!(d instanceof HTMLDetailsElement) || !d.open || !d.matches('details.iq-more') || d.dataset.loaded) return;
       const slot = d.querySelector<HTMLElement>('[data-iq-slot]');
-      if (!slot) return;
+      const card = d.closest<HTMLElement>('.iq-card');
+      if (!slot || !card) return;
       d.dataset.loaded = 'loading';
       slot.setAttribute('aria-busy', 'true');
-      loadAnswer(d.dataset.src!, d.dataset.qid!)
+      loadAnswer(card.querySelector<HTMLAnchorElement>('.iq-permalink')!.href, card.id)
         .then((body) => {
           if (!body) throw new Error('not found');
           slot.replaceWith(body);
@@ -138,7 +141,7 @@ function init(form: HTMLFormElement) {
   const target = location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
   if (target?.classList.contains('iq-card')) {
     const d = target.querySelector<HTMLDetailsElement>('details.iq-more');
-    if (d && !d.dataset.src) d.open = true;
+    if (d && !d.querySelector('[data-iq-slot]')) d.open = true;
   }
 
   apply(false);

@@ -115,7 +115,7 @@ export const difficultyLabel = (d: string): string => d[0]!.toUpperCase() + d.sl
 /** "model-binding-and-validation" → "Model binding and validation" */
 export const subtopicLabel = (s: string): string => {
   const words = s.split('-');
-  const fix: Record<string, string> = { api: 'API', apis: 'APIs', ctes: 'CTEs', clr: 'CLR', jit: 'JIT', il: 'IL', gc: 'GC', jwt: 'JWT', oauth2: 'OAuth 2.0', pkce: 'PKCE', mvvm: 'MVVM', xaml: 'XAML', http: 'HTTP', httpclient: 'HttpClient', rest: 'REST', openapi: 'OpenAPI', idisposable: 'IDisposable', iqueryable: 'IQueryable', ienumerable: 'IEnumerable', dp: 'DP', solid: 'SOLID', winforms: 'WinForms', aspnet: 'ASP.NET', ef: 'EF', dapper: 'Dapper', wpf: 'WPF', sql: 'SQL', di: 'DI', vs: 'vs' };
+  const fix: Record<string, string> = { api: 'API', apis: 'APIs', ctes: 'CTEs', clr: 'CLR', jit: 'JIT', il: 'IL', gc: 'GC', jwt: 'JWT', oauth2: 'OAuth 2.0', pkce: 'PKCE', mvvm: 'MVVM', xaml: 'XAML', http: 'HTTP', httpclient: 'HttpClient', rest: 'REST', openapi: 'OpenAPI', idisposable: 'IDisposable', iqueryable: 'IQueryable', ienumerable: 'IEnumerable', dp: 'DP', solid: 'SOLID', winforms: 'WinForms', oop: 'OOP', ui: 'UI', io: 'I/O', json: 'JSON', xml: 'XML', cli: 'CLI', mvc: 'MVC', aspnet: 'ASP.NET', ef: 'EF', dapper: 'Dapper', wpf: 'WPF', sql: 'SQL', di: 'DI', vs: 'vs' };
   const out = words.map((w) => fix[w] ?? w).join(' ');
   return out[0]!.toUpperCase() + out.slice(1);
 };

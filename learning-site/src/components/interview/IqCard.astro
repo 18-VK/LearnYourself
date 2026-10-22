@@ -20,14 +20,12 @@ const H = `h${level}` as 'h2' | 'h3';
 <article
   class="iq-card"
   id={q.id}
-  data-qid={q.id}
   data-topic={q.topic}
   data-subtopic={q.subtopic}
   data-difficulty={q.difficulty}
   data-origin={q.origin}
   data-reviewed={q.reviewed ? 'yes' : 'no'}
   data-lessons={q.lessonIds.join(' ')}
-  data-text={full ? undefined : `${q.questionText} ${q.shortText}`.toLowerCase()}
 >
   <div class="iq-top">
     <IqBadges q={q} showTopic={showTopic} />
@@ -38,7 +36,7 @@ const H = `h${level}` as 'h2' | 'h3';
     <span class="eyebrow">Short answer</span>
     <p set:html={q.short} />
   </div>
-  <details class="iq-more" data-qid={q.id} data-src={full ? undefined : q.href}>
+  <details class="iq-more">
     <summary>Full answer{q.code ? ', code' : ''}{q.pitfalls.length ? ', traps' : ''}{q.followUps.length ? ' and follow-ups' : ''}</summary>
     {full ? (
       <div class="iq-body">
