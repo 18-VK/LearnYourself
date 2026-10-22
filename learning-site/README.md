@@ -1,7 +1,7 @@
 # LearnYourself (learning site)
 
 A static learning site generated from the .NET study notes in this repository: seven courses, step-through
-algorithm visualizers, and (coming) cheat sheets and an interview question bank. Hosted on GitHub Pages at
+algorithm visualizers, lesson quizzes, printable cheat sheets and an interview question bank. Hosted on GitHub Pages at
 **https://18-vk.github.io/LearnYourself/**.
 
 The notes stay where they are and remain the source of truth. This folder only holds the curriculum
@@ -141,11 +141,162 @@ its ticks are the same ones as the page checklist.
 5. **Register** it in `src/viz/registry.ts` under the name the manifests use. The smoke tests then expect
    every placement of that name to mount.
 
-## Cheat sheets and interview questions
+## Quizzes, cheat sheets and interview questions: the data files
 
-These arrive at Checkpoint 5. Their sources and topics are already planned in `curriculum/_cheatsheets.yaml`
-and `curriculum/_interview.yaml`. This section will describe how to edit `src/data/cheatsheets/<sheet>.yaml`
-and add questions to `src/data/interview/<topic>.json` (including setting `"reviewed": true` once checked).
+Three folders hold hand-edited data. Their schema is `src/data/schema.ts`; the content pipeline validates every
+file on each build and resolves it into `src/data/generated/*.json`, which is all the pages read. A file that
+fails stops the build with a message naming the file and the field.
+
+```bash
+npm run data:check                  # re-check src/data/* in seconds (after one `npm run content`)
+npm run data:check -- --only quizzes   # only the messages about quizzes (or cheatsheets, interview)
+npm run data:check -- --write       # also refresh the resolved JSON, so `npm run dev` shows the change
+```
+
+Data files refer to lessons by their **short id**: the lesson's `id` in its manifest (`merge-and-quick-sort`,
+not `dsa/sorting/merge-and-quick-sort`). Sections are named by their heading as it appears in the note, with or
+without the `#`s (`"## 5. Quick Sort"` or `"5. Quick Sort"`); matching ignores case, punctuation and emoji, and
+`data:check` suggests the closest headings when one doesn't match.
+
+### Quizzes
+
+One file per lesson: `src/data/quizzes/<lesson-id>.json`, 3–6 questions. The quiz appears at the end of the
+lesson as "Check your understanding"; the learner's best score is saved with their progress (`ly-progress-v1`,
+included in export/import) and shown on the course page and the progress page.
+
+```json
+{
+  "lesson": "operators",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "With `int a = 10, b = 3;`, what is `a % b`?",
+      "options": ["1", "3", "3.33", "0"],
+      "answer": 0,
+      "explanation": "`%` is the remainder operator: 10 divided by 3 is 3 remainder **1**.",
+      "source": { "section": "### 1. Arithmetic Operators" },
+      "reviewed": false
+    }
+  ]
+}
+```
+
+| Type | Fields besides the common ones | Notes |
+|---|---|---|
+| `mcq` | `options` (2–6), `answer` (index into options) | |
+| `predict-output` | `code: { lang, source }`, `options`, `answer` | `code.source` must be copied from the lesson (the build checks it); use the smallest block that makes the point |
+| `order-steps` | `steps` (3–8) in the **correct** order | the page shuffles them; learners reorder by drag or with ↑/↓ |
+
+Common fields: `id` (`q1`, `q2`, … unique in the file), `prompt` and `explanation` (inline Markdown: `code`,
+`**bold**`, `*italic*`, `[links](https://…)`; HTML is shown as text), `source.section` (the lesson heading the
+answer comes from: the feedback links to it), and `reviewed`. Leave **`"reviewed": false`** until you have checked
+the question yourself; until then it carries a small "Not yet reviewed" note. Set it to `true` once checked.
+
+### Add or edit a cheat sheet
+
+One file per sheet: `src/data/cheatsheets/<sheet-id>.yaml`. The id must be listed in
+`curriculum/_cheatsheets.yaml` (that list also sets the order on the Cheat Sheets page). Every sheet is
+rendered by the same template at `/cheat-sheets/<sheet-id>/`, with a live filter, copy buttons on snippets and a
+print stylesheet; you never touch a component.
+
+```yaml
+id: sorting-searching
+title: "Sorting & searching complexity"
+summary: "One sentence shown under the title and on the index."
+groups:
+  - title: "When to use what"
+    note: "Optional one-line intro."
+    items:
+      - term: "Need stability"                      # inline Markdown
+        desc: "Merge sort, or LINQ `OrderBy()`."      # optional
+        code: "var sorted = people.OrderBy(p => p.Age).ToList();"   # optional; gets a copy button
+        lang: csharp
+        from: { lesson: sorting-summary, section: "### When to Use What (LeetCode Context)" }
+      - term: "`Array.Sort` algorithm"
+        desc: "Introspective sort."
+        docs: { url: "https://learn.microsoft.com/…", title: "Array.Sort Method", accessed: "2026-10-22" }
+  - title: "Complexity at a glance"
+    table:
+      columns: [Algorithm, Best, Worst]
+      from: { lesson: sorting-summary, section: "### Summary Table" }   # every row links here…
+      rows:
+        - ["Merge Sort", "O(n log n)", "O(n log n)"]
+        - cells: ["Counting Sort", "O(n+k)", "O(n+k)"]                  # …unless a row names its own
+          from: { lesson: counting-radix-bucket, section: "### 7. Counting Sort" }
+```
+
+- Each **item** needs exactly one of `from` (a lesson section) or `docs` (an official page). Use `docs` only for an
+  obvious gap the notes don't cover, after checking it against Microsoft Learn or the SQL Server docs; the item is
+  labelled "From docs" and links to that page.
+- A **table row** is a list of cells (it links to the table's `from`), or `{ cells, from }` / `{ cells, docs }`.
+  Rows must have as many cells as there are columns. Tables with four or more columns span the full width.
+- Lessons cited by a sheet link to it automatically, as do the lessons that list it under `cheatsheets:` in their
+  manifest. A course page links to every sheet its lessons do.
+- To check printing: open the sheet and use Print (or Ctrl+P). The print view is light, has no navigation or
+  filter, keeps cards whole where they fit, and prints docs links with their URL.
+
+### Add interview questions and mark them reviewed
+
+Questions live in `src/data/interview/<topic>.json`, or split by origin into `<topic>.notes.json` (questions from
+the notes) and `<topic>.web.json` (web-researched). The topic id and its subtopics come from
+`curriculum/_interview.yaml`. Question ids are unique across all topics and start with the topic id.
+
+```json
+{
+  "topic": "aspnet-core",
+  "questions": [
+    {
+      "id": "aspnet-core-middleware-order",
+      "topic": "aspnet-core",
+      "subtopic": "pipeline-and-middleware",
+      "difficulty": "mid",
+      "question": "Why does the order of middleware registration matter?",
+      "shortAnswer": "Each middleware wraps the ones registered after it, so …",
+      "answer": "**Key points**\n\n- …\n\n```csharp\napp.UseRouting();\n```",
+      "code": { "lang": "csharp", "source": "app.UseAuthentication();\napp.UseAuthorization();" },
+      "pitfalls": ["Calling `UseAuthorization()` before `UseAuthentication()`"],
+      "followUps": ["What is the difference between `Use`, `Run` and `Map`?"],
+      "origin": "web",
+      "sources": [{ "url": "https://learn.microsoft.com/…", "title": "ASP.NET Core Middleware", "accessed": "2026-10-22" }],
+      "relatedLessons": ["middleware"],
+      "notCoveredYet": false,
+      "versionNote": "Only when the answer depends on the version.",
+      "reviewed": false
+    }
+  ]
+}
+```
+
+- **`shortAnswer`** is the "start strong" answer: one to three sentences, shown first everywhere.
+- **`answer`** is Markdown (lists, tables, fenced code), rendered at build time with the same highlighting as the
+  lessons. `pitfalls` are shown with ❌; `followUps` as "Likely follow-ups".
+- **`relatedLessons`** (short lesson ids) are required unless `notCoveredYet: true`; each listed lesson then shows
+  the question under "Interview questions on this topic".
+- **Web questions** (`origin: "web"`): write the answer in your own words, verify it against official docs, and
+  give at least one web source (`url`, `title`, `accessed`). If a source contradicts the notes, keep the notes and
+  log the conflict in `CONTENT_ISSUES.md`.
+- **Notes questions** (`origin: "notes"`) are quoted, never paraphrased:
+  - leave `answer` out and set `answerFrom: { file, section }` (the note and its heading line, including the `#`s;
+    add `occurrence` if the heading repeats, `until` to stop early). The build copies that section as the answer;
+  - `shortAnswer`, every `pitfalls` entry, every `followUps` entry and `code.source` must be **verbatim excerpts of
+    that section**. Formatting, punctuation and spacing don't count, and `…` may join two excerpts. The build
+    rejects anything it can't find in the section;
+  - `followUps` holds only follow-up questions the note itself asks; `sources` lists the note section(s);
+  - every line of a note routed to Interview Prep in `curriculum/_site.yaml` (`interview:`) should be used by
+    some question, and every "interview" section inside a lesson should be collected too. `data:check` warns
+    about the ones still unused.
+- **Reviewing**: every question starts with `"reviewed": false`. Web questions show the badge
+  "Web-researched, unreviewed" until you check them; set `"reviewed": true` and the badge becomes
+  "Web-researched, reviewed". Notes questions always show "From my notes" (plus "Reviewed" once checked). The
+  Reviewed filter in Browse finds what is left to check.
+
+Interview Prep has an overview (counts per topic, origin and difficulty), **Browse** (filters and full-text
+search; `?topic=…&difficulty=…&origin=…&reviewed=yes|no&q=…&lesson=…` links straight to a filtered view), one
+page per topic at `/interview-prep/topics/<topic>/` (every question in full, each at `#<question-id>`, indexed by
+site search), **Flashcards** (piles in `localStorage` key `ly-flashcards-v1`), a timed **Mock interview** (history
+in `ly-mock-v1`) and the **Gallery** of approved images and PDFs (entries in `curriculum/_assets.yaml` whose
+`usedBy` starts with `interview-prep/`).
 
 ## Deploy to GitHub Pages
 

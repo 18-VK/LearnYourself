@@ -1,0 +1,108 @@
+---
+/** Flashcards: question → short answer → full answer, with "Know it" / "Review again" piles kept in this browser. */
+import '../../styles/interview.css';
+import IqNav from '../../components/interview/IqNav.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { questionsOfTopic, topics } from '../../lib/data';
+import { url } from '../../lib/site';
+
+const rows = topics.map((t) => ({ t, n: questionsOfTopic(t.id).length })).filter((r) => r.n > 0);
+const total = rows.reduce((s, r) => s + r.n, 0);
+---
+
+<BaseLayout title="Interview flashcards" description="Interview flashcards: question, short answer, full answer, with Know it and Review again piles." nav="interview">
+  <IqNav current="flashcards" />
+  <header class="iq-head">
+    <p class="eyebrow">Interview Prep</p>
+    <h1>Flashcards</h1>
+    <p class="iq-lede">Read the question and answer it in your head. Reveal the short answer, then the full one if you need it, and sort the card into a pile. Piles and your place are kept in this browser.</p>
+  </header>
+
+  {total === 0 ? (
+    <p class="iq-empty-state" role="status">No questions are published yet, so there are no cards. <a href={url('interview-prep/')}>Back to Interview Prep</a>.</p>
+  ) : (
+    <div class="fc" data-fc>
+      <section class="fc-setup iq-panel" data-fc-setup aria-labelledby="fc-setup-h">
+        <h2 id="fc-setup-h">Choose your cards</h2>
+        <div class="fc-resume" data-fc-resume hidden>
+          <p><strong>Session in progress:</strong> <span data-fc-resume-text></span></p>
+          <button type="button" class="btn btn-primary" data-fc-resume-btn>Resume</button>
+        </div>
+        <fieldset class="iq-checks">
+          <legend>Topics</legend>
+          <div class="iq-check-grid">
+            {rows.map(({ t, n }) => (
+              <label><input type="checkbox" name="fc-topic" value={t.id} checked /> {t.title} <span class="muted">{n}</span></label>
+            ))}
+          </div>
+          <p class="iq-check-tools"><button type="button" class="btn" data-check-all>All topics</button> <button type="button" class="btn" data-check-none>None</button></p>
+        </fieldset>
+        <fieldset class="iq-checks">
+          <legend>Which cards</legend>
+          <div class="iq-radio-row">
+            <label><input type="radio" name="fc-which" value="all" checked /> All</label>
+            <label><input type="radio" name="fc-which" value="fresh" /> Skip “Know it”</label>
+            <label><input type="radio" name="fc-which" value="review" /> Only “Review again”</label>
+          </div>
+        </fieldset>
+        <label class="iq-inline"><input type="checkbox" name="fc-shuffle" checked /> Shuffle</label>
+        <div class="iq-start">
+          <button type="button" class="btn btn-primary" data-fc-start>Start</button>
+          <p class="muted" data-fc-setup-count aria-live="polite">Loading the cards…</p>
+        </div>
+        <p class="fc-piles">
+          <span>Know it: <b data-pile="know">0</b></span>
+          <span>Review again: <b data-pile="review">0</b></span>
+          <button type="button" class="btn" data-fc-reset>Reset piles</button>
+        </p>
+      </section>
+
+      <section class="fc-run" data-fc-run hidden aria-label="Flashcard">
+        <div class="iq-runbar">
+          <span class="iq-pos" data-fc-pos></span>
+          <span class="fc-piles-mini">Know it <b data-pile="know">0</b> · Review again <b data-pile="review">0</b></span>
+          <span class="iq-runbar-tools">
+            <button type="button" class="btn" data-fc-shuffle>Shuffle the rest</button>
+            <button type="button" class="btn" data-fc-end>End</button>
+          </span>
+        </div>
+        <p class="sr-only" aria-live="polite" data-fc-live></p>
+        <article class="fc-card iq-panel" data-fc-card tabindex="-1">
+          <div data-fc-badges></div>
+          <h2 class="fc-q" data-fc-q></h2>
+          <div class="fc-short" data-fc-short hidden>
+            <span class="eyebrow">Short answer</span>
+            <p data-fc-short-text></p>
+          </div>
+          <div class="fc-full" data-fc-full hidden></div>
+          <p class="fc-link" data-fc-link-wrap hidden><a data-fc-link href="#">Open this question on its topic page</a></p>
+        </article>
+        <div class="fc-controls">
+          <button type="button" class="btn btn-primary" data-fc-reveal>Show short answer</button>
+          <button type="button" class="btn" data-fc-more hidden>Show full answer</button>
+          <span class="fc-sort">
+            <button type="button" class="btn fc-know" data-fc-know>Know it</button>
+            <button type="button" class="btn fc-again" data-fc-again>Review again</button>
+          </span>
+          <span class="fc-nav">
+            <button type="button" class="btn" data-fc-prev aria-label="Previous card">← Previous</button>
+            <button type="button" class="btn" data-fc-skip aria-label="Skip to the next card">Skip →</button>
+          </span>
+        </div>
+        <p class="muted fc-keys">Keys: <kbd>Space</kbd> reveal · <kbd>K</kbd> know it · <kbd>R</kbd> review again · <kbd>←</kbd> <kbd>→</kbd> previous / skip</p>
+      </section>
+
+      <section class="fc-done iq-panel" data-fc-done hidden aria-labelledby="fc-done-h" tabindex="-1">
+        <h2 id="fc-done-h">Session finished</h2>
+        <p data-fc-done-text></p>
+        <p class="iq-start">
+          <button type="button" class="btn btn-primary" data-fc-again-pile>Go through “Review again”</button>
+          <button type="button" class="btn" data-fc-new>New session</button>
+        </p>
+      </section>
+    </div>
+  )}
+  <script>
+    import '../../scripts/flashcards';
+  </script>
+</BaseLayout>

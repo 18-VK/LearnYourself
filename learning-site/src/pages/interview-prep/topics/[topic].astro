@@ -1,0 +1,73 @@
+---
+/**
+ * One interview topic: every question in full, grouped by subtopic, with filters. These pages are the
+ * stable home of each question (#<question-id>) and what Pagefind indexes for Interview Prep.
+ */
+import '../../../styles/interview.css';
+import IqCard from '../../../components/interview/IqCard.astro';
+import IqFilters from '../../../components/interview/IqFilters.astro';
+import IqNav from '../../../components/interview/IqNav.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { questionsOfTopic, subtopicLabel, topics, type Topic } from '../../../lib/data';
+import { countsOf, sortQuestions, viewOf } from '../../../lib/interview';
+import { url } from '../../../lib/site';
+
+export function getStaticPaths() {
+  return topics.map((topic) => ({ params: { topic: topic.id }, props: { topic } }));
+}
+interface Props {
+  topic: Topic;
+}
+const { topic } = Astro.props;
+const views = await Promise.all(sortQuestions(questionsOfTopic(topic.id)).map(viewOf));
+const c = countsOf(views);
+// subtopics in manifest order, then any others the data uses
+const order = [...topic.subtopics, ...new Set(views.map((v) => v.subtopic).filter((s) => !topic.subtopics.includes(s)))];
+const groups = order.map((s) => ({ id: s, label: subtopicLabel(s), list: views.filter((v) => v.subtopic === s) })).filter((g) => g.list.length);
+const lessonTitles = Object.fromEntries(views.flatMap((v) => v.lessonIds.map((id, i) => [id, v.lessons[i]?.title ?? id])));
+---
+
+<BaseLayout title={`${topic.title}: interview questions`} description={`Interview questions on ${topic.title}, short answers first, linked to the lessons that teach them.`} nav="interview" searchable>
+  <IqNav current="topic" />
+  <header class="iq-head">
+    <nav class="crumb" aria-label="Breadcrumb" data-pagefind-ignore><a href={url('interview-prep/')}>Interview Prep</a> › Topics</nav>
+    <h1 data-pagefind-meta="title">{topic.title}</h1>
+    <p class="iq-lede" data-pagefind-ignore>
+      {c.total
+        ? `${c.total} question${c.total === 1 ? '' : 's'}: ${c.notes} from the notes, ${c.web} web-researched (${c.reviewed} reviewed) · ${c.junior} junior, ${c.mid} mid, ${c.senior} senior.`
+        : 'No questions on this topic yet.'}
+      {topic.notCoveredYet && ' No course covers this topic yet.'}
+    </p>
+    {c.total > 0 && (
+      <p class="iq-actions" data-pagefind-ignore>
+        <a class="btn" href={url(`interview-prep/flashcards/?topics=${topic.id}`)}>Flashcards for this topic</a>
+        <a class="btn" href={url(`interview-prep/mock/?topics=${topic.id}`)}>Mock interview on this topic</a>
+      </p>
+    )}
+  </header>
+
+  {c.total === 0 ? (
+    <p class="iq-empty-state" role="status">The questions for this topic are still being written. <a href={url('interview-prep/')}>See all topics</a>.</p>
+  ) : (
+    <>
+      <IqFilters mode="topic" total={c.total} lessonTitles={lessonTitles} />
+      {groups.length > 1 && (
+        <nav class="iq-toc" aria-label="Subtopics" data-pagefind-ignore>
+          {groups.map((g) => <a href={`#sub-${g.id}`}>{g.label} <span class="muted">{g.list.length}</span></a>)}
+        </nav>
+      )}
+      <div class="iq-list">
+        {groups.map((g) => (
+          <section class="iq-section" aria-labelledby={`sub-${g.id}`}>
+            <h2 id={`sub-${g.id}`}>{g.label}</h2>
+            {g.list.map((q) => <IqCard q={q} />)}
+          </section>
+        ))}
+      </div>
+      <p class="iq-empty-state" data-iq-empty hidden>No questions match these filters. <button type="button" class="btn" data-iq-reset>Reset filters</button></p>
+    </>
+  )}
+  <script>
+    import '../../../scripts/interview-browse';
+  </script>
+</BaseLayout>

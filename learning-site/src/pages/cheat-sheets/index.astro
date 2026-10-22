@@ -1,22 +1,48 @@
 ---
+import '../../styles/cheatsheet.css';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { site } from '../../lib/site';
+import { sheetItemCount, sheets } from '../../lib/data';
+import { site, url } from '../../lib/site';
+
+const byId = new Map(sheets.map((s) => [s.id, s]));
+// the planned list (curriculum/_cheatsheets.yaml) sets the order; any written sheet not on it goes last
+const entries = [
+  ...site.cheatsheets.map((p) => ({ id: p.id, title: byId.get(p.id)?.title ?? p.title, sheet: byId.get(p.id) })),
+  ...sheets.filter((s) => !site.cheatsheets.some((p) => p.id === s.id)).map((s) => ({ id: s.id, title: s.title, sheet: s })),
+];
+const ready = entries.filter((e) => e.sheet).length;
 ---
 
-<BaseLayout title="Cheat Sheets" nav="cheatsheets">
-  <section style="max-width:80ch">
+<BaseLayout title="Cheat Sheets" description="One-page references condensed from the notes, each item linking back to its lesson." nav="cheatsheets">
+  <section class="cs-index-head">
     <p class="eyebrow">Cheat Sheets</p>
-    <h1 style="font-size:2rem;margin-top:8px">One-page references for revision</h1>
-    <p style="margin-top:10px;color:var(--ink-2)">
-      Each sheet is condensed from the notes, with every row linking back to the lesson it came from, and prints cleanly on one A4 or Letter page.
-      The sheets are being written; the list below is the plan.
+    <h1>One-page references for revision</h1>
+    <p>
+      Each sheet is condensed from the notes: tables, one-line definitions, snippets and “when to use what”. Every item links back to the lesson
+      section it came from, and every sheet prints cleanly on A4 or Letter.
     </p>
-    <ul style="margin-top:20px;display:grid;gap:8px;list-style:none;padding:0">
-      {site.cheatsheets.map((s) => (
-        <li id={s.id} class="course-card" style="flex:none;padding:12px 16px">
-          <strong>{s.title}</strong> <span class="badge badge-soon">Coming soon</span>
-        </li>
-      ))}
-    </ul>
   </section>
+
+  {ready === 0 && (
+    <p class="cs-empty-state" role="status">
+      No sheets are published yet. They are being written from the notes; the list below is the plan.
+    </p>
+  )}
+
+  <ul class="cs-list">
+    {entries.map((e) =>
+      e.sheet ? (
+        <li class="cs-card" id={e.id}>
+          <h2><a href={url(`cheat-sheets/${e.id}/`)}>{e.title}</a></h2>
+          <p>{e.sheet.summary}</p>
+          <span class="meta">{sheetItemCount(e.sheet)} items · {e.sheet.groups.length} group{e.sheet.groups.length === 1 ? '' : 's'}</span>
+        </li>
+      ) : (
+        <li class="cs-card is-planned" id={e.id}>
+          <h2>{e.title}</h2>
+          <span class="meta"><span class="badge badge-soon">Coming soon</span></span>
+        </li>
+      ),
+    )}
+  </ul>
 </BaseLayout>
