@@ -89,6 +89,9 @@ jobs:
         env:
           LY_REQUIRE_RUNNER: "1"
 
+      - name: Personal-data scan of the built site (report only; review personal-data-report.md)
+        run: npm run scan:personal
+
       - name: Install Chromium for smoke tests
         run: npx playwright install --with-deps chromium
 
@@ -103,6 +106,7 @@ jobs:
           path: |
             learning-site/coverage-report.md
             learning-site/runnable-report.md
+            learning-site/personal-data-report.md
           if-no-files-found: ignore
 
       - name: Upload the site for GitHub Pages
