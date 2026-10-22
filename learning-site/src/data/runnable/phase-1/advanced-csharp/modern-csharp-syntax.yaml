@@ -3,8 +3,6 @@ blocks:
   # the class with required members and the object initializer that sets them
   - merge: [14, 15]
     startsWith: "public class User"
-  - merge: [17, 18]
-    startsWith: "public class User"
   # methods without parameters: the harness only calls them (the note's comments give the expected output)
   - block: 4
     startsWith: "void Calculate()"

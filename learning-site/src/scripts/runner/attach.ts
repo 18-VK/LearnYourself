@@ -237,7 +237,10 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
       output.append(el('span', { className: 'runner-exception', textContent: `${o.output && !o.output.endsWith('\n') ? '\n' : ''}Unhandled exception${where}: ${e.type}: ${e.message}` }));
       setStatus(`The program threw ${e.type.split('.').pop()}${where}.`, 'error');
       if (e.file === 'snippet.cs' && e.line) {
-        if (editor) editor.setMarkers([{ line: e.line, column: 1, endLine: e.line, endColumn: 1, message: `${e.type}: ${e.message}`, kind: 'exception' }]);
+        const marker: Marker = { line: e.line, column: 1, endLine: e.line, endColumn: 1, message: `${e.type}: ${e.message}`, kind: 'exception' };
+        if (editor) editor.setMarkers([marker]);
+        // a merged program's line numbers count across its blocks, so show them in the editor (which holds all of it)
+        else if (entry.merged?.length) void openEditor().then((ed) => ed.setMarkers([marker]));
         else markStaticLine(e.line);
       }
       return;
