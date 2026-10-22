@@ -1,0 +1,1959 @@
+{
+  "topic": "dsa",
+  "questions": [
+    {
+      "id": "dsa-big-o-theta-omega",
+      "topic": "dsa",
+      "subtopic": "complexity",
+      "difficulty": "junior",
+      "question": "What do Big-O, Big-Omega and Big-Theta mean, and how is that different from best, average and worst case?",
+      "shortAnswer": "Big-O is an asymptotic upper bound on how fast a cost grows, Big-Omega is a lower bound, and Big-Theta is a tight bound (both at once). Best, average and worst case are a separate question: they say *which inputs* you're analysing, and each case can be described with O, Ω or Θ. In interviews, \"it's O(n)\" usually means the tight worst-case bound.",
+      "answer": "**Key points**\n\n- **f = O(g)**: beyond some input size, f grows no faster than a constant times g. **f = Ω(g)**: no slower. **f = Θ(g)**: both, so they grow at the same rate.\n- Drop constants and lower-order terms: 3n² + 10n + 7 is Θ(n²).\n- Case analysis is a different axis:\n  - linear search: best Θ(1) (target at index 0), worst Θ(n)\n  - quicksort: average Θ(n log n), worst Θ(n²)\n- Common classes, fastest to slowest: O(1), O(log n), O(n), O(n log n), O(n²), O(2ⁿ), O(n!).\n- **Space complexity** counts extra memory. Say whether you include the input and the recursion stack.\n\n**How to derive it in an interview**\n\nCount the work per loop iteration and multiply nested loops. Two nested loops over n give n²; a loop that halves its range gives log n. Two independent inputs need two variables: O(n + m) or O(n·m), not \"O(n)\".",
+      "code": {
+        "lang": "csharp",
+        "source": "int First(int[] a) => a[0];                       // O(1)\n\nint Sum(int[] a)                                  // O(n)\n{\n    int s = 0;\n    foreach (var x in a) s += x;\n    return s;\n}\n\nint CountPairs(int[] a)                           // O(n^2)\n{\n    int c = 0;\n    for (int i = 0; i < a.Length; i++)\n        for (int j = i + 1; j < a.Length; j++)\n            if (a[i] == a[j]) c++;\n    return c;\n}\n\nint Halvings(int n)                               // O(log n)\n{\n    int steps = 0;\n    while (n > 1) { n /= 2; steps++; }\n    return steps;\n}"
+      },
+      "pitfalls": [
+        "Saying \"Big-O means worst case\". O is an upper bound; you can give an O bound for the average case too.",
+        "Writing O(2n) or O(n + 5). Constants and lower-order terms are dropped.",
+        "Collapsing two different input sizes into one n.",
+        "Forgetting loops hidden inside library calls (List.Contains, string concatenation) when you count."
+      ],
+      "followUps": [
+        "What's the complexity of a loop where i doubles on every iteration?",
+        "Why can an O(n log n) algorithm beat an O(n) one for small inputs?",
+        "How do you state space complexity for a recursive function?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Big_O_notation",
+          "title": "Big O notation — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Quicksort",
+          "title": "Quicksort — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-complexity-from-constraints",
+      "topic": "dsa",
+      "subtopic": "complexity",
+      "difficulty": "junior",
+      "question": "How do you use the input constraints (for example n ≤ 10^5) to decide what time complexity your solution needs?",
+      "shortAnswer": "Estimate the number of basic operations and compare with roughly 10^8 simple operations per second (a conservative judge estimate). With n ≤ 10^5, O(n²) is about 10^10 operations, far too slow, so you need O(n log n) or O(n). With n ≤ 20, an exponential O(2ⁿ·n) search is fine. The value ranges also tell you when int will overflow and you need long.",
+      "answer": "**Key points** (conservative guide from the USACO Guide)\n\n| n up to | Usually OK |\n|---|---|\n| 10 | O(n!) |\n| 20 | O(2ⁿ · n) |\n| 400 | O(n³) |\n| 7,500 | O(n²) |\n| 5 · 10⁵ | O(n log n) |\n| 5 · 10⁶ | O(n) |\n| 10¹⁸ | O(log n), O(1) |\n\n- Multiply by the number of queries: Q queries × O(n) each is O(Q·n).\n- **Values matter too**: `int` tops out at 2,147,483,647. Summing 10⁵ values of up to 10⁹ needs `long`.\n- **Memory**: 10⁶ ints ≈ 4 MB, but a 10⁴ × 10⁴ int matrix ≈ 400 MB, which is usually too much.\n\n**Interview habit**: state the brute force and its complexity, check it against the constraints, and use the gap to justify the optimised approach.",
+      "code": {
+        "lang": "csharp",
+        "source": "// 1 <= n <= 1e5, 1 <= a[i] <= 1e9  ->  the total can reach 1e14: use long\nlong Total(int[] a)\n{\n    long sum = 0;\n    foreach (int x in a) sum += x;   // int would silently wrap (unchecked by default)\n    return sum;\n}"
+      },
+      "pitfalls": [
+        "Treating the table as exact. Constant factors, the language and memory access patterns all matter.",
+        "Ignoring value ranges: int overflow in C# wraps silently in the default unchecked context.",
+        "Forgetting that nested loops over different inputs multiply."
+      ],
+      "followUps": [
+        "n ≤ 2·10⁵ and Q ≤ 2·10⁵ range-sum queries: what's your approach?",
+        "When does a hash map turn an O(n²) brute force into O(n)?",
+        "How would you spot overflow at run time in C# (`checked`)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://usaco.guide/bronze/time-comp",
+          "title": "Time complexity — USACO Guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/integral-numeric-types",
+          "title": "Integral numeric types (C# reference) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/arithmetic-operators",
+          "title": "Arithmetic operators: integer overflow (C# reference) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dsa-roadmap"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-amortized-list-add",
+      "topic": "dsa",
+      "subtopic": "complexity",
+      "difficulty": "mid",
+      "question": "Why is List<T>.Add called \"amortized O(1)\" when it sometimes copies the whole array?",
+      "shortAnswer": "List<T> keeps its items in an array. While Count < Capacity, Add is O(1); when the array is full, Add allocates a bigger array and copies every element, which is O(n). Capacity grows by a multiple of its current size, not by a fixed step, so these copies are rare enough that n Adds cost O(n) in total, and the average (amortized) cost per Add is O(1).",
+      "answer": "**Key points**\n\n- The docs say it directly: if Count is less than Capacity, Add is O(1); if the capacity has to grow, it becomes O(n), where n is Count.\n- **Why the total stays linear**: if capacity doubles, the copies cost 1 + 2 + 4 + … + n < 2n element moves over n Adds, which is O(1) each on average. Any constant growth factor gives the same bound. (The List<T> docs example reports a capacity of 8 after five Adds; run the snippet below to watch the growth.)\n- Amortized ≠ \"every call is cheap\". It's a bound on the *total* cost of any sequence of operations; a single unlucky Add can still take O(n), which matters for latency.\n- The same pattern applies to StringBuilder, whose capacity doubles when full, and to Dictionary/HashSet, which grow by reallocating their internal arrays.\n\n**Practical consequences**\n\n- Pre-size when you know n: `new List<int>(n)`.\n- `Insert(0, x)` and `RemoveAt(0)` are O(n) each because they shift elements, so doing them in a loop is O(n²). Use `Queue<T>`, `LinkedList<T>`, or append and reverse.",
+      "code": {
+        "lang": "csharp",
+        "source": "var list = new List<int>();\nint lastCapacity = -1;\nfor (int i = 0; i < 100; i++)\n{\n    list.Add(i);\n    if (list.Capacity != lastCapacity)       // a reallocation + copy just happened\n    {\n        Console.WriteLine($\"Count={list.Count}, Capacity={list.Capacity}\");\n        lastCapacity = list.Capacity;\n    }\n}\n\nvar presized = new List<int>(100_000);         // no reallocations while filling"
+      },
+      "pitfalls": [
+        "Calling Add \"always O(1)\". The amortized bound hides occasional O(n) spikes.",
+        "Growing by a constant amount (for example +10 each time) instead of a factor. Total copying then becomes O(n²).",
+        "Inserting at the front of a List<T> in a loop.",
+        "Not pre-sizing a list or dictionary whose final size you already know."
+      ],
+      "followUps": [
+        "How does a queue built from two stacks get amortized O(1) per operation?",
+        "What does TrimExcess do, and when would you call it?",
+        "Why does Dictionary<TKey,TValue> also have amortized, not worst-case, O(1) insertion?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1.add",
+          "title": "List<T>.Add method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1",
+          "title": "List<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1.insert",
+          "title": "List<T>.Insert method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Amortized_analysis",
+          "title": "Amortized analysis — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/base-types/stringbuilder",
+          "title": "Using the StringBuilder class in .NET — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet",
+        "collections"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-hidden-costs-in-csharp",
+      "topic": "dsa",
+      "subtopic": "complexity",
+      "difficulty": "mid",
+      "question": "Your C# solution looks O(n) but times out. Which hidden costs in common .NET calls should you look for?",
+      "shortAnswer": "Library calls can hide loops. List<T>.Contains and IndexOf are linear scans; string concatenation in a loop copies the growing string every time; array and string ranges (arr[a..b], Substring) copy; and LINQ can re-run a deferred query or sort when you only needed one pass. Put any of these inside a loop and O(n) quietly becomes O(n²).",
+      "answer": "**Key points**\n\n| Looks cheap | Real cost | Use instead |\n|---|---|---|\n| `list.Contains(x)` inside a loop | O(n) per call → O(n²) | `HashSet<T>` (O(1) average) |\n| `s += piece` inside a loop | copies the whole string each time | `StringBuilder` |\n| `arr[i..j]`, `s.Substring(i, k)` | O(k) copy + allocation | `arr.AsSpan(i, k)` / `s.AsSpan(i, k)`, O(1) view |\n| `list.Insert(0, x)` / `RemoveAt(0)` | O(n) shift | `Queue<T>`, `LinkedList<T>` |\n| `query.Count()` on a lazy sequence | enumerates everything (unless it's an ICollection<T>) | materialise once, use `.Count` |\n| enumerating a deferred LINQ query twice | runs the whole pipeline twice | `ToList()` once |\n| `items.OrderBy(x => x.Price).First()` | O(n log n) sort | `MinBy(x => x.Price)`, one O(n) pass |\n\n**Why**\n\n- `List<T>.Contains` is documented as a linear search, O(n).\n- Strings are immutable: every concatenation allocates a new string.\n- The C# docs say a range on an array or string produces a *copy* (O(N) in the range length), while a range on Span<T>/Memory<T> references the same memory (O(1)).\n- LINQ operators like OrderBy use deferred execution, so the query runs each time you enumerate it.",
+      "code": {
+        "lang": "csharp",
+        "source": "// O(n^2): Contains scans the list on every iteration\nList<int> seenList = new();\nforeach (int x in input)\n    if (!seenList.Contains(x)) seenList.Add(x);\n\n// O(n): hash-based membership\nHashSet<int> seen = new();\nforeach (int x in input)\n    seen.Add(x);                       // Add returns false if already present\n\n// O(total length) instead of O(n^2) characters copied\nvar sb = new System.Text.StringBuilder();\nforeach (string part in parts) sb.Append(part);\nstring result = sb.ToString();"
+      },
+      "pitfalls": [
+        "Calling `.Count()` on an `IEnumerable<T>` inside a loop condition, re-enumerating it on every iteration.",
+        "Slicing arrays with ranges inside recursion (for example in merge sort), allocating at every level.",
+        "Sorting just to get a minimum, maximum or top-1.",
+        "Measuring only with tiny inputs, where O(n²) still feels fast."
+      ],
+      "followUps": [
+        "When does `ToList()` make code faster, and when is it wasteful?",
+        "How would you profile an algorithm in .NET (Stopwatch, BenchmarkDotNet)?",
+        "Why is HashSet<T>.Contains only O(1) on average?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1.contains",
+          "title": "List<T>.Contains method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/base-types/stringbuilder",
+          "title": "Using the StringBuilder class in .NET — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/tutorials/ranges-indexes",
+          "title": "Indices and ranges (C#) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.count",
+          "title": "Enumerable.Count method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby",
+          "title": "Enumerable.OrderBy method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.minby",
+          "title": "Enumerable.MinBy method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet",
+        "strings-and-stringbuilder",
+        "deferred-vs-immediate"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Enumerable.MinBy/MaxBy exist from .NET 6. Span-based slicing needs .NET Core 2.1+ (or the System.Memory package).",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-recurrences-master-theorem",
+      "topic": "dsa",
+      "subtopic": "complexity",
+      "difficulty": "senior",
+      "question": "How do you work out the time complexity of a recursive algorithm? Explain the recurrences for merge sort and binary search, and when the master theorem doesn't apply.",
+      "shortAnswer": "Write a recurrence: the work done in one call plus the cost of its recursive calls. For divide-and-conquer recurrences of the form T(n) = a·T(n/b) + f(n), the master theorem compares f(n) with n^(log_b a). Merge sort, T(n) = 2T(n/2) + Θ(n), is Θ(n log n); binary search, T(n) = T(n/2) + Θ(1), is Θ(log n). For shapes like T(n) = T(n−1) + n, or several calls on n−1, use a recursion tree or unrolling instead.",
+      "answer": "**Key points**: master theorem with c = log_b a\n\n1. If f(n) grows polynomially slower than n^c, then T(n) = Θ(n^c). Example: T(n) = 2T(n/2) + O(1), visiting every node of a balanced tree, is Θ(n).\n2. If f(n) = Θ(n^c · logᵏ n), then T(n) = Θ(n^c · logᵏ⁺¹ n). Examples: merge sort (a = b = 2, c = 1, k = 0) gives Θ(n log n); binary search (a = 1, b = 2, c = 0) gives Θ(log n).\n3. If f(n) grows polynomially faster than n^c (plus a regularity condition), then T(n) = Θ(f(n)). Example: T(n) = 2T(n/2) + n² is Θ(n²).\n\n**When it doesn't fit**: recurrences that *subtract* rather than divide. Unroll them instead:\n\n- T(n) = T(n−1) + O(1) → Θ(n) (a linear recursion, depth n)\n- T(n) = T(n−1) + O(n) → Θ(n²) (quicksort's worst case with a bad pivot)\n- T(n) = 2T(n−1) + O(1) → Θ(2ⁿ) (naive recursive Fibonacci is exponential in the same way)\n\n**Space**: recursion depth × stack frame size, plus any buffers. Merge sort uses O(log n) stack plus an O(n) merge buffer; quicksort uses O(log n) stack on average and O(n) in the worst case.",
+      "code": {
+        "lang": "csharp",
+        "source": "// T(n) = T(n/2) + O(1)  ->  O(log n) time, O(log n) stack\nint Search(int[] a, int target, int lo, int hi)\n{\n    if (lo > hi) return -1;\n    int mid = lo + (hi - lo) / 2;\n    if (a[mid] == target) return mid;\n    return a[mid] < target ? Search(a, target, mid + 1, hi)\n                           : Search(a, target, lo, mid - 1);\n}\n\n// T(n) = 2T(n-1) + O(1)  ->  O(2^n): the classic exponential recursion\nlong Fib(int n) => n < 2 ? n : Fib(n - 1) + Fib(n - 2);"
+      },
+      "pitfalls": [
+        "Applying the master theorem to T(n) = T(n−1) + n. It isn't of the a·T(n/b) form.",
+        "Forgetting the per-call work, such as the O(n) merge or an O(n) slice copy (`arr[..mid]`) in every call.",
+        "Ignoring stack space and calling a recursive solution O(1) space."
+      ],
+      "followUps": [
+        "How does memoization change the complexity of recursive Fibonacci?",
+        "What's the recurrence for computing the height of a binary tree?",
+        "Why does picking a random pivot make quicksort's expected recurrence Θ(n log n)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Master_theorem_(analysis_of_algorithms)",
+          "title": "Master theorem (analysis of algorithms) — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Quicksort",
+          "title": "Quicksort — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Dynamic_programming",
+          "title": "Dynamic programming (Fibonacci example) — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-valid-palindrome-two-pointers",
+      "topic": "dsa",
+      "subtopic": "arrays-and-strings",
+      "difficulty": "junior",
+      "question": "Check whether a string is a palindrome, ignoring case and non-alphanumeric characters. What's the complexity, and why use two pointers?",
+      "shortAnswer": "Move one index in from the left and one in from the right, skip characters that aren't letters or digits, and compare the rest case-insensitively, stopping at the first mismatch. That's O(n) time and O(1) extra space, with no filtered copy and no reversed string.",
+      "answer": "**Key points**\n\n- `char.IsLetterOrDigit` tests the Unicode letter and decimal-digit categories. `char.ToLowerInvariant` avoids culture surprises such as the Turkish dotted/dotless i.\n- Building a cleaned string and comparing it with its reverse also works, but uses O(n) extra memory and does several passes.\n- The two-pointer pattern carries over to reversing an array in place, finding a pair with a given sum in a *sorted* array, and removing duplicates from a sorted array.\n\n**Complexity**: each index moves only towards the other, so there are at most n steps in total: O(n) time, O(1) space.",
+      "code": {
+        "lang": "csharp",
+        "source": "bool IsPalindrome(string s)\n{\n    int i = 0, j = s.Length - 1;\n    while (i < j)\n    {\n        while (i < j && !char.IsLetterOrDigit(s[i])) i++;\n        while (i < j && !char.IsLetterOrDigit(s[j])) j--;\n\n        if (char.ToLowerInvariant(s[i]) != char.ToLowerInvariant(s[j]))\n            return false;\n        i++;\n        j--;\n    }\n    return true;\n}\n// IsPalindrome(\"A man, a plan, a canal: Panama\") == true"
+      },
+      "pitfalls": [
+        "Forgetting the `i < j` check inside the skipping loops, which can run past each other or out of range.",
+        "Using culture-sensitive `ToLower()`.",
+        "Allocating `new string(s.Where(char.IsLetterOrDigit).ToArray())` and reversing it when the interviewer asked for O(1) space."
+      ],
+      "followUps": [
+        "Can the string become a palindrome by deleting at most one character?",
+        "How would you find the longest palindromic substring?",
+        "Reverse the words of a sentence in place in a char[]."
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.char.isletterordigit",
+          "title": "Char.IsLetterOrDigit method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://usaco.guide/silver/two-pointers",
+          "title": "Two pointers — USACO Guide",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-prefix-sums-subarray-sum-k",
+      "topic": "dsa",
+      "subtopic": "arrays-and-strings",
+      "difficulty": "junior",
+      "question": "How do prefix sums answer range-sum queries in O(1), and how do you count the subarrays that sum to k?",
+      "shortAnswer": "Precompute prefix[i] = sum of the first i elements in one O(n) pass; then the sum of a[l..r] is prefix[r+1] − prefix[l], O(1) per query. To count subarrays summing to k, make one pass with a running sum and a Dictionary of how many times each prefix sum has occurred: at each position add count[running − k]. That's O(n) time and O(n) space, and it works with negative numbers.",
+      "answer": "**Key points**\n\n- Use an array of length n + 1 with prefix[0] = 0, which removes the special case for ranges starting at 0.\n- Range sum query: O(n) preprocessing, then O(1) per query, instead of O(n) per query.\n- **Subarray sum = k**: a subarray (i, j] sums to k exactly when prefix[j] − prefix[i] = k, so count how many earlier prefixes equal `running − k`. Seed the dictionary with {0: 1} for subarrays that start at index 0.\n- A sliding window only works when every value is non-negative (the window sum then grows monotonically). With negatives, use prefix sums + hashing.\n- 2-D version: summed-area tables for sub-rectangle sums.",
+      "code": {
+        "lang": "csharp",
+        "source": "long[] BuildPrefix(int[] a)\n{\n    var p = new long[a.Length + 1];\n    for (int i = 0; i < a.Length; i++) p[i + 1] = p[i] + a[i];\n    return p;\n}\nlong RangeSum(long[] p, int l, int r) => p[r + 1] - p[l];   // inclusive l..r\n\nint SubarraySum(int[] a, int k)\n{\n    var seen = new Dictionary<long, int> { [0] = 1 };\n    long running = 0;\n    int count = 0;\n    foreach (int x in a)\n    {\n        running += x;\n        if (seen.TryGetValue(running - k, out int c)) count += c;\n        seen[running] = seen.TryGetValue(running, out int cur) ? cur + 1 : 1;\n    }\n    return count;\n}"
+      },
+      "pitfalls": [
+        "Off-by-one: mixing up an n-length prefix array with the n + 1 version.",
+        "Forgetting the initial `{0: 1}` entry and missing subarrays that start at index 0.",
+        "Using int for prefix sums that can exceed 2,147,483,647.",
+        "Reaching for a sliding window when the array can contain negative numbers."
+      ],
+      "followUps": [
+        "Find the longest subarray with sum k.",
+        "How would you support updates as well as range queries (Fenwick tree)?",
+        "Count the subarrays whose sum is divisible by k."
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://usaco.guide/silver/prefix-sums",
+          "title": "Prefix sums — USACO Guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Prefix_sum",
+          "title": "Prefix sum — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-sliding-window-longest-substring",
+      "topic": "dsa",
+      "subtopic": "arrays-and-strings",
+      "difficulty": "mid",
+      "question": "Find the length of the longest substring without repeating characters. Explain the sliding-window approach and its complexity.",
+      "shortAnswer": "Keep a window [left, right] that never contains a duplicate. Extend right one character at a time; if that character was last seen inside the window, move left to just after its previous position. Both indices only move forward, so it's O(n) time, with O(k) space for the last-seen positions (k = number of distinct characters).",
+      "answer": "**Key points**\n\n- Variable-size sliding window: grow on the right, shrink on the left when a constraint breaks.\n- Store each character's *last index* in a Dictionary<char,int>, so the left edge can jump instead of stepping one character at a time.\n- Use `left = Math.Max(left, last + 1)`. A character last seen *before* the window must not pull left backwards.\n- Each pointer moves at most n times → O(n). The brute force over all substrings is O(n²) to O(n³).\n\n**Template** for the family (\"longest/shortest window such that…\"): expand right, update the state, then while the window is invalid move left and update the state, and record the answer.",
+      "code": {
+        "lang": "csharp",
+        "source": "int LengthOfLongestSubstring(string s)\n{\n    var last = new Dictionary<char, int>();\n    int best = 0, left = 0;\n    for (int right = 0; right < s.Length; right++)\n    {\n        char c = s[right];\n        if (last.TryGetValue(c, out int prev))\n            left = Math.Max(left, prev + 1);   // never move left backwards\n        last[c] = right;\n        best = Math.Max(best, right - left + 1);\n    }\n    return best;\n}\n// \"abcabcbb\" -> 3 (\"abc\"), \"pwwkew\" -> 3 (\"wke\")"
+      },
+      "pitfalls": [
+        "Writing `left = prev + 1` without Math.Max, which breaks on inputs like \"abba\".",
+        "Restarting the scan from `left + 1` after every duplicate, which makes it O(n²).",
+        "Assuming ASCII when the input can contain any char. A Dictionary handles any char; an int[128] doesn't."
+      ],
+      "followUps": [
+        "Longest substring with at most k distinct characters.",
+        "Minimum window substring that contains all characters of t.",
+        "Why does the sliding window fail for \"longest subarray with sum k\" when values can be negative?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://usaco.guide/silver/two-pointers",
+          "title": "Two pointers — USACO Guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-kadane-maximum-subarray",
+      "topic": "dsa",
+      "subtopic": "arrays-and-strings",
+      "difficulty": "mid",
+      "question": "Find the maximum sum of a contiguous subarray (Kadane's algorithm). What happens with an all-negative array?",
+      "shortAnswer": "Scan once, keeping the best sum of a subarray that *ends* at the current index: either extend the previous one or start fresh here, `cur = max(x, cur + x)`. Also track the overall best. That's O(n) time and O(1) space. Initialise both with the first element, not 0, so an all-negative array returns its largest element instead of an empty subarray's 0.",
+      "answer": "**Key points**\n\n- It's a tiny dynamic programme: best-ending-here[i] depends only on best-ending-here[i−1].\n- If the running sum ever drops below the current element on its own, starting fresh is better. That's exactly `max(x, cur + x)`.\n- When nothing is positive, the answer is the largest single element. Initialising with 0 silently allows an empty subarray.\n- To return the subarray itself, remember where the current run started and update the best indices whenever the best improves.\n- Divide-and-conquer solves it in O(n log n), so Kadane's linear scan is the expected answer.",
+      "code": {
+        "lang": "csharp",
+        "source": "long MaxSubArray(int[] a)\n{\n    long cur = a[0], best = a[0];\n    for (int i = 1; i < a.Length; i++)\n    {\n        cur = Math.Max(a[i], cur + a[i]);   // extend or restart\n        best = Math.Max(best, cur);\n    }\n    return best;\n}\n// [-2,1,-3,4,-1,2,1,-5,4] -> 6  ([4,-1,2,1]);  [-3,-1,-2] -> -1"
+      },
+      "pitfalls": [
+        "Initialising `cur` and `best` to 0, which is wrong when every element is negative.",
+        "Using int when sums can overflow.",
+        "Confusing \"subarray\" (contiguous) with \"subsequence\" (any subset in order)."
+      ],
+      "followUps": [
+        "Maximum product subarray: why do you need to track both min and max?",
+        "Maximum subarray in a circular array.",
+        "How would you return the start and end indices?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Maximum_subarray_problem",
+          "title": "Maximum subarray problem (Kadane's algorithm) — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-span-vs-array-slices",
+      "topic": "dsa",
+      "subtopic": "arrays-and-strings",
+      "difficulty": "mid",
+      "question": "In C#, how do you work with part of an array or string without copying? What do arr[a..b], Substring and Span<T>.Slice each cost?",
+      "shortAnswer": "A range on an array (arr[a..b]) or a string (s[a..b], Substring) creates a copy: O(length) time plus an allocation. A Span<T> or ReadOnlySpan<T> slice (arr.AsSpan(a, len), s.AsSpan(a, len), span[a..b]) is just a view over the same memory: O(1), no allocation, and writes through a Span<T> change the original array.",
+      "answer": "**Key points**\n\n| Expression | Result | Cost |\n|---|---|---|\n| `arr[2..5]` | a new `int[]` | O(k) copy + allocation |\n| `s[2..5]`, `s.Substring(2, 3)` | a new `string` | O(k) copy + allocation |\n| `arr.AsSpan(2, 3)`, `span[2..5]` | a `Span<int>` view | O(1), no allocation |\n| `s.AsSpan(2, 3)` | a `ReadOnlySpan<char>` view | O(1), no allocation |\n\n- The C# docs state that the range operator on an array or string copies (O(N)), while on Span<T>/Memory<T> it references the same backing store (O(1)).\n- Span<T> is a stack-only type: you can't store it in a class field or keep it across `await`. Use `Memory<T>` for that.\n- Multi-dimensional arrays (`int[,]`) don't support ranges; jagged arrays (`int[][]`) do.\n- In recursive algorithms (merge sort, binary search), pass `lo`/`hi` indices or spans instead of slicing arrays at every level.",
+      "code": {
+        "lang": "csharp",
+        "source": "int[] numbers = { 1, 2, 3, 4, 5, 6 };\n\nint[] copy = numbers[1..4];        // new array {2,3,4}\ncopy[0] = 99;                      // numbers[1] is still 2\n\nSpan<int> view = numbers.AsSpan(1, 3);\nview[0] = 99;                      // numbers[1] is now 99\n\nReadOnlySpan<char> word = \"hello world\".AsSpan(6, 5);   // \"world\", no allocation\nbool isWorld = word.SequenceEqual(\"world\".AsSpan());"
+      },
+      "pitfalls": [
+        "Assuming `arr[a..b]` is a view. It's a copy, so changes don't reach the original.",
+        "Slicing arrays with ranges inside a hot loop or recursion and paying an allocation every time.",
+        "Trying to keep a Span<T> in a field or across an await (it's a compile error)."
+      ],
+      "followUps": [
+        "What is the difference between Span<T> and Memory<T>?",
+        "How would you implement merge sort with a single shared buffer?",
+        "When would you use ArraySegment<T>?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/tutorials/ranges-indexes",
+          "title": "Indices and ranges (C#) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/memory-and-spans/memory-t-usage-guidelines",
+          "title": "Memory<T> and Span<T> usage guidelines — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet",
+        "merge-and-quick-sort"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Span<T> and Memory<T> are available from .NET Core 2.1 (and via the System.Memory package on older targets); ranges and indices need C# 8+.",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-two-sum-dictionary",
+      "topic": "dsa",
+      "subtopic": "hashing",
+      "difficulty": "junior",
+      "question": "Two Sum: return the indices of two numbers that add up to a target. Give the brute-force and the optimal C# solution.",
+      "shortAnswer": "The brute force checks every pair: O(n²) time, O(1) space. The optimal solution is one pass with a Dictionary<int,int> from value to index: for each x, look up target − x *before* inserting x. That's O(n) average time and O(n) space. If the array is already sorted, two pointers give O(n) time and O(1) space.",
+      "answer": "**Key points**\n\n- Dictionary lookups are \"close to O(1)\" because it's a hash table, so n lookups ≈ O(n) on average.\n- Check, then insert: that order stops an element from pairing with itself, and still handles duplicates like [3, 3] with target 6.\n- `TryGetValue` does one lookup; `ContainsKey` followed by the indexer does two.\n- Variants:\n  - sorted input → two pointers from both ends\n  - count all pairs → store frequencies\n  - 3Sum → sort + two pointers, O(n²)",
+      "code": {
+        "lang": "csharp",
+        "source": "int[] TwoSum(int[] nums, int target)\n{\n    var indexOf = new Dictionary<int, int>(nums.Length);\n    for (int i = 0; i < nums.Length; i++)\n    {\n        int need = target - nums[i];\n        if (indexOf.TryGetValue(need, out int j))\n            return new[] { j, i };\n        indexOf[nums[i]] = i;          // insert after checking\n    }\n    return Array.Empty<int>();\n}"
+      },
+      "pitfalls": [
+        "Inserting before checking, so x can pair with itself when target = 2x.",
+        "Sorting first and then returning indices of the *sorted* array.",
+        "`target - nums[i]` overflowing for extreme values. Use long if the constraints allow it."
+      ],
+      "followUps": [
+        "How would you do it in O(1) extra space if the array is sorted?",
+        "3Sum: find all unique triplets that sum to zero.",
+        "What's the worst case of this solution, and when can it happen?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://usaco.guide/silver/two-pointers",
+          "title": "Two pointers — USACO Guide",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "hash-bfs-dfs",
+        "collections-cheatsheet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-custom-key-equality",
+      "topic": "dsa",
+      "subtopic": "hashing",
+      "difficulty": "mid",
+      "question": "You need a HashSet of grid coordinates, or a Dictionary keyed by a composite value. What must the key type provide, and what goes wrong otherwise?",
+      "shortAnswer": "Hash-based collections need consistent Equals and GetHashCode: equal keys must produce equal hash codes, and a key's hash must not change while it's in the collection. Value tuples like (int, int), records and record structs already provide value equality. A plain class compares references, so a new Point(1, 2) won't find the Point(1, 2) you stored earlier.",
+      "answer": "**Key points**\n\n- Contract: if `a.Equals(b)`, then `a.GetHashCode() == b.GetHashCode()`. The reverse needn't hold, since collisions are allowed.\n- Override both or neither. Overriding Equals alone breaks every Dictionary/HashSet lookup.\n- **Don't mutate a key** while it's in a collection; the docs say it \"must not change in any way that affects its hash value\", or the item is effectively lost.\n- Easy correct keys for DSA:\n  - `(int row, int col)` value tuples\n  - `record struct Point(int X, int Y)`\n- Combine fields with `HashCode.Combine(x, y)`. The docs show that `x ^ y` gives (5, 8) and (8, 5) the same hash, so it collides more.\n- Or pass an `IEqualityComparer<T>` (for example `StringComparer.OrdinalIgnoreCase`) instead of changing the type.",
+      "code": {
+        "lang": "csharp",
+        "source": "// 1) Tuple keys: value equality built in\nvar visited = new HashSet<(int r, int c)>();\nvisited.Add((2, 3));\nbool seen = visited.Contains((2, 3));           // true\n\n// 2) Comparer instead of a new type\nvar names = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { \"Alice\" };\nbool hasAlice = names.Contains(\"ALICE\");        // true\n\n// 3) record struct: value equality + good hash, no boilerplate\npublic readonly record struct Point(int X, int Y);\n\n// 4) A hand-written class key\npublic sealed class Cell : IEquatable<Cell>\n{\n    public int R { get; }\n    public int C { get; }\n    public Cell(int r, int c) { R = r; C = c; }\n    public bool Equals(Cell? o) => o is not null && o.R == R && o.C == C;\n    public override bool Equals(object? obj) => Equals(obj as Cell);\n    public override int GetHashCode() => HashCode.Combine(R, C);\n}"
+      },
+      "pitfalls": [
+        "Using a class without Equals/GetHashCode overrides as a key: lookups compare references.",
+        "Overriding Equals but not GetHashCode (or the reverse).",
+        "Mutable keys: changing a field after insertion \"loses\" the entry.",
+        "XOR-combining fields, which collides for symmetric pairs."
+      ],
+      "followUps": [
+        "Why is a mutable struct key also risky?",
+        "How do records implement equality, and what about a record that contains an array?",
+        "When would you write a custom IEqualityComparer<T>?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.object.gethashcode",
+          "title": "Object.GetHashCode method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/record",
+          "title": "Records (C# reference) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/value-tuples",
+          "title": "Tuple types (C# reference) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "records-equality-partial",
+        "hash-bfs-dfs"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "HashCode.Combine is available from .NET Core 2.1; the docs recommend it on .NET 5+. Record types need C# 9 (record struct: C# 10).",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-group-anagrams",
+      "topic": "dsa",
+      "subtopic": "hashing",
+      "difficulty": "mid",
+      "question": "Group a list of words into anagram groups. What key do you use, and what are the complexities?",
+      "shortAnswer": "Map each word to a canonical key that's identical for all of its anagrams, then group with a Dictionary<string, List<string>>. Sorting each word's letters gives O(k log k) per word, O(n·k log k) in total. Counting letters (26 counters for a–z) gives O(k) per word, O(n·k) in total, where n is the number of words and k is the maximum word length.",
+      "answer": "**Key points**\n\n- **Key by sorting**: `new string(sorted chars)`. Simple and works for any characters. Array.Sort is O(k log k).\n- **Key by counting**: an int[26] of letter counts turned into a string key such as \"1#0#2#…\". It's O(k), but only for a known alphabet.\n- One Dictionary insertion per word: O(1) average.\n- Don't use `string.GetHashCode()` (or any hash) as the key itself. Different strings can share a hash code, and the docs say string hash codes can differ between runs.",
+      "code": {
+        "lang": "csharp",
+        "source": "IList<IList<string>> GroupAnagrams(string[] words)\n{\n    var groups = new Dictionary<string, List<string>>();\n    foreach (string w in words)\n    {\n        char[] chars = w.ToCharArray();\n        Array.Sort(chars);                       // O(k log k)\n        string key = new string(chars);\n\n        if (!groups.TryGetValue(key, out var list))\n            groups[key] = list = new List<string>();\n        list.Add(w);\n    }\n    return groups.Values.Cast<IList<string>>().ToList();\n}\n\n// O(k) key for lowercase a-z\nstring CountKey(string w)\n{\n    var counts = new int[26];\n    foreach (char ch in w) counts[ch - 'a']++;\n    return string.Join('#', counts);\n}"
+      },
+      "pitfalls": [
+        "Using a hash code or the letter *sum* as the key (different words collide, e.g. \"ad\" and \"bc\").",
+        "Assuming lowercase a–z when the input can contain other characters.",
+        "Building the counting key by naive string concatenation in a loop."
+      ],
+      "followUps": [
+        "How would you check if two strings are anagrams in O(k) without sorting?",
+        "How would you do this in a streaming fashion for millions of words?",
+        "How does LINQ GroupBy compare (complexity and readability)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.sort",
+          "title": "Array.Sort method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.string.gethashcode",
+          "title": "String.GetHashCode method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet",
+        "hash-bfs-dfs"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-hash-collisions-worst-case",
+      "topic": "dsa",
+      "subtopic": "hashing",
+      "difficulty": "senior",
+      "question": "Why is hash-table lookup \"O(1) on average but O(n) in the worst case\"? What does that mean for Dictionary<TKey,TValue> and string keys in .NET?",
+      "shortAnswer": "A hash table turns a key's hash code into a bucket index, so lookups are fast while keys spread evenly. Keys that collide in one bucket have to be compared one by one, so with a poor hash function or adversarial input a lookup degrades to O(n). The .NET docs describe Dictionary retrieval as \"close to O(1)\", depending on the quality of the key's hash. Growth is amortized through resizing, and string hash codes can differ between runs, so never persist them.",
+      "answer": "**Key points**\n\n- **Collisions** are unavoidable (many keys, few buckets). They're resolved by *separate chaining* (a list per bucket) or *open addressing* (probe for another slot).\n- **Load factor** = items / buckets. Tables resize and rehash as it rises, so insertion is amortized O(1), not worst-case O(1).\n- **Worst case**: when every key lands in one bucket, a lookup becomes a linear search, O(n). The Object.GetHashCode docs warn that a malicious user can feed data that increases collisions and degrades applications relying on hash tables.\n- A good `GetHashCode` is cheap, deterministic within a run, and evenly distributed. In .NET, `HashCode.Combine` is the easy option.\n- **String hash codes aren't stable**: they can differ across .NET versions, platforms and even between two runs of the same program. Never store them in a database or file.\n- Need ordered keys or a guaranteed bound? `SortedDictionary<TKey,TValue>` is a binary search tree with O(log n) operations.",
+      "code": {
+        "lang": "csharp",
+        "source": "// A terrible key: every instance has the same hash, so all keys share one bucket.\nsealed class BadKey : IEquatable<BadKey>\n{\n    public int Id;\n    public bool Equals(BadKey? o) => o is not null && o.Id == Id;\n    public override bool Equals(object? o) => Equals(o as BadKey);\n    public override int GetHashCode() => 42;   // legal, but O(n) lookups\n}\n\nvar slow = new Dictionary<BadKey, int>();\nfor (int i = 0; i < 20_000; i++)\n    slow[new BadKey { Id = i }] = i;          // each insert scans the bucket: O(n^2) total"
+      },
+      "pitfalls": [
+        "Claiming hash lookups are \"always O(1)\".",
+        "Persisting `string.GetHashCode()` values or using them as identifiers.",
+        "Weak hash combinations (XOR of fields) that collide on symmetric data.",
+        "Mutating a key after inserting it."
+      ],
+      "followUps": [
+        "How do separate chaining and open addressing behave as the load factor approaches 1?",
+        "When would you choose SortedDictionary over Dictionary?",
+        "How would you protect a public API that builds dictionaries from user-supplied keys?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Hash_table",
+          "title": "Hash table — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.object.gethashcode",
+          "title": "Object.GetHashCode method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.string.gethashcode",
+          "title": "String.GetHashCode method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.sorteddictionary-2",
+          "title": "SortedDictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "hash-bfs-dfs"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-lru-cache",
+      "topic": "dsa",
+      "subtopic": "hashing",
+      "difficulty": "senior",
+      "question": "Design an LRU (least recently used) cache with O(1) Get and Put in C#.",
+      "shortAnswer": "Combine a Dictionary<TKey, LinkedListNode<(TKey, TValue)>> for O(1) lookup with a LinkedList that keeps items in usage order, most recent first. Get moves the found node to the front; Put updates or inserts at the front and, when over capacity, removes the last node and its dictionary entry. Every step is O(1), because LinkedList<T> insert and remove with a node reference are O(1).",
+      "answer": "**Key points**\n\n- LRU = evict the least recently used item first.\n- The **Dictionary** answers \"where is key k?\" in O(1) average; the **doubly linked list** answers \"which item is oldest?\" and \"move this to the front\" in O(1).\n- Store the key inside the node as well, so that when you evict the tail you know which dictionary entry to remove.\n- `LinkedList<T>.Remove(node)` and `AddFirst(node)` are O(1), and a node can be removed and re-added without allocating a new one.\n- Don't use `list.Find(value)` or `list.Remove(value)`: those are O(n) scans.\n- Thread safety: LinkedList<T> only supports concurrent *reads*, so a shared cache needs a lock (or a different design).",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class LruCache<TKey, TValue> where TKey : notnull\n{\n    private readonly int _capacity;\n    private readonly Dictionary<TKey, LinkedListNode<(TKey Key, TValue Value)>> _map = new();\n    private readonly LinkedList<(TKey Key, TValue Value)> _order = new();   // front = most recent\n\n    public LruCache(int capacity) => _capacity = capacity;\n\n    public bool TryGet(TKey key, out TValue value)\n    {\n        if (_map.TryGetValue(key, out var node))\n        {\n            _order.Remove(node);           // O(1)\n            _order.AddFirst(node);         // O(1), node reused\n            value = node.Value.Value;\n            return true;\n        }\n        value = default!;\n        return false;\n    }\n\n    public void Put(TKey key, TValue value)\n    {\n        if (_map.TryGetValue(key, out var existing))\n        {\n            _order.Remove(existing);\n            _map.Remove(key);\n        }\n        else if (_map.Count == _capacity)\n        {\n            var lru = _order.Last!;        // least recently used\n            _order.RemoveLast();\n            _map.Remove(lru.Value.Key);\n        }\n        _map[key] = _order.AddFirst((key, value));\n    }\n}"
+      },
+      "pitfalls": [
+        "Storing only values in the list, then being unable to remove the evicted key from the dictionary.",
+        "Moving items with `Find`/`Remove(value)`, which is O(n).",
+        "Forgetting to refresh recency on Get, or on Put of an existing key.",
+        "Sharing the cache between threads without synchronisation."
+      ],
+      "followUps": [
+        "How would you implement an LFU (least frequently used) cache?",
+        "How would you add expiry (TTL) to entries?",
+        "What would change in a thread-safe or distributed version?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.linkedlist-1",
+          "title": "LinkedList<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2",
+          "title": "Dictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Cache_replacement_policies",
+          "title": "Cache replacement policies (LRU) — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-custom-comparer-sort",
+      "topic": "dsa",
+      "subtopic": "sorting",
+      "difficulty": "junior",
+      "question": "How do you sort objects in C# by a custom rule, such as age descending and then name? What's wrong with the comparer (a, b) => a - b?",
+      "shortAnswer": "Pass a Comparison<T> lambda or an IComparer<T> to List<T>.Sort or Array.Sort (in place, O(n log n), unstable), or use LINQ OrderBy/ThenBy (a new sequence, stable). The comparer must return a negative number, zero or a positive number. `a - b` overflows for large values of opposite sign and returns the wrong sign, so use `a.CompareTo(b)`.",
+      "answer": "**Key points**\n\n- **In place**: `list.Sort((a, b) => ...)`, `Array.Sort(arr, comparer)`. Both use introsort: O(n log n) and unstable.\n- **LINQ**: `OrderBy(...).ThenBy(...)` / `OrderByDescending(...)`. It's stable and builds a new sorted sequence, with deferred execution, so nothing runs until you enumerate.\n- **Multi-key comparer**: compare the first key; return that result if it's non-zero, otherwise compare the next key.\n- **Descending**: swap the arguments, `b.CompareTo(a)`. Don't negate a comparison result.\n- **Reusable**: `Comparer<T>.Create(...)`, or implement `IComparable<T>` on the type for its natural order.\n- **Strings**: pass `StringComparer.Ordinal` or use `string.CompareOrdinal` when you don't want culture-sensitive ordering.\n\n**Why `a - b` is wrong**: integer arithmetic is unchecked by default and wraps on overflow. With a = int.MinValue and b = 1, `a - b` wraps to int.MaxValue, so the comparer claims int.MinValue > 1.",
+      "code": {
+        "lang": "csharp",
+        "source": "var people = new List<Person> { new(\"Ann\", 30), new(\"Bob\", 25), new(\"Cid\", 30) };\n\n// Age descending, then name ascending (ordinal)\npeople.Sort((a, b) =>\n{\n    int byAge = b.Age.CompareTo(a.Age);\n    return byAge != 0 ? byAge : string.CompareOrdinal(a.Name, b.Name);\n});\n\n// Reusable comparer\nIComparer<Person> byName = Comparer<Person>.Create((a, b) => string.CompareOrdinal(a.Name, b.Name));\nPerson[] arr = people.ToArray();\nArray.Sort(arr, byName);\n\n// LINQ: stable, returns a new list\nvar sorted = people.OrderByDescending(p => p.Age)\n                   .ThenBy(p => p.Name, StringComparer.Ordinal)\n                   .ToList();\n\nComparison<int> broken = (a, b) => a - b;          // int.MinValue - 1 wraps to int.MaxValue\nComparison<int> safe   = (a, b) => a.CompareTo(b);\n\nrecord Person(string Name, int Age);"
+      },
+      "pitfalls": [
+        "Subtraction comparers that overflow.",
+        "Inconsistent comparers (not returning 0 for an item compared with itself, or breaking transitivity). The docs say Sort may throw ArgumentException when the comparer \"caused an error during the sort\".",
+        "Expecting List.Sort to keep the original order of equal elements. It's unstable.",
+        "Calling OrderBy and forgetting the result. OrderBy doesn't sort the source list."
+      ],
+      "followUps": [
+        "When would you implement IComparable<T> instead of passing a comparer?",
+        "How do you sort strings case-insensitively without culture surprises?",
+        "Why does a stable sort matter when you sort by several keys in separate passes?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1.sort",
+          "title": "List<T>.Sort method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby",
+          "title": "Enumerable.OrderBy method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/arithmetic-operators",
+          "title": "Arithmetic operators: integer overflow (C# reference) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "sorting-summary"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-merge-sort-vs-quicksort",
+      "topic": "dsa",
+      "subtopic": "sorting",
+      "difficulty": "junior",
+      "question": "Compare merge sort and quicksort: time, space, stability, and when you'd pick each.",
+      "shortAnswer": "Merge sort is O(n log n) in every case and stable, but its usual array version needs O(n) extra memory. Quicksort averages O(n log n), sorts in place with O(log n) stack, and is usually faster on arrays in practice, but it degrades to O(n²) with bad pivots and isn't stable. Merge sort suits linked lists, external (on-disk) sorting and cases that need stability; quicksort (or a hybrid such as introsort) is the default for in-memory arrays.",
+      "answer": "**Key points**\n\n| | Merge sort | Quicksort |\n|---|---|---|\n| Best / average | Θ(n log n) | Θ(n log n) |\n| Worst | O(n log n) | O(n²), e.g. first or last element as pivot on already sorted input |\n| Extra space | O(n) for arrays (O(1) for linked lists) | O(log n) stack if you recurse into the smaller side first |\n| Stable | Yes, in most implementations | No |\n| Strength | predictable, sequential access | in place, cache-friendly, fast in practice |\n\n- **Avoiding quicksort's worst case**: random or median-of-three pivots, or introsort, which switches to heapsort when recursion gets too deep. .NET's Array.Sort is an introsort.\n- **Merge sort's sweet spots**: linked lists (no random access needed), external sorting of data larger than memory, and anywhere stability matters. LINQ's OrderBy is documented as stable.\n- Both are divide and conquer: merge sort does its work *after* the recursive calls (merging); quicksort does it *before* them (partitioning).",
+      "code": {
+        "lang": "csharp",
+        "source": "void MergeSort(int[] a)\n{\n    var tmp = new int[a.Length];          // one shared buffer: O(n) extra space\n    Sort(a, tmp, 0, a.Length - 1);\n}\n\nvoid Sort(int[] a, int[] tmp, int lo, int hi)\n{\n    if (lo >= hi) return;\n    int mid = lo + (hi - lo) / 2;\n    Sort(a, tmp, lo, mid);\n    Sort(a, tmp, mid + 1, hi);\n\n    int i = lo, j = mid + 1, k = lo;\n    while (i <= mid && j <= hi)\n        tmp[k++] = a[i] <= a[j] ? a[i++] : a[j++];   // <= keeps equal items in order (stable)\n    while (i <= mid) tmp[k++] = a[i++];\n    while (j <= hi)  tmp[k++] = a[j++];\n    Array.Copy(tmp, lo, a, lo, hi - lo + 1);\n}\n\nint Partition(int[] a, int lo, int hi)     // Lomuto partition, pivot = a[hi]\n{\n    int pivot = a[hi], i = lo;\n    for (int j = lo; j < hi; j++)\n        if (a[j] < pivot) { (a[i], a[j]) = (a[j], a[i]); i++; }\n    (a[i], a[hi]) = (a[hi], a[i]);\n    return i;                               // pivot's final position\n}"
+      },
+      "pitfalls": [
+        "Saying quicksort is \"O(n log n)\" with no qualifier. It's the average; the worst case is O(n²).",
+        "Allocating new arrays at every merge-sort level instead of reusing one buffer.",
+        "Using `<` instead of `<=` in the merge, which loses stability.",
+        "Always picking the last element as pivot on input that may already be sorted."
+      ],
+      "followUps": [
+        "How does introsort guarantee O(n log n) in the worst case?",
+        "How would you sort a linked list in O(n log n)?",
+        "How do you sort a file too large to fit in memory?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Merge_sort",
+          "title": "Merge sort — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Quicksort",
+          "title": "Quicksort — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.sort",
+          "title": "Array.Sort method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby",
+          "title": "Enumerable.OrderBy method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "merge-and-quick-sort",
+        "sorting-summary"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-sort-stability-dotnet",
+      "topic": "dsa",
+      "subtopic": "sorting",
+      "difficulty": "mid",
+      "question": "What is a stable sort? Are Array.Sort, List<T>.Sort and LINQ OrderBy stable, and how do you get a stable sort when you need one?",
+      "shortAnswer": "A stable sort keeps elements with equal keys in their original relative order. Array.Sort and List<T>.Sort are documented as unstable (they use introsort); LINQ OrderBy/ThenBy is documented as stable. If you need stability in place, add the original index as a tie-breaker in the comparer, or use OrderBy.",
+      "answer": "**Key points**\n\n- **Why it matters**: sorting orders by date and then *stably* by customer keeps each customer's orders in date order. Multi-pass sorting and \"sort by X, keep the existing order for ties\" both rely on stability.\n- **.NET facts**:\n  - Array.Sort and List<T>.Sort: introsort (insertion sort for partitions of 16 or fewer, heapsort when recursion gets too deep, quicksort otherwise). Unstable, O(n log n).\n  - Enumerable.OrderBy / ThenBy: stable. It allocates a new sequence and runs deferred.\n- **Making an unstable sort stable**: pair each item with its original index and break ties on the index. The comparer then never returns 0 for distinct items.\n- **Stable algorithms**: merge sort, insertion sort, counting sort (the stable version). **Unstable**: quicksort, heapsort, selection sort.\n- A small test may *look* stable by chance. Don't rely on an undocumented order.",
+      "code": {
+        "lang": "csharp",
+        "source": "var orders = new[] { (Id: \"A\", Qty: 2), (Id: \"B\", Qty: 1), (Id: \"C\", Qty: 2), (Id: \"D\", Qty: 1) };\n\n// Unstable: A/C and B/D may come out in either order\nvar copy = orders.ToArray();\nArray.Sort(copy, (x, y) => x.Qty.CompareTo(y.Qty));\n\n// Stable: LINQ keeps the original order for equal keys -> B, D, A, C\nvar stable = orders.OrderBy(o => o.Qty).ToArray();\n\n// Stable in place: tie-break on the original index\nvar indexed = orders.Select((o, i) => (Item: o, Index: i)).ToArray();\nArray.Sort(indexed, (x, y) =>\n{\n    int c = x.Item.Qty.CompareTo(y.Item.Qty);\n    return c != 0 ? c : x.Index.CompareTo(y.Index);\n});"
+      },
+      "pitfalls": [
+        "Assuming List<T>.Sort is stable because a small sample came out in order.",
+        "Sorting in several passes with an unstable sort and expecting earlier orderings to survive.",
+        "Chaining a second OrderBy where you meant ThenBy. The second call becomes the primary key, so the result is ordered by the wrong key first."
+      ],
+      "followUps": [
+        "Which classic sorting algorithms are stable, and why is heapsort not?",
+        "How does a stable counting sort make LSD radix sort work?",
+        "What's the memory cost of OrderBy compared with List<T>.Sort?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.sort",
+          "title": "Array.Sort method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1.sort",
+          "title": "List<T>.Sort method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby",
+          "title": "Enumerable.OrderBy method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Merge_sort",
+          "title": "Merge sort — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "stability-and-simple-sorts",
+        "sorting-summary"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Before .NET Framework 4.5, Array.Sort used plain quicksort rather than introsort (the Array.Sort docs say .NET Framework 4 and earlier used only quicksort). It was unstable in both cases.",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-merge-intervals",
+      "topic": "dsa",
+      "subtopic": "sorting",
+      "difficulty": "mid",
+      "question": "Given a list of intervals [start, end], merge all overlapping ones. What's the approach and complexity?",
+      "shortAnswer": "Sort the intervals by start, then scan once: if the current interval starts at or before the end of the last merged one, extend that end to the larger of the two; otherwise start a new merged interval. Sorting dominates, so it's O(n log n) time, plus O(n) for the output.",
+      "answer": "**Key points**\n\n- After sorting by start, any interval that overlaps the current merged block must come right after it. One linear pass is enough.\n- Extend with `Math.Max(last.End, cur.End)`. An interval can sit entirely inside the previous one, as in [1,10] followed by [2,3].\n- Decide with the interviewer whether touching intervals ([1,2] and [2,3]) count as overlapping. That's `<=` versus `<`.\n- Complexity: O(n log n) for the sort plus O(n) for the scan. The output can hold up to n intervals.\n\n**Interval family**\n\n- Insert an interval into a sorted list: O(n).\n- Minimum meeting rooms: sort the starts, keep a min-heap of end times. O(n log n).\n- Remove the fewest intervals so the rest don't overlap: greedy by earliest end.",
+      "code": {
+        "lang": "csharp",
+        "source": "int[][] Merge(int[][] intervals)\n{\n    if (intervals.Length == 0) return intervals;\n\n    var sorted = intervals.Select(iv => new[] { iv[0], iv[1] }).ToArray();   // don't mutate the input\n    Array.Sort(sorted, (a, b) => a[0].CompareTo(b[0]));                      // O(n log n)\n\n    var result = new List<int[]> { sorted[0] };\n    for (int i = 1; i < sorted.Length; i++)\n    {\n        int[] last = result[^1];\n        int[] cur = sorted[i];\n        if (cur[0] <= last[1])                  // overlaps (touching counts here)\n            last[1] = Math.Max(last[1], cur[1]);\n        else\n            result.Add(cur);\n    }\n    return result.ToArray();\n}\n// [[1,3],[2,6],[8,10],[15,18]] -> [[1,6],[8,10],[15,18]]"
+      },
+      "pitfalls": [
+        "Overwriting the end with `cur.End` instead of the maximum, which breaks on nested intervals.",
+        "Forgetting to sort, or sorting by end.",
+        "Mutating the caller's arrays while merging.",
+        "Comparing with `a[0] - b[0]`, which can overflow for extreme values."
+      ],
+      "followUps": [
+        "Insert a new interval into a sorted, non-overlapping list.",
+        "What's the minimum number of meeting rooms needed?",
+        "How would you handle a stream of intervals arriving one at a time?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.sort",
+          "title": "Array.Sort method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2",
+          "title": "PriorityQueue<TElement,TPriority> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-comparison-sort-lower-bound",
+      "topic": "dsa",
+      "subtopic": "sorting",
+      "difficulty": "senior",
+      "question": "Why can't a comparison-based sort beat O(n log n) in the worst case, and how do counting sort and radix sort get around it?",
+      "shortAnswer": "A comparison sort only learns about the input through yes/no comparisons, and it has to distinguish all n! possible orderings. A binary decision tree with n! leaves has height at least log₂(n!), which is Θ(n log n). Counting sort and radix sort don't compare elements; they use the key values as array indexes. Counting sort runs in O(n + k) for keys in a range of size k, so it beats n log n when k is small.",
+      "answer": "**Key points**\n\n- **Decision-tree argument**: each comparison has two outcomes; to tell n! permutations apart you need at least log₂(n!) comparisons in the worst case, and log₂(n!) = Θ(n log n). Merge sort and heapsort meet this bound, so they're asymptotically optimal among comparison sorts.\n- **Counting sort**: count how often each key occurs, then output the keys in order. O(n + k) time and space for keys 0..k−1; it's stable in its standard form; it's not a comparison sort.\n- **Radix sort**: sort by one digit at a time with a stable counting sort as the subroutine. For d digits in base b that's d passes of O(n + b).\n- **Trade-off**: these only work when keys are small integers (or can be mapped to them). A huge k makes counting sort slower and memory-hungry, and for general objects with an arbitrary comparer only comparison sorts apply.\n- The lower bound is about comparisons. It says nothing about algorithms that inspect the key bits.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Counting sort for small non-negative keys (e.g. ages 0..150): O(n + k)\nint[] CountingSort(int[] a, int maxValue)\n{\n    var count = new int[maxValue + 1];\n    foreach (int x in a) count[x]++;\n\n    var result = new int[a.Length];\n    int k = 0;\n    for (int v = 0; v <= maxValue; v++)\n        for (int c = 0; c < count[v]; c++)\n            result[k++] = v;\n    return result;\n}\n// To sort records by key stably (as radix sort needs), turn the counts into\n// prefix sums (start positions) and place each record at its key's next slot."
+      },
+      "pitfalls": [
+        "Claiming \"no sort can beat n log n\". The bound applies only to comparison sorts.",
+        "Using counting sort when k is far larger than n (for example values up to 10⁹).",
+        "Using an unstable per-digit sort inside radix sort."
+      ],
+      "followUps": [
+        "How would you sort a million integers in the range 0..1000?",
+        "Why is heapsort optimal in comparisons but often slower than quicksort in practice?",
+        "How does bucket sort behave on uniformly distributed floating-point values?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Comparison_sort",
+          "title": "Comparison sort — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Counting_sort",
+          "title": "Counting sort — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "counting-radix-bucket",
+        "sorting-summary"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-binary-search-bugs",
+      "topic": "dsa",
+      "subtopic": "searching",
+      "difficulty": "junior",
+      "question": "Write a binary search. What are the classic bugs, and what does Array.BinarySearch return when the value isn't found?",
+      "shortAnswer": "Keep a range [lo, hi], compare the middle element with the target, and discard the half that can't contain it, for O(log n) time on a sorted array. The classic bugs are `(lo + hi) / 2` overflowing (use `lo + (hi - lo) / 2`), off-by-one bounds, and loops that never shrink. Array.BinarySearch returns the index if the value is found; otherwise it returns a negative number, the bitwise complement (~) of the index where the value would be inserted.",
+      "answer": "**Key points**\n\n- **Precondition**: the data must be sorted by the same order you search with. Otherwise the result is meaningless.\n- **Overflow**: `(lo + hi) / 2` can exceed int.MaxValue on huge ranges. This happens most easily when you binary search over a *value range* rather than an array. A version of this bug went unnoticed in the Java library for about nine years.\n- **Pick one convention and keep it**:\n  - inclusive `[lo, hi]` with `while (lo <= hi)` and `hi = mid - 1`\n  - half-open `[lo, hi)` with `while (lo < hi)` and `hi = mid`\n- **Duplicates**: the plain version returns *some* matching index. Use a lower-bound search for the first occurrence. The Array.BinarySearch docs also say that with duplicates the index returned isn't necessarily the first.\n- **Built-ins**: `Array.BinarySearch`, `List<T>.BinarySearch`. A negative result `r` means \"not found; insert at `~r`\".",
+      "code": {
+        "lang": "csharp",
+        "source": "int BinarySearch(int[] a, int target)\n{\n    int lo = 0, hi = a.Length - 1;              // inclusive bounds\n    while (lo <= hi)\n    {\n        int mid = lo + (hi - lo) / 2;           // no overflow\n        if (a[mid] == target) return mid;\n        if (a[mid] < target) lo = mid + 1;      // always shrink the range\n        else hi = mid - 1;\n    }\n    return -1;\n}\n\n// First index with a[i] >= target (a.Length if none): half-open [lo, hi)\nint LowerBound(int[] a, int target)\n{\n    int lo = 0, hi = a.Length;\n    while (lo < hi)\n    {\n        int mid = lo + (hi - lo) / 2;\n        if (a[mid] < target) lo = mid + 1;\n        else hi = mid;\n    }\n    return lo;\n}\n\nint[] sorted = { 10, 20, 30, 40 };\nint r = Array.BinarySearch(sorted, 25);         // negative: not found\nint insertAt = ~r;                              // 2"
+      },
+      "pitfalls": [
+        "Using `lo = mid` with `while (lo < hi)`, which loops forever when hi = lo + 1.",
+        "Mixing inclusive and half-open conventions in one function.",
+        "Treating any negative BinarySearch result as -1 and throwing away the insertion point.",
+        "Binary searching an unsorted array, or one sorted with a different comparer."
+      ],
+      "followUps": [
+        "Find the first and last positions of a target in a sorted array with duplicates.",
+        "Find the square root of an integer without Math.Sqrt.",
+        "How would you search a sorted array whose length you don't know?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Binary_search",
+          "title": "Binary search — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.binarysearch",
+          "title": "Array.BinarySearch method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "linear-and-binary-search",
+        "search-built-ins-and-summary"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-linear-binary-or-hash-lookup",
+      "topic": "dsa",
+      "subtopic": "searching",
+      "difficulty": "junior",
+      "question": "When would you use a linear search, a binary search or a hash lookup? Compare their costs.",
+      "shortAnswer": "Linear search is O(n) per lookup but needs no preparation and works on any sequence. Binary search is O(log n) per lookup but needs sorted data with random access, so you pay O(n log n) once to sort. A hash set or dictionary is O(1) per lookup on average after an O(n) build, but it can't answer ordered questions like \"nearest value\" or \"everything between 10 and 20\".",
+      "answer": "**Key points**\n\n| | Prep | Per lookup | Supports |\n|---|---|---|---|\n| Linear (`Array.IndexOf`, `List.Contains`) | none | O(n) | any data, a single lookup, small n |\n| Binary (`Array.BinarySearch`) | sort, O(n log n) | O(log n) | sorted order, nearest value, ranges, insertion point |\n| Hash (`HashSet`, `Dictionary`) | build, O(n) | O(1) average, O(n) worst | exact-match membership only |\n\n- **One lookup?** Linear is fine; sorting or hashing first costs more than it saves.\n- **Many lookups?** Hash for exact matches; sorted array plus binary search when you also need order (floor, ceiling, ranges, or k-th smallest).\n- **Memory**: a sorted array has no overhead; hash tables need extra space for buckets and entries.\n- For small n, a linear scan over a contiguous array is often fastest in practice. Measure before optimising.",
+      "code": {
+        "lang": "csharp",
+        "source": "int[] data = { 42, 7, 19, 3, 88 };\n\nint pos = Array.IndexOf(data, 19);                 // O(n), works unsorted\n\nint[] sorted = (int[])data.Clone();\nArray.Sort(sorted);                                // O(n log n), once\nint idx = Array.BinarySearch(sorted, 19);          // O(log n) per query\n\nvar set = new HashSet<int>(data);                  // O(n), once\nbool has = set.Contains(19);                       // O(1) average per query"
+      },
+      "pitfalls": [
+        "Sorting the data on every query.",
+        "Choosing a hash set and then needing range or nearest-value queries.",
+        "Calling List.Contains inside a loop (O(n) each time) when a HashSet would do."
+      ],
+      "followUps": [
+        "How would you answer \"how many values lie between a and b\" for many queries?",
+        "When is a SortedSet better than a sorted array?",
+        "Why can hash lookups degrade to O(n)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.indexof",
+          "title": "Array.IndexOf method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.binarysearch",
+          "title": "Array.BinarySearch method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.hashset-1.contains",
+          "title": "HashSet<T>.Contains method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Hash_table",
+          "title": "Hash table — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "search-built-ins-and-summary",
+        "hash-bfs-dfs"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-search-rotated-sorted-array",
+      "topic": "dsa",
+      "subtopic": "searching",
+      "difficulty": "mid",
+      "question": "Search for a target in a sorted array that has been rotated at an unknown pivot (for example [4,5,6,7,0,1,2]) in O(log n).",
+      "shortAnswer": "Use a modified binary search. At each step at least one half, [lo..mid] or [mid..hi], is in sorted order. Check whether the target falls inside that sorted half's range; if so, search there, otherwise search the other half. Each step halves the range, so it's O(log n) time and O(1) space, assuming distinct values.",
+      "answer": "**Key points**\n\n- Compare `a[lo]` with `a[mid]`: if `a[lo] <= a[mid]`, the left half is sorted; otherwise the right half is.\n- In the sorted half, a simple range check (`a[lo] <= target < a[mid]`) tells you whether the target can be there.\n- **With duplicates** (for example [1,1,1,0,1]), when `a[lo] == a[mid] == a[hi]` you can't tell which half is sorted. You can only shrink the range by one, so the worst case becomes O(n).\n- Related: find the minimum (the rotation point) by comparing `a[mid]` with `a[hi]`, also O(log n).\n- The general idea: binary search works whenever each step can safely rule out half of the remaining candidates. Full sortedness isn't required.",
+      "code": {
+        "lang": "csharp",
+        "source": "int SearchRotated(int[] a, int target)\n{\n    int lo = 0, hi = a.Length - 1;\n    while (lo <= hi)\n    {\n        int mid = lo + (hi - lo) / 2;\n        if (a[mid] == target) return mid;\n\n        if (a[lo] <= a[mid])                          // left half is sorted\n        {\n            if (a[lo] <= target && target < a[mid]) hi = mid - 1;\n            else lo = mid + 1;\n        }\n        else                                          // right half is sorted\n        {\n            if (a[mid] < target && target <= a[hi]) lo = mid + 1;\n            else hi = mid - 1;\n        }\n    }\n    return -1;\n}\n// SearchRotated(new[] {4,5,6,7,0,1,2}, 0) == 4"
+      },
+      "pitfalls": [
+        "Using `<` instead of `<=` in `a[lo] <= a[mid]`, which breaks when lo == mid.",
+        "Getting the strict and non-strict comparisons in the range checks wrong at the boundaries.",
+        "Promising O(log n) when duplicates are allowed."
+      ],
+      "followUps": [
+        "Find the minimum element of a rotated sorted array.",
+        "How many times was the array rotated?",
+        "What changes if the array may contain duplicates?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Binary_search",
+          "title": "Binary search — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "search-built-ins-and-summary",
+        "linear-and-binary-search"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-binary-search-on-answer",
+      "topic": "dsa",
+      "subtopic": "searching",
+      "difficulty": "mid",
+      "question": "What is \"binary search on the answer\"? Use it to find the minimum ship capacity that delivers all packages within D days.",
+      "shortAnswer": "When the question asks for the smallest (or largest) value that satisfies a condition, and the condition is monotonic (if capacity c works, every larger capacity also works), you can binary search over the possible answers instead of over an array. Each probe runs an O(n) feasibility check, so the total is O(n log R), where R is the size of the answer range.",
+      "answer": "**Key points**\n\n- **Requirements**: a monotonic yes/no predicate over an ordered answer space, plus known lower and upper bounds.\n- **Template**: find the first value where `feasible(x)` is true. If `feasible(mid)`, set `hi = mid`; otherwise set `lo = mid + 1`. Stop when lo == hi.\n- **Ship packages**:\n  - the capacity is at least the heaviest package and at most the total weight\n  - the check is a greedy pass that counts the days needed for capacity c\n  - O(n log(sum)) in total\n- The same pattern solves Koko eating bananas, splitting an array into k parts that minimise the largest sum, the minimum time to finish jobs, and the integer square root.\n- Watch for overflow: answer ranges can exceed int, so use long for sums and for `lo + (hi - lo) / 2`.",
+      "code": {
+        "lang": "csharp",
+        "source": "int ShipWithinDays(int[] weights, int days)\n{\n    int lo = weights.Max();                  // must fit the heaviest package\n    int hi = weights.Sum();                  // everything in one day\n    while (lo < hi)\n    {\n        int mid = lo + (hi - lo) / 2;\n        if (DaysNeeded(weights, mid) <= days) hi = mid;   // feasible: try smaller\n        else lo = mid + 1;\n    }\n    return lo;                               // smallest feasible capacity\n}\n\nint DaysNeeded(int[] weights, int capacity)\n{\n    int days = 1, load = 0;\n    foreach (int w in weights)\n    {\n        if (load + w > capacity) { days++; load = 0; }\n        load += w;\n    }\n    return days;\n}"
+      },
+      "pitfalls": [
+        "Using a predicate that isn't monotonic, so the search converges on a wrong answer.",
+        "Choosing a lower bound that's too small (for example 1 instead of the heaviest package) when the check doesn't handle that case.",
+        "`weights.Sum()` overflowing int for large inputs.",
+        "Mixing up \"minimise the maximum\" (find the first true) with \"maximise the minimum\" (find the last true)."
+      ],
+      "followUps": [
+        "Split an array into k subarrays so that the largest subarray sum is as small as possible.",
+        "Koko eating bananas: the minimum eating speed to finish within h hours.",
+        "How would you binary search on a real-valued answer, and when do you stop?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://usaco.guide/silver/binary-search",
+          "title": "Binary search — USACO Guide",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Binary_search",
+          "title": "Binary search — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "more-array-searches"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-floor-ceiling-sortedset",
+      "topic": "dsa",
+      "subtopic": "searching",
+      "difficulty": "senior",
+      "question": ".NET has no TreeMap.floorKey. How do you find the largest element ≤ x (floor) or the smallest ≥ x (ceiling), for static and for changing data?",
+      "shortAnswer": "For data that doesn't change, sort it once and use Array.BinarySearch: a non-negative result is an exact match, and otherwise ~result is the index of the first larger element, so the ceiling is at ~result and the floor at ~result − 1. That's O(log n) per query. For data that changes, use a SortedSet<T> (a balanced binary search tree) and take GetViewBetween(set.Min, x).Max for the floor, or GetViewBetween(x, set.Max).Min for the ceiling.",
+      "answer": "**Key points**\n\n- **Static data**: a sorted array + `Array.BinarySearch` is simple, compact, cache-friendly and documented as O(log n).\n- **Changing data**: `SortedSet<T>` keeps its elements sorted as you add and remove them. It's a red-black tree in the runtime source, so adds and removes are O(log n). `SortedDictionary<TKey,TValue>` is documented as a binary search tree with O(log n) retrieval, but it has no floor/ceiling API.\n- **GetViewBetween** returns a live *window* over the set, not a copy. Changes show through in both directions.\n- **Avoid these two traps**:\n  - `GetViewBetween(lower, upper)` throws ArgumentException when lower > upper under the comparer. Check `x < set.Min` (no floor) or `x > set.Max` (no ceiling) first.\n  - `Min`/`Max` return `default(T)` on an empty set, which is indistinguishable from a real 0. In the current source, reading a view's `Count` walks the whole range, so don't use it as an emptiness test in a hot loop. Bounding the view with set.Min / set.Max guarantees it isn't empty.\n- No duplicates: SortedSet ignores them. For a multiset, store (value, uniqueId) pairs or keep counts in a SortedDictionary.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Static data: sorted array + BinarySearch\nint[] sorted = { 10, 20, 30, 40 };\nint r = Array.BinarySearch(sorted, 25);\nint ceilIdx  = r >= 0 ? r : ~r;          // 2 -> 30 (== Length means no ceiling)\nint floorIdx = r >= 0 ? r : ~r - 1;      // 1 -> 20 (-1 means no floor)\n\n// Changing data: SortedSet<T>\nvar set = new SortedSet<int> { 10, 20, 30, 40 };\n\nbool TryFloor(SortedSet<int> s, int x, out int floor)\n{\n    floor = default;\n    if (s.Count == 0 || x < s.Min) return false;\n    floor = s.GetViewBetween(s.Min, x).Max;      // view is non-empty: it contains s.Min\n    return true;\n}\n\nbool TryCeiling(SortedSet<int> s, int x, out int ceiling)\n{\n    ceiling = default;\n    if (s.Count == 0 || x > s.Max) return false;\n    ceiling = s.GetViewBetween(x, s.Max).Min;\n    return true;\n}"
+      },
+      "pitfalls": [
+        "Calling GetViewBetween with lower > upper, which throws.",
+        "Treating `Max`/`Min` of an empty view as a real value (they return default(T)).",
+        "Re-sorting a List<T> after every insert to keep it ordered, O(n log n) each time.",
+        "Expecting SortedSet to keep duplicates."
+      ],
+      "followUps": [
+        "How would you build a sliding-window median with ordered sets or two heaps?",
+        "How do SortedList and SortedDictionary differ in insertion cost and memory?",
+        "How would you count the elements in a range [a, b] quickly on static data?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.array.binarysearch",
+          "title": "Array.BinarySearch method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.sortedset-1",
+          "title": "SortedSet<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.sortedset-1.getviewbetween",
+          "title": "SortedSet<T>.GetViewBetween method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.sortedset-1.max",
+          "title": "SortedSet<T>.Max property — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.sorteddictionary-2",
+          "title": "SortedDictionary<TKey,TValue> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/runtime/blob/main/src/libraries/System.Collections/src/System/Collections/Generic/SortedSet.TreeSubSet.cs",
+          "title": "SortedSet.TreeSubSet.cs — dotnet/runtime source on GitHub",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/runtime/blob/main/src/libraries/System.Collections/src/System/Collections/Generic/SortedSet.cs",
+          "title": "SortedSet.cs (red-black tree implementation) — dotnet/runtime source on GitHub",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "search-built-ins-and-summary",
+        "collections-cheatsheet"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "The docs don't state a cost for GetViewBetween. The notes on view cost come from the current dotnet/runtime source, so older runtimes such as .NET Framework may differ.",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-valid-parentheses",
+      "topic": "dsa",
+      "subtopic": "stacks-queues-heaps",
+      "difficulty": "junior",
+      "question": "Check whether a string of brackets such as \"{[()]}\" is balanced. Why is a stack the right structure?",
+      "shortAnswer": "The most recently opened bracket has to be closed first, which is last-in, first-out order: a stack. Push the expected closing bracket for each opener; for each closer, pop and check that it matches. At the end the stack must be empty. That's O(n) time and O(n) space in the worst case.",
+      "answer": "**Key points**\n\n- Stack<T> is array-backed: Pop is O(1), and Push is O(1) unless the array has to grow.\n- Pushing the *expected closer* (`')'` for `'('`) makes the check a simple equality test.\n- **Two failure modes**: a closer arrives when the stack is empty, or there are leftover openers at the end.\n- `Pop()` throws InvalidOperationException on an empty stack. `TryPop` avoids the exception.\n- If there's only one bracket type, a counter is enough (O(1) space). With several types you need the stack.",
+      "code": {
+        "lang": "csharp",
+        "source": "bool IsValid(string s)\n{\n    var expected = new Stack<char>();\n    foreach (char c in s)\n    {\n        switch (c)\n        {\n            case '(': expected.Push(')'); break;\n            case '[': expected.Push(']'); break;\n            case '{': expected.Push('}'); break;\n            default:\n                if (!expected.TryPop(out char want) || want != c) return false;\n                break;\n        }\n    }\n    return expected.Count == 0;          // leftover openers are invalid\n}\n// \"{[()]}\" -> true, \"([)]\" -> false, \"((\" -> false"
+      },
+      "pitfalls": [
+        "Returning true without checking that the stack is empty at the end.",
+        "Calling Pop on an empty stack, which throws.",
+        "Using a single counter for several bracket types, which accepts \"([)]\"."
+      ],
+      "followUps": [
+        "Return the minimum number of insertions needed to balance the string.",
+        "Find the length of the longest valid parentheses substring.",
+        "Evaluate an arithmetic expression with parentheses using two stacks."
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.stack-1",
+          "title": "Stack<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.stack-1.pop",
+          "title": "Stack<T>.Pop method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.stack-1.trypop",
+          "title": "Stack<T>.TryPop method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Stack<T>.TryPop and TryPeek exist from .NET Core 2.0 / .NET Standard 2.1; they aren't in .NET Framework.",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-priorityqueue-max-heap",
+      "topic": "dsa",
+      "subtopic": "stacks-queues-heaps",
+      "difficulty": "junior",
+      "question": "How does PriorityQueue<TElement,TPriority> work in .NET, and how do you make it a max-heap?",
+      "shortAnswer": "It's an array-backed min-heap (a 4-ary heap, per the docs): Dequeue returns the element with the *lowest* priority, Enqueue and Dequeue are O(log n), and Peek is O(1). For a max-heap, pass a reversed comparer such as `Comparer<int>.Create((a, b) => b.CompareTo(a))`. Equal priorities come out in no guaranteed order, so add a sequence number if you need FIFO.",
+      "answer": "**Key points**\n\n- **Element and priority are separate**: `Enqueue(element, priority)`. The heap orders by priority only.\n- **Min-heap by default**: the smallest priority wins. That fits Dijkstra and the \"k largest\" trick (a min-heap of size k).\n- **Max-heap**: reverse the comparer in the constructor. Negating priorities also works, but `-int.MinValue` overflows.\n- **No stable ordering**: the docs say no guarantees are made about the order of elements with equal priority. Use a tuple priority `(priority, sequence)` for FIFO among ties.\n- **No decrease-key**: you can't change an element's priority in place. Enqueue it again and skip stale entries when they're dequeued, or use Remove (.NET 9+, O(n)).\n- `UnorderedItems` enumerates in heap order, not sorted order. `EnqueueDequeue` combines the two operations efficiently.\n- Complexity of a d-ary heap: insert O(log n / log d), delete-min O(d · log n / log d), so with d = 4 both are O(log n).",
+      "code": {
+        "lang": "csharp",
+        "source": "var maxHeap = new PriorityQueue<string, int>(Comparer<int>.Create((a, b) => b.CompareTo(a)));\nmaxHeap.Enqueue(\"low\", 1);\nmaxHeap.Enqueue(\"high\", 5);\nmaxHeap.Enqueue(\"mid\", 3);\nstring top = maxHeap.Peek();                 // \"high\"\n\nwhile (maxHeap.TryDequeue(out string? task, out int priority))\n    Console.WriteLine($\"{task} ({priority})\");    // high, mid, low\n\n// FIFO among equal priorities: add a sequence number to the priority\nvar fifo = new PriorityQueue<string, (int Priority, long Seq)>();\nlong seq = 0;\nfifo.Enqueue(\"first\", (1, seq++));\nfifo.Enqueue(\"second\", (1, seq++));          // \"first\" comes out before \"second\""
+      },
+      "pitfalls": [
+        "Assuming Dequeue returns the largest item. It's a min-heap by default.",
+        "Negating int priorities, which overflows for int.MinValue.",
+        "Expecting FIFO order among equal priorities.",
+        "Enumerating `UnorderedItems` and expecting sorted output."
+      ],
+      "followUps": [
+        "How would you find the k largest elements in a stream with this class?",
+        "Why does Dijkstra with PriorityQueue enqueue duplicates instead of updating priorities?",
+        "How is a binary heap stored in an array (parent and child index formulas)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2",
+          "title": "PriorityQueue<TElement,TPriority> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2.remove",
+          "title": "PriorityQueue<TElement,TPriority>.Remove method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/D-ary_heap",
+          "title": "d-ary heap — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/arithmetic-operators",
+          "title": "Arithmetic operators: integer overflow (C# reference) — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet",
+        "heap-sort"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "PriorityQueue<TElement,TPriority> was added in .NET 6. Remove(element, ...) was added in .NET 9 and is a linear scan.",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-queue-with-two-stacks",
+      "topic": "dsa",
+      "subtopic": "stacks-queues-heaps",
+      "difficulty": "mid",
+      "question": "Implement a FIFO queue using two stacks. Why is Dequeue amortized O(1)?",
+      "shortAnswer": "Push new items onto an \"in\" stack. To dequeue, pop from an \"out\" stack; only when \"out\" is empty, move everything from \"in\" to \"out\", which reverses the order so the oldest item ends up on top. Each element is pushed and popped at most twice over its lifetime, so any sequence of n operations costs O(n): amortized O(1) per operation, even though a single Dequeue can take O(n).",
+      "answer": "**Key points**\n\n- **Invariant**: the top of \"out\" is always the oldest item, whenever \"out\" isn't empty.\n- **Only transfer when \"out\" is empty.** Transferring on every dequeue breaks the order and the bound.\n- **Amortized argument**: each element is pushed to in → popped from in → pushed to out → popped from out, a constant 4 operations per element in total.\n- The real `Queue<T>` in .NET is a circular array, so you'd use it in production. The two-stack version tests whether you understand amortized analysis and LIFO/FIFO.\n- The reverse question (a stack from two queues) costs O(n) per push or per pop, with no amortized trick.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class TwoStackQueue<T>\n{\n    private readonly Stack<T> _in = new();\n    private readonly Stack<T> _out = new();\n\n    public int Count => _in.Count + _out.Count;\n\n    public void Enqueue(T item) => _in.Push(item);\n\n    public T Dequeue()\n    {\n        Shift();\n        return _out.Pop();                    // throws InvalidOperationException if empty\n    }\n\n    public T Peek()\n    {\n        Shift();\n        return _out.Peek();\n    }\n\n    private void Shift()\n    {\n        if (_out.Count > 0) return;           // only refill when out is empty\n        while (_in.Count > 0) _out.Push(_in.Pop());\n    }\n}"
+      },
+      "pitfalls": [
+        "Moving the items back to \"in\" after every dequeue (O(n) per operation).",
+        "Transferring while \"out\" still holds items, which mixes up the order.",
+        "Calling the worst case O(1). Only the amortized cost is O(1)."
+      ],
+      "followUps": [
+        "Implement a stack using one or two queues.",
+        "Implement a queue that also supports GetMin in O(1).",
+        "Where else does amortized analysis show up in .NET collections?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Amortized_analysis",
+          "title": "Amortized analysis — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.stack-1",
+          "title": "Stack<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.queue-1",
+          "title": "Queue<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-monotonic-stack-next-greater",
+      "topic": "dsa",
+      "subtopic": "stacks-queues-heaps",
+      "difficulty": "mid",
+      "question": "For each element of an array, find the next element to its right that is greater (or -1). How does a monotonic stack solve this in O(n)?",
+      "shortAnswer": "Scan left to right, keeping a stack of indices that are still waiting for a greater element; their values decrease from bottom to top. When a new value is larger than the value at the top, it's the answer for that index, so pop and record it, and repeat. Then push the current index. Each index is pushed and popped at most once, so it's O(n) time and O(n) space instead of the O(n²) nested-loop solution.",
+      "answer": "**Key points**\n\n- **Invariant**: the stack holds unresolved indices in decreasing value order, so a new larger value resolves a run of them at once.\n- **Linear time**: although there's a loop inside a loop, every index is pushed once and popped at most once, giving 2n stack operations in total.\n- **Variants**:\n  - next smaller: flip the comparison\n  - previous greater: process right to left, or read the stack top before pushing\n  - circular arrays: iterate 2n times using `i % n`\n- **Classic applications**: daily temperatures (days until a warmer day), stock span, largest rectangle in a histogram, trapping rain water.\n- Store indices, not values, so you can compute distances and still look up values.",
+      "code": {
+        "lang": "csharp",
+        "source": "int[] NextGreater(int[] a)\n{\n    var result = new int[a.Length];\n    Array.Fill(result, -1);\n    var waiting = new Stack<int>();          // indices; their values decrease towards the top\n\n    for (int i = 0; i < a.Length; i++)\n    {\n        while (waiting.Count > 0 && a[waiting.Peek()] < a[i])\n            result[waiting.Pop()] = a[i];    // a[i] is the first greater value to the right\n        waiting.Push(i);\n    }\n    return result;                           // indices still waiting keep -1\n}\n// [2, 1, 2, 4, 3] -> [4, 2, 4, -1, -1]"
+      },
+      "pitfalls": [
+        "Using `<=` instead of `<` without thinking about how equal values should be handled.",
+        "Storing values instead of indices when the answer needs positions or distances.",
+        "Calling it O(n²) because of the nested loop. Count the pushes and pops instead."
+      ],
+      "followUps": [
+        "Daily temperatures: how many days until a warmer temperature?",
+        "Largest rectangle in a histogram in O(n).",
+        "Next greater element in a circular array."
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/All_nearest_smaller_values",
+          "title": "All nearest smaller values (stack algorithm) — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.stack-1",
+          "title": "Stack<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-kth-largest-element",
+      "topic": "dsa",
+      "subtopic": "stacks-queues-heaps",
+      "difficulty": "mid",
+      "question": "Find the k-th largest element in an unsorted array. Compare sorting, a heap and quickselect.",
+      "shortAnswer": "Sorting is O(n log n). A min-heap that holds only the k largest values seen so far is O(n log k) time and O(k) space, and it works on streams: its root is the answer. Quickselect partitions like quicksort but recurses into one side only, which is O(n) on average but O(n²) in the worst case unless the pivots are chosen carefully.",
+      "answer": "**Key points**\n\n| Approach | Time | Space | Notes |\n|---|---|---|---|\n| Sort, take index n − k | O(n log n) | O(1) to O(n) | simplest |\n| Min-heap of size k | O(n log k) | O(k) | works on a stream; good when k ≪ n |\n| Quickselect | O(n) average, O(n²) worst | O(1) extra (iterative) | random pivot; median of medians guarantees O(n) |\n\n- **Why a *min*-heap for the k *largest***: the root is the smallest of the k kept values, which is exactly the threshold a new value has to beat. A larger value replaces the root; a smaller one is ignored.\n- In .NET 6+, `PriorityQueue.EnqueueDequeue` inserts and then removes the minimum in one operation.\n- For k close to n, flip it: find the (n − k + 1)-th smallest with a max-heap.",
+      "code": {
+        "lang": "csharp",
+        "source": "int FindKthLargest(int[] nums, int k)\n{\n    var heap = new PriorityQueue<int, int>(k);    // min-heap of the k largest so far\n    foreach (int x in nums)\n    {\n        if (heap.Count < k)\n            heap.Enqueue(x, x);\n        else if (x > heap.Peek())\n            heap.EnqueueDequeue(x, x);            // add x, drop the current smallest\n    }\n    return heap.Peek();\n}\n// FindKthLargest(new[] {3,2,1,5,6,4}, 2) == 5"
+      },
+      "pitfalls": [
+        "Using a max-heap of all n elements and popping k times (O(n + k log n)), then calling it O(n log k).",
+        "Quickselect with a fixed first-element pivot on sorted input, which hits the O(n²) worst case.",
+        "Off-by-one between \"k-th largest\" and index k."
+      ],
+      "followUps": [
+        "Return the k most frequent elements.",
+        "Maintain the median of a stream (two heaps).",
+        "How does median of medians guarantee linear time?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Quickselect",
+          "title": "Quickselect — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2",
+          "title": "PriorityQueue<TElement,TPriority> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2.enqueuedequeue",
+          "title": "PriorityQueue<TElement,TPriority>.EnqueueDequeue method — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet",
+        "heap-sort"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-merge-k-sorted-lists",
+      "topic": "dsa",
+      "subtopic": "stacks-queues-heaps",
+      "difficulty": "senior",
+      "question": "Merge k sorted lists into one sorted list. What's the optimal approach and its complexity?",
+      "shortAnswer": "Put the head of each list into a min-heap keyed by value. Repeatedly remove the smallest, append it to the output, and push the next element from the same list. The heap never holds more than k entries, so each of the n total elements costs O(log k): O(n log k) time and O(k) extra space. Merging lists one after another costs O(n·k).",
+      "answer": "**Key points**\n\n- **Heap entries** store where an element came from (list index and position) so you can advance in that list.\n- **Complexity**: n pushes and pops on a heap of size ≤ k, so O(n log k). Merging pairwise in rounds (divide and conquer) also gives O(n log k) without a heap.\n- **Naive sequential merging**: merging list 1 with list 2, then the result with list 3, and so on, re-copies the growing result each time: O(n·k).\n- **Concatenate and sort**: O(n log n). That's simpler, but it ignores the fact that the inputs are already sorted.\n- **Real-world use**: the merge phase of external sorting, combining sorted log files, and merging sorted shard results.\n- For linked-list inputs (LeetCode style), push node references and relink the nodes, so the extra space stays O(k).",
+      "code": {
+        "lang": "csharp",
+        "source": "List<int> MergeK(IReadOnlyList<int[]> lists)\n{\n    var heap = new PriorityQueue<(int List, int Index), int>();\n    for (int i = 0; i < lists.Count; i++)\n        if (lists[i].Length > 0)\n            heap.Enqueue((i, 0), lists[i][0]);\n\n    var result = new List<int>();\n    while (heap.TryDequeue(out var pos, out int value))\n    {\n        result.Add(value);\n        int next = pos.Index + 1;\n        if (next < lists[pos.List].Length)\n            heap.Enqueue((pos.List, next), lists[pos.List][next]);\n    }\n    return result;\n}\n// [[1,4,5],[1,3,4],[2,6]] -> [1,1,2,3,4,4,5,6]"
+      },
+      "pitfalls": [
+        "Enqueuing every element up front, making the heap size n instead of k (O(n log n)).",
+        "Forgetting to skip empty lists.",
+        "Assuming equal values come out in input order. PriorityQueue doesn't guarantee that, so add a tie-breaker if stability matters."
+      ],
+      "followUps": [
+        "Merge k sorted arrays when k is very large but each array is tiny. What changes?",
+        "Find the smallest range that includes at least one number from each of k lists.",
+        "How would you merge sorted files that don't fit in memory?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/K-way_merge_algorithm",
+          "title": "k-way merge algorithm — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2",
+          "title": "PriorityQueue<TElement,TPriority> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "collections-cheatsheet"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-bfs-vs-dfs",
+      "topic": "dsa",
+      "subtopic": "trees-and-graphs",
+      "difficulty": "junior",
+      "question": "What is the difference between breadth-first search and depth-first search, and when do you use each?",
+      "shortAnswer": "BFS explores a graph level by level using a queue, so in an unweighted graph it reaches each node by the fewest possible edges. DFS goes as deep as possible along one path before backtracking, using recursion or an explicit stack. Both visit every reachable node and edge once, O(V + E) time with O(V) extra space. Choose BFS for shortest paths in unweighted graphs and DFS for cycle detection, topological order and exhaustive path exploration.",
+      "answer": "**Key points**\n\n| | BFS | DFS |\n|---|---|---|\n| Structure | `Queue<T>` | recursion or `Stack<T>` |\n| Order | nearest nodes first (by edge count) | one branch to the end, then backtrack |\n| Shortest path (unweighted) | yes | no |\n| Typical uses | fewest moves, levels, nearest target | cycles, topological sort, components, backtracking |\n| Memory | the current frontier, which can be wide | the current path (depth) |\n\n- **Mark nodes visited when you enqueue them** in BFS, not when you dequeue. Otherwise the same node can be queued many times.\n- **Represent the graph** as an adjacency list (`List<int>[]` or `Dictionary<T, List<T>>`), so a full traversal is O(V + E). An adjacency matrix makes it O(V²).\n- **Weighted edges** need Dijkstra (non-negative weights), not BFS.\n- **Deep graphs**: recursive DFS can overflow the call stack; switch to an explicit stack.",
+      "code": {
+        "lang": "csharp",
+        "source": "int[] BfsDistances(List<int>[] adj, int start)      // edges from start, -1 = unreachable\n{\n    var dist = new int[adj.Length];\n    Array.Fill(dist, -1);\n    dist[start] = 0;\n    var queue = new Queue<int>();\n    queue.Enqueue(start);\n\n    while (queue.Count > 0)\n    {\n        int u = queue.Dequeue();\n        foreach (int v in adj[u])\n            if (dist[v] == -1)                       // doubles as the visited check\n            {\n                dist[v] = dist[u] + 1;\n                queue.Enqueue(v);\n            }\n    }\n    return dist;\n}\n\nvoid Dfs(List<int>[] adj, int u, bool[] visited, List<int> order)\n{\n    visited[u] = true;\n    order.Add(u);\n    foreach (int v in adj[u])\n        if (!visited[v]) Dfs(adj, v, visited, order);\n}"
+      },
+      "pitfalls": [
+        "Forgetting the visited set, which loops forever on cycles.",
+        "Marking visited on dequeue in BFS, so nodes are queued several times.",
+        "Using DFS to find shortest paths in an unweighted graph.",
+        "Recursing on a graph with very long paths (for example a 10⁶-node chain) and overflowing the stack."
+      ],
+      "followUps": [
+        "How would you find the shortest path in a grid with obstacles?",
+        "How do you detect a cycle in a directed graph with DFS?",
+        "What changes if the edges have weights?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Breadth-first_search",
+          "title": "Breadth-first search — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.queue-1",
+          "title": "Queue<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "hash-bfs-dfs"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-binary-tree-traversals",
+      "topic": "dsa",
+      "subtopic": "trees-and-graphs",
+      "difficulty": "junior",
+      "question": "Explain pre-order, in-order, post-order and level-order traversal of a binary tree, with an example use for each.",
+      "shortAnswer": "The three depth-first orders differ only in when you visit the node relative to its subtrees: pre-order is node then left then right, in-order is left then node then right, and post-order is left then right then node. Level-order is breadth-first, top level to bottom, using a queue. Each visits every node once, O(n) time; the depth-first versions use O(h) stack space for tree height h.",
+      "answer": "**Key points**\n\n| Order | Visit | Typical use |\n|---|---|---|\n| Pre-order | node, left, right | copying or serialising a tree; prefix expressions |\n| In-order | left, node, right | a BST yields its keys in sorted order |\n| Post-order | left, right, node | deleting or freeing a tree; heights and sizes; postfix expressions |\n| Level-order | level by level (queue) | per-level output, minimum depth, the right-side view |\n\n- **Iterative versions** replace recursion with an explicit `Stack<T>`, which avoids stack overflow on very deep (skewed) trees.\n- **Space**: O(h) for depth-first traversal, where h is log n for a balanced tree and n for a degenerate one. Level-order needs O(w), the maximum width of a level.\n- **Level-order per level**: read `queue.Count` before processing a level, so you know how many nodes belong to it.",
+      "code": {
+        "lang": "csharp",
+        "source": "void InOrder(TreeNode? node, List<int> output)\n{\n    if (node is null) return;\n    InOrder(node.Left, output);\n    output.Add(node.Val);          // pre-order: before both calls; post-order: after both\n    InOrder(node.Right, output);\n}\n\nList<int> InOrderIterative(TreeNode? root)\n{\n    var output = new List<int>();\n    var stack = new Stack<TreeNode>();\n    TreeNode? current = root;\n    while (current is not null || stack.Count > 0)\n    {\n        while (current is not null) { stack.Push(current); current = current.Left; }\n        current = stack.Pop();\n        output.Add(current.Val);\n        current = current.Right;\n    }\n    return output;\n}\n\nList<List<int>> LevelOrder(TreeNode? root)\n{\n    var levels = new List<List<int>>();\n    if (root is null) return levels;\n    var queue = new Queue<TreeNode>();\n    queue.Enqueue(root);\n    while (queue.Count > 0)\n    {\n        int size = queue.Count;                 // nodes on this level\n        var level = new List<int>(size);\n        for (int i = 0; i < size; i++)\n        {\n            TreeNode node = queue.Dequeue();\n            level.Add(node.Val);\n            if (node.Left is not null) queue.Enqueue(node.Left);\n            if (node.Right is not null) queue.Enqueue(node.Right);\n        }\n        levels.Add(level);\n    }\n    return levels;\n}\n\npublic sealed class TreeNode\n{\n    public int Val;\n    public TreeNode? Left, Right;\n    public TreeNode(int val, TreeNode? left = null, TreeNode? right = null)\n        => (Val, Left, Right) = (val, left, right);\n}"
+      },
+      "pitfalls": [
+        "Saying the traversals are O(1) space. Recursion uses O(h) stack.",
+        "Enqueuing null children in level-order, then dereferencing them.",
+        "Expecting sorted output from in-order on a tree that isn't a BST."
+      ],
+      "followUps": [
+        "Reconstruct a binary tree from its pre-order and in-order sequences.",
+        "How would you serialise and deserialise a binary tree?",
+        "Can you do an in-order traversal in O(1) extra space (Morris traversal)?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Tree_traversal",
+          "title": "Tree traversal — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.stack-1",
+          "title": "Stack<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-number-of-islands",
+      "topic": "dsa",
+      "subtopic": "trees-and-graphs",
+      "difficulty": "mid",
+      "question": "Given a grid of '1' (land) and '0' (water), count the islands, where land cells connect horizontally and vertically. What's the approach and its complexity?",
+      "shortAnswer": "Treat the grid as a graph whose nodes are cells and whose edges join adjacent land cells. Scan every cell; when you find unvisited land, increment the count and flood-fill the whole island with BFS or DFS, marking cells as visited. Every cell is processed a constant number of times, so it's O(R·C) time, with up to O(R·C) extra space for the queue or visited set.",
+      "answer": "**Key points**\n\n- It's counting **connected components** in an implicit graph. You don't need to build an adjacency list; generate the 4 neighbours on the fly.\n- **Mark visited when you enqueue.** Either sink the land (`'1'` → `'0'`) or use a separate `bool[,]` if you mustn't modify the input.\n- **Prefer iterative BFS or DFS** for large grids. A recursive flood fill on a 1000 × 1000 all-land grid can recurse about a million levels deep and overflow the stack.\n- **Alternative**: union-find over the land cells, which also handles cells being added over time (\"number of islands II\").\n- **Variants**: 8-directional connectivity, the largest island area, counting distinct island shapes, and the distance to the nearest land (multi-source BFS).",
+      "code": {
+        "lang": "csharp",
+        "source": "int NumIslands(char[][] grid)\n{\n    int rows = grid.Length, cols = grid[0].Length, islands = 0;\n    var dirs = new (int Dr, int Dc)[] { (1, 0), (-1, 0), (0, 1), (0, -1) };\n    var queue = new Queue<(int R, int C)>();\n\n    for (int r = 0; r < rows; r++)\n    for (int c = 0; c < cols; c++)\n    {\n        if (grid[r][c] != '1') continue;\n        islands++;\n        grid[r][c] = '0';                       // mark when enqueuing\n        queue.Enqueue((r, c));\n\n        while (queue.Count > 0)\n        {\n            var (cr, cc) = queue.Dequeue();\n            foreach (var (dr, dc) in dirs)\n            {\n                int nr = cr + dr, nc = cc + dc;\n                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] == '1')\n                {\n                    grid[nr][nc] = '0';\n                    queue.Enqueue((nr, nc));\n                }\n            }\n        }\n    }\n    return islands;\n}"
+      },
+      "pitfalls": [
+        "Recursive DFS on huge grids: StackOverflowException can't be caught and ends the process.",
+        "Forgetting bounds checks, or checking them after indexing.",
+        "Mutating the caller's grid without saying so.",
+        "Counting diagonal neighbours when the problem says 4-directional."
+      ],
+      "followUps": [
+        "Return the area of the largest island.",
+        "Land cells are added one at a time; report the island count after each addition.",
+        "Find the shortest bridge between two islands."
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Flood_fill",
+          "title": "Flood fill — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Breadth-first_search",
+          "title": "Breadth-first search — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.stackoverflowexception",
+          "title": "StackOverflowException class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "hash-bfs-dfs"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-validate-bst",
+      "topic": "dsa",
+      "subtopic": "trees-and-graphs",
+      "difficulty": "mid",
+      "question": "How do you check whether a binary tree is a valid binary search tree? Why isn't comparing each node with its children enough?",
+      "shortAnswer": "The BST property is about whole subtrees: every key in the left subtree must be less than the node, and every key in the right subtree greater. Comparing only with direct children misses a deep node on the wrong side of an ancestor. Pass down an allowed (min, max) range and narrow it at each step, or check that an in-order traversal is strictly increasing. Both are O(n) time and O(h) space.",
+      "answer": "**Key points**\n\n- **Counter-example** for the child-only check: a root of 10 with left child 5, where 5 has a right child 12. Each parent–child pair looks fine, but 12 sits in 10's left subtree.\n- **Bounds approach**: the left child inherits (min, node), the right child (node, max). Use `long` (or nullable bounds) so nodes holding int.MinValue or int.MaxValue don't collide with the sentinels.\n- **In-order approach**: a BST's in-order traversal is sorted, so track the previous value and fail on any value that isn't larger than it.\n- **Duplicates**: agree on the rule (usually strict, with no duplicates) before coding.\n- **Why it matters**: BST operations cost O(h), Θ(log n) when balanced and O(n) when the tree degenerates into a chain. Self-balancing variants (red-black, AVL) keep h = O(log n).",
+      "code": {
+        "lang": "csharp",
+        "source": "bool IsValidBst(TreeNode? node, long min = long.MinValue, long max = long.MaxValue)\n{\n    if (node is null) return true;\n    if (node.Val <= min || node.Val >= max) return false;      // strict: no duplicates\n    return IsValidBst(node.Left, min, node.Val)\n        && IsValidBst(node.Right, node.Val, max);\n}\n\npublic sealed class TreeNode\n{\n    public int Val;\n    public TreeNode? Left, Right;\n    public TreeNode(int val, TreeNode? left = null, TreeNode? right = null)\n        => (Val, Left, Right) = (val, left, right);\n}"
+      },
+      "pitfalls": [
+        "Checking only `left.Val < node.Val < right.Val`.",
+        "Using int.MinValue and int.MaxValue as sentinels when nodes can hold those values.",
+        "Collecting the whole in-order list (O(n) memory) when tracking the previous value is enough."
+      ],
+      "followUps": [
+        "Find the k-th smallest element in a BST.",
+        "Two nodes of a BST were swapped by mistake. How do you recover the tree?",
+        "Find the lowest common ancestor of two nodes in a BST."
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Binary_search_tree",
+          "title": "Binary search tree — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Tree_traversal",
+          "title": "Tree traversal — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-topological-sort",
+      "topic": "dsa",
+      "subtopic": "trees-and-graphs",
+      "difficulty": "mid",
+      "question": "Order tasks that have dependencies (for example course prerequisites). How does topological sorting work, and how do you detect a cycle?",
+      "shortAnswer": "A topological order lists every task after all of its prerequisites, and it exists only if the dependency graph is a DAG (directed acyclic graph). Kahn's algorithm repeatedly takes a node with no remaining incoming edges, outputs it, and removes its outgoing edges. If some nodes are never output, there's a cycle. It runs in O(V + E).",
+      "answer": "**Key points**\n\n- **Kahn's algorithm**: compute in-degrees and queue every node with in-degree 0. Pop a node, append it to the order, and decrement its neighbours' in-degrees, queuing any that reach 0.\n- **Cycle detection**: if the output has fewer than V nodes, the leftover nodes are part of a cycle or depend on one.\n- **DFS alternative**: output nodes in post-order and reverse the list. Detect cycles with three states (unvisited, in progress, done); meeting an \"in progress\" node means a back edge.\n- **Not unique**: several valid orders may exist. Use a priority queue instead of a queue if you need, say, the lexicographically smallest one.\n- **Uses**: build systems, course schedules, package dependency resolution, spreadsheet recalculation, migration ordering.",
+      "code": {
+        "lang": "csharp",
+        "source": "List<int>? TopologicalOrder(int n, int[][] edges)      // edge [u, v]: u must come before v\n{\n    var adj = new List<int>[n];\n    for (int i = 0; i < n; i++) adj[i] = new List<int>();\n    var indegree = new int[n];\n    foreach (var e in edges) { adj[e[0]].Add(e[1]); indegree[e[1]]++; }\n\n    var ready = new Queue<int>();\n    for (int i = 0; i < n; i++)\n        if (indegree[i] == 0) ready.Enqueue(i);\n\n    var order = new List<int>(n);\n    while (ready.Count > 0)\n    {\n        int u = ready.Dequeue();\n        order.Add(u);\n        foreach (int v in adj[u])\n            if (--indegree[v] == 0) ready.Enqueue(v);\n    }\n    return order.Count == n ? order : null;            // null: there's a cycle\n}"
+      },
+      "pitfalls": [
+        "Reversing the edge direction (prerequisite → course versus course → prerequisite).",
+        "Forgetting nodes with no edges at all. They have in-degree 0 and must still appear.",
+        "Using a two-state visited flag in the DFS version, which can't tell a back edge from a cross edge."
+      ],
+      "followUps": [
+        "Return any valid course order, or report that it's impossible.",
+        "Find the minimum number of semesters if independent courses can run in parallel.",
+        "How would you derive the order of letters in an alien alphabet from a sorted word list?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Topological_sorting",
+          "title": "Topological sorting — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-dijkstra-shortest-path",
+      "topic": "dsa",
+      "subtopic": "trees-and-graphs",
+      "difficulty": "senior",
+      "question": "Implement Dijkstra's shortest-path algorithm in C#. What are its requirements and complexity, and how do you cope with PriorityQueue having no decrease-key?",
+      "shortAnswer": "Dijkstra finds shortest paths from one source when every edge weight is non-negative. It repeatedly takes the closest unsettled node from a min-heap and relaxes its outgoing edges. .NET's PriorityQueue can't lower an existing entry's priority, so push a new (node, distance) entry on every improvement and skip entries that are stale when dequeued. With a binary-heap-style queue that's O((V + E) log V) time.",
+      "answer": "**Key points**\n\n- **Requirement**: non-negative weights. A negative edge can make a \"settled\" distance wrong; use Bellman–Ford, which is O(V·E), instead.\n- **Lazy deletion**: the heap can hold several entries per node. When you dequeue (u, d) with d > dist[u], it's out of date, so skip it. A node's distance is final the first time it's dequeued with its current distance.\n- **Complexity**: at most E pushes, each O(log E) = O(log V), giving O((V + E) log V). The space for the heap is O(E).\n- **Special cases**:\n  - unweighted graph → BFS, O(V + E)\n  - weights of only 0 or 1 → 0-1 BFS with a deque\n  - with a good heuristic → A*\n- **Paths, not only distances**: record `prev[v] = u` on each relaxation and walk back from the target.\n- Use `long` distances so sums of large weights don't overflow.",
+      "code": {
+        "lang": "csharp",
+        "source": "long[] Dijkstra(List<(int To, int Weight)>[] adj, int source)\n{\n    var dist = new long[adj.Length];\n    Array.Fill(dist, long.MaxValue);\n    dist[source] = 0;\n\n    var pq = new PriorityQueue<int, long>();\n    pq.Enqueue(source, 0);\n\n    while (pq.TryDequeue(out int u, out long d))\n    {\n        if (d > dist[u]) continue;                 // stale entry: already improved\n        foreach (var (v, w) in adj[u])\n        {\n            long nd = d + w;\n            if (nd < dist[v])\n            {\n                dist[v] = nd;\n                pq.Enqueue(v, nd);                 // no decrease-key: push a new entry\n            }\n        }\n    }\n    return dist;                                   // long.MaxValue = unreachable\n}"
+      },
+      "pitfalls": [
+        "Running it on graphs with negative edges.",
+        "Not skipping stale entries, which reprocesses nodes and can blow up the running time.",
+        "Marking nodes as settled when they're pushed rather than when they're popped.",
+        "Using int distances that overflow, or adding a weight to the \"infinity\" sentinel."
+      ],
+      "followUps": [
+        "How would you return the actual path, not just the distance?",
+        "Find the cheapest flight with at most k stops. Why doesn't plain Dijkstra work?",
+        "When would you use A* instead, and what makes a heuristic admissible?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm",
+          "title": "Dijkstra's algorithm — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2",
+          "title": "PriorityQueue<TElement,TPriority> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "PriorityQueue<TElement,TPriority> requires .NET 6 or later.",
+      "reviewed": false
+    },
+    {
+      "id": "dsa-union-find",
+      "topic": "dsa",
+      "subtopic": "trees-and-graphs",
+      "difficulty": "senior",
+      "question": "What is a union-find (disjoint-set) structure, which optimisations make it nearly O(1), and where would you use it?",
+      "shortAnswer": "Union-find keeps elements partitioned into disjoint sets. Find returns a set's representative (root) and Union merges two sets. With path compression (or path halving) plus union by rank or size, a sequence of m operations on n elements costs O(m·α(n)), where α is the inverse Ackermann function, below 5 for any practical n. It's the standard tool for dynamic connectivity, Kruskal's minimum spanning tree and cycle detection in undirected graphs.",
+      "answer": "**Key points**\n\n- **Representation**: a parent array where each root points to itself.\n- **Union by size or rank**: attach the smaller tree under the larger, which keeps trees shallow (O(log n) height on its own).\n- **Path compression or halving**: during Find, point nodes closer to the root so later Finds are faster.\n- **Together**: amortized O(α(n)) per operation, effectively constant.\n- **Uses**:\n  - connected components / number of provinces\n  - \"does adding this edge create a cycle?\" (Union returns false when both ends are already connected)\n  - Kruskal's MST: sort the edges, add an edge if it joins two components, O(E log E)\n  - accounts merging, and percolation\n- **Limits**: it can't split sets or delete edges, and it answers \"are these connected?\", not \"what's the path?\".",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class DisjointSet\n{\n    private readonly int[] _parent;\n    private readonly int[] _size;\n    public int Components { get; private set; }\n\n    public DisjointSet(int n)\n    {\n        _parent = new int[n];\n        _size = new int[n];\n        for (int i = 0; i < n; i++) { _parent[i] = i; _size[i] = 1; }\n        Components = n;\n    }\n\n    public int Find(int x)\n    {\n        while (_parent[x] != x)\n        {\n            _parent[x] = _parent[_parent[x]];      // path halving\n            x = _parent[x];\n        }\n        return x;\n    }\n\n    public bool Union(int a, int b)\n    {\n        int ra = Find(a), rb = Find(b);\n        if (ra == rb) return false;                // already connected: this edge would close a cycle\n        if (_size[ra] < _size[rb]) (ra, rb) = (rb, ra);\n        _parent[rb] = ra;                          // smaller tree under the larger one\n        _size[ra] += _size[rb];\n        Components--;\n        return true;\n    }\n}"
+      },
+      "pitfalls": [
+        "Skipping both optimisations, which lets trees degrade into chains (O(n) per Find).",
+        "Comparing `parent[a] == parent[b]` instead of `Find(a) == Find(b)`.",
+        "Using union-find on directed graphs for cycle detection. It only models undirected connectivity."
+      ],
+      "followUps": [
+        "Implement Kruskal's algorithm with this class.",
+        "Find the redundant connection in a graph that was a tree plus one extra edge.",
+        "How would you handle string or coordinate keys instead of 0..n−1?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Disjoint-set_data_structure",
+          "title": "Disjoint-set data structure — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-recursion-and-stack-overflow",
+      "topic": "dsa",
+      "subtopic": "recursion-and-dp",
+      "difficulty": "junior",
+      "question": "What does a correct recursive function need, and what happens in .NET when recursion goes too deep?",
+      "shortAnswer": "A recursive function needs a base case that stops it and a recursive step that always moves closer to that base case. Each call pushes a stack frame, so the depth is limited by the thread's stack. In .NET, running out causes a StackOverflowException, which can't be caught: the process is terminated. For inputs that may be deep, use a loop or an explicit Stack<T>, or limit the depth.",
+      "answer": "**Key points**\n\n- **Base case + progress**: missing either one means infinite recursion.\n- **Space cost**: recursion uses O(depth) stack.\n  - binary search or a balanced tree: O(log n)\n  - a linked list, a skewed tree or a naive DFS on a long chain: O(n)\n- **StackOverflowException is fatal**: the docs say it can't be caught with try/catch and the process is terminated. Prevent it instead, for example by tracking depth or rewriting the algorithm iteratively.\n- **Converting to iteration**: push the work onto a `Stack<T>` (it lives on the heap and can grow far beyond the call stack), or use a plain loop when the recursion is linear.\n- **When recursion is fine**: when the depth is bounded and small, as in divide and conquer on balanced splits, tree problems with O(log n) height, or backtracking over short choices. Recursion often reads more clearly there.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Depth n: fine for small n, but a very deep input can crash the process\nlong SumTo(int n) => n == 0 ? 0 : n + SumTo(n - 1);\n\n// Same result with O(1) stack\nlong SumToIterative(int n)\n{\n    long total = 0;\n    for (int i = 1; i <= n; i++) total += i;\n    return total;\n}\n\n// Recursive DFS rewritten with an explicit stack\nList<int> DfsIterative(List<int>[] adj, int start)\n{\n    var order = new List<int>();\n    var visited = new bool[adj.Length];\n    var stack = new Stack<int>();\n    stack.Push(start);\n    while (stack.Count > 0)\n    {\n        int u = stack.Pop();\n        if (visited[u]) continue;\n        visited[u] = true;\n        order.Add(u);\n        for (int i = adj[u].Count - 1; i >= 0; i--)    // reversed so neighbours are visited in list order\n            if (!visited[adj[u][i]]) stack.Push(adj[u][i]);\n    }\n    return order;\n}"
+      },
+      "pitfalls": [
+        "Wrapping a deep recursion in try/catch to \"handle\" StackOverflowException. It can't be caught.",
+        "A base case that some inputs skip (for example `n == 0` when n can be negative).",
+        "Calling a recursive solution O(1) space.",
+        "Recomputing overlapping subproblems (as in naive Fibonacci), which makes the cost exponential."
+      ],
+      "followUps": [
+        "Convert a recursive in-order traversal to an iterative one.",
+        "How does memoization change both the time and the stack use of a recursive solution?",
+        "How deep does quicksort's recursion go in the worst case, and how do you bound it?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.stackoverflowexception",
+          "title": "StackOverflowException class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.stack-1",
+          "title": "Stack<T> class — Microsoft Learn",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "merge-and-quick-sort",
+        "hash-bfs-dfs"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-memoization-vs-tabulation",
+      "topic": "dsa",
+      "subtopic": "recursion-and-dp",
+      "difficulty": "junior",
+      "question": "What is dynamic programming? Compare memoization (top-down) and tabulation (bottom-up) using Fibonacci.",
+      "shortAnswer": "Dynamic programming applies when a problem has optimal substructure and overlapping subproblems: solve each subproblem once and reuse the answer. Naive recursive Fibonacci takes exponential time because it recomputes the same values. Memoization caches results inside the recursion (O(n) time and space); tabulation fills a table from the smallest case upwards (O(n) time, and only O(1) space when you keep just the last two values).",
+      "answer": "**Key points**\n\n| | Memoization (top-down) | Tabulation (bottom-up) |\n|---|---|---|\n| Shape | recursion + cache | loops over a table |\n| Computes | only the states actually reached | every state, in dependency order |\n| Stack | O(depth): can overflow on large n | no recursion |\n| Space optimisation | hard | often easy (keep only the previous row or values) |\n| Writing it | close to the recurrence | you must work out the evaluation order |\n\n- **How to approach a DP problem**:\n  1. Define the state: what does dp[i] mean?\n  2. Write the recurrence.\n  3. Set the base cases.\n  4. Choose the evaluation order.\n  5. Read off the answer.\n  6. Optionally reduce space.\n- **Complexity**: number of states × work per state. Fibonacci has n states with O(1) work each, so O(n).\n- `long` overflows after Fibonacci(92). Use `BigInteger` or a modulus if you need larger values.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Naive: O(2^n)-style blow-up from recomputation\nlong FibNaive(int n) => n < 2 ? n : FibNaive(n - 1) + FibNaive(n - 2);\n\n// Top-down: O(n) time, O(n) cache + O(n) stack\nlong FibMemo(int n, long[]? memo = null)\n{\n    if (n < 2) return n;\n    memo ??= new long[n + 1];\n    if (memo[n] != 0) return memo[n];\n    return memo[n] = FibMemo(n - 1, memo) + FibMemo(n - 2, memo);\n}\n\n// Bottom-up: O(n) time, O(1) space\nlong FibTab(int n)\n{\n    if (n < 2) return n;\n    long prev = 0, cur = 1;\n    for (int i = 2; i <= n; i++)\n        (prev, cur) = (cur, prev + cur);\n    return cur;\n}"
+      },
+      "pitfalls": [
+        "Using 0 as \"not computed\" when 0 is a valid answer for some state. Use a separate flag, a nullable value or -1.",
+        "Creating a new cache inside each recursive call instead of sharing one.",
+        "Calling plain divide and conquer (merge sort) \"DP\". Its subproblems don't overlap."
+      ],
+      "followUps": [
+        "Climbing stairs: how many ways are there to climb n steps taking 1 or 2 at a time?",
+        "House robber: maximise the sum without taking two adjacent elements.",
+        "When would you prefer top-down over bottom-up?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Dynamic_programming",
+          "title": "Dynamic programming — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-coin-change",
+      "topic": "dsa",
+      "subtopic": "recursion-and-dp",
+      "difficulty": "mid",
+      "question": "Find the fewest coins needed to make a given amount. Why doesn't the greedy \"take the largest coin\" approach always work?",
+      "shortAnswer": "Let dp[a] be the fewest coins that make amount a: dp[0] = 0 and dp[a] = 1 + min(dp[a − c]) over the coins c ≤ a, or \"impossible\" if none works. That's O(amount × number of coins) time and O(amount) space. Greedy is only optimal for some coin systems: with coins {1, 3, 4} and amount 6, greedy picks 4 + 1 + 1 (three coins), but 3 + 3 needs only two.",
+      "answer": "**Key points**\n\n- It's an unbounded-knapsack-style DP: each coin can be used any number of times.\n- **Impossible amounts**: initialise with a sentinel (int.MaxValue or amount + 1) and check it before adding 1, or the sum overflows.\n- **Pseudo-polynomial**: O(n·W) is polynomial in the *value* of the amount, not in its number of digits. The general problem is NP-hard.\n- **Greedy works for \"canonical\" systems** (such as many real currencies) but not in general, so an interviewer will push you to the DP.\n- **Counting variant** (how many combinations make the amount): loop over coins in the outer loop and amounts in the inner loop. The other nesting counts permutations (1+2 and 2+1 separately).",
+      "code": {
+        "lang": "csharp",
+        "source": "int CoinChange(int[] coins, int amount)\n{\n    var dp = new int[amount + 1];             // dp[a] = fewest coins for amount a\n    Array.Fill(dp, int.MaxValue);\n    dp[0] = 0;\n\n    for (int a = 1; a <= amount; a++)\n        foreach (int c in coins)\n            if (c <= a && dp[a - c] != int.MaxValue)\n                dp[a] = Math.Min(dp[a], dp[a - c] + 1);\n\n    return dp[amount] == int.MaxValue ? -1 : dp[amount];\n}\n// CoinChange(new[] {1, 3, 4}, 6) == 2   (3 + 3)\n\nlong CountWays(int[] coins, int amount)        // combinations, order doesn't matter\n{\n    var ways = new long[amount + 1];\n    ways[0] = 1;\n    foreach (int c in coins)                   // coins outer -> combinations\n        for (int a = c; a <= amount; a++)\n            ways[a] += ways[a - c];\n    return ways[amount];\n}"
+      },
+      "pitfalls": [
+        "Defending greedy without a proof for the given coin system.",
+        "`int.MaxValue + 1` overflowing to a negative number and then winning the Math.Min.",
+        "Swapping the loop order in the counting variant and counting permutations instead."
+      ],
+      "followUps": [
+        "Return the actual coins used, not just the count.",
+        "What changes if each coin can be used at most once?",
+        "How would you solve it if the amount were up to 10¹² but there were only three coin types?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Change-making_problem",
+          "title": "Change-making problem — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Dynamic_programming",
+          "title": "Dynamic programming — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-longest-common-subsequence",
+      "topic": "dsa",
+      "subtopic": "recursion-and-dp",
+      "difficulty": "mid",
+      "question": "Find the length of the longest common subsequence of two strings. Give the recurrence, the complexity and a space optimisation.",
+      "shortAnswer": "Let L[i][j] be the LCS length of the first i characters of a and the first j characters of b. If a[i−1] == b[j−1], L[i][j] = L[i−1][j−1] + 1; otherwise L[i][j] = max(L[i−1][j], L[i][j−1]). Filling the table is O(m·n) time. Each row depends only on the previous one, so the length alone needs O(min(m, n)) space; recovering the actual subsequence needs the full table (or a cleverer method such as Hirschberg's).",
+      "answer": "**Key points**\n\n- **Subsequence ≠ substring**: a subsequence keeps the order but can skip characters (\"ace\" is a subsequence of \"abcde\"). The longest common *substring* needs contiguous matches and a different recurrence.\n- **Table size**: (m + 1) × (n + 1), with row 0 and column 0 as the empty-prefix base cases (0).\n- **Space**: keep two rows of length min(m, n) + 1 and swap them.\n- **Reconstruction**: walk back from L[m][n]. Go diagonally on a match; otherwise move towards the larger neighbour.\n- **Uses**: the basis of diff tools and of comparing DNA sequences. **Related problems**: edit distance (Levenshtein), shortest common supersequence, longest increasing subsequence.",
+      "code": {
+        "lang": "csharp",
+        "source": "int LongestCommonSubsequence(string a, string b)\n{\n    if (a.Length < b.Length) (a, b) = (b, a);    // make b the shorter: rows of length |b| + 1\n    var prev = new int[b.Length + 1];\n    var cur = new int[b.Length + 1];\n\n    for (int i = 1; i <= a.Length; i++)\n    {\n        for (int j = 1; j <= b.Length; j++)\n            cur[j] = a[i - 1] == b[j - 1]\n                ? prev[j - 1] + 1\n                : Math.Max(prev[j], cur[j - 1]);\n        (prev, cur) = (cur, prev);\n    }\n    return prev[b.Length];\n}\n// LongestCommonSubsequence(\"abcde\", \"ace\") == 3"
+      },
+      "pitfalls": [
+        "Confusing subsequence with substring.",
+        "Off-by-one errors between string indexes (0-based) and table indexes (1-based, with the empty prefix at 0).",
+        "Optimising to two rows and then being asked to print the subsequence."
+      ],
+      "followUps": [
+        "Compute the edit distance between two strings.",
+        "Print one longest common subsequence.",
+        "Find the longest common substring. How does the recurrence change?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Longest_common_subsequence",
+          "title": "Longest common subsequence — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-backtracking-subsets",
+      "topic": "dsa",
+      "subtopic": "recursion-and-dp",
+      "difficulty": "mid",
+      "question": "Generate all subsets of a set of distinct integers. Explain the backtracking template and its complexity.",
+      "shortAnswer": "Backtracking builds a candidate one choice at a time: choose an element, recurse to explore, then undo the choice. For subsets, record the current list at every node and try adding each later element in turn. There are 2ⁿ subsets and copying each costs up to O(n), so it's O(n·2ⁿ) time; the recursion depth and the working list are O(n).",
+      "answer": "**Key points**\n\n- **Template**: `choose → explore → un-choose`. The shared `current` list is mutated and restored, so **copy it** when you record a result.\n- **Start index**: passing `i + 1` makes each subset appear once in increasing index order. Without it you get permutations or duplicates.\n- **Pruning**: abandon a branch as soon as it can't lead to a valid answer. For example, in combination sum with sorted candidates, stop when the running sum exceeds the target. The N-Queens problem is the textbook pruning example.\n- **Output-sensitive**: when you must list 2ⁿ (or n!) results, no algorithm beats that output size. Backtracking keeps the *extra* memory small.\n- **Alternatives**: bitmasks (each integer from 0 to 2ⁿ − 1 encodes a subset), practical for n up to about 20.\n- **Input with duplicates**: sort first, then skip `nums[i] == nums[i - 1]` when `i > start`.",
+      "code": {
+        "lang": "csharp",
+        "source": "IList<IList<int>> Subsets(int[] nums)\n{\n    var result = new List<IList<int>>();\n    var current = new List<int>();\n\n    void Backtrack(int start)\n    {\n        result.Add(new List<int>(current));        // copy: current keeps changing\n        for (int i = start; i < nums.Length; i++)\n        {\n            current.Add(nums[i]);                  // choose\n            Backtrack(i + 1);                      // explore\n            current.RemoveAt(current.Count - 1);   // un-choose\n        }\n    }\n\n    Backtrack(0);\n    return result;\n}\n// Subsets(new[] {1, 2, 3}) -> [], [1], [1,2], [1,2,3], [1,3], [2], [2,3], [3]"
+      },
+      "pitfalls": [
+        "Adding `current` itself instead of a copy, so every result ends up as the same (empty) list.",
+        "Forgetting to undo the choice.",
+        "Recursing with `start` instead of `i + 1`, which creates duplicates or infinite recursion."
+      ],
+      "followUps": [
+        "Generate all permutations. What's the complexity?",
+        "Combination sum: find all combinations of candidates that add up to a target.",
+        "Solve N-Queens and explain the pruning."
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Backtracking",
+          "title": "Backtracking — Wikipedia",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "dsa-zero-one-knapsack",
+      "topic": "dsa",
+      "subtopic": "recursion-and-dp",
+      "difficulty": "senior",
+      "question": "Solve the 0/1 knapsack problem. Why is the DP \"pseudo-polynomial\", and why does the one-dimensional version loop over capacity downwards?",
+      "shortAnswer": "Let best[i][w] be the highest value achievable using the first i items within weight w: best[i][w] = max(best[i−1][w], best[i−1][w − wᵢ] + vᵢ). That's O(n·W) time, which is pseudo-polynomial: polynomial in the numeric capacity W but exponential in the number of bits needed to write W, and the problem is NP-hard in general. With a single array, iterate w from W down to wᵢ, so each item is counted at most once; iterating upwards would let an item be reused, which solves the unbounded knapsack instead.",
+      "answer": "**Key points**\n\n- **State and choice**: for each item, skip it or take it if it fits. The table has (n + 1) × (W + 1) entries with O(1) work each.\n- **Space**: each row depends only on the previous row, so one array of size W + 1 is enough, as long as you loop **downwards**. Then `best[w - wᵢ]` still holds the previous row's value.\n- **Upward loop = unbounded knapsack** (unlimited copies of each item), which is the same structure as coin change.\n- **Pseudo-polynomial**: with W around 10⁹ the table is far too big. Alternatives:\n  - DP over total *value* instead of weight, when values are small\n  - meet in the middle for n up to about 40\n  - branch and bound\n- **Related problems**: partition into two equal-sum subsets (subset sum with W = total / 2), target sum, and the bounded knapsack.",
+      "code": {
+        "lang": "csharp",
+        "source": "int Knapsack01(int[] weights, int[] values, int capacity)\n{\n    var best = new int[capacity + 1];               // best[w] = max value within weight w\n    for (int i = 0; i < weights.Length; i++)\n        for (int w = capacity; w >= weights[i]; w--) // downwards: item i used at most once\n            best[w] = Math.Max(best[w], best[w - weights[i]] + values[i]);\n    return best[capacity];\n}\n\nint KnapsackUnbounded(int[] weights, int[] values, int capacity)\n{\n    var best = new int[capacity + 1];\n    for (int i = 0; i < weights.Length; i++)\n        for (int w = weights[i]; w <= capacity; w++) // upwards: item i may be reused\n            best[w] = Math.Max(best[w], best[w - weights[i]] + values[i]);\n    return best[capacity];\n}\n// Knapsack01(new[] {1, 3, 4}, new[] {15, 20, 30}, 4) == 35  (items 0 and 1)"
+      },
+      "pitfalls": [
+        "Looping upwards in the 1-D 0/1 version, which silently turns it into the unbounded knapsack.",
+        "Calling O(n·W) \"polynomial\" without qualification.",
+        "Allocating a W-sized table when W is huge.",
+        "Trying greedy by value-to-weight ratio, which is only optimal for the *fractional* knapsack."
+      ],
+      "followUps": [
+        "Can the array be split into two subsets with equal sums?",
+        "Reconstruct which items were chosen.",
+        "How would you solve it with n = 40 and W = 10¹⁵?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Knapsack_problem",
+          "title": "Knapsack problem — Wikipedia",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://cp-algorithms.com/dynamic_programming/knapsack.html",
+          "title": "Knapsack problem — cp-algorithms",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,1771 @@
+{
+  "topic": "linq-ef-core",
+  "questions": [
+    {
+      "id": "linq-ef-core-deferred-execution-basics",
+      "topic": "linq-ef-core",
+      "subtopic": "deferred-execution",
+      "difficulty": "junior",
+      "question": "What is deferred execution in LINQ, and when does an EF Core query actually hit the database?",
+      "shortAnswer": "A LINQ query that returns a sequence is only a description of work: it runs when you enumerate it (`foreach`, `ToList`, `First`, `Count`, ...), not where you declare it, and it runs again on every enumeration. For EF Core this means SQL is generated and sent when the query is enumerated or a terminal operator is called, so you can keep composing the `IQueryable` until then.",
+      "answer": "**Key points**\n- Operators returning `IEnumerable<T>`/`IQueryable<T>` (`Where`, `Select`, `OrderBy`, `Skip`, `Take`, ...) are **deferred**.\n- Operators returning a single value (`Count`, `Sum`, `First`, `Any`, `Max`) and `ToList`/`ToArray`/`ToDictionary`/`ToLookup` execute **immediately**.\n- The result reflects the data **at enumeration time**, and enumerating twice runs the query twice.\n- Variables captured by lambdas are read when the query runs, not when it was written.\n- In EF Core, composition stays on the server until execution: `query.Where(...).OrderBy(...).Take(20)` becomes one SQL statement.\n\n**Detail**\nDeferred execution is what lets you build queries step by step (optional filters, paging) without extra round trips. The flip side is surprise re-execution and closures picking up later values, so materialize once (`ToListAsync`) when you need a stable result.",
+      "code": {
+        "lang": "csharp",
+        "source": "var minTotal = 100m;\nIQueryable<Order> query = db.Orders.Where(o => o.Total > minTotal); // no SQL yet\n\nif (onlyOpen) query = query.Where(o => o.Status == Status.Open);  // still no SQL\nminTotal = 500m;                                                  // captured: the query will use 500\n\nvar page = await query.OrderBy(o => o.Id).Take(20).ToListAsync(); // SQL runs here, once"
+      },
+      "pitfalls": [
+        "Returning a deferred query from a method whose `DbContext` is disposed before the caller enumerates it.",
+        "Changing a captured variable between building and running the query.",
+        "Calling `Count()` and then `ToList()` on the same query: two database round trips."
+      ],
+      "followUps": [
+        "Which operators are deferred and which are immediate?",
+        "What is multiple enumeration and why is it a problem?",
+        "What is the difference between streaming and non-streaming operators?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/get-started/introduction-to-linq-queries",
+          "title": "Introduction to LINQ Queries",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/standard-query-operators/",
+          "title": "Standard query operators overview",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/how-query-works",
+          "title": "How Queries Work - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "deferred-vs-immediate",
+        "linq-basics"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-multiple-enumeration",
+      "topic": "linq-ef-core",
+      "subtopic": "deferred-execution",
+      "difficulty": "mid",
+      "question": "What is the 'multiple enumeration' problem with `IEnumerable<T>`, and how do you avoid it?",
+      "shortAnswer": "Enumerating a deferred sequence more than once re-runs the whole pipeline each time: the database query executes again, expensive projections are recomputed, and results can differ between passes. Materialize once with `ToList` or `ToArray` (or `ToListAsync` in EF) when you need to iterate several times, or design the code to make a single pass.",
+      "answer": "**Key points**\n- `IEnumerable<T>` promises \"can be iterated\", not \"is already in memory\".\n- Typical trigger: `if (items.Any()) { foreach (var i in items) ... }` on a query, which runs two queries.\n- Results may change between passes (new rows, `DateTime.Now`, random values in a projection).\n- Some sources can only be read once (a network stream wrapped in an iterator), so a second pass fails or returns nothing.\n- Fix: materialize once and pass `IReadOnlyList<T>`/`List<T>` when callers need multiple passes; or restructure into one pass.\n\n**Detail**\nCode analyzers flag \"possible multiple enumeration\" for exactly this reason. Materializing has a cost too (memory for every element), so do it deliberately, not by reflex on every query.",
+      "code": {
+        "lang": "csharp",
+        "source": "IEnumerable<Order> late = db.Orders.Where(o => o.DueDate < today); // deferred\n\n// ❌ two SQL queries\nif (late.Any())\n    foreach (var o in late) Notify(o);\n\n// ✅ one query\nvar lateList = await db.Orders.Where(o => o.DueDate < today).ToListAsync();\nif (lateList.Count > 0)\n    foreach (var o in lateList) Notify(o);"
+      },
+      "pitfalls": [
+        "Calling `Count()` for logging and then iterating the same query.",
+        "Accepting `IEnumerable<T>` in an API that iterates it several times without saying so.",
+        "Calling `ToList()` everywhere and loading huge result sets into memory."
+      ],
+      "followUps": [
+        "When should a method accept `IEnumerable<T>` versus `IReadOnlyList<T>`?",
+        "How does `Any()` translate in EF Core?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/get-started/introduction-to-linq-queries",
+          "title": "Introduction to LINQ Queries",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "deferred-vs-immediate"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-streaming-vs-nonstreaming",
+      "topic": "linq-ef-core",
+      "subtopic": "deferred-execution",
+      "difficulty": "mid",
+      "question": "Among deferred LINQ operators, what is the difference between streaming and non-streaming execution?",
+      "shortAnswer": "Streaming operators (`Where`, `Select`, `Take`, `Skip`, `Concat`) yield each result as soon as they've read enough input, so they can work on huge or infinite sequences with little memory. Non-streaming operators (`OrderBy`, `GroupBy`, `Reverse`) must read the whole source before yielding anything, so they buffer everything in memory even though they're still deferred.",
+      "answer": "**Key points**\n- Both kinds are **deferred**: nothing happens until enumeration.\n- **Streaming**: reads source elements one at a time and yields as it goes. `Take(10)` over a billion-element sequence reads about 10 elements.\n- **Non-streaming**: has to see all input first (you can't know the smallest element until you've seen them all), so memory grows with the input.\n- For two-sequence operators like `Join`, `GroupJoin` and `Except`, the first sequence streams while the other is buffered.\n- \"Deferred\" therefore doesn't automatically mean \"low memory\".\n\n**Detail**\nThis matters for LINQ to Objects over large in-memory or file-backed sequences. With EF Core, sorting and grouping happen in the database, but the same thinking applies to the results: `ToList` buffers, `AsAsyncEnumerable`/`foreach` streams (unless EF itself buffers because of a retrying execution strategy or split queries).",
+      "code": {
+        "lang": "csharp",
+        "source": "IEnumerable<string> lines = File.ReadLines(\"huge.log\");          // lazy file reader\n\nvar firstErrors = lines.Where(l => l.Contains(\"ERROR\")).Take(5);  // streams: stops after 5 matches\nvar sorted = lines.OrderBy(l => l.Length).Take(5);                // reads and buffers the whole file first"
+      },
+      "pitfalls": [
+        "Assuming a deferred `OrderBy` over a large source is cheap on memory.",
+        "Putting `OrderBy` before `Where` in LINQ to Objects, sorting data you then discard."
+      ],
+      "followUps": [
+        "Which operators execute immediately?",
+        "When does EF Core buffer results even if you stream them?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/get-started/introduction-to-linq-queries",
+          "title": "Introduction to LINQ Queries",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "deferred-vs-immediate",
+        "query-operators-filtering-to-aggregation"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-first-vs-single",
+      "topic": "linq-ef-core",
+      "subtopic": "deferred-execution",
+      "difficulty": "junior",
+      "question": "What is the difference between `First`, `FirstOrDefault`, `Single` and `SingleOrDefault`?",
+      "shortAnswer": "`First` returns the first match and throws if there is none; `FirstOrDefault` returns `default` (null for reference types) instead of throwing. `Single` returns the only match and throws if there are zero *or more than one*; `SingleOrDefault` returns `default` for zero but still throws for more than one. All four execute immediately.",
+      "answer": "**Key points**\n- Choose by **intent**: `Single*` says \"exactly one is a rule\" (lookup by unique key, and enforce it); `First*` says \"any first one is fine\".\n- `Single` has to check for a second match, so in EF Core it generates `TOP(2)` instead of `TOP(1)`.\n- `First` without `OrderBy` returns an arbitrary row in SQL databases; add an ordering when \"first\" must mean something.\n- `*OrDefault` with value types returns `0`/`false`, which can hide \"not found\"; newer .NET versions also have overloads that take an explicit default value.\n- In EF Core, `FindAsync(id)` checks the change tracker before querying, which `FirstOrDefaultAsync` doesn't.",
+      "code": {
+        "lang": "csharp",
+        "source": "var user  = await db.Users.SingleOrDefaultAsync(u => u.Email == email);   // email is unique: >1 would be a bug\nvar oldest = await db.Orders.OrderBy(o => o.CreatedAt).FirstAsync();      // must exist, explicit order\nvar cached = await db.Users.FindAsync(id);                                // may not query at all if tracked"
+      },
+      "pitfalls": [
+        "Using `First` where duplicates would indicate corrupted data, which silently hides the problem.",
+        "`First` without `OrderBy` against a database and expecting a stable result.",
+        "`FirstOrDefault()` on `int` sequences and treating 0 as 'not found'."
+      ],
+      "followUps": [
+        "What SQL does `Single` produce compared with `First`?",
+        "When is `Find` better than `FirstOrDefault`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.single",
+          "title": "Enumerable.Single Method",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.firstordefault",
+          "title": "Enumerable.FirstOrDefault Method",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.dbset-1.findasync",
+          "title": "DbSet<TEntity>.FindAsync Method",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/get-started/introduction-to-linq-queries",
+          "title": "Introduction to LINQ Queries",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "query-operators-element-to-zip"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`FirstOrDefault(defaultValue)` / `SingleOrDefault(defaultValue)` overloads exist from .NET 6.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-select-vs-selectmany",
+      "topic": "linq-ef-core",
+      "subtopic": "deferred-execution",
+      "difficulty": "junior",
+      "question": "What is the difference between `Select` and `SelectMany`?",
+      "shortAnswer": "`Select` maps each element to exactly one result, so a collection property gives you a sequence of collections; `SelectMany` maps each element to a sequence and flattens all of them into one sequence. In query syntax, two `from` clauses compile to `SelectMany`.",
+      "answer": "**Key points**\n- `customers.Select(c => c.Orders)` → `IEnumerable<List<Order>>` (nested).\n- `customers.SelectMany(c => c.Orders)` → `IEnumerable<Order>` (flat).\n- An overload with a result selector keeps the parent: `SelectMany(c => c.Orders, (c, o) => new { c.Name, o.Total })`.\n- In EF Core, `SelectMany` translates to a join: `CROSS JOIN`, `INNER JOIN` when correlated through a `where` (as navigation expansion does), or `CROSS APPLY`/`OUTER APPLY` for other correlated selectors.\n- Both are deferred and streaming.",
+      "code": {
+        "lang": "csharp",
+        "source": "string[] sentences = [\"a quick fox\", \"lazy dog\"];\nIEnumerable<string[]> nested = sentences.Select(s => s.Split(' '));  // 2 arrays\nIEnumerable<string> words    = sentences.SelectMany(s => s.Split(' ')); // 5 words\n\nvar lines = await db.Customers\n    .SelectMany(c => c.Orders, (c, o) => new { c.Name, o.Id, o.Total })\n    .ToListAsync();"
+      },
+      "pitfalls": [
+        "Using `Select` and then a nested `foreach` instead of flattening.",
+        "Losing the parent object after `SelectMany` when you still need it; use the result-selector overload."
+      ],
+      "followUps": [
+        "How would you write the same query in query syntax?",
+        "How does `SelectMany` relate to a SQL join?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/standard-query-operators/projection-operations",
+          "title": "Projection operations in LINQ",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/complex-query-operators",
+          "title": "Complex Query Operators - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "query-operators-filtering-to-aggregation",
+        "linq-joins"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-groupby-vs-tolookup",
+      "topic": "linq-ef-core",
+      "subtopic": "deferred-execution",
+      "difficulty": "mid",
+      "question": "How do `GroupBy` and `ToLookup` differ?",
+      "shortAnswer": "Both group elements by a key, but `GroupBy` is deferred (non-streaming): it groups when enumerated and regroups on every enumeration. `ToLookup` executes immediately and returns an `ILookup<TKey, TElement>`, a read-only, reusable index where looking up a missing key returns an empty sequence instead of throwing.",
+      "answer": "**Key points**\n- `GroupBy` → `IEnumerable<IGrouping<TKey, T>>`; deferred, re-evaluated each time.\n- `ToLookup` → `ILookup<TKey, T>`; built once, then `lookup[key]` is a fast lookup.\n- `lookup[missingKey]` returns an empty sequence; a `Dictionary` would throw `KeyNotFoundException`.\n- A lookup is immutable: no adding or removing after creation.\n- In EF Core, `GroupBy` followed by an aggregate (`Count`, `Sum`) translates to SQL `GROUP BY`. A final `GroupBy` that returns whole groups has no SQL equivalent: EF Core 7+ fetches the rows ordered by the key and builds the groups on the client; other shapes may not translate at all.\n\n**Detail**\nUse `ToLookup` when you'll query the groups many times (for example, matching child rows to parents after two separate queries). Use `GroupBy` inside a larger query pipeline, or when you want the database to aggregate.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Database aggregates: translated to GROUP BY\nvar perStatus = await db.Orders\n    .GroupBy(o => o.Status)\n    .Select(g => new { Status = g.Key, Count = g.Count() })\n    .ToListAsync();\n\n// In-memory index for repeated lookups\nvar linesByOrder = lines.ToLookup(l => l.OrderId);\nforeach (var order in orders)\n    order.Lines = linesByOrder[order.Id].ToList();   // empty list if none"
+      },
+      "pitfalls": [
+        "Enumerating a `GroupBy` result several times and regrouping each time.",
+        "Expecting a `GroupBy` that returns full entity groups to become SQL `GROUP BY`; at best EF groups on the client after fetching every row.",
+        "Using `Dictionary<K, List<V>>` and handling missing keys by hand when a lookup does it for you."
+      ],
+      "followUps": [
+        "When does EF Core translate `GroupBy` to SQL?",
+        "What is the difference between `ToLookup` and `ToDictionary`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/standard-query-operators/grouping-data",
+          "title": "Grouping Data",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/complex-query-operators",
+          "title": "Complex Query Operators - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.tolookup",
+          "title": "Enumerable.ToLookup Method",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/linq/get-started/introduction-to-linq-queries",
+          "title": "Introduction to LINQ Queries",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "deferred-vs-immediate",
+        "query-operators-element-to-zip"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-expression-trees",
+      "topic": "linq-ef-core",
+      "subtopic": "iqueryable-vs-ienumerable",
+      "difficulty": "mid",
+      "question": "Why do `IQueryable<T>` operators take `Expression<Func<T, bool>>` while `IEnumerable<T>` operators take `Func<T, bool>`?",
+      "shortAnswer": "A `Func<T, bool>` is compiled code that can only be executed, so LINQ to Objects just runs it on each element. An `Expression<Func<T, bool>>` is an expression tree, a data structure describing the code, which a provider such as EF Core can inspect and translate into SQL. The same lambda becomes one or the other depending on the parameter type.",
+      "answer": "**Key points**\n- The C# compiler converts a lambda to a **delegate** or to an **expression tree** based on the target type.\n- `Queryable.Where(IQueryable<T>, Expression<Func<T, bool>>)` builds a bigger expression tree; the provider translates it at execution time.\n- `Enumerable.Where(IEnumerable<T>, Func<T, bool>)` runs the delegate in memory.\n- Expression trees can only represent a subset of C# (no statement bodies, no assignments), and the provider can only translate what it understands; your own methods usually can't be translated.\n- You can build trees by hand with `System.Linq.Expressions` for dynamic filters, or compile them with `Compile()` to get a delegate.\n\n**Detail**\nThis is the machinery behind \"the `Where` runs in SQL\": EF Core walks the tree, maps members to columns and method calls to SQL functions, and turns captured variables into parameters.",
+      "code": {
+        "lang": "csharp",
+        "source": "Func<Order, bool> inMemory = o => o.Total > 100;              // compiled delegate\nExpression<Func<Order, bool>> asData = o => o.Total > 100;    // expression tree\n\nConsole.WriteLine(asData.Body);                               // (o.Total > 100)\n\nvar sqlFiltered = db.Orders.Where(asData);                    // translated to SQL\nvar memFiltered = db.Orders.AsEnumerable().Where(inMemory);   // all rows loaded, filtered in .NET"
+      },
+      "pitfalls": [
+        "Passing a `Func<T, bool>` to a repository method that applies it to a `DbSet`; it binds to `Enumerable.Where` and loads every row.",
+        "Calling custom C# methods inside a query and getting a 'could not be translated' exception."
+      ],
+      "followUps": [
+        "How would you build a dynamic filter from user input safely?",
+        "Why can't EF translate a call to your own helper method?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/",
+          "title": "Expression Trees",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/how-query-works",
+          "title": "How Queries Work - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "delegates-and-lambdas"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-static-type-ienumerable-trap",
+      "topic": "linq-ef-core",
+      "subtopic": "iqueryable-vs-ienumerable",
+      "difficulty": "mid",
+      "question": "A repository method returns `IEnumerable<Order>` built from a `DbSet`, and the caller adds `.Where(...)`. Where does that filter run?",
+      "shortAnswer": "In memory. LINQ extension methods are chosen by the variable's **static** type, so on an `IEnumerable<Order>` the caller gets `Enumerable.Where`, which enumerates the underlying query (sending SQL without that filter) and filters the rows in .NET. Return `IQueryable<T>` only if you intend callers to compose SQL, otherwise apply all filters inside the method.",
+      "answer": "**Key points**\n- Extension methods bind at compile time: `IQueryable<T>` → `Queryable.*` (translated), `IEnumerable<T>` → `Enumerable.*` (in memory).\n- The object is still an EF query at runtime, but once it's typed as `IEnumerable<T>`, every operator added after that point runs on the client.\n- Symptoms: large `SELECT` without `WHERE` in the logs, high memory, slow endpoints.\n- Fix options: accept filter/paging parameters in the repository method and build the query inside; return `IQueryable<T>` deliberately; or return already materialized `List<T>`/DTOs.\n\n**Detail**\nReturning `IQueryable<T>` from a repository is a design trade-off: callers gain composition, but the data-access layer no longer controls which SQL runs and query logic can leak into upper layers. Many teams prefer specific methods (`GetOpenOrdersPageAsync(page, size)`) for that reason.",
+      "code": {
+        "lang": "csharp",
+        "source": "public IEnumerable<Order> GetOrders() => _db.Orders;     // static type: IEnumerable\n\nvar big = repo.GetOrders().Where(o => o.Total > 1000);  // Enumerable.Where\n// SQL: SELECT ... FROM Orders   (no WHERE) -> filtered in memory\n\npublic Task<List<Order>> GetLargeOrdersAsync(decimal min, CancellationToken ct) =>\n    _db.Orders.Where(o => o.Total > min).ToListAsync(ct); // filter stays in SQL"
+      },
+      "pitfalls": [
+        "Changing a return type from `IQueryable<T>` to `IEnumerable<T>` as a 'cleanup' and silently moving filtering to memory.",
+        "Calling `AsEnumerable()` early in a query 'for readability'."
+      ],
+      "followUps": [
+        "Should repositories return `IQueryable<T>`?",
+        "How would you spot this problem in production?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/client-eval",
+          "title": "Client vs. Server Evaluation - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/",
+          "title": "Expression Trees",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "repository-pattern"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-client-evaluation",
+      "topic": "linq-ef-core",
+      "subtopic": "iqueryable-vs-ienumerable",
+      "difficulty": "senior",
+      "question": "What is client evaluation in EF Core, and why do some LINQ queries throw 'could not be translated'?",
+      "shortAnswer": "Since EF Core 3.0, the whole query must be translated to SQL except the final (top-level) projection, which may call client-side code on the values it receives. If an untranslatable expression appears anywhere else, for example in `Where` or `OrderBy`, EF throws instead of silently loading every row and filtering in memory as EF Core 1.x/2.x did.",
+      "answer": "**Key points**\n- **Allowed**: `Select(b => new { b.Id, Url = Normalize(b.Url) })`. EF fetches the columns and runs `Normalize` in .NET.\n- **Throws**: `Where(b => Normalize(b.Url).Contains(\"dotnet\"))`, because filtering would require loading the whole table.\n- Fixes: rewrite with translatable operations, store a computed or indexed column, use a mapped database function, or deliberately switch to client side with `AsEnumerable()`/`ToListAsync()` when the data is small.\n- A client-evaluated top-level projection that captures instance methods or `this` can keep objects alive in EF's query cache, which is a memory leak. Make such helpers `static` or pass values in.\n- If the projection passes an entity instance to a client method, that entity is tracked.\n\n**Detail**\nThe 3.0 change was deliberate: silent client evaluation produced queries that worked in testing and collapsed with production-sized tables. A translation error is an early, cheap warning.",
+      "code": {
+        "lang": "csharp",
+        "source": "static string Normalize(string url) => url.TrimEnd('/').ToLowerInvariant();\n\n// ✅ client code only in the final projection\nvar blogs = await db.Blogs.Select(b => new { b.Id, Url = Normalize(b.Url) }).ToListAsync();\n\n// ❌ throws: Normalize can't be translated inside Where\n// db.Blogs.Where(b => Normalize(b.Url) == \"x\").ToListAsync();\n\n// ✅ explicit client evaluation for a small, pre-filtered set\nvar small = (await db.Blogs.Where(b => b.OwnerId == me).ToListAsync())\n    .Where(b => Normalize(b.Url) == \"x\");"
+      },
+      "pitfalls": [
+        "Fixing the exception by adding `.ToList()` at the start of the query and loading the whole table.",
+        "Using instance methods in projections and leaking memory through the query cache.",
+        "Assuming a query that worked on EF Core 2.x behaves the same on 3.0+."
+      ],
+      "followUps": [
+        "How would you make a custom function translatable?",
+        "What is the difference between `AsEnumerable` and `ToList` for switching to client evaluation?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/client-eval",
+          "title": "Client vs. Server Evaluation - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "EF Core 3.0+ behaviour. EF Core 1.x/2.x evaluated untranslatable parts on the client anywhere in the query (with a warning).",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-asenumerable-vs-tolist",
+      "topic": "linq-ef-core",
+      "subtopic": "iqueryable-vs-ienumerable",
+      "difficulty": "mid",
+      "question": "In an EF Core query, what is the difference between calling `AsEnumerable()` and `ToList()` before further LINQ operators?",
+      "shortAnswer": "Both end server-side translation at that point, so everything after them runs in .NET. `AsEnumerable()` streams: rows are read and processed one at a time as you enumerate. `ToList()` executes immediately and buffers the whole result in a list, which costs memory but lets you enumerate many times with only one database query.",
+      "answer": "**Key points**\n- Put all filtering, sorting, paging and projection **before** the switch, so SQL does the heavy lifting.\n- `AsEnumerable()` (or `AsAsyncEnumerable()`) is deferred and streaming; nothing runs until you enumerate.\n- `ToList()`/`ToListAsync()` runs now and holds all rows.\n- EF's own docs advise against `ToList()`/`ToArray()` if you only mean to apply another LINQ operator; use `AsEnumerable()` to avoid needless buffering.\n- With a retrying execution strategy (`EnableRetryOnFailure`), EF buffers results internally anyway, so `ToList()` then holds them twice.",
+      "code": {
+        "lang": "csharp",
+        "source": "var report = db.Orders\n    .Where(o => o.CreatedAt >= from)              // SQL\n    .Select(o => new { o.Id, o.Total, o.Notes })  // SQL: only needed columns\n    .AsEnumerable()                               // switch to .NET, streaming\n    .Select(o => new ReportLine(o.Id, o.Total, Summarize(o.Notes))); // client code\n\nforeach (var line in report) Write(line);         // query executes here"
+      },
+      "pitfalls": [
+        "Calling `AsEnumerable()` before `Where`, which pulls the whole table.",
+        "Using `AsEnumerable()` and then enumerating twice: two queries.",
+        "Using sync `AsEnumerable()` in async web code; prefer `AsAsyncEnumerable()` with `await foreach`."
+      ],
+      "followUps": [
+        "When does EF buffer results even if you don't?",
+        "What is `AsAsyncEnumerable` for?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/client-eval",
+          "title": "Client vs. Server Evaluation - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "deferred-vs-immediate"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-dbcontext-lifetime",
+      "topic": "linq-ef-core",
+      "subtopic": "change-tracking",
+      "difficulty": "junior",
+      "question": "What is a DbContext, and how long should one live?",
+      "shortAnswer": "A `DbContext` represents a session with the database: it runs queries, tracks the entities they return, and saves changes as one unit of work with `SaveChanges`. It's designed for a single unit of work, so it should be short-lived (in ASP.NET Core, one per request via the scoped `AddDbContext` registration) and disposed afterwards.",
+      "answer": "**Key points**\n- Responsibilities: connection management, LINQ query translation, the change tracker (identity map + snapshots), and saving changes in a transaction.\n- **Typical unit of work**: create context → query/attach entities → change them → `SaveChanges` → dispose.\n- Creating a context is cheap (no database call); keeping one for a long time is what hurts: the change tracker grows, data goes stale, and errors leave it in a bad state.\n- In ASP.NET Core, `AddDbContext` registers it as **scoped**, giving each request its own instance.\n- Where scopes don't match units of work (Blazor Server, background jobs, parallel work), use `IDbContextFactory<T>` and create a context per operation.\n- A `DbContext` is **not thread-safe**.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(conn));   // scoped, per request\nbuilder.Services.AddDbContextFactory<AppDbContext>(o => o.UseSqlServer(conn)); // for jobs, Blazor\n\npublic sealed class Importer(IDbContextFactory<AppDbContext> factory)\n{\n    public async Task ImportAsync(IEnumerable<Batch> batches, CancellationToken ct)\n    {\n        foreach (var batch in batches)\n        {\n            await using var db = await factory.CreateDbContextAsync(ct); // one context per unit of work\n            db.AddRange(batch.Rows);\n            await db.SaveChangesAsync(ct);\n        }\n    }\n}"
+      },
+      "pitfalls": [
+        "Registering the DbContext as a singleton.",
+        "Keeping one context for a whole long-running import, so tracking slows everything down.",
+        "Sharing one context between parallel tasks."
+      ],
+      "followUps": [
+        "What does the change tracker store?",
+        "When would you use `IDbContextFactory`?",
+        "What is DbContext pooling?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/",
+          "title": "DbContext Lifetime, Configuration, and Initialization - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-basics",
+        "dbcontext-options-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-entity-states",
+      "topic": "linq-ef-core",
+      "subtopic": "change-tracking",
+      "difficulty": "junior",
+      "question": "What entity states does EF Core's change tracker use, and what does `SaveChanges` do with each?",
+      "shortAnswer": "Tracked entities are `Added` (INSERT on save), `Unchanged` (nothing), `Modified` (UPDATE of the changed columns) or `Deleted` (DELETE); entities the context doesn't track are `Detached`. `SaveChanges` detects changes, sends the commands in a transaction, then moves saved entities to `Unchanged` (deleted ones become `Detached`).",
+      "answer": "**Key points**\n- Query results start as `Unchanged`; `Add` → `Added`; `Remove` → `Deleted`; editing a tracked property → `Modified` (detected by `DetectChanges`).\n- `Attach` → `Unchanged`; `Update` → `Modified` (all properties marked modified).\n- `context.Entry(entity).State` reads or sets the state; `ChangeTracker.DebugView.LongView` shows everything tracked.\n- After a successful save, generated values (identity keys, row versions) are read back into the entities.\n- Calling `Remove` on an `Added` entity just detaches it; nothing is sent.",
+      "code": {
+        "lang": "csharp",
+        "source": "var blog = await db.Blogs.FirstAsync(b => b.Id == 1);   // Unchanged\nblog.Name = \"New\";                                      // Modified after DetectChanges\ndb.Posts.Add(new Post { Title = \"Hi\", BlogId = 1 });    // Added\ndb.Remove(oldPost);                                     // Deleted\n\nConsole.WriteLine(db.ChangeTracker.DebugView.LongView);\nawait db.SaveChangesAsync();   // UPDATE + INSERT + DELETE in one transaction"
+      },
+      "pitfalls": [
+        "Setting `State = Modified` on a graph root and expecting children to be saved too.",
+        "Expecting changes to an entity loaded with `AsNoTracking()` to be saved."
+      ],
+      "followUps": [
+        "How does EF detect that a property changed?",
+        "What is the difference between `Attach` and `Update`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/change-tracking/",
+          "title": "Change Tracking - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/change-tracking/explicit-tracking",
+          "title": "Explicitly Tracking Entities - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-change-tracking-and-cascade",
+        "ef-core-crud-and-relationships"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-asnotracking-identity-resolution",
+      "topic": "linq-ef-core",
+      "subtopic": "change-tracking",
+      "difficulty": "mid",
+      "question": "When should you use `AsNoTracking()`, and what is `AsNoTrackingWithIdentityResolution()`?",
+      "shortAnswer": "Use `AsNoTracking()` for read-only queries: EF skips snapshotting and identity resolution, so queries are faster and use less memory, but the entities can't be saved through that context. Because it doesn't resolve identity, a row referenced many times is materialised as many objects; `AsNoTrackingWithIdentityResolution()` keeps results untracked but de-duplicates instances.",
+      "answer": "**Key points**\n- Tracking queries snapshot every entity and keep an identity map: the same row always gives the same object instance.\n- No-tracking queries skip both; ideal for GET endpoints, reports and projections into DTOs.\n- Without identity resolution, 100 posts referencing one blog produce 100 `Blog` objects in a no-tracking query with `Include`.\n- `AsNoTrackingWithIdentityResolution()` uses a temporary change tracker during materialisation, then discards it.\n- Set a default for the context with `UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)` and opt back in with `AsTracking()`.\n- Projections to non-entity types (`Select(x => new Dto(...))`) are never tracked anyway.",
+      "code": {
+        "lang": "csharp",
+        "source": "var list = await db.Posts\n    .AsNoTracking()\n    .Where(p => p.Published)\n    .Select(p => new PostSummary(p.Id, p.Title, p.Blog.Name))\n    .ToListAsync();\n\nvar graph = await db.Posts\n    .Include(p => p.Blog)\n    .AsNoTrackingWithIdentityResolution()   // one Blog instance per blog row\n    .ToListAsync();"
+      },
+      "pitfalls": [
+        "Loading with `AsNoTracking`, editing, calling `SaveChanges`, and nothing happens.",
+        "Making the context default no-tracking and forgetting `AsTracking()` in update paths.",
+        "Attaching no-tracking results to the same context to save them; use a tracking query instead."
+      ],
+      "followUps": [
+        "How does identity resolution work in a tracking query?",
+        "How do you update an entity that was loaded without tracking?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/tracking",
+          "title": "Tracking vs. No-Tracking Queries - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-indexes-tracking-bulk-concurrency",
+        "dbcontext-options-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`AsNoTrackingWithIdentityResolution` was added in EF Core 5.0.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-update-vs-attach-disconnected",
+      "topic": "linq-ef-core",
+      "subtopic": "change-tracking",
+      "difficulty": "mid",
+      "question": "In a Web API PUT, the entity comes from the client, not from a query. How do you save it, and what is the difference between `Update`, `Attach` and `SetValues`?",
+      "shortAnswer": "`Update(entity)` starts tracking it as `Modified`, so EF writes **every** column; `Attach(entity)` tracks it as `Unchanged`, so only properties you then change are written. The most precise pattern is to load the current row, copy the incoming values with `Entry(entity).CurrentValues.SetValues(dto)`, and let EF update only the columns that actually differ.",
+      "answer": "**Key points**\n- **Update**: one statement, no extra query, but sends all columns, overwriting anything the client didn't send (and with graph traversal, related entities too).\n- **Attach + mark properties**: `Attach(e)` then `Entry(e).Property(x => x.Name).IsModified = true` updates selected columns without loading.\n- **Load + SetValues**: one extra query, but only changed columns are written; nothing is sent if nothing changed. Works naturally with concurrency tokens and validation.\n- A context can track only one instance per key; attaching a second instance with the same key throws. Use a short-lived context per request.\n\n**Detail**\nThe choice depends on the contract: a full-replacement PUT can use `Update`; partial updates (PATCH, or DTOs missing fields) should load and apply only the provided values. For optimistic concurrency, carry the row version from the client into `OriginalValues`.",
+      "code": {
+        "lang": "csharp",
+        "source": "[HttpPut(\"{id:int}\")]\npublic async Task<IActionResult> Put(int id, UpdateProductDto dto, CancellationToken ct)\n{\n    var product = await _db.Products.FindAsync([id], ct);\n    if (product is null) return NotFound();\n\n    _db.Entry(product).CurrentValues.SetValues(dto);   // matches by property name\n    await _db.SaveChangesAsync(ct);                    // UPDATE only changed columns\n    return NoContent();\n}"
+      },
+      "pitfalls": [
+        "Calling `Update` with a DTO-mapped entity that has default values for fields the client didn't send, wiping data.",
+        "Attaching an entity when another instance with the same key is already tracked (`InvalidOperationException`).",
+        "Mapping DTO to entity for all properties, re-creating overposting."
+      ],
+      "followUps": [
+        "How would you handle a PATCH?",
+        "How do concurrency tokens fit into disconnected updates?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/change-tracking/explicit-tracking",
+          "title": "Explicitly Tracking Entities - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/disconnected-entities",
+          "title": "Disconnected Entities - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-change-tracking-and-cascade",
+        "dbcontext-options-and-concurrency",
+        "ef-configuration-and-automapper"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-detect-changes-snapshot",
+      "topic": "linq-ef-core",
+      "subtopic": "change-tracking",
+      "difficulty": "senior",
+      "question": "How does EF Core detect that a tracked entity changed, and when would you turn off `AutoDetectChangesEnabled`?",
+      "shortAnswer": "By default EF Core uses snapshot change tracking: it stores the original property values when it starts tracking an entity, and `DetectChanges` compares current values with that snapshot. `DetectChanges` runs automatically in `SaveChanges`, `Entries()`, `HasChanges()`, `Entry()` and similar; with thousands of tracked entities you can switch auto-detection off around bulk work and call it once yourself.",
+      "answer": "**Key points**\n- Snapshot tracking needs no special entity code: plain POCOs work.\n- Cost grows with the number of tracked entities and properties; usually negligible, but noticeable in big batch loops that call `Add` or `Entry` repeatedly.\n- `ChangeTracker.AutoDetectChangesEnabled = false` inside a batch, then `ChangeTracker.DetectChanges()` (or let `SaveChanges` do it after turning it back on).\n- **Notification entities** (`INotifyPropertyChanged`/`INotifyPropertyChanging`) or change-tracking proxies report changes immediately, so EF needn't scan; that adds code or proxies.\n- Other levers: `AsNoTracking` for reads, smaller units of work, `ChangeTracker.Clear()` between batches, or `ExecuteUpdate` for set-based updates.",
+      "code": {
+        "lang": "csharp",
+        "source": "db.ChangeTracker.AutoDetectChangesEnabled = false;\ntry\n{\n    foreach (var row in rows) db.Add(Map(row));   // no full scan on every Add\n    db.ChangeTracker.DetectChanges();\n    await db.SaveChangesAsync();\n}\nfinally\n{\n    db.ChangeTracker.AutoDetectChangesEnabled = true;\n}"
+      },
+      "pitfalls": [
+        "Disabling auto-detection and forgetting `DetectChanges`, so edits are silently not saved.",
+        "Optimising change detection when the real problem is one huge, long-lived context."
+      ],
+      "followUps": [
+        "What does `ChangeTracker.Clear()` do?",
+        "When are change-tracking proxies worth it?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/change-tracking/change-detection",
+          "title": "Change Detection and Notifications - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-change-tracking-and-cascade"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-eager-lazy-explicit-loading",
+      "topic": "linq-ef-core",
+      "subtopic": "loading-strategies",
+      "difficulty": "junior",
+      "question": "Compare eager, explicit and lazy loading of related data in EF Core.",
+      "shortAnswer": "Eager loading fetches related data as part of the original query with `Include`/`ThenInclude`; explicit loading fetches it later on request with `context.Entry(e).Collection(...).LoadAsync()`; lazy loading fetches it automatically the first time a navigation property is accessed. Eager is the usual default for data you know you need, explicit gives control, and lazy is convenient but easily causes extra round trips.",
+      "answer": "**Key points**\n- **Eager** (`Include(b => b.Posts).ThenInclude(p => p.Author)`): one query (or several with split queries); you decide up front.\n- **Explicit** (`Entry(blog).Collection(b => b.Posts).LoadAsync()`, `Reference(p => p.Blog).LoadAsync()`): a separate query when you choose; `Query()` lets you filter or aggregate without loading everything.\n- **Lazy** (`UseLazyLoadingProxies()` + `virtual` navigations, or `ILazyLoader` injection): a query per navigation on first access. Off by default and needs extra setup.\n- **Projection** (`Select(b => new { b.Name, PostCount = b.Posts.Count })`) is often better than any of the three: load only what the screen needs.\n- With tracking, EF \"fixes up\" navigations automatically: entities already loaded into the context are linked to newly loaded ones.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Eager\nvar blogs = await db.Blogs.Include(b => b.Posts).ThenInclude(p => p.Author).ToListAsync();\n\n// Explicit\nvar blog = await db.Blogs.SingleAsync(b => b.Id == id);\nawait db.Entry(blog).Collection(b => b.Posts).LoadAsync();\nvar drafts = await db.Entry(blog).Collection(b => b.Posts).Query().CountAsync(p => !p.Published);"
+      },
+      "pitfalls": [
+        "Including large graphs 'just in case' on list endpoints.",
+        "Enabling lazy loading in a Web API and serialising entities, triggering a query per navigation.",
+        "Assuming a navigation is empty because it wasn't loaded."
+      ],
+      "followUps": [
+        "What is the N+1 problem, and which strategy causes it most often?",
+        "When are split queries better than a single query?",
+        "How does filtered include work?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/related-data/",
+          "title": "Loading Related Data - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/related-data/eager",
+          "title": "Eager Loading of Related Data - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/related-data/explicit",
+          "title": "Explicit Loading of Related Data - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/related-data/lazy",
+          "title": "Lazy Loading of Related Data - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-model-config-and-loading"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-lazy-loading-setup-and-risks",
+      "topic": "linq-ef-core",
+      "subtopic": "loading-strategies",
+      "difficulty": "mid",
+      "question": "How is lazy loading enabled in EF Core, and why is it often avoided in Web APIs?",
+      "shortAnswer": "It's opt-in: install `Microsoft.EntityFrameworkCore.Proxies`, call `UseLazyLoadingProxies()` and make navigations `virtual` on non-sealed classes (or inject `ILazyLoader` instead of using proxies). In APIs it's risky because every navigation access can become another database round trip, which is the N+1 pattern, and serialisers touch every navigation.",
+      "answer": "**Key points**\n- Proxies subclass your entities at runtime and override `virtual` navigations to load on first access.\n- `ILazyLoader` (injected through a constructor) gives lazy loading without proxies, at the cost of EF types in your entities.\n- Costs: hidden queries inside loops, a JSON serializer walking the graph and loading every navigation, cycles between navigations, and loading after the context is disposed failing.\n- Each lazy load is a synchronous round trip triggered by a property getter, which doesn't fit async request handling.\n- Prefer eager loading or projections for API responses; if lazy loading is on, watch the SQL logs.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddDbContext<AppDbContext>(o => o\n    .UseSqlServer(conn)\n    .UseLazyLoadingProxies());\n\npublic class Blog\n{\n    public int Id { get; set; }\n    public virtual ICollection<Post> Posts { get; set; } = new List<Post>(); // virtual: lazy-loadable\n}\n\nforeach (var blog in await db.Blogs.ToListAsync())\n    Console.WriteLine(blog.Posts.Count);   // one extra query per blog"
+      },
+      "pitfalls": [
+        "Returning lazy-loading proxies directly from controllers.",
+        "Forgetting `virtual`, so lazy loading silently doesn't happen and navigations stay empty.",
+        "Turning lazy loading on to 'fix' empty navigations instead of adding `Include`."
+      ],
+      "followUps": [
+        "How would you spot N+1 queries in logs?",
+        "Why return DTOs instead of entities from an API?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/related-data/lazy",
+          "title": "Lazy Loading of Related Data - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-model-config-and-loading"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-split-queries",
+      "topic": "linq-ef-core",
+      "subtopic": "loading-strategies",
+      "difficulty": "senior",
+      "question": "What is 'cartesian explosion', and when would you use `AsSplitQuery()`?",
+      "shortAnswer": "When one query `Include`s two or more collection navigations at the same level, the SQL JOINs multiply rows (10 posts × 10 contributors = 100 rows per blog), which is called cartesian explosion. `AsSplitQuery()` loads each included collection with its own SQL query instead; it avoids the explosion but costs extra round trips and loses single-query consistency.",
+      "answer": "**Key points**\n- Single query (the default) uses JOINs. Fine for one collection or nested chains (`Posts.ThenInclude(Comments)` doesn't explode).\n- Sibling collections at the same level cross-multiply. Also watch big principal columns duplicated per child row.\n- EF Core logs a warning when a query loads multiple collections and no splitting mode is configured.\n- **Split query trade-offs**:\n  - no consistency guarantee across the queries if data changes in between (unless you use a snapshot/serializable transaction);\n  - one round trip per query, which hurts with high database latency;\n  - earlier result sets are buffered in memory unless MARS is enabled.\n- Configure globally with `UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)` and override per query with `AsSingleQuery()`.\n- With `Skip`/`Take` plus split queries on EF versions before 10, make the ordering fully unique, or the queries can disagree about which rows are on the page.\n\n**Detail**\nOften the best fix is neither: project only the columns and counts the screen needs, which avoids loading whole collections at all.",
+      "code": {
+        "lang": "csharp",
+        "source": "var blogs = await db.Blogs\n    .Include(b => b.Posts)\n    .Include(b => b.Contributors)   // sibling collection: cartesian product in one query\n    .AsSplitQuery()                 // 3 queries: blogs, posts, contributors\n    .OrderBy(b => b.Id)\n    .ToListAsync();"
+      },
+      "pitfalls": [
+        "Turning on split queries globally without thinking about consistency and latency.",
+        "Paging split queries with a non-unique `OrderBy` on older EF versions.",
+        "Ignoring the multiple-collection warning in logs."
+      ],
+      "followUps": [
+        "How would you load a dashboard that needs counts from three collections?",
+        "What is MARS, and how does it affect split queries?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/single-split-queries",
+          "title": "Single vs. Split Queries - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-model-config-and-loading"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "Split queries were added in EF Core 5.0; the unique-ordering caveat for `Skip`/`Take` applies before EF Core 10.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-filtered-include",
+      "topic": "linq-ef-core",
+      "subtopic": "loading-strategies",
+      "difficulty": "mid",
+      "question": "What is filtered include, and what surprise can it cause with tracking queries?",
+      "shortAnswer": "Filtered include (EF Core 5+) lets you apply `Where`, `OrderBy`/`ThenBy`, `Skip` and `Take` inside `Include`, for example `Include(b => b.Posts.Where(p => p.Published).OrderBy(p => p.Date).Take(5))`. In tracking queries, navigation fix-up can still add matching entities that were already tracked, so the collection may contain items that don't match the filter.",
+      "answer": "**Key points**\n- Supported operations inside the include: `Where`, `OrderBy`, `OrderByDescending`, `ThenBy`, `ThenByDescending`, `Skip`, `Take`.\n- Each included navigation allows one set of filter operations; if the same collection appears in several `Include` calls, only one of them may carry the filter.\n- **Tracking surprise**: entities of that type that are already tracked by the context get attached to the navigation anyway, even if they fail the filter.\n- The filtered navigation is then considered loaded, so EF won't lazy or explicitly load the rest later.\n- Use `AsNoTracking()` or a fresh context when you depend on the filter, or project to DTOs instead.",
+      "code": {
+        "lang": "csharp",
+        "source": "var blogs = await db.Blogs\n    .AsNoTracking()   // avoids fix-up adding already-tracked posts\n    .Include(b => b.Posts\n        .Where(p => p.Published)\n        .OrderByDescending(p => p.PublishedOn)\n        .Take(5))\n    .ToListAsync();"
+      },
+      "pitfalls": [
+        "Saving a blog loaded with a filtered include and assuming missing posts will be deleted; they're just not loaded.",
+        "Expecting the filter to hold in a long-lived tracking context."
+      ],
+      "followUps": [
+        "How would you get 'latest 5 posts per blog' with a projection instead?",
+        "What is navigation fix-up?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/related-data/eager",
+          "title": "Eager Loading of Related Data - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-model-config-and-loading"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "Filtered include requires EF Core 5.0 or later.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-projection-vs-include",
+      "topic": "linq-ef-core",
+      "subtopic": "loading-strategies",
+      "difficulty": "mid",
+      "question": "When should you project with `Select` instead of loading entities with `Include`?",
+      "shortAnswer": "For read-only results such as API responses, lists and reports, project with `Select` into a DTO: EF generates SQL for just those columns (including aggregates like counts), nothing is tracked, and big columns or whole collections aren't loaded. Use `Include` when you need full, tracked entities, typically because you're going to modify and save them.",
+      "answer": "**Key points**\n- `Select` into a non-entity type: only the referenced columns are queried; results are not tracked.\n- Navigations used inside the projection are translated to joins or subqueries automatically; you don't need `Include` for them.\n- Aggregates in the projection (`b.Posts.Count()`, `Sum`) run in the database instead of loading child rows.\n- `Include` loads entire entities and graphs: right for update scenarios, wasteful for display-only screens.\n- Microsoft's guidance: project only the properties you need, and avoid pulling large columns you don't use.\n\n**Detail**\nProjecting a collection inside the projection (`Posts = b.Posts.Select(...).ToList()`) is supported and loaded efficiently; still check the SQL for very wide shapes.",
+      "code": {
+        "lang": "csharp",
+        "source": "var rows = await db.Blogs\n    .Where(b => b.IsActive)\n    .Select(b => new BlogRow(\n        b.Id,\n        b.Name,\n        b.Posts.Count(),                                  // COUNT in SQL\n        b.Posts.OrderByDescending(p => p.PublishedOn)\n               .Select(p => p.Title).FirstOrDefault()))   // subquery\n    .ToListAsync();"
+      },
+      "pitfalls": [
+        "Adding `Include` to a query that projects into DTOs; it isn't needed for the projection and only adds noise.",
+        "Projecting into entity types and expecting them to be tracked and updatable.",
+        "Using AutoMapper `Map` after `ToList()` instead of `ProjectTo`, loading full entities first."
+      ],
+      "followUps": [
+        "How does AutoMapper's `ProjectTo` relate to this?",
+        "When would a projection still produce an inefficient query?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/tracking",
+          "title": "Tracking vs. No-Tracking Queries - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-model-config-and-loading",
+        "ef-configuration-and-automapper"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-global-query-filters",
+      "topic": "linq-ef-core",
+      "subtopic": "loading-strategies",
+      "difficulty": "mid",
+      "question": "What are global query filters, and what are the common pitfalls with them?",
+      "shortAnswer": "A global query filter (`HasQueryFilter`) is a predicate EF Core adds to every query for an entity type, typically for soft delete (`!IsDeleted`) or multi-tenancy (`TenantId == currentTenant`). You bypass it per query with `IgnoreQueryFilters()`; the main traps are required navigations filtering out parents, tenant IDs that don't flow to the context, and forgetting a filter exists.",
+      "answer": "**Key points**\n- Defined in `OnModelCreating`: `modelBuilder.Entity<Post>().HasQueryFilter(p => !p.IsDeleted)`.\n- Applied whenever the entity is queried, including through `Include` and navigations.\n- **Multi-tenancy**: the filter references a field/property of the context (for example a tenant ID from the request); EF parameterizes it per context instance.\n- **Required navigations**: an `Include` of a required navigation uses an `INNER JOIN`, so if the related row is filtered out, the parent disappears too, returning fewer rows than expected.\n- Before EF Core 10 an entity type has one filter (a second `HasQueryFilter` call replaces the first); EF Core 10 adds **named filters** so several can be defined and disabled individually.\n- Filters can only be defined on the root type of an inheritance hierarchy.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvider tenant) : DbContext(options)\n{\n    private readonly Guid _tenantId = tenant.TenantId;\n\n    protected override void OnModelCreating(ModelBuilder b)\n    {\n        b.Entity<Invoice>().HasQueryFilter(i => i.TenantId == _tenantId && !i.IsDeleted);\n    }\n}\n\nvar allIncludingDeleted = await db.Invoices.IgnoreQueryFilters().ToListAsync(); // admin screen"
+      },
+      "pitfalls": [
+        "Using `DbContext` pooling with a tenant ID set in the constructor or `OnConfiguring`; pooled instances keep stale state unless you reset it.",
+        "Calling `HasQueryFilter` twice before EF 10 and silently losing the first filter.",
+        "Unexpected missing parents because of required navigations to filtered entities."
+      ],
+      "followUps": [
+        "How would you implement soft delete end to end (filter plus interceptor)?",
+        "How do query filters interact with `ExecuteDelete`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/filters",
+          "title": "Global Query Filters - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/advanced-performance-topics",
+          "title": "Advanced Performance Topics - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Named query filters (several per entity type) arrive in EF Core 10; earlier versions allow one filter per entity type.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-what-are-migrations",
+      "topic": "linq-ef-core",
+      "subtopic": "migrations",
+      "difficulty": "junior",
+      "question": "What are EF Core migrations, and what files does `dotnet ef migrations add` create?",
+      "shortAnswer": "Migrations keep the database schema in sync with your model incrementally: EF compares the current model with a snapshot of the previous one and generates a migration class with `Up` (apply) and `Down` (revert) operations. Each `migrations add` creates the migration file, a `.Designer.cs` metadata file, and updates the `<Context>ModelSnapshot.cs`; applied migrations are recorded in the `__EFMigrationsHistory` table.",
+      "answer": "**Key points**\n- Workflow: change entities or configuration → `dotnet ef migrations add AddOrderStatus` → review the code → apply (`database update`, script, or bundle).\n- **Files**: `<timestamp>_AddOrderStatus.cs` (`Up`/`Down`), `<timestamp>_AddOrderStatus.Designer.cs` (metadata EF uses), and `<Context>ModelSnapshot.cs` (the model as of the latest migration, used to compute the next diff).\n- The history table lets EF apply only migrations that are missing.\n- All migration files, including the snapshot, belong in source control.\n- Name migrations like commits (`AddBlogCreatedTimestamp`).",
+      "code": {
+        "lang": "bash",
+        "source": "dotnet ef migrations add AddOrderStatus\ndotnet ef migrations list\ndotnet ef database update                 # local development\ndotnet ef migrations script --idempotent -o artifacts/migrations.sql"
+      },
+      "pitfalls": [
+        "Hand-editing the model snapshot.",
+        "Not reviewing generated migrations before applying them.",
+        "Leaving migration files out of source control, so another developer's model diff is wrong."
+      ],
+      "followUps": [
+        "How do you apply migrations in production?",
+        "How do you undo a migration?",
+        "What does `Down` do, and is it always safe?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/",
+          "title": "Migrations Overview - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing",
+          "title": "Managing Migrations - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-basics",
+        "ef-core-migrations-and-scaffolding"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-applying-migrations-in-production",
+      "topic": "linq-ef-core",
+      "subtopic": "migrations",
+      "difficulty": "mid",
+      "question": "How should you apply EF Core migrations to a production database?",
+      "shortAnswer": "Microsoft recommends a migration bundle (`dotnet ef migrations bundle`) for automated deployments and an idempotent SQL script (`migrations script --idempotent`) when the SQL must be reviewed or run by a DBA. Running `dotnet ef database update` from production servers or calling `Migrate()` at startup is possible but has trade-offs around permissions, review and rollbacks.",
+      "answer": "**Key points**\n- **SQL script**: reviewable and tunable; can be archived and handed to a DBA. `--idempotent` checks the history table so it can run against databases at different migration levels (provider support varies; SQLite doesn't support it).\n- **Bundle**: a self-contained executable built in CI that applies migrations without the SDK or source code; uses EF's migration locking and runs `UseSeeding`.\n- **Command-line tools**: fine for development; in production they need the SDK and source and apply SQL you haven't inspected.\n- **Runtime `MigrateAsync()`**: simplest deployment. Since EF Core 9 a database-wide lock prevents concurrent instances from migrating at once, but the app needs schema-changing permissions, you get less review and rollback control, and other instances may hit the database mid-migration.\n- Always review generated migrations and test them against a copy of production data first.\n\n**Detail**\nEF Core 9+ also throws from `Migrate()` if the model has changes with no migration; `dotnet ef migrations has-pending-model-changes` catches that in CI.",
+      "code": {
+        "lang": "bash",
+        "source": "# CI\ndotnet ef migrations bundle --self-contained -r linux-x64 -o artifacts/efbundle\ndotnet ef migrations script --idempotent -o artifacts/migrations.sql\ndotnet ef migrations has-pending-model-changes\n\n# Deployment job\n./efbundle --connection \"$DEPLOYMENT_CONNECTION_STRING\""
+      },
+      "pitfalls": [
+        "Giving the running web app `db_owner` just so it can migrate at startup.",
+        "Running non-idempotent scripts against databases in an unknown state.",
+        "Calling `EnsureCreated()` before `Migrate()`; it creates the schema without migrations and `Migrate()` then fails."
+      ],
+      "followUps": [
+        "How do you roll back a bad migration in production?",
+        "How do you make a breaking schema change without downtime?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying",
+          "title": "Applying Migrations - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-migrations-and-scaffolding"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Migration bundles: EF Core 6+. Migration locking and the pending-model-changes exception: EF Core 9+.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-ensurecreated-vs-migrate",
+      "topic": "linq-ef-core",
+      "subtopic": "migrations",
+      "difficulty": "junior",
+      "question": "What is the difference between `Database.EnsureCreated()` and `Database.Migrate()`?",
+      "shortAnswer": "`EnsureCreated` creates the database and schema straight from the current model if the database doesn't exist (or has no tables), without migrations, and never updates an existing schema. `Migrate` applies any pending migrations and records them in the history table. Use `EnsureCreated` for tests, prototypes and throwaway databases; use migrations for anything that evolves.",
+      "answer": "**Key points**\n- `EnsureCreated`: if any tables already exist (even another context's), it does nothing to the schema. Later model changes are ignored.\n- It doesn't create the migrations history table, so you can't later \"switch on\" migrations smoothly; the simplest path is dropping and recreating the database with migrations.\n- `EnsureDeleted` drops the database: handy in integration tests, dangerous elsewhere.\n- `Migrate`/`MigrateAsync`: incremental, versioned, production-capable (with the trade-offs of runtime migration).\n- Never call `EnsureCreated` before `Migrate`.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Integration test fixture\nawait db.Database.EnsureDeletedAsync();\nawait db.Database.EnsureCreatedAsync();\n\n// App with migrations (development convenience)\nawait db.Database.MigrateAsync();"
+      },
+      "pitfalls": [
+        "Using `EnsureCreated` in an app and later wondering why new columns never appear.",
+        "Running `EnsureDeleted` with a connection string that points somewhere important."
+      ],
+      "followUps": [
+        "How do you move a project from `EnsureCreated` to migrations?",
+        "What does the migrations history table contain?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created",
+          "title": "Create and Drop APIs - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying",
+          "title": "Applying Migrations - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-basics",
+        "ef-core-migrations-and-scaffolding"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-migration-renames-data-loss",
+      "topic": "linq-ef-core",
+      "subtopic": "migrations",
+      "difficulty": "senior",
+      "question": "You renamed a property and EF generated a migration that drops and re-adds the column. Why, and what do you do?",
+      "shortAnswer": "EF only sees two model snapshots, so it often can't tell \"rename\" from \"remove one column and add another\" and scaffolds `DropColumn` + `AddColumn`, which would delete the data. Edit the migration to use `RenameColumn` (or a data-preserving sequence: add, copy with SQL, drop), heed the scaffolder's data-loss warning, and review every migration before it runs.",
+      "answer": "**Key points**\n- The scaffolder warns when an operation might lose data. Treat that warning as a stop sign.\n- Fix renames by replacing the generated operations with `migrationBuilder.RenameColumn(...)` (or `RenameTable`).\n- For type changes or splits: add the new column, run `migrationBuilder.Sql(\"UPDATE ...\")` to transform data, then drop the old column, possibly across releases.\n- Migrations are code: you may add raw SQL, data fixes or index options EF can't infer.\n- **Expand/contract** for zero downtime: add new schema → deploy code that writes both → backfill → switch reads → remove old schema in a later release.",
+      "code": {
+        "lang": "csharp",
+        "source": "protected override void Up(MigrationBuilder migrationBuilder)\n{\n    // generated: DropColumn(\"Name\") + AddColumn(\"FullName\")  -> data loss\n    migrationBuilder.RenameColumn(\n        name: \"Name\",\n        table: \"Customers\",\n        newName: \"FullName\");\n}\n\nprotected override void Down(MigrationBuilder migrationBuilder) =>\n    migrationBuilder.RenameColumn(name: \"FullName\", table: \"Customers\", newName: \"Name\");"
+      },
+      "pitfalls": [
+        "Applying generated migrations to production without reading them.",
+        "Forgetting to update `Down` when you customise `Up`.",
+        "Renaming a column that old application instances still read during a rolling deployment."
+      ],
+      "followUps": [
+        "How would you change a column from `nvarchar` to `int` safely?",
+        "What is the expand/contract pattern?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing",
+          "title": "Managing Migrations - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying",
+          "title": "Applying Migrations - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-migrations-and-scaffolding"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-data-seeding",
+      "topic": "linq-ef-core",
+      "subtopic": "migrations",
+      "difficulty": "mid",
+      "question": "How do you seed data with EF Core? Compare `HasData` with `UseSeeding`.",
+      "shortAnswer": "`HasData` (\"model managed data\") puts fixed rows in the model so migrations generate `InsertData`/`UpdateData`/ `DeleteData`; it needs explicit primary keys and suits static reference data. `UseSeeding`/`UseAsyncSeeding` (EF Core 9+) run your own code during `EnsureCreated`, `Migrate`, `database update` and bundles, and are now the recommended general-purpose seeding approach.",
+      "answer": "**Key points**\n- **`HasData`**: part of the model; changes require a new migration; primary keys must be specified even if normally generated; changing a key deletes and re-inserts. Good for lookup data such as countries or statuses.\n- Data changed outside migrations can be overwritten or cause errors, because migrations only compare model snapshots.\n- **`UseSeeding`/`UseAsyncSeeding`**: arbitrary code (check-then-insert), protected by EF 9's migration lock, runs even when no migration was applied. Implement the sync version too, because tooling and bundles call it.\n- Not for: per-environment test data, large data loads, or data that depends on other runtime state; use a separate seeding step for those.\n- Identity roles and admin users are usually seeded with application services (`RoleManager`, `UserManager`) at startup or in a deployment job, not with `HasData`.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddDbContext<AppDbContext>(o => o\n    .UseSqlServer(conn)\n    .UseSeeding((ctx, _) =>\n    {\n        if (!ctx.Set<Status>().Any())\n        {\n            ctx.Set<Status>().AddRange(new Status { Name = \"Open\" }, new Status { Name = \"Closed\" });\n            ctx.SaveChanges();\n        }\n    })\n    .UseAsyncSeeding(async (ctx, _, ct) =>\n    {\n        if (!await ctx.Set<Status>().AnyAsync(ct))\n        {\n            ctx.Set<Status>().AddRange(new Status { Name = \"Open\" }, new Status { Name = \"Closed\" });\n            await ctx.SaveChangesAsync(ct);\n        }\n    }));"
+      },
+      "pitfalls": [
+        "Seeding users with hashed passwords through `HasData`, baking secrets into migrations.",
+        "Expecting `Migrate()` to re-read changed `HasData` without adding a migration.",
+        "Implementing only `UseAsyncSeeding`; the tools call the synchronous delegate."
+      ],
+      "followUps": [
+        "Where would you seed roles and an admin user in an ASP.NET Core Identity app?",
+        "Why does `HasData` require explicit keys?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding",
+          "title": "Data Seeding - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-migrations-and-scaffolding"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "`UseSeeding`/`UseAsyncSeeding` require EF Core 9+. `HasData` has been available since EF Core 2.1.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-removing-and-reverting-migrations",
+      "topic": "linq-ef-core",
+      "subtopic": "migrations",
+      "difficulty": "mid",
+      "question": "How do you undo a migration, and what must you never do once it's been applied to a shared database?",
+      "shortAnswer": "If the migration hasn't been applied anywhere, `dotnet ef migrations remove` deletes the latest one and restores the snapshot. If it's only on your local database, first `database update <PreviousMigration>` (or `0`) to run its `Down`, then remove it. Once it's applied to a shared, test or production database, don't delete it: add a new corrective migration.",
+      "answer": "**Key points**\n- `migrations remove` only removes the **latest** migration and updates the model snapshot.\n- Reverting a database: `dotnet ef database update <TargetMigration>` runs the `Down` methods of later migrations; `0` reverts everything.\n- Shared databases record applied migrations in `__EFMigrationsHistory`; deleting the file makes your code and those databases disagree.\n- Don't delete a migration from the middle of the chain or hand-edit the snapshot; remove later ones in reverse order and re-scaffold.\n- Diverged branches: follow EF's \"diverged migration tree\" process (remove the conflicting migration, merge, re-add).\n- `Down` can lose data too (dropping a column that was added and filled); review it like `Up`.",
+      "code": {
+        "lang": "bash",
+        "source": "dotnet ef migrations remove                      # not applied anywhere yet\ndotnet ef database update AddOrderStatus         # revert local DB to an earlier migration\ndotnet ef migrations remove                      # then remove the later one\ndotnet ef migrations add FixOrderStatusLength    # already shipped: correct forward instead"
+      },
+      "pitfalls": [
+        "Deleting migration files from the project after they've reached production.",
+        "Assuming `Down` restores data that `Up` destroyed."
+      ],
+      "followUps": [
+        "How do teams avoid migration conflicts across branches?",
+        "How do you roll back a production deployment that included a migration?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing",
+          "title": "Managing Migrations - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-migrations-and-scaffolding"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-optimistic-vs-pessimistic-concurrency",
+      "topic": "linq-ef-core",
+      "subtopic": "concurrency",
+      "difficulty": "mid",
+      "question": "What is optimistic concurrency, how does EF Core implement it, and how does it differ from pessimistic locking?",
+      "shortAnswer": "Optimistic concurrency assumes conflicts are rare: nobody locks the row, and when saving EF Core adds the original value of a concurrency token to the `WHERE` clause of the `UPDATE`/`DELETE`; if zero rows are affected, `SaveChanges` throws `DbUpdateConcurrencyException`. Pessimistic locking takes locks when reading (for example a higher isolation level), so others block instead of failing later.",
+      "answer": "**Key points**\n- Without a concurrency token, EF Core uses \"last write wins\": the second save silently overwrites the first.\n- With a token: `UPDATE ... WHERE Id = @id AND Version = @originalVersion`. Zero rows affected → conflict detected.\n- Tokens can be **database-generated** (SQL Server `rowversion` via `[Timestamp]`/`IsRowVersion()`) or **application-managed** (for example a `Guid` you regenerate on each change, marked `[ConcurrencyCheck]`/`IsConcurrencyToken()`).\n- **Pessimistic** alternatives: `REPEATABLE READ`/`SERIALIZABLE` transactions (SQL Server takes shared locks and blocks writers) or explicit locking hints in raw SQL. Simpler reasoning, but blocking and deadlock risk; keep such transactions short.\n- SQL Server **snapshot isolation** behaves optimistically: the second writer gets an update-conflict error instead of blocking.\n\n**Detail**\nOptimistic concurrency fits web apps well: users read, think for a while, then save, and holding locks across that gap would be impossible. Your job is to decide what to do on conflict: tell the user, retry automatically, or merge.",
+      "code": {
+        "lang": "csharp",
+        "source": "public class Project\n{\n    public int Id { get; set; }\n    public string Name { get; set; } = \"\";\n    [Timestamp] public byte[] RowVersion { get; set; } = [];   // SQL Server rowversion\n}\n\n// SaveChanges sends: UPDATE [Projects] SET [Name] = @p0\n//                    WHERE [Id] = @p1 AND [RowVersion] = @p2;   -> 0 rows => DbUpdateConcurrencyException"
+      },
+      "pitfalls": [
+        "Assuming EF detects conflicts without any concurrency token configured.",
+        "Losing the original token in a stateless API, so every update compares against the freshly loaded value and never conflicts.",
+        "Using long serializable transactions in web requests."
+      ],
+      "followUps": [
+        "How do you carry the row version through a Web API round trip?",
+        "How do you resolve a `DbUpdateConcurrencyException`?",
+        "When is a higher isolation level the better tool?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/concurrency",
+          "title": "Handling Concurrency Conflicts - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-indexes-tracking-bulk-concurrency",
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-rowversion-vs-concurrencycheck",
+      "topic": "linq-ef-core",
+      "subtopic": "concurrency",
+      "difficulty": "mid",
+      "question": "`[Timestamp]` / `IsRowVersion()` versus `[ConcurrencyCheck]` / `IsConcurrencyToken()`: what's the difference?",
+      "shortAnswer": "`[Timestamp]` maps a `byte[]` to a SQL Server `rowversion` column that the database changes automatically on every update, so one token protects the whole row with no application code. `[ConcurrencyCheck]` marks an ordinary property as a token: EF checks its original value on save, but nothing changes it for you, so you either regenerate it yourself (application-managed) or only detect changes to that specific column.",
+      "answer": "**Key points**\n- **Database-generated** (`rowversion`): minimal effort, covers any column change, but SQL Server specific; other databases have their own mechanisms and SQLite has none.\n- **Application-managed**: for example `[ConcurrencyCheck] public Guid Version { get; set; }`, and your code assigns `Guid.NewGuid()` whenever it changes the entity (often in `SaveChanges` or an interceptor). Works on any database and lets you choose which changes count as conflicts.\n- **Property token on a business column** (`Name` marked as a token): only detects conflicting changes to that column.\n- With database-generated tokens, EF reads the new value back after each save so the tracked entity stays current.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Database-generated (SQL Server)\nmodelBuilder.Entity<Project>().Property(p => p.RowVersion).IsRowVersion();\n\n// Application-managed (any database)\npublic class Person\n{\n    public int Id { get; set; }\n    public string Name { get; set; } = \"\";\n    [ConcurrencyCheck] public Guid Version { get; set; }\n}\n\nperson.Name = \"New\";\nperson.Version = Guid.NewGuid();   // you must change it on every update\nawait db.SaveChangesAsync();"
+      },
+      "pitfalls": [
+        "Marking a property with `[ConcurrencyCheck]` and never changing it, so it never detects anything.",
+        "Expecting `rowversion` behaviour on SQLite or PostgreSQL without provider-specific configuration.",
+        "Writing a value into a `rowversion` property yourself; the database owns it."
+      ],
+      "followUps": [
+        "How would you implement an application-managed token centrally?",
+        "What does EF do with the new row version after saving?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/concurrency",
+          "title": "Handling Concurrency Conflicts - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "ef-core-indexes-tracking-bulk-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-resolving-concurrency-conflicts",
+      "topic": "linq-ef-core",
+      "subtopic": "concurrency",
+      "difficulty": "senior",
+      "question": "`SaveChanges` threw `DbUpdateConcurrencyException`. What are your options for resolving it?",
+      "shortAnswer": "Use `ex.Entries` to see the conflicting entities and compare three value sets: current (what you tried to save), original (what you loaded) and database (`GetDatabaseValuesAsync`). Then either report the conflict to the user, let the database win (reload), let the client win (refresh the original values and save again), or merge field by field and retry.",
+      "answer": "**Key points**\n- **Tell the user** (common in UIs and APIs): return 409/412 with the current server state and let them retry.\n- **Store wins**: `await entry.ReloadAsync()` and discard the attempted change.\n- **Client wins**: `entry.OriginalValues.SetValues(await entry.GetDatabaseValuesAsync())`, then save again; your values overwrite the newer ones, so be deliberate.\n- **Merge**: per property, decide between current and database values (often with business rules), refresh original values, save.\n- `GetDatabaseValuesAsync()` returning `null` means the row was **deleted** by someone else.\n- Loop with a retry limit; another conflict can happen while you resolve the first one.",
+      "code": {
+        "lang": "csharp",
+        "source": "var saved = false;\nfor (var attempt = 0; !saved && attempt < 3; attempt++)\n{\n    try { await db.SaveChangesAsync(); saved = true; }\n    catch (DbUpdateConcurrencyException ex)\n    {\n        foreach (var entry in ex.Entries)\n        {\n            var dbValues = await entry.GetDatabaseValuesAsync();\n            if (dbValues is null) throw new ConflictException(\"Deleted by another user.\");\n\n            // merge rule example: keep our Name, take the database Status\n            entry.CurrentValues[\"Status\"] = dbValues[\"Status\"];\n            entry.OriginalValues.SetValues(dbValues);   // refresh the token, then retry\n        }\n    }\n}"
+      },
+      "pitfalls": [
+        "Catching the exception and retrying blindly, which turns optimistic concurrency into last-write-wins.",
+        "Ignoring the deleted case (`GetDatabaseValuesAsync()` returns null).",
+        "Retrying forever under heavy contention."
+      ],
+      "followUps": [
+        "How do you surface a conflict through a REST API?",
+        "Which conflicts are safe to merge automatically?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/concurrency",
+          "title": "Handling Concurrency Conflicts - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.changetracking.entityentry.getdatabasevaluesasync",
+          "title": "EntityEntry.GetDatabaseValuesAsync Method",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dbcontext-options-and-concurrency",
+        "ef-core-raw-sql-iqueryable-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-dbcontext-thread-safety",
+      "topic": "linq-ef-core",
+      "subtopic": "concurrency",
+      "difficulty": "mid",
+      "question": "Is `DbContext` thread-safe? What happens if you run two queries on it in parallel with `Task.WhenAll`?",
+      "shortAnswer": "No. EF Core doesn't support multiple parallel operations on the same `DbContext`, including un-awaited async calls; when it detects this it throws `InvalidOperationException` (\"A second operation started on this context before a previous operation completed\"), and undetected cases can corrupt state. Await each call before the next, or give each parallel task its own context.",
+      "answer": "**Key points**\n- Always `await` EF async methods immediately; `Task.WhenAll(db.A.ToListAsync(), db.B.ToListAsync())` on one context is a bug.\n- In ASP.NET Core, one scoped context per request is safe because a request normally runs one operation at a time.\n- For real parallelism: `IDbContextFactory<T>.CreateDbContextAsync()` per task, or a separate DI scope per task.\n- Fire-and-forget work that captures the request's context breaks both thread safety and lifetime (the context is disposed at the end of the request).\n- Parallel queries also multiply database load; often one well-shaped query is better than several in parallel.",
+      "code": {
+        "lang": "csharp",
+        "source": "// ❌ two operations at once on one context\n// await Task.WhenAll(db.Orders.CountAsync(), db.Customers.CountAsync());\n\n// ✅ one context per parallel unit of work\nasync Task<int> CountAsync<T>(IDbContextFactory<AppDbContext> f) where T : class\n{\n    await using var ctx = await f.CreateDbContextAsync();\n    return await ctx.Set<T>().CountAsync();\n}\nvar counts = await Task.WhenAll(CountAsync<Order>(factory), CountAsync<Customer>(factory));"
+      },
+      "pitfalls": [
+        "Forgetting `await` on `SaveChangesAsync` and continuing to use the context.",
+        "Registering the DbContext as a singleton so all requests share it.",
+        "Using `Parallel.ForEach` with a shared context."
+      ],
+      "followUps": [
+        "When would you use `IDbContextFactory` in a web app?",
+        "Does MARS make parallel queries on one context safe?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/",
+          "title": "DbContext Lifetime, Configuration, and Initialization - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-basics",
+        "race-conditions-and-deadlocks"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-savechanges-transactions",
+      "topic": "linq-ef-core",
+      "subtopic": "concurrency",
+      "difficulty": "mid",
+      "question": "Is `SaveChanges` transactional? When do you need an explicit transaction in EF Core?",
+      "shortAnswer": "Yes: if the provider supports transactions, all changes in one `SaveChanges` call are applied in a transaction, so it fully succeeds or leaves the database unchanged. You need `Database.BeginTransactionAsync()` only when several operations must commit together: multiple `SaveChanges` calls, `ExecuteUpdate`/`ExecuteDelete`, raw SQL, or Dapper on the same connection.",
+      "answer": "**Key points**\n- Default: one `SaveChanges` = one atomic unit (EF creates a transaction when needed).\n- `ExecuteUpdate`/`ExecuteDelete` run immediately, each in its own implicit transaction; they don't join a later `SaveChanges` unless you open an explicit transaction.\n- Explicit: `await using var tx = await db.Database.BeginTransactionAsync(); ... await tx.CommitAsync();` Disposing without commit rolls back.\n- **Savepoints**: when `SaveChanges` runs inside your transaction, EF creates a savepoint first and rolls back to it on failure (not with SQL Server MARS enabled); `CreateSavepointAsync` lets you manage them yourself.\n- Sharing a transaction with ADO.NET or Dapper: use the same `DbConnection` and pass `GetDbTransaction()`, or call `Database.UseTransaction(existingTx)`.\n- With a retrying execution strategy, wrap the whole transaction in `CreateExecutionStrategy().ExecuteAsync(...)`.",
+      "code": {
+        "lang": "csharp",
+        "source": "await using var tx = await db.Database.BeginTransactionAsync(ct);\n\ndb.Orders.Add(order);\nawait db.SaveChangesAsync(ct);                     // inside tx\n\nawait db.Products\n    .Where(p => p.Id == order.ProductId)\n    .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock - order.Quantity), ct);\n\nawait tx.CommitAsync(ct);                          // both or neither"
+      },
+      "pitfalls": [
+        "Calling `SaveChanges` several times for one business operation without a transaction.",
+        "Assuming `ExecuteUpdate` is rolled back if a later `SaveChanges` fails.",
+        "Holding a transaction open across slow external calls."
+      ],
+      "followUps": [
+        "How do retries (`EnableRetryOnFailure`) interact with explicit transactions?",
+        "What isolation level does SQL Server use by default?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/transactions",
+          "title": "Transactions - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/execute-insert-update-delete",
+          "title": "ExecuteUpdate and ExecuteDelete - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dapper",
+        "ef-core-plus-dapper",
+        "transactions-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-retry-strategy-user-transactions",
+      "topic": "linq-ef-core",
+      "subtopic": "concurrency",
+      "difficulty": "senior",
+      "question": "With `EnableRetryOnFailure` turned on, why does `BeginTransaction` throw, and how do you fix it?",
+      "shortAnswer": "A retrying execution strategy retries each query or `SaveChanges` as its own unit, but it can't replay a transaction you opened yourself, so SQL Server's strategy throws \"does not support user-initiated transactions\". Wrap the whole transaction in `db.Database.CreateExecutionStrategy().ExecuteAsync(...)` so the strategy can re-run the entire block after a transient failure.",
+      "answer": "**Key points**\n- `EnableRetryOnFailure()` (SQL Server) retries transient errors such as dropped connections, Azure throttling and some deadlocks, with backoff.\n- Each EF operation becomes a retriable unit; a user transaction groups several operations, so only the whole group can be retried.\n- Inside the delegate, start the transaction, do all the work, commit. Make it safe to run again: create fresh entities or reload state inside the delegate.\n- **Commit-failure ambiguity**: if the connection drops during commit, the transaction may have committed. Retrying can then fail or duplicate data (for example inserts with generated keys). Design idempotent operations or verify state, for example with a check on retry.\n- Retrying strategies also make EF buffer query results internally.",
+      "code": {
+        "lang": "csharp",
+        "source": "var strategy = db.Database.CreateExecutionStrategy();\n\nawait strategy.ExecuteAsync(async () =>\n{\n    await using var tx = await db.Database.BeginTransactionAsync();\n    db.Payments.Add(new Payment(orderId, amount));\n    await db.SaveChangesAsync();\n    await db.Orders.Where(o => o.Id == orderId)\n        .ExecuteUpdateAsync(s => s.SetProperty(o => o.Status, OrderStatus.Paid));\n    await tx.CommitAsync();\n});"
+      },
+      "pitfalls": [
+        "Turning retries on globally and discovering the exception only when the first explicit transaction runs.",
+        "Building entities outside the delegate, so a retry re-adds already tracked objects.",
+        "Assuming retries make non-idempotent writes safe."
+      ],
+      "followUps": [
+        "Which SQL errors count as transient?",
+        "How would you make the payment insert idempotent?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency",
+          "title": "Connection Resiliency - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dbcontext-options-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-compiled-queries-and-query-cache",
+      "topic": "linq-ef-core",
+      "subtopic": "performance",
+      "difficulty": "senior",
+      "question": "EF Core already caches query translation. What do compiled queries add, and how can you accidentally defeat the cache?",
+      "shortAnswer": "EF caches compiled queries by expression-tree shape, so a repeated LINQ query with different parameter values reuses its SQL. `EF.CompileAsyncQuery` goes further by skipping the tree comparison and cache lookup entirely, a small win that only matters on very hot paths. You defeat the cache by embedding constants in dynamically built expression trees, which creates a new query shape (and a new SQL plan) for every value.",
+      "answer": "**Key points**\n- Captured variables (`.Where(b => b.Name == name)`) become SQL parameters: one cache entry, one database plan.\n- Hand-built expression trees with `Expression.Constant(value)` bake the value in: every value is a new compilation and a new SQL text. Use a parameterized form instead (for example, capture the value in a closure).\n- **Compiled queries**: a thread-safe delegate you call with a context and parameters. Limitations: one EF model only, and simple scalar parameters only.\n- Microsoft's benchmarks show modest gains; measure before adding the complexity.\n- EF's metrics expose a query cache hit rate; if it stays below 100% after warm-up, something is generating new shapes.\n- Related: **compiled models** (`dbcontext optimize`) cut startup time for very large models; that's model building, not queries.",
+      "code": {
+        "lang": "csharp",
+        "source": "private static readonly Func<AppDbContext, int, Task<Order?>> OrderById =\n    EF.CompileAsyncQuery((AppDbContext db, int id) =>\n        db.Orders.AsNoTracking().FirstOrDefault(o => o.Id == id));\n\nvar order = await OrderById(db, 42);\n\n// ❌ new cache entry per value: constant in a dynamic tree\n// var body = Expression.Equal(Expression.Property(p, \"Name\"), Expression.Constant(name));"
+      },
+      "pitfalls": [
+        "Adding compiled queries everywhere 'for speed' without measuring.",
+        "String-concatenating raw SQL with values, which defeats both plan caching and SQL injection protection.",
+        "Using `Contains` over ever-changing list sizes and assuming the SQL is always the same (translation depends on the EF version)."
+      ],
+      "followUps": [
+        "How does EF parameterize captured variables?",
+        "What are compiled models for?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/advanced-performance-topics",
+          "title": "Advanced Performance Topics - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-dbcontext-pooling",
+      "topic": "linq-ef-core",
+      "subtopic": "performance",
+      "difficulty": "mid",
+      "question": "What does `AddDbContextPool` do, and when is it worth using?",
+      "shortAnswer": "It keeps a pool of `DbContext` instances: on dispose, EF resets the context's state and returns it to the pool, so later requests skip the setup cost of creating internal services. It helps high-throughput apps; most apps see little difference, and it requires that the context holds no per-request state, because instances are reused like singletons.",
+      "answer": "**Key points**\n- Context pooling is separate from database **connection pooling**, which the ADO.NET driver does anyway.\n- A pooled instance is constructed once and reused, and its `OnConfiguring` runs only when it is first created, so neither the constructor nor `OnConfiguring` can carry per-request services or values.\n- Per-request state (tenant ID, current user) must be set after renting, for example through a scoped factory over `IDbContextFactory<T>` from `AddPooledDbContextFactory`.\n- `poolSize` (default 1024) caps how many instances are kept; beyond that, EF falls back to creating instances on demand.\n- Measure: Microsoft's benchmarks show real gains only in high-performance scenarios.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddDbContextPool<AppDbContext>(o =>\n    o.UseSqlServer(builder.Configuration.GetConnectionString(\"Default\")));\n\npublic class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)\n{\n    // no injected per-request services here: the instance is reused across requests\n    public DbSet<Order> Orders => Set<Order>();\n}"
+      },
+      "pitfalls": [
+        "Keeping fields such as `_currentUserId` on a pooled context and leaking them into the next request.",
+        "Switching to pooling to fix slowness that actually comes from queries.",
+        "Confusing context pooling with SQL connection pooling."
+      ],
+      "followUps": [
+        "How do you combine pooling with multi-tenant query filters?",
+        "What does EF reset when a context goes back to the pool?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/advanced-performance-topics",
+          "title": "Advanced Performance Topics - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dbcontext-options-and-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-executeupdate-executedelete",
+      "topic": "linq-ef-core",
+      "subtopic": "performance",
+      "difficulty": "mid",
+      "question": "What are `ExecuteUpdate` and `ExecuteDelete`, and what do you give up by using them?",
+      "shortAnswer": "They (EF Core 7+) turn a LINQ query into a single set-based `UPDATE` or `DELETE` that runs immediately in the database, without loading or tracking entities. You give up the change tracker: tracked entities aren't updated, there's no automatic concurrency check, no implicit transaction with `SaveChanges`, and no `SaveChanges` interceptors or events.",
+      "answer": "**Key points**\n- `await db.Posts.Where(p => p.CreatedAt < cutoff).ExecuteDeleteAsync()` → one `DELETE ... WHERE`.\n- `ExecuteUpdateAsync(s => s.SetProperty(p => p.Views, p => p.Views + 1))` can reference current column values.\n- Both return the **number of rows affected**, which you can use for your own concurrency check (include the token in `Where`, expect 1).\n- They don't touch the change tracker: an already tracked entity keeps its old values, and a later `SaveChanges` may overwrite the bulk change. Avoid mixing both styles on the same rows.\n- Each call is its own transaction; wrap several in `BeginTransaction` if they must commit together.\n- Limitations: no inserts (use `Add` + `SaveChanges`), and `SetProperty` can't reference navigations (use a subquery in the value expression instead).\n\n**Detail**\nBefore EF Core 7 you had to load entities, change them and call `SaveChanges` (one statement per row, batched), use raw SQL, or use third-party bulk libraries.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Archive old orders without loading them\nvar archived = await db.Orders\n    .Where(o => o.Status == OrderStatus.Closed && o.ClosedAt < cutoff)\n    .ExecuteUpdateAsync(s => s\n        .SetProperty(o => o.IsArchived, true)\n        .SetProperty(o => o.ArchivedAt, DateTime.UtcNow));\n\nlogger.LogInformation(\"Archived {Count} orders\", archived);"
+      },
+      "pitfalls": [
+        "Loading entities, running `ExecuteUpdate`, then `SaveChanges` on the stale tracked copies.",
+        "Expecting soft-delete interceptors (which hook `SaveChanges`) to run for `ExecuteDelete`.",
+        "Assuming a row-version check happens automatically."
+      ],
+      "followUps": [
+        "How would you implement an optimistic check with `ExecuteUpdate`?",
+        "What did you do for bulk updates before EF Core 7?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/execute-insert-update-delete",
+          "title": "ExecuteUpdate and ExecuteDelete - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-7.0/whatsnew",
+          "title": "What's New in EF Core 7.0",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-indexes-tracking-bulk-concurrency",
+        "ef-core-raw-sql-iqueryable-concurrency"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "EF Core 7+. EF Core 10 lets `ExecuteUpdateAsync` take a regular (non-expression) lambda, which simplifies conditional setters.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-keyset-pagination",
+      "topic": "linq-ef-core",
+      "subtopic": "performance",
+      "difficulty": "senior",
+      "question": "Why can `Skip`/`Take` pagination get slow or inconsistent, and what is keyset pagination?",
+      "shortAnswer": "Offset pagination makes the database read and discard all skipped rows, so later pages cost more, and concurrent inserts or deletes shift rows so items are skipped or repeated. Keyset (seek) pagination remembers the sort key of the last row and asks for rows after it (`WHERE Id > @lastId ORDER BY Id`), which an index can serve directly, but it only supports next/previous navigation, not jumping to page N.",
+      "answer": "**Key points**\n- Always order by a **unique** key (or key combination); databases have no default order, even on the primary key, and ties make pages overlap.\n- **Offset** (`Skip((page-1)*size).Take(size)`): simple, supports random access, but costs grow with the offset and pages drift under concurrent writes.\n- **Keyset**: `Where(p => p.Id > lastId).OrderBy(p => p.Id).Take(size)`; constant cost with an index, stable under inserts and deletes.\n- Multiple sort keys: `Where(p => p.Date > lastDate || (p.Date == lastDate && p.Id > lastId))` with a matching composite index.\n- APIs usually expose keyset paging as an opaque **cursor** (for example base64 of the last key values).\n- Hybrid: keyset for next/previous, offset only when users jump to an arbitrary page.",
+      "code": {
+        "lang": "csharp",
+        "source": "var page = await db.Posts\n    .AsNoTracking()\n    .Where(p => p.PublishedOn < lastDate || (p.PublishedOn == lastDate && p.Id < lastId))\n    .OrderByDescending(p => p.PublishedOn).ThenByDescending(p => p.Id)\n    .Take(20)\n    .Select(p => new PostRow(p.Id, p.Title, p.PublishedOn))\n    .ToListAsync();"
+      },
+      "pitfalls": [
+        "Ordering by a non-unique column such as date only.",
+        "Keyset paging without an index on the sort columns.",
+        "Returning a 'total pages' count on every request; `COUNT(*)` on big tables can cost more than the page."
+      ],
+      "followUps": [
+        "How would you encode a cursor in an API response?",
+        "How do you support 'previous page' with keyset pagination?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/pagination",
+          "title": "Pagination - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying",
+          "title": "Efficient Querying - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "personal-finance-tracker-notes",
+        "crud-filtering-sorting"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-inspecting-generated-sql",
+      "topic": "linq-ef-core",
+      "subtopic": "performance",
+      "difficulty": "junior",
+      "question": "How do you see the SQL that EF Core generates for a query?",
+      "shortAnswer": "Call `ToQueryString()` on an `IQueryable` to get its SQL without running it, enable logging with `LogTo(...)` or the app's `ILogger` (category `Microsoft.EntityFrameworkCore.Database.Command`) to see every executed command with its duration, and use `TagWith(\"...\")` to label queries so you can find them in logs and database tools.",
+      "answer": "**Key points**\n- `query.ToQueryString()` (EF Core 5+): quick check of translation, includes parameter declarations.\n- `optionsBuilder.LogTo(Console.WriteLine, LogLevel.Information)`: simple logging without DI setup.\n- In ASP.NET Core, set `\"Microsoft.EntityFrameworkCore.Database.Command\": \"Information\"` in logging config; the log includes elapsed milliseconds, so slow commands stand out.\n- `EnableSensitiveDataLogging()` shows parameter values: development only, it can leak personal data.\n- `TagWith(\"Orders list endpoint\")` adds a SQL comment, helping to correlate a slow query in SQL Server tools with the code that sent it.\n- Then read the execution plan in the database to see whether indexes are used.",
+      "code": {
+        "lang": "csharp",
+        "source": "var query = db.Orders\n    .TagWith(\"GET /api/orders\")\n    .Where(o => o.CustomerId == customerId)\n    .OrderByDescending(o => o.CreatedAt)\n    .Take(20);\n\nConsole.WriteLine(query.ToQueryString());\n\nbuilder.Services.AddDbContext<AppDbContext>(o => o\n    .UseSqlServer(conn)\n    .LogTo(Console.WriteLine, LogLevel.Information));   // local debugging"
+      },
+      "pitfalls": [
+        "Leaving `EnableSensitiveDataLogging` on in production.",
+        "A global minimum log level that hides EF's Information-level command logs.",
+        "Judging performance from the LINQ code without looking at the SQL and the plan."
+      ],
+      "followUps": [
+        "How would you find N+1 queries from the logs?",
+        "What is an execution plan, and what are you looking for?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/performance/performance-diagnosis",
+          "title": "Performance Diagnosis - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/logging-events-diagnostics/simple-logging",
+          "title": "Simple logging - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-5.0/whatsnew",
+          "title": "What's New in EF Core 5.0",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "logging",
+        "execution-plans-and-sargability"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "`ToQueryString()` and `LogTo` were added in EF Core 5.0.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-raw-sql-and-injection",
+      "topic": "linq-ef-core",
+      "subtopic": "performance",
+      "difficulty": "mid",
+      "question": "How do you run raw SQL in EF Core safely? Compare `FromSql`, `FromSqlRaw`, `SqlQuery` and `ExecuteSql`.",
+      "shortAnswer": "`FromSql($\"... {value}\")` (EF Core 7+) and `ExecuteSql($\"...\")` take an interpolated string but send each value as a `DbParameter`, so they're safe from SQL injection. `FromSqlRaw`/`ExecuteSqlRaw`/`SqlQueryRaw` take a plain string and are only safe if you pass values as parameters yourself. `FromSql` returns entities (composable with LINQ); `SqlQuery<T>` returns scalars (EF 7) or unmapped types (EF 8).",
+      "answer": "**Key points**\n- **Entities**: `db.Blogs.FromSql($\"SELECT * FROM Blogs WHERE Rating > {min}\")`; you can add `Where`, `OrderBy`, `Include` after it if the SQL is composable (starts with `SELECT`, no trailing `ORDER BY` or `;`), because EF wraps it as a subquery.\n- **Non-entity results**: `db.Database.SqlQuery<int>($\"SELECT ...\")`, or any mappable CLR type in EF Core 8+.\n- **Commands**: `db.Database.ExecuteSqlAsync($\"UPDATE ...\")` returns rows affected.\n- **Raw variants**: for dynamic SQL you must build yourself; never concatenate user input. Identifiers such as column names can't be parameters, so whitelist them.\n- Results from `FromSql` are tracked like normal queries unless you add `AsNoTracking()`.",
+      "code": {
+        "lang": "csharp",
+        "source": "var min = 4;\nvar blogs = await db.Blogs\n    .FromSql($\"SELECT * FROM Blogs WHERE Rating >= {min}\")   // parameterized\n    .Where(b => b.IsActive)                                   // composed in SQL\n    .ToListAsync();\n\nvar ids = await db.Database.SqlQuery<int>($\"SELECT BlogId AS Value FROM Blogs\").ToListAsync();\n\n// ❌ injection risk\n// db.Blogs.FromSqlRaw(\"SELECT * FROM Blogs WHERE Name = '\" + name + \"'\");"
+      },
+      "pitfalls": [
+        "Formatting the SQL into a `string` first (`var sql = $\"...{name}\"`) and passing it to `FromSqlRaw`; the values are already pasted into the text, so nothing is parameterized.",
+        "Concatenating column names from user input into `FromSqlRaw`.",
+        "Expecting stored procedure calls to be composable with LINQ."
+      ],
+      "followUps": [
+        "Why can't a stored procedure be composed with further LINQ?",
+        "How do you call a stored procedure with output parameters?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/sql-queries",
+          "title": "SQL Queries - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-8.0/whatsnew",
+          "title": "What's New in EF Core 8.0",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "ef-core-raw-sql-iqueryable-concurrency",
+        "calling-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`FromSql`/`ExecuteSql` (EF Core 7+) replaced `FromSqlInterpolated`/`ExecuteSqlInterpolated`; `SqlQuery` for scalars is EF Core 7, for unmapped types EF Core 8.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-dapper-vs-ef-core",
+      "topic": "linq-ef-core",
+      "subtopic": "dapper",
+      "difficulty": "junior",
+      "question": "What is Dapper, and when would you choose it over EF Core (or use both)?",
+      "shortAnswer": "Dapper is a micro-ORM: a set of extension methods on `DbConnection` that run the SQL you write and map result rows to objects quickly, with no change tracking, LINQ translation, migrations or unit of work. Choose it for read-heavy, hand-tuned queries, reporting and stored procedures; choose EF Core for productive domain-model writes; many systems use EF Core for writes and Dapper for complex reads.",
+      "answer": "**Key points**\n- **Dapper**: you own the SQL; very low overhead; works with any ADO.NET provider; parameters, multi-mapping, multiple result sets, stored procedures.\n- **EF Core**: LINQ, change tracking, relationships and cascades, migrations, concurrency tokens, interceptors, query filters.\n- EF Core can also run raw SQL (`FromSql`, `SqlQuery`), so \"need raw SQL\" alone isn't a reason to add Dapper.\n- **Both**: share the same connection (`db.Database.GetDbConnection()`) and, when needed, the same transaction.\n- Trade-off: with Dapper, schema changes break SQL strings at runtime instead of compile time; cover queries with integration tests.\n\n**Detail**\nDapper's README describes its scope as the \"95% scenario\": it deliberately leaves out ORM features. That's a strength for simple, fast data access and a cost when you need tracking or migrations.",
+      "code": {
+        "lang": "csharp",
+        "source": "await using var conn = new SqlConnection(connectionString);\nvar orders = await conn.QueryAsync<OrderRow>(\n    \"SELECT Id, Total, CreatedAt FROM Orders WHERE CustomerId = @customerId ORDER BY CreatedAt DESC\",\n    new { customerId });"
+      },
+      "pitfalls": [
+        "Choosing Dapper for everything and re-implementing change tracking and mapping by hand.",
+        "Assuming EF Core is always too slow; measure the specific query.",
+        "SQL strings scattered through the code with no tests."
+      ],
+      "followUps": [
+        "How does Dapper prevent SQL injection?",
+        "How do you use EF Core and Dapper in one transaction?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://github.com/DapperLib/Dapper",
+          "title": "DapperLib/Dapper (README)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/querying/sql-queries",
+          "title": "SQL Queries - EF Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dapper",
+        "ways-to-access-a-database",
+        "ef-core-plus-dapper"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-dapper-parameters",
+      "topic": "linq-ef-core",
+      "subtopic": "dapper",
+      "difficulty": "mid",
+      "question": "How do you pass parameters with Dapper, and how does it handle `IN` lists?",
+      "shortAnswer": "Pass an anonymous object (`new { id, status }`) whose properties map to `@id` and `@status` parameters, or a `DynamicParameters` when the parameter set is built at runtime or you need output parameters. For lists, write `WHERE Id IN @ids` with an `IEnumerable`; Dapper expands it to `IN (@ids1, @ids2, ...)` with one parameter each.",
+      "answer": "**Key points**\n- Values always travel as ADO.NET parameters, never concatenated into the SQL, which protects against SQL injection.\n- `DynamicParameters`: add parameters conditionally, set `DbType`, `direction` (Output, ReturnValue) for stored procedures, and read them back with `Get<T>`.\n- List expansion: write `IN @ids` without parentheses.\n- Strings: for `varchar` columns pass `new DbString { Value = s, IsAnsi = true, Length = 50 }`; mismatched Unicode/ANSI parameters can stop SQL Server using an index.\n- \"Literal replacement\" `{=name}` inlines bool/numeric constants; use it only for fixed values, never for user input.\n- Dapper caches query metadata; generating unparameterized SQL strings on the fly can grow that cache.",
+      "code": {
+        "lang": "csharp",
+        "source": "var rows = await conn.QueryAsync<Order>(\n    \"SELECT * FROM Orders WHERE Id IN @ids AND Status = @status\",\n    new { ids = new[] { 1, 2, 3 }, status = \"Open\" });\n\nvar p = new DynamicParameters();\np.Add(\"@customerId\", customerId);\np.Add(\"@total\", dbType: DbType.Decimal, direction: ParameterDirection.Output, precision: 18, scale: 2);\nawait conn.ExecuteAsync(\"dbo.GetCustomerTotal\", p, commandType: CommandType.StoredProcedure);\nvar total = p.Get<decimal>(\"@total\");"
+      },
+      "pitfalls": [
+        "Building `WHERE Name = '` + name + `'` strings and passing no parameters.",
+        "Writing `IN (@ids)` with parentheses; Dapper expects `IN @ids`.",
+        "Very large `IN` lists; consider a table-valued parameter or a temp table."
+      ],
+      "followUps": [
+        "How would you call a stored procedure with output parameters?",
+        "Why does Unicode vs ANSI matter for SQL Server indexes?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://github.com/DapperLib/Dapper",
+          "title": "DapperLib/Dapper (README)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/sql/relational-databases/security/sql-injection",
+          "title": "SQL Injection - SQL Server",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dapper",
+        "calling-stored-procedures"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-dapper-multi-mapping",
+      "topic": "linq-ef-core",
+      "subtopic": "dapper",
+      "difficulty": "mid",
+      "question": "How do you map a JOIN to an object graph with Dapper? What does `splitOn` do?",
+      "shortAnswer": "Use multi-mapping: `Query<Post, User, Post>(sql, (post, user) => { post.Owner = user; return post; }, splitOn: \"Id\")`. Dapper splits each row into several objects at the column named in `splitOn` (by default a column called `Id`), and your lambda wires them together; for one-to-many you also de-duplicate parents yourself, typically with a dictionary.",
+      "answer": "**Key points**\n- Type arguments: the objects in column order, then the return type (`<Post, User, Post>`).\n- `splitOn` names the first column of each next object; the default assumes it's `Id`. With different key names pass `splitOn: \"UserId\"` (or several, comma-separated).\n- One-to-one/many-to-one is direct. **One-to-many** repeats the parent on each row, so keep a `Dictionary<int, Order>` and add children to the existing parent.\n- Order the `SELECT` column list to match the type order; `SELECT *` across joins is fragile.\n- Alternative for one-to-many: `QueryMultiple` with two result sets, then stitch them in memory, which avoids duplicated parent columns.",
+      "code": {
+        "lang": "csharp",
+        "source": "const string sql = \"\"\"\n    SELECT o.Id, o.Total, l.Id, l.ProductId, l.Quantity\n    FROM Orders o JOIN OrderLines l ON l.OrderId = o.Id\n    WHERE o.CustomerId = @customerId\n    \"\"\";\nvar orders = new Dictionary<int, Order>();\nawait conn.QueryAsync<Order, OrderLine, Order>(sql, (o, line) =>\n{\n    var order = orders.TryGetValue(o.Id, out var existing) ? existing : orders[o.Id] = o;\n    order.Lines.Add(line);\n    return order;\n}, new { customerId }, splitOn: \"Id\");\nvar result = orders.Values.ToList();"
+      },
+      "pitfalls": [
+        "Forgetting `splitOn` when the key column isn't called `Id`, so mapping silently splits in the wrong place.",
+        "Returning the raw multi-mapped list for one-to-many and getting duplicate parents.",
+        "`SELECT *` in joins where both tables have columns with the same names."
+      ],
+      "followUps": [
+        "When would `QueryMultiple` be better than a join?",
+        "How does this compare with EF Core's `Include`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://github.com/DapperLib/Dapper",
+          "title": "DapperLib/Dapper (README)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dapper"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-dapper-querymultiple-and-buffering",
+      "topic": "linq-ef-core",
+      "subtopic": "dapper",
+      "difficulty": "mid",
+      "question": "What are `QueryMultiple` and buffered vs unbuffered queries in Dapper?",
+      "shortAnswer": "`QueryMultiple` runs one command that returns several result sets and lets you read them in order with `Read<T>()`/`ReadSingle<T>()`, saving round trips. By default Dapper's `Query` buffers: it reads the whole result into a list before returning, which frees the connection quickly; `buffered: false` streams rows one at a time for very large results, keeping the reader open while you iterate.",
+      "answer": "**Key points**\n- `QueryMultiple`: one round trip, several `SELECT`s (or a stored procedure returning several sets); read the grids in the same order they're returned.\n- Use it for \"header + details\" screens or dashboards that need several small queries.\n- **Buffered (default)**: memory proportional to the result size, but the connection and locks are released early and you can enumerate the result many times.\n- **Unbuffered** (`buffered: false`, or `QueryUnbufferedAsync` returning `IAsyncEnumerable<T>`): constant memory; the connection stays busy until enumeration ends, and you can enumerate only once.\n- Method family: `Query`, `QueryFirst(OrDefault)`, `QuerySingle(OrDefault)`, `Execute`, `ExecuteScalar`, all with `Async` versions.",
+      "code": {
+        "lang": "csharp",
+        "source": "const string sql = \"\"\"\n    SELECT * FROM Customers WHERE Id = @id;\n    SELECT * FROM Orders WHERE CustomerId = @id ORDER BY CreatedAt DESC;\n    \"\"\";\nusing var grid = await conn.QueryMultipleAsync(sql, new { id });\nvar customer = await grid.ReadSingleAsync<Customer>();\nvar orders = (await grid.ReadAsync<Order>()).ToList();\n\n// stream a large export without buffering\nawait foreach (var row in conn.QueryUnbufferedAsync<ExportRow>(\"SELECT * FROM BigTable\"))\n    await writer.WriteAsync(row);"
+      },
+      "pitfalls": [
+        "Reading `QueryMultiple` grids out of order.",
+        "Enumerating an unbuffered result twice, or after the connection is closed.",
+        "Buffering millions of rows into memory for an export."
+      ],
+      "followUps": [
+        "How does buffering relate to database locks?",
+        "How does EF Core's streaming vs buffering compare?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://github.com/DapperLib/Dapper",
+          "title": "DapperLib/Dapper (README)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dapper"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`QueryUnbufferedAsync` (returning `IAsyncEnumerable<T>`) requires a recent Dapper 2.x release.",
+      "reviewed": false
+    },
+    {
+      "id": "linq-ef-core-ef-and-dapper-same-transaction",
+      "topic": "linq-ef-core",
+      "subtopic": "dapper",
+      "difficulty": "senior",
+      "question": "How do you run an EF Core `SaveChanges` and a Dapper command in one transaction?",
+      "shortAnswer": "Use one connection and one transaction: begin the transaction through EF (`db.Database.BeginTransactionAsync()`), get the underlying `DbConnection` with `GetDbConnection()` and the `DbTransaction` with `GetDbTransaction()`, pass that transaction to every Dapper call, then commit through EF. Alternatively, begin an ADO.NET transaction yourself and enlist EF with `Database.UseTransaction(tx)`.",
+      "answer": "**Key points**\n- Dapper needs the **same connection object** and the `transaction:` argument; otherwise its command runs outside the transaction (or fails because the connection has a pending transaction).\n- EF opens the connection when the transaction begins, so Dapper can use it directly.\n- Commit once, through the object that started the transaction.\n- With `EnableRetryOnFailure`, wrap the whole block in `CreateExecutionStrategy().ExecuteAsync(...)`.\n- After raw Dapper writes, the change tracker doesn't know about them; reload any affected tracked entities.\n- `System.Transactions` (`TransactionScope`) also works but has limitations (async flow option, distributed transactions not supported everywhere).",
+      "code": {
+        "lang": "csharp",
+        "source": "await using var tx = await db.Database.BeginTransactionAsync(ct);\nvar conn = db.Database.GetDbConnection();\nvar dbTx = tx.GetDbTransaction();\n\ndb.Orders.Add(order);\nawait db.SaveChangesAsync(ct);                       // EF, inside tx\n\nawait conn.ExecuteAsync(\n    \"UPDATE Inventory SET Reserved = Reserved + @qty WHERE ProductId = @productId\",\n    new { qty = order.Quantity, productId = order.ProductId },\n    transaction: dbTx);                              // Dapper, same tx\n\nawait tx.CommitAsync(ct);"
+      },
+      "pitfalls": [
+        "Opening a new `SqlConnection` for Dapper inside an EF transaction.",
+        "Forgetting `transaction: dbTx` on one Dapper call.",
+        "Mixing in `ExecuteUpdate` or Dapper writes and then saving stale tracked entities."
+      ],
+      "followUps": [
+        "What does `Database.UseTransaction` do?",
+        "Where do you draw the line between EF Core and Dapper in a codebase?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/ef/core/saving/transactions",
+          "title": "Transactions - EF Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/DapperLib/Dapper",
+          "title": "DapperLib/Dapper (README)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dapper",
+        "ef-core-plus-dapper"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    }
+  ]
+}

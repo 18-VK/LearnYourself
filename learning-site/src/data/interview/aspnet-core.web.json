@@ -1,0 +1,2077 @@
+{
+  "topic": "aspnet-core",
+  "questions": [
+    {
+      "id": "aspnet-core-what-is-middleware",
+      "topic": "aspnet-core",
+      "subtopic": "pipeline-and-middleware",
+      "difficulty": "junior",
+      "question": "What is middleware in ASP.NET Core, and how does the request pipeline work?",
+      "shortAnswer": "Middleware is a component in the request pipeline that receives the `HttpContext`, can do work before and after calling the next component, or can stop the request there (short-circuit). The pipeline is a chain of request delegates built in the order you register them in `Program.cs`; the response travels back through the same chain in reverse.",
+      "answer": "**Key points**\n- Each middleware is a request delegate: it gets the `HttpContext` and a `next` delegate.\n- Code before `await next(context)` runs on the way in; code after it runs on the way out.\n- A component that doesn't call `next` ends the pipeline. It is then called *terminal* middleware (static files do this when they find a file).\n- Order = registration order for requests, reverse order for responses, so order affects security, performance and behaviour.\n- Built-in examples: exception handling, HSTS, HTTPS redirection, static files, routing, CORS, authentication, authorization, rate limiting, and finally the endpoints (controllers or minimal API handlers).\n\n**Detail**\nMiddleware is the place for *cross-cutting* concerns that apply to many requests: logging, correlation IDs, error handling, security headers. You add inline middleware with `app.Use(...)`, terminal middleware with `app.Run(...)`, and reusable middleware as a class exposed through an extension method (`app.UseMyThing()`).\n\nThe framework builds the chain once at startup. At request time, the server (Kestrel) turns the raw request into an `HttpContext` and calls the first delegate.",
+      "code": {
+        "lang": "csharp",
+        "source": "var app = builder.Build();\n\napp.Use(async (context, next) =>\n{\n    var start = Stopwatch.GetTimestamp();          // on the way in\n    await next(context);                            // rest of the pipeline\n    var ms = Stopwatch.GetElapsedTime(start).TotalMilliseconds;\n    app.Logger.LogInformation(\"{Path} took {Ms} ms\", context.Request.Path, ms); // on the way out\n});\n\napp.MapControllers();\napp.Run();"
+      },
+      "pitfalls": [
+        "Forgetting `await next(context)`, which silently short-circuits every request.",
+        "Writing to the response and then calling `next`; later components may try to change headers that were already sent.",
+        "Putting slow or long-running work in middleware; it runs for every request, so keep it fast."
+      ],
+      "followUps": [
+        "What is the difference between `Use`, `Run` and `Map`?",
+        "Why does middleware order matter? Give a correct order.",
+        "When would you use a filter instead of middleware?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/",
+          "title": "ASP.NET Core middleware",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+          "title": "ASP.NET Core Best Practices",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "middleware"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-use-run-map",
+      "topic": "aspnet-core",
+      "subtopic": "pipeline-and-middleware",
+      "difficulty": "mid",
+      "question": "What is the difference between `Use`, `Run`, `Map`, `MapWhen` and `UseWhen`?",
+      "shortAnswer": "`Use` adds middleware that can call the next component; `Run` adds terminal middleware with no `next`, so nothing after it runs. `Map` and `MapWhen` create a separate branch (by path prefix or by predicate) that does not come back, while `UseWhen` creates a conditional branch that rejoins the main pipeline unless it short-circuits.",
+      "answer": "**Key points**\n- `Use(async (ctx, next) => ...)`: normal middleware; may call `next`.\n- `Run(async ctx => ...)`: always terminal. The first `Run` ends the pipeline, so anything registered after it never executes.\n- `Map(\"/path\", branch => ...)`: branches when the request path *starts with* the given path. The matched segment is moved from `Request.Path` to `Request.PathBase` inside the branch.\n- `MapWhen(predicate, branch => ...)`: branches on any `Func<HttpContext, bool>`; the branch doesn't rejoin.\n- `UseWhen(predicate, branch => ...)`: runs extra middleware for matching requests, then rejoins the main pipeline (if the branch has no terminal middleware).\n\n**Detail**\n`Map` here is *pipeline branching*. Don't confuse it with `MapGet`/`MapPost`/`MapControllers`, which register *endpoints* with endpoint routing. Branching with `Map` happens before routing; in modern apps you usually reach for endpoint routing (and route groups) for URL-based behaviour and keep `Map`/`MapWhen` for whole sub-pipelines, such as a health or diagnostics branch with its own middleware.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Only requests with ?debug get the extra logging, then they continue normally\napp.UseWhen(ctx => ctx.Request.Query.ContainsKey(\"debug\"),\n    branch => branch.Use(async (ctx, next) =>\n    {\n        app.Logger.LogInformation(\"Debug request {Path}\", ctx.Request.Path);\n        await next(ctx);\n    }));\n\n// A separate branch that never returns to the main pipeline\napp.Map(\"/ping\", branch => branch.Run(ctx => ctx.Response.WriteAsync(\"pong\")));\n\napp.Run(ctx => ctx.Response.WriteAsync(\"main pipeline\")); // terminal"
+      },
+      "pitfalls": [
+        "Registering `app.Run(...)` early and wondering why later middleware never runs.",
+        "Expecting a `MapWhen` branch to continue to your controllers; it doesn't rejoin, so it needs its own terminal handling.",
+        "Forgetting that `Map` strips the matched segment from `Request.Path` inside the branch."
+      ],
+      "followUps": [
+        "How is `Map` different from `MapGet`?",
+        "When would `UseWhen` be better than an `if` inside one middleware?",
+        "What does short-circuiting mean for middleware registered earlier?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/",
+          "title": "ASP.NET Core middleware",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "middleware"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-middleware-order",
+      "topic": "aspnet-core",
+      "subtopic": "pipeline-and-middleware",
+      "difficulty": "junior",
+      "question": "Why does middleware order matter? What order would you use in a typical Web API?",
+      "shortAnswer": "Each middleware only sees what the components before it have done, and can only catch or change what comes after it, so the order decides what is protected, logged and handled. A typical API order is exception handling, HSTS, HTTPS redirection, static files, routing, rate limiting, CORS, authentication, authorization, then the endpoints.",
+      "answer": "**Key points**\n- **Exception handler first** so it wraps, and can catch exceptions from, everything after it.\n- **HSTS / HTTPS redirection** early, before any content is served.\n- **Static files** early, so file requests short-circuit cheaply (they have no authorization checks).\n- **Routing** before anything that needs to know the selected endpoint: CORS, authentication/authorization and endpoint-specific rate limiting all read endpoint metadata.\n- **CORS before authentication/authorization**, and before response caching so cached responses still get CORS headers.\n- **Authentication before authorization**: authorization needs `HttpContext.User`.\n- **Endpoints last** (`MapControllers`, `MapGet`, ...).\n\n**Detail**\n`UseRateLimiter` must come after `UseRouting` when you use endpoint-specific policies such as `[EnableRateLimiting]`; with only a global limiter it may come before routing. Output caching must come after authentication and authorization, otherwise it could serve content cached for another user. With `WebApplication`, if you don't call `UseRouting` yourself, routing runs at the start of the pipeline by default; calling it explicitly lets you choose where it runs.",
+      "code": {
+        "lang": "csharp",
+        "source": "if (!app.Environment.IsDevelopment())\n{\n    app.UseExceptionHandler();\n    app.UseHsts();\n}\napp.UseHttpsRedirection();\napp.UseStaticFiles();      // only if you serve files\napp.UseRouting();\napp.UseRateLimiter();      // after routing for [EnableRateLimiting]\napp.UseCors(\"frontend\");\napp.UseAuthentication();\napp.UseAuthorization();\napp.MapControllers();"
+      },
+      "pitfalls": [
+        "`UseAuthorization()` before `UseAuthentication()`: every user looks anonymous.",
+        "`UseCors` after authorization: preflight requests fail before CORS headers are added.",
+        "Adding a logging or exception middleware *after* the component that throws; it can't catch what runs before it."
+      ],
+      "followUps": [
+        "What breaks if `UseRateLimiter` runs before `UseRouting`?",
+        "Why is the exception handler not added in Development by default?",
+        "Where does output caching go and why?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/",
+          "title": "ASP.NET Core middleware",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/routing",
+          "title": "Routing in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/output",
+          "title": "Output caching middleware in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "middleware",
+        "https-and-hsts"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Applies to .NET 6+ `WebApplication` apps; `UseRateLimiter` exists from .NET 7 and output caching from .NET 7.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-custom-middleware-scoped-services",
+      "topic": "aspnet-core",
+      "subtopic": "pipeline-and-middleware",
+      "difficulty": "mid",
+      "question": "How do you write class-based middleware, and how do you use a scoped service such as a DbContext in it?",
+      "shortAnswer": "Convention-based middleware has a constructor taking `RequestDelegate` and a public `InvokeAsync(HttpContext, ...)` method; it is created once for the app's lifetime, so scoped services must be parameters of `InvokeAsync`, not the constructor. Alternatively implement `IMiddleware`, register it in DI, and it is activated per request, so constructor injection of scoped services works.",
+      "answer": "**Key points**\n- **Convention-based**: public constructor with a `RequestDelegate` parameter; public `Invoke`/`InvokeAsync` that returns `Task` and takes `HttpContext` first. Extra constructor and `InvokeAsync` parameters come from DI.\n- It is **constructed at startup and lives for the whole app**, effectively a singleton. Put scoped dependencies in the `InvokeAsync` signature so they're resolved per request. Injecting a scoped service in the constructor makes it behave like a singleton, and the docs say this throws at runtime.\n- **Factory-based (`IMiddleware`)**: implement `InvokeAsync(HttpContext, RequestDelegate)`, register the class as scoped or transient, and `UseMiddleware<T>()` resolves it through `IMiddlewareFactory` per request. You can't pass extra arguments to `UseMiddleware` for this kind (it throws `NotSupportedException`).\n\n**Detail**\nExpose either kind through an extension method on `IApplicationBuilder` so `Program.cs` reads `app.UseRequestAudit()`. Because convention-based middleware is shared by all concurrent requests, never keep per-request state in its fields.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Convention-based: scoped DbContext goes on InvokeAsync\npublic sealed class AuditMiddleware(RequestDelegate next)\n{\n    public async Task InvokeAsync(HttpContext context, AppDbContext db)\n    {\n        await next(context);\n        db.Audits.Add(new Audit(context.Request.Path, context.Response.StatusCode));\n        await db.SaveChangesAsync(context.RequestAborted);\n    }\n}\n\n// Factory-based: constructor injection of scoped services is fine\npublic sealed class TenantMiddleware(ITenantStore store) : IMiddleware\n{\n    public async Task InvokeAsync(HttpContext context, RequestDelegate next)\n    {\n        context.Items[\"tenant\"] = await store.FindAsync(context.Request.Host.Host);\n        await next(context);\n    }\n}\n\nbuilder.Services.AddScoped<TenantMiddleware>();   // required for IMiddleware\napp.UseMiddleware<TenantMiddleware>();\napp.UseMiddleware<AuditMiddleware>();"
+      },
+      "pitfalls": [
+        "Injecting a DbContext into a convention-based middleware constructor (captive dependency).",
+        "Storing request data in a field of convention-based middleware; concurrent requests share the instance.",
+        "Forgetting to register an `IMiddleware` class in the container."
+      ],
+      "followUps": [
+        "Why is convention-based middleware effectively a singleton?",
+        "How would you unit test a middleware class?",
+        "What is a captive dependency?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/write",
+          "title": "Write custom ASP.NET Core middleware",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/extensibility",
+          "title": "Factory-based middleware activation in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection",
+          "title": "Dependency injection in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "middleware",
+        "global-exception-handling",
+        "dependency-injection"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-response-has-started",
+      "topic": "aspnet-core",
+      "subtopic": "pipeline-and-middleware",
+      "difficulty": "senior",
+      "question": "Why do you get an exception when a middleware sets a header after calling `next()`, and how do you fix it?",
+      "shortAnswer": "ASP.NET Core doesn't buffer the response body: the first write sends the status line and headers to the client, after which headers and status code can't change and attempts to change them throw. Check `Response.HasStarted`, or register `Response.OnStarting` before calling `next` so the header is added just before the headers are flushed.",
+      "answer": "**Key points**\n- Once the body starts streaming, the headers are already on the wire; changing them afterwards throws.\n- `HttpResponse.HasStarted` tells you whether that point has passed.\n- `Response.OnStarting(callback)` runs just before the headers are sent, so it works no matter what later middleware does.\n- Don't call `next` after you have written to the response yourself; downstream components expect to own the response.\n- The same rule limits error handling: if an exception happens after the response started, the exception handler can't replace it with an error page and the connection is aborted.\n\n**Detail**\nWriting to the body after `next` can also corrupt the response (more bytes than `Content-Length`, or HTML appended to JSON). For \"after\" logic, read values (status code, elapsed time) but don't modify the response unless `HasStarted` is false.",
+      "code": {
+        "lang": "csharp",
+        "source": "app.Use(async (context, next) =>\n{\n    // Runs right before headers are flushed, whoever writes the body\n    context.Response.OnStarting(() =>\n    {\n        context.Response.Headers[\"X-Correlation-Id\"] = context.TraceIdentifier;\n        return Task.CompletedTask;\n    });\n\n    await next(context);\n\n    if (!context.Response.HasStarted)\n        context.Response.Headers[\"X-Late\"] = \"only safe here\"; // otherwise this would throw\n});"
+      },
+      "pitfalls": [
+        "Assuming the response is buffered like in classic ASP.NET; by default it isn't.",
+        "Setting `StatusCode` in an outer middleware after an inner one has already written JSON.",
+        "Logging a 'fixed' status code after the fact and thinking the client received it."
+      ],
+      "followUps": [
+        "How would you add a response header to every response safely?",
+        "What does the exception handler do if the response has already started?",
+        "When is response buffering worth enabling?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+          "title": "ASP.NET Core Best Practices",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/",
+          "title": "ASP.NET Core middleware",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Middleware/Diagnostics/src/ExceptionHandler/ExceptionHandlerMiddlewareImpl.cs",
+          "title": "ExceptionHandlerMiddlewareImpl.cs (dotnet/aspnetcore)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "middleware"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-kestrel-reverse-proxy",
+      "topic": "aspnet-core",
+      "subtopic": "pipeline-and-middleware",
+      "difficulty": "junior",
+      "question": "What is Kestrel, and when would you put a reverse proxy such as IIS or Nginx in front of it?",
+      "shortAnswer": "Kestrel is ASP.NET Core's cross-platform, in-process web server and the default in the templates. It can face the internet directly or sit behind a reverse proxy (IIS, Nginx, Apache, YARP); both are supported, and a proxy is chosen for port sharing, TLS termination, load balancing, a smaller exposed surface or to fit existing infrastructure.",
+      "answer": "**Key points**\n- Kestrel runs inside your app's process, turns HTTP traffic into an `HttpContext`, and hands it to the middleware pipeline.\n- It supports HTTP/1.1, HTTP/2, HTTP/3 and WebSockets, and runs on Windows, Linux and macOS (macOS for development, not production servers).\n- **Edge server**: simplest setup, but several processes can't share the same IP and port.\n- **Behind a reverse proxy**: the proxy can share ports, terminate HTTPS, balance load and add defence in depth. Behind a proxy you also configure host filtering and forwarded headers so the app sees the original scheme and client IP.\n- **IIS**: *in-process* hosting (the default since ASP.NET Core 3.0) runs the app inside the IIS worker process with the IIS HTTP Server instead of Kestrel; *out-of-process* hosting proxies to Kestrel.\n- **HTTP.sys** is a Windows-only alternative for features Kestrel lacks: port sharing, kernel-mode Windows authentication, direct file transmission and kernel response caching.\n\n**Detail**\nKestrel's default transport has been managed sockets since ASP.NET Core 2.1. The old libuv transport is marked obsolete.",
+      "pitfalls": [
+        "Saying Kestrel 'needs' IIS or Nginx; a reverse proxy is optional.",
+        "Forgetting forwarded headers behind a proxy, so redirects and logs show `http` and the proxy's IP.",
+        "Describing Kestrel as built on libuv; that was only the default before 2.1."
+      ],
+      "followUps": [
+        "What is the difference between IIS in-process and out-of-process hosting?",
+        "Why do you need the Forwarded Headers middleware behind a proxy?",
+        "When would you pick HTTP.sys over Kestrel?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel",
+          "title": "Kestrel web server in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel/when-to-use-a-reverse-proxy",
+          "title": "When to use a reverse proxy with the ASP.NET Core Kestrel web server",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/",
+          "title": "Web server implementations in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.hosting.webhostbuilderlibuvextensions.uselibuv",
+          "title": "WebHostBuilderLibuvExtensions.UseLibuv Method",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "aspnet-core-overview"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "IIS in-process hosting is the default from ASP.NET Core 3.0; sockets replaced libuv as Kestrel's default transport in 2.1. HTTP/3 support depends on the OS and .NET version.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-service-lifetimes",
+      "topic": "aspnet-core",
+      "subtopic": "dependency-injection",
+      "difficulty": "junior",
+      "question": "Explain the Transient, Scoped and Singleton service lifetimes. Which would you use for a DbContext?",
+      "shortAnswer": "Transient creates a new instance every time it's resolved, Scoped creates one per scope (one per HTTP request in a web app), and Singleton creates one for the whole application. A `DbContext` is Scoped, which is what `AddDbContext` registers by default, because database work is naturally per request.",
+      "answer": "**Key points**\n- **Transient** (`AddTransient`): new object per resolution; disposed at the end of the request scope it was resolved in. Good for lightweight, stateless services.\n- **Scoped** (`AddScoped`): one object per scope; disposed when the request ends. Good for per-request state: `DbContext`, unit of work, current-user info.\n- **Singleton** (`AddSingleton`): created on first use (or supplied by you), shared by every request, disposed at app shutdown. Must be thread-safe.\n- Rule of thumb: a service should not depend on a service with a *shorter* lifetime.\n- The container disposes `IDisposable` services **it created**. Don't dispose them yourself. Instances you pass in (`AddSingleton(new Foo())`) are not disposed for you.\n\n**Detail**\nLifetimes are about *who shares the instance* and *when it is disposed*. A singleton holding a DbContext would share one non-thread-safe context across all requests; a transient DbContext would give each repository its own context, breaking a shared unit of work.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddTransient<IPriceFormatter, PriceFormatter>(); // cheap, stateless\nbuilder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();      // per request\nbuilder.Services.AddSingleton<IClock, SystemClock>();             // shared, thread-safe\nbuilder.Services.AddDbContext<AppDbContext>(o =>\n    o.UseSqlServer(builder.Configuration.GetConnectionString(\"Default\"))); // scoped by default"
+      },
+      "pitfalls": [
+        "Injecting a scoped service into a singleton (captive dependency).",
+        "Keeping request-specific data in a singleton's fields.",
+        "Resolving transient `IDisposable` services from the root provider; they are only released when the app shuts down."
+      ],
+      "followUps": [
+        "What is a captive dependency and how does ASP.NET Core detect it?",
+        "How do you use a scoped service from a singleton or background service?",
+        "Who disposes services, and when?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/service-lifetimes",
+          "title": "Service lifetimes (dependency injection)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection",
+          "title": "Dependency injection in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines",
+          "title": "Dependency injection guidelines",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dependency-injection"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-captive-dependency-scope-validation",
+      "topic": "aspnet-core",
+      "subtopic": "dependency-injection",
+      "difficulty": "mid",
+      "question": "What is a captive dependency, and how do `ValidateScopes` and `ValidateOnBuild` help?",
+      "shortAnswer": "A captive dependency is a longer-lived service holding on to a shorter-lived one, for example a singleton that receives a scoped `DbContext`, so the scoped object effectively becomes a singleton. Scope validation makes the container throw (`Cannot consume scoped service ... from singleton ...`), and `ValidateOnBuild` checks registrations when the provider is built.",
+      "answer": "**Key points**\n- The singleton is constructed once and keeps whatever it received, so the scoped service is shared across requests and outlives its scope.\n- Consequences: one non-thread-safe `DbContext` used by concurrent requests, stale data, memory growth, `ObjectDisposedException`s.\n- **ValidateScopes** checks that scoped services aren't resolved from the root provider and aren't injected into singletons.\n- **ValidateOnBuild** tries to create every registered service when the provider is built, so missing registrations and lifetime errors fail at startup, not on the first request.\n- The default host turns both on **only in the Development environment**. You can enable them everywhere with `UseDefaultServiceProvider`.\n\n**Detail**\nFixes: give the consumer the same or a shorter lifetime, inject `IServiceScopeFactory` and create a scope for each unit of work, or use a factory such as `IDbContextFactory<T>`. Transient services injected into a singleton are captured the same way, so \"transient\" doesn't save you.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Host.UseDefaultServiceProvider(options =>\n{\n    options.ValidateScopes = true;   // on in Development by default\n    options.ValidateOnBuild = true;  // fail at startup, not at first request\n});\n\n// BUG: singleton captures a scoped DbContext\nbuilder.Services.AddSingleton<ReportCache>();     // ctor(AppDbContext db)\nbuilder.Services.AddDbContext<AppDbContext>(...); // scoped\n// -> InvalidOperationException: Cannot consume scoped service 'AppDbContext' from singleton 'ReportCache'."
+      },
+      "pitfalls": [
+        "Testing only in Production-like environments where validation is off, so the bug ships.",
+        "Fixing the error by making the DbContext a singleton.",
+        "Thinking a transient dependency can't be captured; it can."
+      ],
+      "followUps": [
+        "How would you fix `ReportCache` without changing its lifetime?",
+        "Why are the checks off outside Development by default?",
+        "What does `ValidateOnBuild` not catch?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines",
+          "title": "Dependency injection guidelines",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/overview",
+          "title": "Dependency injection",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host",
+          "title": ".NET Generic Host",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dependency-injection",
+        "taskflow-studio"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-scoped-service-in-background-work",
+      "topic": "aspnet-core",
+      "subtopic": "dependency-injection",
+      "difficulty": "mid",
+      "question": "How do you use a scoped service (for example a DbContext) inside a `BackgroundService` or fire-and-forget work?",
+      "shortAnswer": "Hosted services are singletons with no request scope, so you inject `IServiceScopeFactory`, create a scope for each unit of work (`CreateAsyncScope`) and resolve the scoped service from that scope. Never capture a request's DbContext or `HttpContext` in work that outlives the request.",
+      "answer": "**Key points**\n- `AddHostedService<T>()` registers the service as a singleton, so it can't take a scoped service through its constructor.\n- `IServiceScopeFactory` is a singleton; it's safe to inject anywhere.\n- Create one scope **per iteration or message**, not one for the whole lifetime of the worker, so each DbContext stays short-lived.\n- For background work started from a controller, copy the data you need first. Captured request-scoped services are disposed when the request ends, which leads to `ObjectDisposedException`.\n- Prefer a hosted service plus a queue over `Task.Run` fire-and-forget for anything that matters.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class OutboxWorker(IServiceScopeFactory scopes, ILogger<OutboxWorker> log) : BackgroundService\n{\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        while (!stoppingToken.IsCancellationRequested)\n        {\n            await using (var scope = scopes.CreateAsyncScope())\n            {\n                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();\n                await PublishPendingAsync(db, stoppingToken);\n            } // DbContext disposed here\n            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);\n        }\n    }\n}"
+      },
+      "pitfalls": [
+        "Creating one scope in `StartAsync` and keeping it forever; the DbContext's change tracker grows and data goes stale.",
+        "Capturing `HttpContext` or a controller's DbContext inside `Task.Run`.",
+        "Using `CreateScope` with a service that needs async disposal; prefer `CreateAsyncScope`."
+      ],
+      "followUps": [
+        "What happens to unfinished work when the host shuts down?",
+        "How would you queue work from an API endpoint to a background worker?",
+        "Why is `IServiceScopeFactory` not a service-locator anti-pattern here?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/scoped-service",
+          "title": "Use scoped services within a BackgroundService",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services",
+          "title": "Background tasks with hosted services in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+          "title": "ASP.NET Core Best Practices",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "hosted-services",
+        "dependency-injection",
+        "taskflow-studio"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-multiple-implementations-keyed-services",
+      "topic": "aspnet-core",
+      "subtopic": "dependency-injection",
+      "difficulty": "senior",
+      "question": "An interface has several registered implementations. Which one gets injected, and how do you pick a specific one?",
+      "shortAnswer": "Resolving the interface gives you the **last** registration; injecting `IEnumerable<T>` gives all of them in registration order. To pick one by name, use keyed services (.NET 8+), registered with `AddKeyed*` and injected with `[FromKeyedServices(\"key\")]`; `TryAdd*` registers a service only if none exists yet.",
+      "answer": "**Key points**\n- Two `AddSingleton<IMessageWriter, ...>` calls: `IMessageWriter` resolves to the second, `IEnumerable<IMessageWriter>` contains both.\n- `TryAddSingleton/Scoped/Transient` registers only if the service type has no registration; `TryAddEnumerable` adds an implementation only if that *implementation type* isn't already registered. Library authors use these so they don't override app registrations.\n- **Keyed services** (`AddKeyedSingleton/Scoped/Transient`) attach a key; consumers ask with `[FromKeyedServices(key)]` in constructors, minimal API handlers, hubs or middleware, or with `GetRequiredKeyedService`.\n- Without keyed services, use a strategy: inject `IEnumerable<T>` and choose by a property, or inject a small factory.\n\n**Detail**\n\"Last one wins\" is also how you override a framework default: register your own implementation after the framework's. Keep the choice explicit, because silently depending on registration order makes the composition root fragile.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddKeyedScoped<IPaymentGateway, StripeGateway>(\"stripe\");\nbuilder.Services.AddKeyedScoped<IPaymentGateway, PayPalGateway>(\"paypal\");\n\npublic sealed class CheckoutService([FromKeyedServices(\"stripe\")] IPaymentGateway gateway) { /* ... */ }\n\napp.MapPost(\"/refund\", ([FromKeyedServices(\"paypal\")] IPaymentGateway gw, RefundRequest r) => gw.RefundAsync(r));"
+      },
+      "pitfalls": [
+        "Expecting the first registration to win.",
+        "Resolving by key through `IServiceProvider` everywhere (service locator) instead of declaring it in the constructor.",
+        "Using keyed services where a plain strategy over `IEnumerable<T>` would be clearer."
+      ],
+      "followUps": [
+        "How would you override a framework service registration?",
+        "What is the difference between `TryAdd` and `TryAddEnumerable`?",
+        "How did people solve this before .NET 8?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/service-registration",
+          "title": "Service registration (dependency injection)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection",
+          "title": "Dependency injection in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "dependency-injection"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Keyed services (`AddKeyed*`, `[FromKeyedServices]`) need .NET 8 or later.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-options-pattern",
+      "topic": "aspnet-core",
+      "subtopic": "dependency-injection",
+      "difficulty": "senior",
+      "question": "What is the options pattern? Compare `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>`.",
+      "shortAnswer": "The options pattern binds a configuration section to a strongly typed class and injects it through an options interface. `IOptions<T>` is a singleton read once; `IOptionsSnapshot<T>` is scoped and recomputed per request; `IOptionsMonitor<T>` is a singleton that always returns the current value and raises change notifications.",
+      "answer": "**Key points**\n- Register with `Configure<T>(section)` or `AddOptions<T>().Bind(section)`; consumers depend on a small settings class, not on `IConfiguration`.\n- **`IOptions<T>`**: singleton, any lifetime can use it, no reload after startup, no named options.\n- **`IOptionsSnapshot<T>`**: scoped, so it can't be injected into a singleton; recomputed per scope; supports named options.\n- **`IOptionsMonitor<T>`**: singleton; `CurrentValue`, `OnChange`, named options and reloadable configuration.\n- **Validation**: `ValidateDataAnnotations()` / `Validate(...)`, and `ValidateOnStart()` so bad configuration stops the app at startup instead of failing on first use.\n\n**Detail**\nPick `IOptions<T>` for values that never change at runtime, `IOptionsMonitor<T>` for singletons that must react to configuration reloads, and `IOptionsSnapshot<T>` when a request should see one consistent value even if the file changes mid-request.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class SmtpOptions\n{\n    [Required] public string Host { get; init; } = \"\";\n    [Range(1, 65535)] public int Port { get; init; } = 587;\n}\n\nbuilder.Services.AddOptions<SmtpOptions>()\n    .Bind(builder.Configuration.GetSection(\"Smtp\"))\n    .ValidateDataAnnotations()\n    .ValidateOnStart();\n\npublic sealed class Mailer(IOptionsMonitor<SmtpOptions> options)\n{\n    public void Send() { var o = options.CurrentValue; /* ... */ }\n}"
+      },
+      "pitfalls": [
+        "Injecting `IOptionsSnapshot<T>` into a singleton; scope validation rejects it.",
+        "Expecting `IOptions<T>` to pick up appsettings.json changes.",
+        "Relying on lazy validation; without `ValidateOnStart` the error appears only when `.Value` is first read."
+      ],
+      "followUps": [
+        "What are named options used for?",
+        "How does configuration reload reach `IOptionsMonitor`?",
+        "Why not just inject `IConfiguration` everywhere?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/options",
+          "title": "Options pattern",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options",
+          "title": "Options pattern in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "configuration"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`AddOptionsWithValidateOnStart<T>()` is a .NET 8 shortcut for `AddOptions<T>()...ValidateOnStart()`; `ValidateOnStart()` itself is older (.NET 6).",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-attribute-vs-conventional-routing",
+      "topic": "aspnet-core",
+      "subtopic": "routing",
+      "difficulty": "junior",
+      "question": "What is the difference between conventional routing and attribute routing? Which should a Web API use?",
+      "shortAnswer": "Conventional routing defines URL templates centrally (for example `{controller=Home}/{action=Index}/{id?}`) and is mainly for MVC apps with views; attribute routing puts the template on the controller and action with `[Route]` and `[HttpGet(\"{id}\")]`. Web APIs should use attribute routing, and `[ApiController]` requires it.",
+      "answer": "**Key points**\n- **Conventional**: `app.MapControllerRoute(\"default\", \"{controller=Home}/{action=Index}/{id?}\")`. One pattern serves many controllers; URLs follow class and method names.\n- **Attribute**: `[Route(\"api/[controller]\")]` on the class, `[HttpGet(\"{id:int}\")]` on actions. Tokens `[controller]` and `[action]` are replaced by names.\n- REST APIs model resources and use HTTP verbs on the same URL (`GET /api/orders/5`, `PUT /api/orders/5`), which attribute routing expresses directly.\n- Actions on an `[ApiController]` are not reachable through conventional routes.\n- Both register endpoints with the same endpoint routing system (`MapControllers` maps attribute-routed controllers).",
+      "code": {
+        "lang": "csharp",
+        "source": "[ApiController]\n[Route(\"api/[controller]\")]          // -> api/orders\npublic class OrdersController : ControllerBase\n{\n    [HttpGet(\"{id:int}\")]            // GET api/orders/5\n    public ActionResult<OrderDto> Get(int id) => Ok(new OrderDto(id));\n\n    [HttpPost]                       // POST api/orders\n    public IActionResult Create(CreateOrder cmd) => CreatedAtAction(nameof(Get), new { id = 1 }, null);\n}"
+      },
+      "pitfalls": [
+        "Putting verbs in URLs (`/api/getOrder`) instead of using HTTP methods.",
+        "Using `[controller]` tokens and then renaming the class, which silently changes the public URL.",
+        "Mixing conventional and attribute routes on the same API and getting ambiguous matches."
+      ],
+      "followUps": [
+        "What is endpoint routing?",
+        "How do route constraints like `{id:int}` work?",
+        "How do you generate a URL to another action?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/routing",
+          "title": "Routing to controller actions in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/web-api/",
+          "title": "Create web APIs with ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "routing",
+        "controllers"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-endpoint-routing",
+      "topic": "aspnet-core",
+      "subtopic": "routing",
+      "difficulty": "mid",
+      "question": "What is endpoint routing, and what is the role of `UseRouting` and `UseEndpoints`/`Map*`?",
+      "shortAnswer": "Endpoint routing splits routing into two steps: `UseRouting` matches the request to an endpoint and attaches it to the `HttpContext`, and the endpoint middleware (`UseEndpoints`, or `MapControllers`/`MapGet` on `WebApplication`) runs it at the end. Middleware in between can read the chosen endpoint and its metadata, which is how authorization, CORS and rate limiting know what applies.",
+      "answer": "**Key points**\n- An **endpoint** is a request delegate plus metadata (route pattern, `[Authorize]`, CORS policy, rate-limit policy, ...).\n- Controllers, minimal APIs, Razor Pages, SignalR hubs and gRPC services all register endpoints in the same system.\n- Before `UseRouting`, `HttpContext.GetEndpoint()` is `null`; after a match it returns the selected endpoint.\n- Authentication/authorization and CORS go *between* routing and endpoint execution so they can read that metadata.\n- With `WebApplication` (.NET 6+), the framework wraps your pipeline in `UseRouting`/`UseEndpoints` automatically; call `UseRouting()` yourself only to control where matching happens.\n\n**Detail**\nBefore endpoint routing, MVC did its own routing at the end of the pipeline, so other middleware couldn't know which action would run. Endpoint routing made that information available early, which is why policies are expressed as endpoint metadata.",
+      "code": {
+        "lang": "csharp",
+        "source": "app.UseRouting();\n\napp.Use(async (ctx, next) =>\n{\n    var endpoint = ctx.GetEndpoint();               // selected by UseRouting\n    var needsAuth = endpoint?.Metadata.GetMetadata<IAuthorizeData>() is not null;\n    app.Logger.LogDebug(\"{Endpoint} requires auth: {Auth}\", endpoint?.DisplayName, needsAuth);\n    await next(ctx);\n});\n\napp.UseAuthorization();\napp.MapControllers();   // endpoints run at the end"
+      },
+      "pitfalls": [
+        "Calling `UseAuthorization` before `UseRouting` in older-style pipelines, so no endpoint metadata is available.",
+        "Confusing `app.Map(...)` (branching) with endpoint `Map*` methods.",
+        "Adding `UseEndpoints` in .NET 6+ apps out of habit when `Map*` on the app is enough."
+      ],
+      "followUps": [
+        "What is endpoint metadata used for?",
+        "How do route groups (`MapGroup`) relate to endpoint routing?",
+        "How does routing choose between two matching templates?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/routing",
+          "title": "Routing in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "routing",
+        "middleware"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Endpoint routing is the model from ASP.NET Core 3.0; .NET 6+ `WebApplication` adds `UseRouting`/`UseEndpoints` implicitly.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-route-constraints-not-validation",
+      "topic": "aspnet-core",
+      "subtopic": "routing",
+      "difficulty": "junior",
+      "question": "What are route constraints, and why shouldn't you use them for input validation?",
+      "shortAnswer": "Route constraints such as `{id:int}`, `{id:guid}` or `{name:minlength(3)}` decide whether a URL value lets a route match; they exist to tell similar routes apart. If a constraint fails, the route simply doesn't match and the client gets a 404 instead of a helpful 400, so real validation belongs in model validation.",
+      "answer": "**Key points**\n- Built-in constraints: `int`, `long`, `bool`, `guid`, `datetime`, `decimal`, `min`, `max`, `range`, `minlength`, `maxlength`, `length`, `alpha`, `regex`, `file`, `nonfile`, and more; several can be chained (`{id:int:min(1)}`).\n- They run during matching. A failed constraint means \"not this route\", not \"bad input\".\n- Use them to **disambiguate**: `/products/{id:int}` vs `/products/{slug}`.\n- Values parsed from the URL are stored as strings; type constraints only check they *can* be converted, using the invariant culture.\n- Invalid input should produce **400 Bad Request** with details, which model binding and validation give you.",
+      "code": {
+        "lang": "csharp",
+        "source": "[HttpGet(\"{id:int}\")]        // /api/products/42\npublic IActionResult ById(int id) => Ok();\n\n[HttpGet(\"{slug}\")]          // /api/products/blue-mug\npublic IActionResult BySlug(string slug) => Ok();\n\n// Validation instead of constraints: returns 400 with errors\n[HttpGet]\npublic IActionResult Search([FromQuery, Range(1, 100)] int pageSize = 20) => Ok();"
+      },
+      "pitfalls": [
+        "Using `{age:range(18,120)}` as a business rule; under-age users get a confusing 404.",
+        "Complex regex constraints on hot routes; they cost time on every match.",
+        "Assuming `{date:datetime}` respects the user's culture; it uses the invariant culture."
+      ],
+      "followUps": [
+        "How does routing pick between two templates that both match?",
+        "How would you write a custom route constraint?",
+        "What status code should a malformed id return?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/routing",
+          "title": "Routing in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "routing"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-minimal-apis-vs-controllers",
+      "topic": "aspnet-core",
+      "subtopic": "routing",
+      "difficulty": "mid",
+      "question": "Minimal APIs or controllers: which would you choose for a new Web API, and why?",
+      "shortAnswer": "Microsoft now recommends Minimal APIs for new projects: less ceremony, better performance and easier testing, with route groups, filters, typed results, OpenAPI and (in .NET 10) built-in validation. Controllers remain a good choice when you need MVC-specific extensibility such as custom model binders and validators, application parts or OData, or when the team already knows MVC.",
+      "answer": "**Key points**\n- Both run on the same host, middleware, DI, routing, authentication and authorization; the difference is how endpoints are declared.\n- **Minimal APIs**: `app.MapGet(\"/orders/{id}\", handler)`; organise with `MapGroup`, cross-cutting logic with endpoint filters, return `TypedResults` for accurate OpenAPI metadata.\n- **Controllers**: classes deriving from `ControllerBase`, attribute routing, MVC filters, `[ApiController]` conventions, model-binding and validation extensibility (`IModelBinderProvider`, `IModelValidator`), application parts, OData.\n- Minimal APIs are not just for prototypes; the docs say they scale to multiple APIs, complex routes and authorization rules.\n\n**Detail**\nA reasonable interview answer: \"For a new service I start with Minimal APIs and group endpoints by feature. If the project needs MVC extensibility, or the team and existing code are controller-based, controllers are fine; the choice doesn't affect the rest of the architecture.\"",
+      "code": {
+        "lang": "csharp",
+        "source": "var orders = app.MapGroup(\"/api/orders\").RequireAuthorization();\n\norders.MapGet(\"/{id:int}\", async Task<Results<Ok<OrderDto>, NotFound>> (int id, IOrderService svc) =>\n    await svc.FindAsync(id) is { } o ? TypedResults.Ok(o) : TypedResults.NotFound());"
+      },
+      "pitfalls": [
+        "Claiming Minimal APIs can't do auth, validation or OpenAPI; they can.",
+        "Putting every endpoint in `Program.cs` instead of grouping them in extension methods per feature.",
+        "Switching an existing controller codebase just for style."
+      ],
+      "followUps": [
+        "How do you organise many Minimal API endpoints?",
+        "What are endpoint filters?",
+        "How do `TypedResults` help OpenAPI?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/apis",
+          "title": "APIs overview",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/responses",
+          "title": "Create responses in Minimal API applications",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0",
+          "title": "What's new in ASP.NET Core in .NET 10",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "aspnet-core-overview"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Minimal APIs arrived in .NET 6; route groups and endpoint filters in .NET 7; built-in DataAnnotations validation for Minimal APIs (`AddValidation()`) in .NET 10.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-binding-sources",
+      "topic": "aspnet-core",
+      "subtopic": "model-binding-and-validation",
+      "difficulty": "junior",
+      "question": "Where can model binding get values from, and how does `[ApiController]` decide the source when you don't say?",
+      "shortAnswer": "Values can come from the route, query string, headers, form fields, the request body, or DI, chosen with `[FromRoute]`, `[FromQuery]`, `[FromHeader]`, `[FromForm]`, `[FromBody]` and `[FromServices]`. With `[ApiController]`, complex types default to the body, names that match a route parameter come from the route, `IFormFile` comes from the form, DI-registered types come from services, and everything else comes from the query string.",
+      "answer": "**Key points**\n- Binding attributes: `[FromRoute]`, `[FromQuery]`, `[FromHeader]`, `[FromForm]`, `[FromBody]`, `[FromServices]`, plus `[AsParameters]` in Minimal APIs.\n- **Inference rules under `[ApiController]`**:\n  - complex type registered in DI → `[FromServices]`\n  - other complex type → `[FromBody]` (special types such as `CancellationToken` and `IFormCollection` excepted)\n  - `IFormFile` / `IFormFileCollection` → `[FromForm]`\n  - parameter name matches a route template parameter → `[FromRoute]`\n  - anything else → `[FromQuery]`\n- `[FromBody]` is never inferred for simple types like `string` or `int`; add the attribute if you really want a raw body value.\n- The body is read by an **input formatter** chosen by `Content-Type` (JSON with System.Text.Json by default).\n\n**Detail**\nWithout `[ApiController]` or explicit attributes, MVC uses the complex-type binder, which looks through value providers (form, route, query) in a fixed order, and JSON bodies are ignored unless you mark `[FromBody]`. That difference is a classic \"my DTO is always empty\" bug in controllers without the attribute.",
+      "code": {
+        "lang": "csharp",
+        "source": "[ApiController]\n[Route(\"api/orders\")]\npublic class OrdersController : ControllerBase\n{\n    // id: route   includeLines: query   dto: body   tenant: header   ct: special\n    [HttpPut(\"{id:int}\")]\n    public IActionResult Update(int id, bool includeLines, UpdateOrderDto dto,\n        [FromHeader(Name = \"X-Tenant\")] string tenant, CancellationToken ct) => NoContent();\n}"
+      },
+      "pitfalls": [
+        "Sending JSON to a controller without `[ApiController]` and without `[FromBody]`; the model stays empty.",
+        "Using `[FromRoute]` for values that may contain `%2f`; it isn't unescaped to `/`.",
+        "Expecting `[FromBody] string` to bind JSON objects; it binds a JSON string value."
+      ],
+      "followUps": [
+        "Why can an action have only one `[FromBody]` parameter?",
+        "How does an input formatter get chosen?",
+        "What does `[AsParameters]` do in Minimal APIs?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/web-api/",
+          "title": "Create web APIs with ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/model-binding",
+          "title": "Model Binding in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "model-binding"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-apicontroller-attribute",
+      "topic": "aspnet-core",
+      "subtopic": "model-binding-and-validation",
+      "difficulty": "mid",
+      "question": "What does the `[ApiController]` attribute actually change?",
+      "shortAnswer": "It turns on API-specific conventions: attribute routing becomes required, invalid model state returns an automatic 400 response, binding sources are inferred, `multipart/form-data` is inferred for file parameters, and error status codes (400 and above) are turned into `ProblemDetails` bodies.",
+      "answer": "**Key points**\n- **Attribute routing requirement**: actions can't be reached through conventional routes.\n- **Automatic HTTP 400**: the `ModelStateInvalidFilter` checks `ModelState.IsValid` before your action runs and returns a `ValidationProblemDetails` body, so `if (!ModelState.IsValid) return BadRequest(ModelState);` is unnecessary.\n- **Binding source inference**: complex types from the body, route-named parameters from the route, `IFormFile` from the form, DI types from services, the rest from the query.\n- **Multipart inference** for `IFormFile`/`IFormFileCollection` parameters.\n- **Problem details for error status codes**: results like `NotFound()` produce an RFC 7807/9457-style body with `type`, `title`, `status` and `traceId`.\n\n**Detail**\nEach behaviour can be switched off through `ApiBehaviorOptions` (for example `SuppressModelStateInvalidFilter`, `SuppressInferBindingSourcesForParameters`, `SuppressMapClientErrors`). You can apply the attribute to a base controller or to the whole assembly (`[assembly: ApiController]`).",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddControllers()\n    .ConfigureApiBehaviorOptions(o =>\n    {\n        // Replace the automatic 400 with your own shape\n        o.InvalidModelStateResponseFactory = ctx =>\n            new BadRequestObjectResult(new ValidationProblemDetails(ctx.ModelState)\n            {\n                Extensions = { [\"traceId\"] = ctx.HttpContext.TraceIdentifier }\n            });\n    });"
+      },
+      "pitfalls": [
+        "Keeping manual `ModelState.IsValid` checks that never run because the filter already returned 400.",
+        "Being surprised that a custom validation filter doesn't run for invalid models; the automatic 400 filter runs first.",
+        "Assuming the attribute adds authorization or versioning; it doesn't."
+      ],
+      "followUps": [
+        "How would you customise the automatic 400 response?",
+        "Where does `ModelStateInvalidFilter` run relative to your action filters?",
+        "What is `ValidationProblemDetails`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/web-api/",
+          "title": "Create web APIs with ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "controllers",
+        "model-validation",
+        "validation-filter-and-extensions"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-single-frombody",
+      "topic": "aspnet-core",
+      "subtopic": "model-binding-and-validation",
+      "difficulty": "junior",
+      "question": "Why can an action method have only one `[FromBody]` parameter? How do you accept two objects in one request?",
+      "shortAnswer": "The request body is a stream that an input formatter reads once to build one object; after that it can't be read again for a second `[FromBody]` parameter, and ASP.NET Core throws when it sees two. Wrap both objects in one request DTO instead.",
+      "answer": "**Key points**\n- Input formatters own the whole body and deserialize it into **one** parameter.\n- Two body-bound parameters (explicit or inferred) make ASP.NET Core throw an exception rather than bind half the data.\n- Fix: a wrapper DTO (`CreateOrderRequest { Customer, Lines }`), or move small values to the route, query or headers.\n- Simple types are not inferred as `[FromBody]`, so `Post(int id, OrderDto dto)` is fine: `id` comes from route or query.",
+      "code": {
+        "lang": "csharp",
+        "source": "// Throws: two complex types are both inferred as [FromBody]\n// public IActionResult Create(CustomerDto customer, OrderDto order)\n\npublic sealed record CreateOrderRequest(CustomerDto Customer, OrderDto Order);\n\n[HttpPost]\npublic IActionResult Create(CreateOrderRequest request) => Ok();"
+      },
+      "pitfalls": [
+        "Reading `Request.Body` manually in a filter and then expecting the formatter to read it again (it needs buffering).",
+        "Adding a second complex parameter for a service and forgetting it must be registered in DI to be inferred as `[FromServices]`."
+      ],
+      "followUps": [
+        "How would you read the raw body twice, for example for request signing?",
+        "What decides which input formatter runs?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/model-binding",
+          "title": "Model Binding in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/web-api/",
+          "title": "Create web APIs with ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "model-binding"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-data-annotations-vs-fluentvalidation",
+      "topic": "aspnet-core",
+      "subtopic": "model-binding-and-validation",
+      "difficulty": "mid",
+      "question": "Data annotations or FluentValidation: how do they differ, and how do you run FluentValidation in a Web API today?",
+      "shortAnswer": "Data annotations are attributes on the model that MVC (and, from .NET 10, Minimal APIs) validates automatically; FluentValidation keeps rules in separate validator classes with a fluent API that handles conditional, cross-property and async rules well. FluentValidation's own docs no longer recommend its ASP.NET auto-validation pipeline, so you call validators explicitly, typically from a filter.",
+      "answer": "**Key points**\n- **Data annotations**: `[Required]`, `[StringLength]`, `[Range]`, `[EmailAddress]`, custom `ValidationAttribute`, or `IValidatableObject` for class-level rules. Results land in `ModelState`; `[ApiController]` turns errors into a 400.\n- **FluentValidation**: `AbstractValidator<T>` with `RuleFor(...)`; easy to unit test, reusable, keeps DTOs clean, supports `MustAsync`.\n- The `FluentValidation.AspNetCore` auto-validation package is no longer supported. Its main limitation: the ASP.NET validation pipeline is synchronous, so async rules can't run there.\n- Recommended: inject `IValidator<T>` and call `ValidateAsync` manually, or use an action/endpoint filter that resolves the validator for each argument and returns a 400.\n\n**Detail**\nKeep database checks (\"email already taken\") in the service layer, not in validators that run on every request, unless you accept the extra queries. Pick one style per project so errors have a single, consistent shape.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class CreateUserValidator : AbstractValidator<CreateUserRequest>\n{\n    public CreateUserValidator()\n    {\n        RuleFor(x => x.Email).NotEmpty().EmailAddress();\n        RuleFor(x => x.Password).MinimumLength(12)\n            .When(x => x.Provider == AuthProvider.Local);\n    }\n}\n\n// Explicit validation\nvar result = await validator.ValidateAsync(request, ct);\nif (!result.IsValid) return ValidationProblem(new ValidationProblemDetails(result.ToDictionary()));"
+      },
+      "pitfalls": [
+        "Using async FluentValidation rules with the legacy auto-validation pipeline; it throws at runtime.",
+        "Registering validators by hand and forgetting one, so that endpoint is never validated.",
+        "Mixing annotations and FluentValidation on the same DTO and getting two error formats."
+      ],
+      "followUps": [
+        "How would you build a filter that runs FluentValidation for any action argument?",
+        "What is `IValidatableObject`?",
+        "Where should 'already exists' checks live?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/validation",
+          "title": "Model validation in ASP.NET Core MVC",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://docs.fluentvalidation.net/en/latest/aspnet.html",
+          "title": "ASP.NET Core — FluentValidation documentation",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0",
+          "title": "What's new in ASP.NET Core in .NET 10",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "fluent-validation",
+        "model-validation",
+        "validation-filter-and-extensions"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Built-in DataAnnotations validation for Minimal APIs (`builder.Services.AddValidation()`) is new in .NET 10; controllers have validated annotations since ASP.NET Core 1.0.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-overposting",
+      "topic": "aspnet-core",
+      "subtopic": "model-binding-and-validation",
+      "difficulty": "senior",
+      "question": "What is overposting (mass assignment), and how do you prevent it in a JSON Web API?",
+      "shortAnswer": "Overposting is when a client sets properties you never meant to accept, such as `IsAdmin` or `Price`, because the action binds straight to an entity. In a JSON API the fix is a dedicated request DTO containing only the fields the client may set; `[Bind]` and `[BindNever]` don't help there because they only affect form/route/query binding, not JSON input formatters.",
+      "answer": "**Key points**\n- Binding to an EF entity exposes every settable property, including keys, flags and audit columns.\n- **Use input DTOs per use case** (`CreateProductRequest`, `UpdatePriceRequest`) and map them to entities explicitly or with a mapper configured to ignore everything else.\n- `[Bind(\"Name,Price\")]` and `[BindNever]` apply to model binding from **form data, route and query values**. Microsoft's docs state they do **not** affect input formatters, which handle JSON and XML bodies.\n- For JSON, `[JsonIgnore]` (or a get-only property) stops the serializer from setting a property, but `init` setters *are* set by System.Text.Json; DTOs are still the clearer contract.\n- Even in form scenarios, Microsoft recommends view models over `[Bind]`, because excluded properties are reset to defaults on edit.\n\n**Detail**\nSeparate request and response DTOs also stop *over-fetching* the other way: you don't leak internal fields in responses either.",
+      "code": {
+        "lang": "csharp",
+        "source": "// ❌ binds to the entity: a client can send \"isAdminOnly\": true\n[HttpPost] public IActionResult Create(Product product) { /* ... */ }\n\n// ✅ only what the client may set\npublic sealed record CreateProductRequest(string Name, decimal Price);\n\n[HttpPost]\npublic async Task<IActionResult> Create(CreateProductRequest req)\n{\n    var product = new Product { Name = req.Name, Price = req.Price }; // IsAdminOnly stays false\n    await _repo.AddAsync(product);\n    return CreatedAtAction(nameof(Get), new { id = product.Id }, product.Id);\n}"
+      },
+      "pitfalls": [
+        "Relying on `[Bind]`/`[BindNever]` to protect `[FromBody]` JSON; the JSON formatter ignores them.",
+        "Reusing one DTO for create, update and response, so every field becomes writable.",
+        "Using a mapper that maps all matching names from DTO to entity, which re-creates the problem."
+      ],
+      "followUps": [
+        "Where do `[Bind]` and `[BindNever]` still make sense?",
+        "How do you handle partial updates without overposting?",
+        "Why separate request and response DTOs?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/model-binding",
+          "title": "Model Binding in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "model-binding",
+        "ef-configuration-and-automapper"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-nullable-implicit-required",
+      "topic": "aspnet-core",
+      "subtopic": "model-binding-and-validation",
+      "difficulty": "mid",
+      "question": "With nullable reference types enabled, why does a missing `string Name` property cause a validation error even without `[Required]`?",
+      "shortAnswer": "When the project has `<Nullable>enable</Nullable>`, MVC validation treats non-nullable reference-type properties and parameters as if they had `[Required(AllowEmptyStrings = true)]`. A missing value therefore fails validation; declare the property as `string?` to make it optional, or turn the behaviour off with `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes`.",
+      "answer": "**Key points**\n- Non-nullable `string Name` means \"required\" to the validator; `string? Nickname` means optional.\n- Even with `AllowEmptyStrings = true` implied, an empty form value fails, because empty strings are converted to `null` by default during binding.\n- Value types (`int`, `DateTime`) are never null, so `[Required]` on them does nothing; missing values just get the default. Use `int?` plus `[Required]` if the client must send it.\n- Opt out globally with `MvcOptions.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true`.\n\n**Detail**\nThis is usually what you want: your C# nullability annotations and your API contract agree. It surprises people after enabling nullable in an older project, when previously optional fields start returning 400s.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class CreateCustomer\n{\n    public string Name { get; set; } = \"\";   // implicitly required\n    public string? Nickname { get; set; }     // optional\n    [Required] public int? Age { get; set; }  // value type: make it nullable to require it\n}"
+      },
+      "pitfalls": [
+        "Putting `[Required]` on a plain `int` and thinking a missing value is caught.",
+        "Initialising `Name = \"\"` and assuming that makes it optional; validation still sees a missing value.",
+        "Enabling nullable in an existing API without checking which contracts become stricter."
+      ],
+      "followUps": [
+        "How would you make validation error messages use the JSON property names?",
+        "What is the difference between `[Required]` and `[BindRequired]`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/validation",
+          "title": "Model validation in ASP.NET Core MVC",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "model-validation"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "Implicit `[Required]` for non-nullable reference types applies to MVC/controllers from ASP.NET Core 3.0 when nullable context is enabled.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-cancellation-token-in-actions",
+      "topic": "aspnet-core",
+      "subtopic": "model-binding-and-validation",
+      "difficulty": "mid",
+      "question": "Why add a `CancellationToken` parameter to an action, and where does its value come from?",
+      "shortAnswer": "Model binding gives a `CancellationToken` action parameter the value of `HttpContext.RequestAborted`, which is signalled when the client disconnects. Passing it to EF Core, `HttpClient` and other async calls lets the server stop work nobody is waiting for.",
+      "answer": "**Key points**\n- `CancellationToken` is a special type: it's never inferred as `[FromBody]`; it binds to `RequestAborted`.\n- Pass it all the way down: `ToListAsync(ct)`, `SaveChangesAsync(ct)`, `httpClient.GetAsync(url, ct)`.\n- When it fires, those calls throw `OperationCanceledException`. Let it bubble or catch it deliberately; don't log it as an error.\n- Cancellation is cooperative: CPU-bound loops must check `ct.ThrowIfCancellationRequested()` themselves.\n\n**Detail**\nNot every operation should stop when the client goes away. For \"fire and complete\" work (charging a card, sending an email after commit), use `CancellationToken.None` or move the work to a background queue, so a disconnect doesn't leave the system half-updated.",
+      "code": {
+        "lang": "csharp",
+        "source": "[HttpGet]\npublic async Task<ActionResult<List<OrderDto>>> List([FromQuery] int page, CancellationToken ct)\n{\n    var items = await _db.Orders\n        .AsNoTracking()\n        .OrderBy(o => o.Id)\n        .Skip(page * 20).Take(20)\n        .Select(o => new OrderDto(o.Id, o.Total))\n        .ToListAsync(ct);          // query is cancelled if the client disconnects\n    return items;\n}"
+      },
+      "pitfalls": [
+        "Accepting the token but never passing it on.",
+        "Cancelling a multi-step write midway; decide which steps must finish regardless.",
+        "Treating `OperationCanceledException` from an aborted request as a server error."
+      ],
+      "followUps": [
+        "How does `RequestAborted` relate to server timeouts?",
+        "What status does the exception handler use for aborted requests?",
+        "How do you combine the request token with a timeout?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/model-binding",
+          "title": "Model Binding in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/web-api/",
+          "title": "Create web APIs with ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "routing",
+        "async-await"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-filter-types-and-order",
+      "topic": "aspnet-core",
+      "subtopic": "filters",
+      "difficulty": "mid",
+      "question": "What filter types does ASP.NET Core MVC have, and in what order do they run?",
+      "shortAnswer": "In order: authorization filters, resource filters, then (after model binding) action filters around the action, exception filters for unhandled exceptions from the action, and result filters around result execution. Filters run inside the MVC action invocation pipeline, after routing has chosen the action.",
+      "answer": "**Key points**\n- **Authorization** (`IAuthorizationFilter`): first; short-circuits unauthorized requests.\n- **Resource** (`IResourceFilter`): wraps most of the pipeline; its \"before\" runs before model binding (useful for caching or short-circuiting).\n- **Action** (`IActionFilter` / `IAsyncActionFilter`): just before and after the action; can read or change arguments and the result. Not supported in Razor Pages.\n- **Exception** (`IExceptionFilter`): handles unhandled exceptions from controller creation, action filters and the action; doesn't run for exceptions in resource filters, result filters or result execution.\n- **Result** (`IResultFilter`): around executing the action result, only when the action succeeded. `IAlwaysRunResultFilter` runs even after short-circuits.\n- Minimal APIs have **endpoint filters** instead.\n\n**Detail**\nWithin one stage, global filters wrap controller filters, which wrap action filters (\"before\" code outside-in, \"after\" code inside-out). `IOrderedFilter.Order` overrides that: lower values run their \"before\" code first.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class TimingFilter(ILogger<TimingFilter> log) : IAsyncActionFilter\n{\n    public async Task OnActionExecutionAsync(ActionExecutingContext ctx, ActionExecutionDelegate next)\n    {\n        var sw = Stopwatch.StartNew();\n        var executed = await next();               // the action runs here\n        log.LogInformation(\"{Action} took {Ms} ms\", ctx.ActionDescriptor.DisplayName, sw.ElapsedMilliseconds);\n    }\n}\n\nbuilder.Services.AddControllers(o => o.Filters.Add<TimingFilter>()); // global"
+      },
+      "pitfalls": [
+        "Expecting an exception filter to catch errors thrown by middleware or by result execution.",
+        "Implementing both sync and async interfaces on one filter; only the async one is called.",
+        "Using filters for logging the framework already logs."
+      ],
+      "followUps": [
+        "How do you short-circuit from a resource or action filter?",
+        "When would you choose middleware over a filter?",
+        "How do filters get services from DI?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/filters",
+          "title": "Filters in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "validation-filter-and-extensions",
+        "fluent-validation"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-middleware-vs-filters",
+      "topic": "aspnet-core",
+      "subtopic": "filters",
+      "difficulty": "mid",
+      "question": "Middleware or a filter: how do you decide where cross-cutting logic belongs?",
+      "shortAnswer": "Middleware sees every request at the HTTP level, before and after routing, and knows nothing about MVC; filters run only for MVC actions, after an action is selected, with access to action arguments, model state and the action result. Use middleware for app-wide HTTP concerns and filters for logic that needs MVC context or differs per controller or action.",
+      "answer": "**Key points**\n- **Middleware**: logging, correlation IDs, exception handling, security headers, CORS, rate limiting, static files. Works for all endpoint types, including Minimal APIs and requests that never reach MVC (404s, static files).\n- **Filters**: validation of bound arguments, transaction-per-action, shaping action results, per-controller policies applied with attributes.\n- Filters can be applied globally, per controller or per action; middleware applies to the whole pipeline (or a branch).\n- Microsoft's guidance: prefer middleware for exception handling; use exception filters only when handling differs by action (for example JSON for API actions, an HTML page for views).\n\n**Detail**\nA resource filter behaves like middleware inside MVC: it wraps model binding and everything after it. You can even run middleware *as* a filter with `[MiddlewareFilter]`, which places it at the resource-filter stage.",
+      "pitfalls": [
+        "Writing request logging as an action filter and missing every request that fails before an action is chosen.",
+        "Putting model-validation logic in middleware, where action arguments don't exist yet.",
+        "Duplicating the same concern in both places."
+      ],
+      "followUps": [
+        "Which of the two runs for a request to an unknown URL?",
+        "How would you do the same in Minimal APIs?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/filters",
+          "title": "Filters in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/",
+          "title": "ASP.NET Core middleware",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "middleware",
+        "validation-filter-and-extensions"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-servicefilter-vs-typefilter",
+      "topic": "aspnet-core",
+      "subtopic": "filters",
+      "difficulty": "senior",
+      "question": "How do filters get dependencies from DI? Compare `[ServiceFilter]`, `[TypeFilter]`, `IFilterFactory` and global registration.",
+      "shortAnswer": "Filter attributes can't take DI services in their constructors, so you use `[ServiceFilter(typeof(T))]`, which resolves `T` from the container (it must be registered), or `[TypeFilter(typeof(T))]`, which creates `T` with `ActivatorUtilities` (no registration needed, extra constructor arguments allowed). Globally, `Filters.Add<T>()` type-activates the filter per request, while `Filters.AddService<T>()` resolves it from DI.",
+      "answer": "**Key points**\n- Attribute constructors need compile-time constants, so services can't be injected there.\n- **`ServiceFilterAttribute`**: gets the filter instance from DI. You control its lifetime by how you register it.\n- **`TypeFilterAttribute`**: builds the filter with `ObjectFactory`/`ActivatorUtilities`; its dependencies still come from DI, but the filter type itself needn't be registered. Accepts `Arguments` for non-DI constructor values.\n- **`IFilterFactory`** on your own attribute: full control of how the instance is created (both built-in attributes implement it).\n- **Global**: `options.Filters.Add<T>()` / `Add(typeof(T))` wraps the type in a `TypeFilterAttribute` (created per request, no registration needed); `options.Filters.AddService<T>()` resolves from DI. Adding an *instance* makes it a singleton shared by all requests.\n- `IsReusable = true` is only a hint, and only safe when the filter's dependencies are singletons.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddScoped<AuditFilter>();          // needed for ServiceFilter / AddService\n\nbuilder.Services.AddControllers(o =>\n{\n    o.Filters.Add<ValidationFilter>();              // type-activated, no registration required\n    o.Filters.AddService<AuditFilter>();            // resolved from DI\n});\n\n[ServiceFilter(typeof(AuditFilter))]\n[TypeFilter(typeof(RequireHeaderFilter), Arguments = new object[] { \"X-Tenant\" })]\npublic class ReportsController : ControllerBase { }"
+      },
+      "pitfalls": [
+        "Registering a filter instance globally that holds a scoped dependency; the instance is a singleton.",
+        "Forgetting to register a `[ServiceFilter]` type, which fails at request time.",
+        "Setting `IsReusable` on a filter that depends on scoped services."
+      ],
+      "followUps": [
+        "What lifetime does a type-activated filter have?",
+        "How do endpoint filters in Minimal APIs get services?",
+        "How would you exclude one action from a global filter?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/filters",
+          "title": "Filters in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Mvc/Mvc.Core/src/Filters/FilterCollection.cs",
+          "title": "FilterCollection.cs (dotnet/aspnetcore)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "validation-filter-and-extensions"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-endpoint-filters",
+      "topic": "aspnet-core",
+      "subtopic": "filters",
+      "difficulty": "mid",
+      "question": "What are endpoint filters in Minimal APIs, and how do they compare with MVC action filters?",
+      "shortAnswer": "Endpoint filters (`IEndpointFilter` or a delegate passed to `AddEndpointFilter`) run around a Minimal API handler, can inspect or change its arguments through `EndpointFilterInvocationContext`, short-circuit by returning a result, or post-process the handler's result. They play the role action filters play for controllers, with a simpler single-stage model.",
+      "answer": "**Key points**\n- Register on an endpoint or a route group: `.AddEndpointFilter<ValidationFilter<T>>()`.\n- `context.Arguments` holds the handler's arguments in declaration order; `context.GetArgument<T>(index)` reads one.\n- Return a value (for example `TypedResults.ValidationProblem(...)`) to short-circuit, or `await next(context)` to continue.\n- Multiple filters: code *before* `next` runs first-in-first-out, code *after* `next` runs first-in-last-out.\n- Filters implementing `IEndpointFilter` can take constructor dependencies from DI, but the filter itself isn't resolved from DI.\n- Applying a filter to a `MapGroup` applies it to every endpoint in the group.\n\n**Detail**\nThere is only one kind of endpoint filter (no separate authorization/resource/result stages); authorization still comes from endpoint metadata and middleware.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class ValidationFilter<T>(IValidator<T> validator) : IEndpointFilter\n{\n    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)\n    {\n        var arg = ctx.Arguments.OfType<T>().FirstOrDefault();\n        if (arg is null) return await next(ctx);\n        var result = await validator.ValidateAsync(arg);\n        return result.IsValid ? await next(ctx) : TypedResults.ValidationProblem(result.ToDictionary());\n    }\n}\n\napp.MapPost(\"/users\", (CreateUserRequest r, IUserService s) => s.CreateAsync(r))\n   .AddEndpointFilter<ValidationFilter<CreateUserRequest>>();"
+      },
+      "pitfalls": [
+        "Assuming MVC action filters apply to Minimal API endpoints; they don't.",
+        "Depending on argument positions that change when the handler signature changes.",
+        "Doing heavy work in a filter applied to a whole group without measuring it."
+      ],
+      "followUps": [
+        "What is an endpoint filter factory used for?",
+        "How do route groups help apply filters and policies?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/min-api-filters",
+          "title": "Filters in Minimal API apps",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/filters",
+          "title": "Filters in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [],
+      "notCoveredYet": true,
+      "versionNote": "Endpoint filters and route groups were added in .NET 7.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-global-exception-handling-options",
+      "topic": "aspnet-core",
+      "subtopic": "error-handling",
+      "difficulty": "junior",
+      "question": "How do you handle unhandled exceptions globally in an ASP.NET Core Web API?",
+      "shortAnswer": "Add the exception handler middleware early (`app.UseExceptionHandler()`), together with `AddProblemDetails()` or one or more `IExceptionHandler` implementations, so every unhandled exception becomes a logged, consistent error response without stack traces. In Development the developer exception page shows details instead; a custom middleware with try/catch is the hand-made alternative.",
+      "answer": "**Key points**\n- **Developer exception page**: on by default in Development; detailed, never for production.\n- **`UseExceptionHandler`**: catches exceptions from everything registered after it; can re-execute an error path, run a lambda, or (with `AddProblemDetails`) write a ProblemDetails body.\n- **`IExceptionHandler`** (.NET 8+): register with `AddExceptionHandler<T>()`; handlers run in registration order until one returns `true`. They only run if `UseExceptionHandler` is in the pipeline.\n- **Custom middleware**: `try { await next(ctx); } catch (Exception ex) { ... }`, mapping exception types to status codes. Works everywhere; you own all the details.\n- **Exception filters** are MVC-only and narrower; prefer middleware.\n\n**Detail**\nWhatever you choose: log the exception once with the trace ID, return a generic message for 500s, map known exception types to 4xx deliberately, and keep business \"expected failures\" out of exceptions where you can.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddProblemDetails();\nbuilder.Services.AddExceptionHandler<NotFoundExceptionHandler>(); // optional, .NET 8+\n\nvar app = builder.Build();\nif (!app.Environment.IsDevelopment())\n    app.UseExceptionHandler();   // without this, IExceptionHandler never runs"
+      },
+      "pitfalls": [
+        "Returning `exception.Message` or stack traces to clients in production.",
+        "Registering `IExceptionHandler` but never calling `UseExceptionHandler`.",
+        "Wrapping every action in try/catch instead of handling errors in one place."
+      ],
+      "followUps": [
+        "How does `IExceptionHandler` decide which handler wins?",
+        "What is ProblemDetails?",
+        "Should validation errors go through the exception handler?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling",
+          "title": "Handle errors in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api",
+          "title": "Handle errors in ASP.NET Core APIs",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/filters",
+          "title": "Filters in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "global-exception-handling",
+        "middleware"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`IExceptionHandler` requires .NET 8+; `AddProblemDetails` and `IProblemDetailsService` .NET 7+.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-problem-details",
+      "topic": "aspnet-core",
+      "subtopic": "error-handling",
+      "difficulty": "mid",
+      "question": "What is ProblemDetails, and how do you make every error response from your API use it?",
+      "shortAnswer": "ProblemDetails is the standard JSON error format for HTTP APIs (`application/problem+json`) defined by RFC 9457, which replaced RFC 7807, with `type`, `title`, `status`, `detail` and `instance` plus extension members. In ASP.NET Core, `AddProblemDetails()` makes the exception handler, status code pages and developer exception page produce it, and `[ApiController]` already uses it for 4xx results.",
+      "answer": "**Key points**\n- Standard members: `type` (a URI identifying the problem type), `title`, `status`, `detail`, `instance`; add your own, such as `traceId` or `errors`.\n- `ValidationProblemDetails` adds an `errors` dictionary for field errors.\n- `builder.Services.AddProblemDetails()` registers `IProblemDetailsService`; then:\n  - `UseExceptionHandler()` writes ProblemDetails for unhandled exceptions,\n  - `UseStatusCodePages()` writes ProblemDetails for empty 4xx/5xx responses (for example an unmatched route's 404),\n  - the developer exception page returns ProblemDetails when the client doesn't accept HTML.\n- `CustomizeProblemDetails` lets you add fields such as `traceId` to every response in one place.\n- In controllers, `Problem(...)` and `ValidationProblem(...)` create them explicitly; in Minimal APIs, `TypedResults.Problem(...)`.\n\n**Detail**\nOne error shape means clients write one error handler. The middleware skips the ProblemDetails body when the request's `Accept` header excludes JSON (the default writer's content type).",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddProblemDetails(o =>\n    o.CustomizeProblemDetails = ctx =>\n        ctx.ProblemDetails.Extensions[\"traceId\"] = ctx.HttpContext.TraceIdentifier);\n\napp.UseExceptionHandler();\napp.UseStatusCodePages();   // body for empty 404/405 responses too"
+      },
+      "pitfalls": [
+        "Having three error formats: automatic 400s, exception handler output and hand-written `{ message }` objects.",
+        "Putting internal exception messages in `detail` for 500s.",
+        "Returning ProblemDetails with HTTP 200."
+      ],
+      "followUps": [
+        "How do you add a `traceId` to every error response?",
+        "What is the `type` member supposed to contain?",
+        "How do you customise the automatic 400 for invalid models?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc9457",
+          "title": "RFC 9457: Problem Details for HTTP APIs",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling",
+          "title": "Handle errors in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api",
+          "title": "Handle errors in ASP.NET Core APIs",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "global-exception-handling",
+        "return-types"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "RFC 9457 (2023) obsoletes RFC 7807; ASP.NET Core docs still link 7807 and the format is compatible. `AddProblemDetails` is .NET 7+.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-iexceptionhandler-details",
+      "topic": "aspnet-core",
+      "subtopic": "error-handling",
+      "difficulty": "senior",
+      "question": "How does `IExceptionHandler` work, and what mistakes do people make with it?",
+      "shortAnswer": "`IExceptionHandler` (.NET 8+) has one method, `TryHandleAsync`; the exception handler middleware calls the registered handlers in order until one returns `true`, and falls back to its default behaviour if none does. Handlers are singletons, only run when `UseExceptionHandler` is in the pipeline, and a handler that returns `true` must write the whole response itself.",
+      "answer": "**Key points**\n- Register with `builder.Services.AddExceptionHandler<T>()`; several can be chained, called in registration order.\n- **Lifetime is singleton**: inject only singleton-safe services, or create a scope.\n- `app.UseExceptionHandler()` with no arguments needs a fallback: an error path, `AddProblemDetails()`, or a handler lambda, otherwise startup throws.\n- Return `false` to pass the exception on (useful for a logging-only handler); return `true` only after setting the status code and writing the body (for example with `IProblemDetailsService.TryWriteAsync`). If you return `true` without writing anything, the client gets a 404 and a warning is logged.\n- Exceptions after the response has started can't be turned into an error response.\n- For aborted requests (`OperationCanceledException` with `RequestAborted` signalled) the middleware doesn't treat it as a server error; it sets 499 if the response hasn't started.\n\n**Detail**\n.NET 10 changed diagnostics: when a handler returns `true`, the middleware no longer emits its error logs and metrics by default (in .NET 8 and 9 it always did); `SuppressDiagnosticsCallback` controls this.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class ConflictExceptionHandler(IProblemDetailsService problems) : IExceptionHandler\n{\n    public async ValueTask<bool> TryHandleAsync(HttpContext ctx, Exception ex, CancellationToken ct)\n    {\n        if (ex is not DbUpdateConcurrencyException) return false;   // let others handle it\n        ctx.Response.StatusCode = StatusCodes.Status409Conflict;\n        return await problems.TryWriteAsync(new ProblemDetailsContext\n        {\n            HttpContext = ctx,\n            ProblemDetails = { Title = \"The record was changed by someone else.\" },\n            Exception = ex\n        });\n    }\n}"
+      },
+      "pitfalls": [
+        "Injecting a scoped DbContext into a handler (singleton lifetime).",
+        "Returning `true` without writing a response.",
+        "Expecting the handler to run without `app.UseExceptionHandler()`."
+      ],
+      "followUps": [
+        "How would you map domain exceptions to status codes with several handlers?",
+        "What changed about handled-exception logging in .NET 10?",
+        "How does `StatusCodeSelector` (.NET 9) compare with a custom handler?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling",
+          "title": "Handle errors in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-9.0",
+          "title": "What's new in ASP.NET Core in .NET 9",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Middleware/Diagnostics/src/ExceptionHandler/ExceptionHandlerMiddlewareImpl.cs",
+          "title": "ExceptionHandlerMiddlewareImpl.cs (dotnet/aspnetcore)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "global-exception-handling"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`IExceptionHandler` .NET 8+; `ExceptionHandlerOptions.StatusCodeSelector` .NET 9+; suppressed diagnostics for handled exceptions by default in .NET 10.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-exceptions-vs-result-pattern",
+      "topic": "aspnet-core",
+      "subtopic": "error-handling",
+      "difficulty": "senior",
+      "question": "Should services throw exceptions for expected failures such as 'not found' or 'already exists', or return a result object?",
+      "shortAnswer": "Exceptions are for unexpected conditions; throwing and catching them is slow and makes normal control flow hard to follow, and Microsoft's guidance is not to use them for normal program flow. Expected outcomes are better returned as data (a `Result<T>` with an error and status, or `null`/`TryX` patterns), with the global exception handler kept for genuine failures.",
+      "answer": "**Key points**\n- ASP.NET Core best practices: \"minimize exceptions\"; don't throw or catch them as normal flow, especially on hot paths.\n- .NET exception guidance: check for routine conditions instead of relying on exceptions, and offer `Try*` methods.\n- A **result type** makes failure part of the method signature: callers can't forget to handle it, and the controller maps it to 404/409/400 in one `switch`.\n- Keep exceptions for bugs and infrastructure faults (database down, null reference, timeouts) and let middleware turn them into 500s with logging.\n\n**Detail**\nTrade-offs: result types add some ceremony and need discipline at every layer; exceptions-for-everything is simpler to start but mixes expected 404s into error logs and metrics. Many teams map a small set of domain exceptions to status codes in an `IExceptionHandler` as a middle ground; whichever you pick, be consistent.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed record Result<T>(T? Value, string? Error, int Status)\n{\n    public bool IsSuccess => Error is null;\n    public static Result<T> Ok(T v) => new(v, null, 200);\n    public static Result<T> Fail(string e, int status) => new(default, e, status);\n}\n\nvar result = await _service.GetAsync(id, ct);\nreturn result.Status switch\n{\n    200 => Ok(result.Value),\n    404 => NotFound(result.Error),\n    409 => Conflict(result.Error),\n    _   => Problem(result.Error)\n};"
+      },
+      "pitfalls": [
+        "Throwing `NotFoundException` on a hot path and filling error logs with expected 404s.",
+        "Catching `Exception` in every service and returning a generic failure, which hides real bugs.",
+        "Mixing both styles randomly in one codebase."
+      ],
+      "followUps": [
+        "Where do you translate a result into an HTTP status code?",
+        "Which exceptions would you still let reach the global handler?",
+        "How do you avoid swallowing `OperationCanceledException`?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+          "title": "ASP.NET Core Best Practices",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/standard/exceptions/best-practices-for-exceptions",
+          "title": "Best practices for exceptions",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "global-exception-handling",
+        "exception-handling"
+      ],
+      "notCoveredYet": true,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-httpclient-socket-exhaustion",
+      "topic": "aspnet-core",
+      "subtopic": "httpclient",
+      "difficulty": "mid",
+      "question": "Why is `new HttpClient()` per request a problem, and what should you do instead?",
+      "shortAnswer": "Each `HttpClient` that owns its handler has its own connection pool, so creating and disposing one per request opens new connections every time and leaves closed sockets in `TIME_WAIT`, which can exhaust ports under load; a single client kept forever has the opposite problem of never re-resolving DNS. Use `IHttpClientFactory`, or a long-lived client whose `SocketsHttpHandler.PooledConnectionLifetime` is set.",
+      "answer": "**Key points**\n- `HttpClient` implements `IDisposable` but is designed to be **reused**.\n- Closed connections keep their TCP ports for a while (`TIME_WAIT`); at a high request rate the OS runs out of ports.\n- `HttpClient` resolves DNS only when it opens a connection, so a client that lives forever can keep talking to an old IP.\n- **Option 1, .NET Core / .NET 5+**: one static or singleton `HttpClient` with `PooledConnectionLifetime` (for example 2-15 minutes) solves both problems.\n- **Option 2**: `IHttpClientFactory` pools and recycles `HttpMessageHandler`s (default handler lifetime 2 minutes) and gives you named/typed clients, configuration and handler pipelines. Factory-created clients are meant to be short-lived.\n- On .NET Framework, use `IHttpClientFactory`.\n\n**Detail**\nInside ASP.NET Core apps, the factory is usually the better default because it also integrates logging, DI and resilience handlers. Don't use the factory if you rely on cookies: pooled handlers share a `CookieContainer`, and cookies are lost when a handler is recycled.",
+      "code": {
+        "lang": "csharp",
+        "source": "// ❌ new pool per call\nusing var client = new HttpClient();\n\n// ✅ long-lived client that still notices DNS changes\nprivate static readonly HttpClient Shared = new(new SocketsHttpHandler\n{\n    PooledConnectionLifetime = TimeSpan.FromMinutes(2)\n});\n\n// ✅ or the factory\nbuilder.Services.AddHttpClient(\"github\", c => c.BaseAddress = new Uri(\"https://api.github.com/\"));"
+      },
+      "pitfalls": [
+        "Wrapping `HttpClient` in `using` inside a loop or a per-request service.",
+        "Making a factory-created client a static field; the factory can no longer rotate it.",
+        "Changing `BaseAddress` or default headers on a shared client from several threads."
+      ],
+      "followUps": [
+        "What does `IHttpClientFactory` actually pool?",
+        "Named or typed clients: which would you choose?",
+        "How do you add retries to outgoing calls?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient-guidelines",
+          "title": "HttpClient guidelines for .NET",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/httpclient-factory",
+          "title": "Use the IHttpClientFactory",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices",
+          "title": "ASP.NET Core Best Practices",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "client-calling-web-api",
+        "httpclient"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`SocketsHttpHandler` and `PooledConnectionLifetime` are .NET Core 2.1+; on .NET Framework use `IHttpClientFactory`.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-named-vs-typed-clients",
+      "topic": "aspnet-core",
+      "subtopic": "httpclient",
+      "difficulty": "mid",
+      "question": "What is the difference between basic, named and typed clients with `IHttpClientFactory`?",
+      "shortAnswer": "Basic usage calls `factory.CreateClient()` with default settings; a named client registers configuration under a name and you call `CreateClient(\"name\")`; a typed client is a class that receives a preconfigured `HttpClient` in its constructor and wraps the remote API in methods. Microsoft recommends the typed-client approach when you want the factory's configurability.",
+      "answer": "**Key points**\n- **Basic**: `AddHttpClient()` then `IHttpClientFactory.CreateClient()`. Quick refactor of existing code.\n- **Named**: `AddHttpClient(\"github\", c => ...)`. Several configurations, but you pass string names around.\n- **Typed**: `AddHttpClient<GitHubClient>(c => ...)`. Strongly typed, keeps all calls to one API in one class, easy to mock behind an interface. The typed client is registered as **transient**.\n- **Generated**: tools like Refit generate the typed client from an interface.\n- All of them share the factory's handler pooling, logging and `DelegatingHandler` pipeline.\n\n**Detail**\nDon't inject a typed client into a singleton: the captured `HttpClient` never gets a fresh handler, so DNS changes are missed, which defeats the factory's purpose. If a singleton needs it, inject `IHttpClientFactory` and create the client when needed, or configure `PooledConnectionLifetime`.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddHttpClient<IGitHubClient, GitHubClient>(c =>\n{\n    c.BaseAddress = new Uri(\"https://api.github.com/\");\n    c.DefaultRequestHeaders.UserAgent.ParseAdd(\"LearnYourself/1.0\");\n});\n\npublic sealed class GitHubClient(HttpClient http) : IGitHubClient\n{\n    public Task<Repo?> GetRepoAsync(string owner, string name, CancellationToken ct) =>\n        http.GetFromJsonAsync<Repo>($\"repos/{owner}/{name}\", ct);\n}"
+      },
+      "pitfalls": [
+        "Injecting a typed client into a singleton service.",
+        "Also registering the typed client yourself with `AddScoped`, which overrides the factory registration.",
+        "Hard-coding base URLs instead of reading them from options."
+      ],
+      "followUps": [
+        "How do you add an auth header to every call of one client?",
+        "How do you unit test code that uses a typed client?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/httpclient-factory",
+          "title": "Use the IHttpClientFactory",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests",
+          "title": "HTTP requests with IHttpClientFactory - ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient-guidelines",
+          "title": "HttpClient guidelines for .NET",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "client-calling-web-api",
+        "httpclient"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-delegating-handlers",
+      "topic": "aspnet-core",
+      "subtopic": "httpclient",
+      "difficulty": "mid",
+      "question": "What is a `DelegatingHandler`, and what would you use one for?",
+      "shortAnswer": "A `DelegatingHandler` is middleware for **outgoing** HTTP calls: you override `SendAsync`, do work before and after calling `base.SendAsync`, and chain handlers onto a client with `AddHttpMessageHandler<T>()`. Typical uses are adding auth or correlation headers, logging, caching and error handling around external calls.",
+      "answer": "**Key points**\n- Handlers form a pipeline around the primary handler (`SocketsHttpHandler`) that sends the request; each wraps the next, in the order registered.\n- Register handlers as **transient** in DI. A handler instance can't be reused across pipelines; a singleton registration causes an `InvalidOperationException` when it's reused.\n- The factory creates a **separate DI scope for handlers**, so a scoped service injected into a handler is not the same instance as the one in the current request. Pass request data explicitly (for example through `HttpRequestMessage.Options`) or use `IHttpContextAccessor` carefully.\n- Resilience (`AddStandardResilienceHandler`) is also implemented as a handler in this pipeline.",
+      "code": {
+        "lang": "csharp",
+        "source": "public sealed class CorrelationIdHandler(IHttpContextAccessor accessor) : DelegatingHandler\n{\n    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)\n    {\n        var id = accessor.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString();\n        request.Headers.TryAddWithoutValidation(\"X-Correlation-Id\", id);\n        return base.SendAsync(request, ct);\n    }\n}\n\nbuilder.Services.AddHttpContextAccessor();\nbuilder.Services.AddTransient<CorrelationIdHandler>();\nbuilder.Services.AddHttpClient<IBillingClient, BillingClient>()\n    .AddHttpMessageHandler<CorrelationIdHandler>();"
+      },
+      "pitfalls": [
+        "Registering a handler as singleton or scoped.",
+        "Expecting a scoped service in a handler to be the request's instance.",
+        "Reading the response body in a logging handler and leaving it unreadable for the caller."
+      ],
+      "followUps": [
+        "In what order do multiple handlers run?",
+        "How do you attach a user's access token to outgoing calls?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests",
+          "title": "HTTP requests with IHttpClientFactory - ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "httpclient",
+        "client-calling-web-api"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-httpclient-resilience",
+      "topic": "aspnet-core",
+      "subtopic": "httpclient",
+      "difficulty": "senior",
+      "question": "How do you make outgoing HTTP calls resilient (retries, timeouts, circuit breakers) in modern .NET?",
+      "shortAnswer": "Add the `Microsoft.Extensions.Http.Resilience` package and call `AddStandardResilienceHandler()` on the client: it stacks a rate limiter, a total timeout, retries with exponential backoff and jitter, a circuit breaker and a per-attempt timeout, built on Polly. Tune it per client, and turn retries off for non-idempotent methods unless the API supports idempotency keys.",
+      "answer": "**Key points**\n- Standard pipeline (outer to inner) and defaults: rate limiter (1,000 permits), **total timeout 30 s**, **retry** (3 attempts, exponential, jitter, 2 s base delay), **circuit breaker** (10% failure ratio over 30 s, minimum 100 requests, 5 s break), **attempt timeout 10 s**.\n- Retries and the breaker react to 5xx, 408, 429, `HttpRequestException` and Polly's `TimeoutRejectedException`.\n- By default retries apply to **all** methods. Use `DisableForUnsafeHttpMethods()` (POST, PATCH, PUT, DELETE, CONNECT) or `DisableFor(...)`, or make writes idempotent first.\n- `AddStandardHedgingHandler()` sends parallel attempts to cut tail latency.\n- Older code uses `Microsoft.Extensions.Http.Polly` (`AddTransientHttpErrorPolicy`); it still works, but the resilience package is the current approach.\n\n**Detail**\nResilience is not free: retries multiply load on a struggling dependency. Keep the total timeout below your own request timeout, respect `Retry-After` on 429s, and log each retry so failures stay visible.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddHttpClient<IInventoryClient, InventoryClient>(c =>\n        c.BaseAddress = new Uri(\"https://inventory.internal/\"))\n    .AddStandardResilienceHandler(o =>\n    {\n        o.Retry.DisableForUnsafeHttpMethods();             // no blind retries of POST\n        o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(5);\n        o.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(20);\n    });"
+      },
+      "pitfalls": [
+        "Retrying POSTs that create orders or payments, causing duplicates.",
+        "An attempt timeout longer than the total timeout, so retries never happen.",
+        "Stacking your own retry loop on top of the resilience handler."
+      ],
+      "followUps": [
+        "What does a circuit breaker protect, and what are its states?",
+        "How would you make a POST safe to retry?",
+        "What is hedging?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience",
+          "title": "Build resilient HTTP apps: Key development patterns",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests",
+          "title": "HTTP requests with IHttpClientFactory - ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "client-calling-web-api"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`Microsoft.Extensions.Http.Resilience` shipped with .NET 8 and is built on Polly v8; earlier apps used `Microsoft.Extensions.Http.Polly`.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-rate-limiter-algorithms",
+      "topic": "aspnet-core",
+      "subtopic": "rate-limiting",
+      "difficulty": "junior",
+      "question": "Which rate-limiting algorithms does ASP.NET Core provide, and when would you use each?",
+      "shortAnswer": "The built-in middleware (.NET 7+) offers fixed window, sliding window, token bucket and concurrency limiters. The first three cap requests per time period: fixed window resets at each boundary, sliding window spreads the limit over segments, and token bucket refills tokens at a steady rate while allowing short bursts; the concurrency limiter caps how many requests run at the same time.",
+      "answer": "**Key points**\n- **Fixed window** (`AddFixedWindowLimiter`): N requests per window; simple, but allows bursts at the edge of two windows.\n- **Sliding window** (`AddSlidingWindowLimiter`): the window is split into segments; permits used in the segment that falls out of the window are given back. Smoother than fixed.\n- **Token bucket** (`AddTokenBucketLimiter`): a bucket of up to `TokenLimit` tokens, refilled by `TokensPerPeriod` each `ReplenishmentPeriod`; each request takes a token. Allows bursts up to the bucket size with a steady average rate.\n- **Concurrency** (`AddConcurrencyLimiter`): limits simultaneous requests, not requests per period. Good for expensive endpoints such as reports or uploads.\n- All of them can queue extra requests (`QueueLimit`, `QueueProcessingOrder`) instead of rejecting immediately.\n\n**Detail**\nChoose by what you protect: per-client fairness and abuse (token bucket or sliding window per user or API key), a scarce resource (concurrency), or a simple quota (fixed window). Consider the cost of the endpoint: CPU, I/O and database time.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddRateLimiter(o =>\n{\n    o.AddTokenBucketLimiter(\"api\", t =>\n    {\n        t.TokenLimit = 10;                          // burst size\n        t.TokensPerPeriod = 10;\n        t.ReplenishmentPeriod = TimeSpan.FromSeconds(5);\n        t.QueueLimit = 0;\n    });\n    o.AddConcurrencyLimiter(\"reports\", c => c.PermitLimit = 4);\n});"
+      },
+      "pitfalls": [
+        "Using a concurrency limiter when you wanted 'N requests per minute'.",
+        "Large queues that hide overload and push latency up instead of rejecting early.",
+        "Thinking rate limiting alone stops DDoS attacks; it helps, but it isn't a complete defence."
+      ],
+      "followUps": [
+        "How do you limit per user or per IP?",
+        "What status code should a rejected request get?",
+        "How does this work with several server instances?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit",
+          "title": "Rate limiting middleware in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "rate-limiting",
+        "rate-limiter-parameters-and-throttling"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "`Microsoft.AspNetCore.RateLimiting` is built in from .NET 7.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-rate-limiter-partitioning-and-rejection",
+      "topic": "aspnet-core",
+      "subtopic": "rate-limiting",
+      "difficulty": "mid",
+      "question": "How do you rate limit per user or per IP, and what should the client receive when it's rejected?",
+      "shortAnswer": "Use a partitioned limiter: `PartitionedRateLimiter.Create` (as the global limiter) or `AddPolicy` gives each partition key, such as user ID, API key or IP address, its own limiter. Rejections default to **503**, so set `RejectionStatusCode = 429` and use `OnRejected` to add a `Retry-After` header from the lease metadata.",
+      "answer": "**Key points**\n- **Global limiter**: `options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetTokenBucketLimiter(key, _ => opts))`. Applies to every request.\n- **Named policies**: `AddFixedWindowLimiter(\"name\", ...)` or `AddPolicy(\"name\", ctx => partition)`, applied with `[EnableRateLimiting(\"name\")]`, `.RequireRateLimiting(\"name\")`, or removed with `[DisableRateLimiting]`.\n- **Partition key**: authenticated user ID or API key is the fairest; IP address is a fallback (many users can share one NAT address; behind a proxy you need forwarded headers to see the real IP).\n- **Rejection**: `RejectionStatusCode` defaults to 503 Service Unavailable; 429 Too Many Requests is the standard for client throttling. `OnRejected` can write a body and set `Retry-After` when the limiter provides `MetadataName.RetryAfter`.\n- `UseRateLimiter()` must come after `UseRouting()` for endpoint-specific policies; if partitioning by user, it must also come after authentication.\n\n**Detail**\nWatch the anonymous case: if requests without a key all fall into one shared partition, one noisy client can starve every other anonymous caller. Also avoid unbounded partition keys (for example raw URLs), which grow memory.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddRateLimiter(o =>\n{\n    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;\n    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>\n        RateLimitPartition.GetFixedWindowLimiter(\n            partitionKey: ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? \"unknown\",\n            factory: _ => new FixedWindowRateLimiterOptions { PermitLimit = 100, Window = TimeSpan.FromMinutes(1) }));\n    o.OnRejected = (ctx, _) =>\n    {\n        if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retry))\n            ctx.HttpContext.Response.Headers.RetryAfter = ((int)retry.TotalSeconds).ToString();\n        return ValueTask.CompletedTask;\n    };\n});"
+      },
+      "pitfalls": [
+        "Leaving the default 503, which tells clients the server is broken rather than that they're too fast.",
+        "Partitioning by IP behind a load balancer without forwarded headers, so everyone shares the proxy's IP.",
+        "Partitioning on user identity while `UseRateLimiter` runs before authentication."
+      ],
+      "followUps": [
+        "How would you give premium API keys a higher limit?",
+        "What does `[DisableRateLimiting]` override?",
+        "How do you test rate limiting?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit",
+          "title": "Rate limiting middleware in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnetcore/blob/main/src/Middleware/RateLimiting/src/RateLimiterOptions.cs",
+          "title": "RateLimiterOptions.cs (dotnet/aspnetcore)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc6585",
+          "title": "RFC 6585: Additional HTTP Status Codes",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://devblogs.microsoft.com/dotnet/announcing-rate-limiting-for-dotnet/",
+          "title": "Announcing Rate Limiting for .NET - .NET Blog",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "rate-limiting",
+        "rate-limiter-parameters-and-throttling"
+      ],
+      "notCoveredYet": false,
+      "versionNote": ".NET 7+. `MetadataName.RetryAfter` is reported by the fixed window limiter; the concurrency limiter can't estimate it.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-distributed-rate-limiting",
+      "topic": "aspnet-core",
+      "subtopic": "rate-limiting",
+      "difficulty": "senior",
+      "question": "Your API runs on five instances behind a load balancer. Does the built-in rate limiter still enforce '100 requests per minute per client'?",
+      "shortAnswer": "Not exactly: the built-in limiters keep their counters in each process's memory, so every instance enforces its own 100 and a client spread across five instances can get up to about 500. For a global limit, enforce it at a shared layer (an API gateway or edge service) or use a limiter backed by a shared store such as Redis, accepting that distributed counts are approximate.",
+      "answer": "**Key points**\n- `PartitionedRateLimiter` partitions live in memory inside one app instance; nothing is shared between instances.\n- Options:\n  - **Gateway / edge** (for example Azure API Management `rate-limit-by-key`, or a reverse proxy) enforces limits before traffic reaches the instances.\n  - **Shared store**: a custom or community `RateLimiter` backed by Redis; every check becomes a network call.\n  - **Divide the budget**: per-instance limit = global limit / instance count. Cheap, but breaks when you autoscale.\n  - Sticky sessions route a client to one instance but don't survive failover or scale changes.\n- Even managed gateways say distributed throttling is never perfectly accurate.\n- Keep a per-instance limiter as well, to protect each instance from overload, whichever global option you choose.\n\n**Detail**\nDecide what the limit is for. **Protection** (don't let any instance fall over) is naturally per instance; **quotas** (a customer paid for N calls) need a shared, durable count. Rate limiting reduces abuse, but Microsoft's docs note it's not a complete DDoS defence; use network-level DDoS protection for that.",
+      "pitfalls": [
+        "Testing limits against a single local instance and assuming production behaves the same.",
+        "Adding a Redis round-trip to every request without measuring the latency it adds.",
+        "Treating per-instance protection limits as billing quotas."
+      ],
+      "followUps": [
+        "How would you implement a Redis-backed token bucket atomically?",
+        "Where would you put limits: gateway, app or both?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit",
+          "title": "Rate limiting middleware in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://devblogs.microsoft.com/dotnet/announcing-rate-limiting-for-dotnet/",
+          "title": "Announcing Rate Limiting for .NET - .NET Blog",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/azure/api-management/rate-limit-by-key-policy",
+          "title": "Azure API Management policy reference - rate-limit-by-key",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "rate-limiting"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-api-versioning-schemes",
+      "topic": "aspnet-core",
+      "subtopic": "versioning",
+      "difficulty": "mid",
+      "question": "Which API versioning schemes can you use with `Asp.Versioning`, and what are their trade-offs?",
+      "shortAnswer": "The version can travel in the query string (`?api-version=2.0`), a URL segment (`/api/v2/orders`), a custom header, or a media-type parameter (`Accept: application/json;v=2.0`), and readers can be combined. URL segments are the most visible, but the library's own docs call them the slowest option and say they violate REST's uniform interface; query string and media type are recommended for new APIs.",
+      "answer": "**Key points**\n- Packages: `Asp.Versioning.Http` (Minimal APIs), `Asp.Versioning.Mvc` (controllers), `Asp.Versioning.Mvc.ApiExplorer` (OpenAPI grouping). The old `Microsoft.AspNetCore.Mvc.Versioning` packages are superseded.\n- **Query string** (`QueryStringApiVersionReader`, default name `api-version`): easy to send, same URL per resource.\n- **URL segment** (`UrlSegmentApiVersionReader` + `{version:apiVersion}` route constraint): obvious in logs and docs; a different URL per version, and an unsupported version gives 404.\n- **Header** (`HeaderApiVersionReader(\"x-api-version\")`): clean URLs, but there's no standard header name and it's harder to try in a browser.\n- **Media type** (`MediaTypeApiVersionReader`): the most \"REST-pure\", the most work for clients.\n- The default reader combines query string and URL segment; `ApiVersionReader.Combine(...)` lets you accept several.\n\n**Detail**\n`AssumeDefaultVersionWhenUnspecified` lets clients omit the version. The library recommends enabling it only for legacy services that existed before versioning; otherwise clients should always state the version they target. An unsupported version returns 400 by default (configurable).",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddApiVersioning(o =>\n{\n    o.DefaultApiVersion = new ApiVersion(1, 0);\n    o.ReportApiVersions = true;\n    o.ApiVersionReader = ApiVersionReader.Combine(\n        new QueryStringApiVersionReader(\"api-version\"),\n        new HeaderApiVersionReader(\"x-api-version\"));\n})\n.AddMvc()\n.AddApiExplorer(o => o.GroupNameFormat = \"'v'VVV\");"
+      },
+      "pitfalls": [
+        "Versioning every endpoint on every small change instead of only on breaking changes.",
+        "Turning on `AssumeDefaultVersionWhenUnspecified` for a brand-new API, so clients silently pin to whatever the default becomes.",
+        "Mixing schemes per controller, so clients can't predict how to ask for a version."
+      ],
+      "followUps": [
+        "What counts as a breaking change?",
+        "How do you show each version in OpenAPI?",
+        "How do you deprecate a version?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://dotnet.github.io/aspnet-api-versioning/aspnet-core/config/reader.html",
+          "title": "API Version Reader - ASP.NET API Versioning",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnet-api-versioning/blob/main/wiki/src/shared/config/options.md",
+          "title": "API versioning options (dotnet/aspnet-api-versioning)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "api-versioning"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-api-version-deprecation",
+      "topic": "aspnet-core",
+      "subtopic": "versioning",
+      "difficulty": "senior",
+      "question": "How do you deprecate and eventually retire an API version without surprising clients?",
+      "shortAnswer": "Mark the version deprecated (`[ApiVersion(1.0, Deprecated = true)]` or `HasDeprecatedApiVersion`), turn on `ReportApiVersions` so responses carry `api-supported-versions` and `api-deprecated-versions`, and publish deprecation and sunset policies, which the library emits as `Deprecation` and `Sunset` headers with links. Watch who still calls the old version, then remove it; requests for it then get 400 (or 404 with URL-segment versioning).",
+      "answer": "**Key points**\n- **Deprecated ≠ removed**: a deprecated version still works; the library's docs describe it as one that will become unsupported after a period (six months or more).\n- **Advertise**: `ReportApiVersions = true` adds the supported/deprecated headers to responses (off by default).\n- **Policies** (`Asp.Versioning` policies): a `Deprecation` header (RFC 9745) and a `Sunset` date header (RFC 8594), plus `Link` headers to a policy page (RFC 8288). They apply to the version that was requested.\n- **Measure** traffic per version (logs or metrics keyed on the requested version) and contact the remaining consumers.\n- **Retire**: remove the controllers/endpoints for that version. Unmatched versions return 400 by default, 404 for URL segments, or no route at all.\n\n**Detail**\nCommunicate in several places: changelog and docs, response headers, and the OpenAPI document (the `Asp.Versioning.OpenApi` package documents these policies). Keep the old version's behaviour frozen while it is deprecated; fixing bugs is fine, changing contracts isn't.",
+      "code": {
+        "lang": "csharp",
+        "source": "[ApiController]\n[ApiVersion(2.0)]\n[ApiVersion(1.0, Deprecated = true)]\n[Route(\"api/orders\")]\npublic class OrdersController : ControllerBase\n{\n    [HttpGet(\"{id}\")]                  public IActionResult GetV1(int id) => Ok();\n    [HttpGet(\"{id}\"), MapToApiVersion(2.0)] public IActionResult GetV2(int id) => Ok();\n}\n\n// Response for ?api-version=1.0\n// api-supported-versions: 2.0\n// api-deprecated-versions: 1.0"
+      },
+      "pitfalls": [
+        "Deleting a version the day a new one ships.",
+        "Marking a version deprecated but never enabling `ReportApiVersions`, so clients never see it.",
+        "Breaking the deprecated version's contract while it's still supported."
+      ],
+      "followUps": [
+        "What is the difference between the `Deprecation` and `Sunset` headers?",
+        "How do you find which clients still call v1?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://dotnet.github.io/aspnet-api-versioning/aspnet-core/how-to/deprecate-version.html",
+          "title": "Deprecating a Service Version - ASP.NET API Versioning",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnet-api-versioning/blob/main/wiki/src/shared/config/options.md",
+          "title": "API versioning options (dotnet/aspnet-api-versioning)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnet-api-versioning/blob/main/wiki/src/shared/version-policies.md",
+          "title": "Version policies (dotnet/aspnet-api-versioning)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "api-versioning"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Deprecation/sunset policy headers are a feature of recent `Asp.Versioning` releases; check the package version you use.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-openapi-vs-swagger",
+      "topic": "aspnet-core",
+      "subtopic": "openapi",
+      "difficulty": "junior",
+      "question": "What is the difference between OpenAPI and Swagger, and what does ASP.NET Core provide out of the box?",
+      "shortAnswer": "OpenAPI is the language-neutral specification for describing HTTP APIs; Swagger is the older name of that spec and the name of a family of tools such as Swagger UI. Since .NET 9, ASP.NET Core generates OpenAPI documents itself with `Microsoft.AspNetCore.OpenApi` (`AddOpenApi`/`MapOpenApi`), but it doesn't include an interactive UI; add Swagger UI, ReDoc or Scalar yourself.",
+      "answer": "**Key points**\n- An OpenAPI document describes endpoints, parameters, request/response schemas and security schemes, and drives documentation, client generation, testing and contract reviews.\n- **.NET 9+ templates**: `builder.Services.AddOpenApi()` and `app.MapOpenApi()` serve `/openapi/v1.json`. The template maps it only in Development.\n- Swashbuckle was removed from the Web API templates in .NET 9; it and NSwag remain usable third-party options.\n- **Build-time generation**: `Microsoft.Extensions.ApiDescription.Server` writes the document during build, which is handy for publishing or generating clients in CI.\n- **.NET 10**: documents are OpenAPI 3.1 by default, and XML doc comments can flow into the document.\n\n**Detail**\nSwagger UI is just a web page that reads the JSON document; it's useful for local testing, not a contract by itself. Treat the OpenAPI document as part of your API's public surface and review changes to it.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddOpenApi();\n\nvar app = builder.Build();\nif (app.Environment.IsDevelopment())\n{\n    app.MapOpenApi();                       // /openapi/v1.json\n    // UI is separate, e.g. Swashbuckle.AspNetCore.SwaggerUi or Scalar.AspNetCore\n}"
+      },
+      "pitfalls": [
+        "Saying Swagger and OpenAPI are competing standards.",
+        "Assuming .NET 9+ still ships Swagger UI in the template.",
+        "Treating the UI as the documentation and never checking the generated schemas."
+      ],
+      "followUps": [
+        "How do you document response types accurately?",
+        "Should the OpenAPI document be public in production?",
+        "How do you generate a typed client from it?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview",
+          "title": "Overview of OpenAPI support in ASP.NET Core API apps",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/aspnetcore-openapi",
+          "title": "Generate OpenAPI documents",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://github.com/dotnet/aspnetcore/issues/54599",
+          "title": "Announcement: Swashbuckle.AspNetCore is being removed in .NET 9 (dotnet/aspnetcore #54599)",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "openapi-and-swagger"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Built-in OpenAPI generation is .NET 9+; OpenAPI 3.1 is the default in .NET 10 (3.0 in .NET 9). Before .NET 9, templates used Swashbuckle.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-documenting-responses",
+      "topic": "aspnet-core",
+      "subtopic": "openapi",
+      "difficulty": "mid",
+      "question": "How do you make the OpenAPI document describe your responses (status codes and types) accurately?",
+      "shortAnswer": "For controllers, return `ActionResult<T>` so the 2xx schema is inferred and add `[ProducesResponseType]` for each other status code; for Minimal APIs, return `TypedResults` (with `Results<T1, T2>` for several outcomes), which adds the metadata automatically, or call `.Produces<T>()`. These attributes only describe the endpoint; they don't change what it actually returns.",
+      "answer": "**Key points**\n- **Controllers**: `[ProducesResponseType<OrderDto>(200)]`, `[ProducesResponseType(404)]`; `[Produces(\"application/json\")]` sets the content type. 4xx responses are described as problem details by default.\n- `ActionResult<T>` lets the generator infer the success schema from `T`; plain `IActionResult` tells it nothing.\n- **Minimal APIs**: `TypedResults.Ok(dto)` carries its type; `Results<Ok<OrderDto>, NotFound>` documents both outcomes. With `Results.Ok(...)` (returns `IResult`) you need `.Produces<OrderDto>()`.\n- Response descriptions: the `Description` property on `[ProducesResponseType]` (newer versions), or XML doc comments.\n- Analyzers and conventions (`[ApiConventionType]`) can apply common sets of responses.\n\n**Detail**\nMetadata and behaviour can drift apart: an endpoint documented as 200-only that also returns 409 misleads every generated client. Review the generated document in pull requests, or check it in CI with build-time generation.",
+      "code": {
+        "lang": "csharp",
+        "source": "[HttpGet(\"{id:int}\")]\n[ProducesResponseType<OrderDto>(StatusCodes.Status200OK)]\n[ProducesResponseType(StatusCodes.Status404NotFound)]\npublic async Task<ActionResult<OrderDto>> Get(int id) =>\n    await _svc.FindAsync(id) is { } o ? o : NotFound();\n\napp.MapGet(\"/orders/{id:int}\", async Task<Results<Ok<OrderDto>, NotFound>> (int id, IOrderService s) =>\n    await s.FindAsync(id) is { } o ? TypedResults.Ok(o) : TypedResults.NotFound());"
+      },
+      "pitfalls": [
+        "Returning `IActionResult` everywhere and getting an empty success schema.",
+        "Documenting status codes the action can't return, or missing ones it does.",
+        "Expecting `[ProducesResponseType]` to filter or convert the response."
+      ],
+      "followUps": [
+        "What is the difference between `Results` and `TypedResults`?",
+        "How do you add XML comments to the document?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/include-metadata",
+          "title": "Include OpenAPI metadata in an ASP.NET Core app",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/responses",
+          "title": "Create responses in Minimal API applications",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-8.0",
+          "title": "What's new in ASP.NET Core in .NET 8",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "return-types",
+        "openapi-and-swagger"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "Generic `ProducesResponseType<T>` needs ASP.NET Core 8+ (C# 11 generic attributes); use `[ProducesResponseType(typeof(T), 200)]` before that; `Description` on `ProducesResponseType` and XML-comment support in `Microsoft.AspNetCore.OpenApi` arrived with .NET 10.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-openapi-in-production",
+      "topic": "aspnet-core",
+      "subtopic": "openapi",
+      "difficulty": "mid",
+      "question": "Should you expose the OpenAPI document and Swagger UI in production? What are the options?",
+      "shortAnswer": "Microsoft's guidance is to enable OpenAPI user interfaces (Swagger UI, ReDoc, Scalar) only in development, and the template maps the document endpoint only in Development, to limit information disclosure. If partners need the document, protect the endpoint with authorization and caching, or generate it at build time and publish it separately.",
+      "answer": "**Key points**\n- The document lists every route, parameter and schema: useful to attackers mapping your API.\n- The OpenAPI endpoint has **no authorization by default**; it's a normal endpoint, so `.RequireAuthorization(\"policy\")` and output caching work on it.\n- It's regenerated on every request unless you cache it.\n- **Build-time generation** produces a static file you can publish to a developer portal or API gateway.\n- Hide internal endpoints from public documents (`ExcludeFromDescription`, or separate documents for public and internal APIs).\n\n**Detail**\nA public API often *should* publish its contract, but deliberately: a reviewed, versioned document in a developer portal, not whatever the running app generates for every internal endpoint.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddOpenApi();\nbuilder.Services.AddOutputCache(o => o.AddPolicy(\"openapi\", p => p.Expire(TimeSpan.FromMinutes(10))));\n\napp.MapOpenApi()\n   .RequireAuthorization(\"ApiDocsReaders\")\n   .CacheOutput(\"openapi\");"
+      },
+      "pitfalls": [
+        "Shipping Swagger UI to production because it was convenient during development.",
+        "Documenting admin or internal endpoints in a public document.",
+        "Assuming hiding the UI hides the JSON document."
+      ],
+      "followUps": [
+        "How would you publish separate public and internal documents?",
+        "How do you generate the document in CI?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/using-openapi-documents",
+          "title": "Use the generated OpenAPI documents",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/aspnetcore-openapi",
+          "title": "Generate OpenAPI documents",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview",
+          "title": "Overview of OpenAPI support in ASP.NET Core API apps",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "openapi-and-swagger"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "`MapOpenApi`/`AddOpenApi` are .NET 9+; with Swashbuckle the same advice applies to `UseSwagger`/`UseSwaggerUI`.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-safe-idempotent-put-vs-patch",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "mid",
+      "question": "What do 'safe' and 'idempotent' mean for HTTP methods, and how do PUT and PATCH differ?",
+      "shortAnswer": "A safe method is read-only in intent (GET, HEAD, OPTIONS, TRACE); an idempotent method has the same intended effect whether you send it once or many times (PUT, DELETE and all safe methods). PUT replaces the whole target representation with the one sent, so it is idempotent; PATCH applies a set of changes and is neither safe nor idempotent by definition, though it can be designed to be.",
+      "answer": "**Key points**\n- **Safe** (RFC 9110): the client doesn't request a state change. Servers may still log or count.\n- **Idempotent**: repeating the request has the same *effect*, not necessarily the same *response*. DELETE twice: the resource is gone either way, though the second call may return 404.\n- Why it matters: clients and proxies may retry idempotent requests automatically after a connection failure; they shouldn't blindly retry POST or PATCH.\n- **PUT**: full replacement (\"this is the new state\"). Missing fields mean \"cleared\", not \"unchanged\".\n- **PATCH** (RFC 5789): a patch document describes changes, for example JSON Patch (RFC 6902) operations or a JSON Merge Patch (RFC 7396) object.\n- **POST**: neither safe nor idempotent; make it retry-safe with an idempotency key.\n\n**Detail**\nIn ASP.NET Core, JSON Patch is supported through `Microsoft.AspNetCore.JsonPatch`; .NET 10 added a System.Text.Json-based implementation (earlier versions needed Newtonsoft.Json). Validate the patched object, and limit which paths may be patched to avoid overposting.",
+      "code": {
+        "lang": "http",
+        "source": "PUT /api/tasks/42\nContent-Type: application/json\n\n{ \"title\": \"Write report\", \"status\": \"Done\", \"dueDate\": null }\n\nPATCH /api/tasks/42\nContent-Type: application/json-patch+json\n\n[ { \"op\": \"replace\", \"path\": \"/status\", \"value\": \"Done\" } ]"
+      },
+      "pitfalls": [
+        "Using PUT for partial updates and wiping fields the client didn't send.",
+        "Thinking idempotent means 'returns the same status code every time'.",
+        "Auto-retrying POST or PATCH after timeouts."
+      ],
+      "followUps": [
+        "How would you make a POST endpoint safe to retry?",
+        "JSON Patch or JSON Merge Patch: which would you choose?",
+        "What status codes fit a successful PUT?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc9110",
+          "title": "RFC 9110: HTTP Semantics",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc5789",
+          "title": "RFC 5789: PATCH Method for HTTP",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0",
+          "title": "What's new in ASP.NET Core in .NET 10",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "rest-and-http-basics"
+      ],
+      "notCoveredYet": false,
+      "versionNote": "System.Text.Json-based JSON Patch is .NET 10+; earlier versions use `Microsoft.AspNetCore.Mvc.NewtonsoftJson` for JSON Patch.",
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-content-negotiation",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "mid",
+      "question": "How does content negotiation work in ASP.NET Core Web API?",
+      "shortAnswer": "When an action returns an object (or an `ObjectResult` such as `Ok(dto)`), MVC looks at the request's `Accept` header and picks an output formatter that can produce one of the requested media types; JSON is the default. If none matches, it falls back to the first formatter that can write the object, unless `ReturnHttpNotAcceptable = true`, in which case it returns 406.",
+      "answer": "**Key points**\n- Negotiation is implemented by `ObjectResult` and the helper results built on it (`Ok`, `Created`, `NotFound(obj)`, ...). `JsonResult` and `ContentResult` skip it.\n- Default output formatters: JSON (System.Text.Json), plain text for strings, and 204 No Content for `null`.\n- Add XML with `.AddXmlSerializerFormatters()`; register custom `OutputFormatter`s for CSV and similar.\n- Browsers send `Accept: */*`-style headers; by default ASP.NET Core ignores `*/*` and uses JSON unless `RespectBrowserAcceptHeader = true`.\n- `[Produces(\"application/json\")]` forces a format for an action or controller; `[Consumes]` restricts accepted request content types (input side).\n\n**Detail**\nThe request side is the mirror image: `Content-Type` chooses the input formatter, and an unsupported type returns 415 Unsupported Media Type.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddControllers(o =>\n{\n    o.ReturnHttpNotAcceptable = true;      // 406 instead of silently falling back to JSON\n})\n.AddXmlSerializerFormatters();\n\n// GET /api/orders/5   Accept: application/xml   -> XML body\n// GET /api/orders/5   Accept: text/csv          -> 406 Not Acceptable"
+      },
+      "pitfalls": [
+        "Returning `JsonResult` and wondering why `Accept: application/xml` is ignored.",
+        "Expecting 406 by default; without `ReturnHttpNotAcceptable` you get JSON.",
+        "Confusing `Accept` (what the client wants back) with `Content-Type` (what it sent)."
+      ],
+      "followUps": [
+        "When would you write a custom output formatter?",
+        "What do 406 and 415 mean?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/web-api/advanced/formatting",
+          "title": "Format response data in ASP.NET Core Web API",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc9110",
+          "title": "RFC 9110: HTTP Semantics",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "http-headers",
+        "return-types"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-cors",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "junior",
+      "question": "What is CORS, why do browsers need it, and how do you configure it in ASP.NET Core?",
+      "shortAnswer": "Browsers apply the same-origin policy, which stops a page from reading responses from a different origin (scheme, host, port); CORS is a W3C standard that lets a server say which other origins may do so. It relaxes security rather than adding it. In ASP.NET Core you define a policy with `AddCors`, apply it with `UseCors` (after routing, before authorization) or per endpoint.",
+      "answer": "**Key points**\n- CORS is enforced **by the browser**. Server-to-server calls, Postman and curl ignore it, so it isn't access control.\n- \"Simple\" requests are sent directly; others (custom headers, `PUT`/`DELETE`, JSON content type) trigger a **preflight** `OPTIONS` request with `Access-Control-Request-Method/Headers`.\n- Configure explicit origins with `WithOrigins(...)`, plus the allowed methods and headers.\n- `AllowAnyOrigin()` together with `AllowCredentials()` is insecure, and the CORS service rejects that combination; `SetIsOriginAllowed(_ => true)` with credentials is just as insecure.\n- Order: `UseCors` after `UseRouting` and before `UseAuthorization`, and before response caching.\n- Apply per endpoint with `[EnableCors(\"policy\")]` or `.RequireCors(\"policy\")`, or opt out with `[DisableCors]`.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddCors(o => o.AddPolicy(\"frontend\", p => p\n    .WithOrigins(\"https://app.example.com\")\n    .WithMethods(\"GET\", \"POST\", \"PUT\", \"DELETE\")\n    .WithHeaders(\"Content-Type\", \"Authorization\")));\n\napp.UseRouting();\napp.UseCors(\"frontend\");\napp.UseAuthentication();\napp.UseAuthorization();"
+      },
+      "pitfalls": [
+        "Thinking CORS protects the API from non-browser clients.",
+        "Opening everything with `AllowAnyOrigin` in production 'to fix the error'.",
+        "Placing `UseCors` after authorization, so preflight requests can be rejected before CORS headers are added."
+      ],
+      "followUps": [
+        "What triggers a preflight request?",
+        "How do cookies or credentials change CORS rules?",
+        "Why might a CORS error actually hide a 500 from the server?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/security/cors",
+          "title": "Enable Cross-Origin Requests (CORS) in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/",
+          "title": "ASP.NET Core middleware",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "http-headers",
+        "middleware"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-etag-optimistic-concurrency",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "senior",
+      "question": "How do you prevent lost updates over HTTP using ETags and conditional requests?",
+      "shortAnswer": "Return an `ETag` (a version identifier, for example derived from a row version) with each read; the client sends it back in `If-Match` when updating, and the server applies the change only if the ETag still matches, otherwise it answers **412 Precondition Failed**. If you require conditional updates, reply **428 Precondition Required** when `If-Match` is missing.",
+      "answer": "**Key points**\n- Lost update: two clients GET the same resource; the second PUT silently overwrites the first.\n- `If-Match` makes a state-changing request conditional; RFC 9110 says servers must use **strong** comparison for it.\n- Mismatch → 412; required-but-missing → 428 (RFC 6585).\n- Map the ETag to a database concurrency token (SQL Server `rowversion` with EF Core `[Timestamp]`), so the check also holds between the read and the write: set the original value from the ETag and let `DbUpdateConcurrencyException` turn into 412.\n- For reads, `If-None-Match` lets clients revalidate caches cheaply (304 Not Modified); output caching supports this automatically when you set an ETag.\n\n**Detail**\nQuote the value (`\"abc123\"`); weak ETags (`W/\"...\"`) are fine for caching but not for `If-Match`. Some teams return 409 Conflict instead of 412; 412 is the precise answer when the failure is the precondition.",
+      "code": {
+        "lang": "csharp",
+        "source": "[HttpPut(\"{id:int}\")]\npublic async Task<IActionResult> Update(int id, UpdateTask dto, [FromHeader(Name = \"If-Match\")] string? ifMatch)\n{\n    if (ifMatch is null) return StatusCode(StatusCodes.Status428PreconditionRequired);\n    var task = await _db.Tasks.FindAsync(id);\n    if (task is null) return NotFound();\n\n    _db.Entry(task).Property(t => t.RowVersion).OriginalValue = Convert.FromBase64String(ifMatch.Trim('\"'));\n    task.Title = dto.Title;\n    try { await _db.SaveChangesAsync(); }\n    catch (DbUpdateConcurrencyException) { return StatusCode(StatusCodes.Status412PreconditionFailed); }\n\n    Response.Headers.ETag = $\"\\\"{Convert.ToBase64String(task.RowVersion)}\\\"\";\n    return NoContent();\n}"
+      },
+      "pitfalls": [
+        "Comparing ETags in code, then saving without a database concurrency token; another write can slip in between.",
+        "Using weak ETags with `If-Match`.",
+        "Returning 409 or 400 for a failed precondition without explaining how to retry."
+      ],
+      "followUps": [
+        "How do you generate ETags for responses that aren't single rows?",
+        "How does `If-None-Match` help caching?",
+        "What should the client do after a 412?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc9110",
+          "title": "RFC 9110: HTTP Semantics",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc6585",
+          "title": "RFC 6585: Additional HTTP Status Codes",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/output",
+          "title": "Output caching middleware in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "http-headers",
+        "ef-core-raw-sql-iqueryable-concurrency"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-idempotency-key",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "senior",
+      "question": "How would you make a POST endpoint (for example 'create payment') safe for clients to retry?",
+      "shortAnswer": "Require an `Idempotency-Key` header with a client-generated unique value (such as a UUID); store the key with a fingerprint of the request and the final response, and when the same key arrives again return the stored result instead of executing again. Return 409 while the first request is still running, and 422 if the key is reused with a different payload.",
+      "answer": "**Key points**\n- The pattern is described in the IETF `Idempotency-Key` header draft (`draft-ietf-httpapi-idempotency-key-header`). It's an Internet-Draft, not yet an RFC.\n- **First request**: process normally, then save key → (fingerprint, status, body) with an expiry.\n- **Retry after completion**: return the saved response (success *or* error) without running the operation again.\n- **Concurrent duplicate**: the original is still in progress → 409 Conflict.\n- **Same key, different payload**: 422 Unprocessable Content.\n- **Missing key** on an endpoint that requires it: 400, with a link to documentation.\n- Make \"check key + perform operation + store result\" atomic: a unique index on the key, the same database transaction, or a distributed lock.\n\n**Detail**\nScope keys per client or tenant, publish how long keys are kept, and include the key in logs. It pairs well with client-side resilience: once POSTs are idempotent, retries become safe.",
+      "code": {
+        "lang": "csharp",
+        "source": "app.MapPost(\"/payments\", async (CreatePayment cmd, [FromHeader(Name = \"Idempotency-Key\")] string? key,\n                                IIdempotencyStore store, IPaymentService payments) =>\n{\n    if (string.IsNullOrWhiteSpace(key)) return Results.Problem(\"Idempotency-Key is required.\", statusCode: 400);\n\n    var fingerprint = Fingerprint.Of(cmd);\n    var existing = await store.TryBeginAsync(key, fingerprint);   // unique index on key\n    if (existing is { InProgress: true }) return Results.Conflict();\n    if (existing is { Fingerprint: var f } && f != fingerprint) return Results.UnprocessableEntity();\n    if (existing is { Response: { } saved }) return saved.ToResult();\n\n    var result = await payments.CreateAsync(cmd);\n    await store.CompleteAsync(key, result);\n    return result.ToResult();\n});"
+      },
+      "pitfalls": [
+        "Checking the key and inserting it in two separate, non-atomic steps.",
+        "Caching only successful responses, so a retry after a failure runs the operation again.",
+        "Keys that never expire, or keys shared across tenants."
+      ],
+      "followUps": [
+        "Where would you store idempotency records, and for how long?",
+        "How does this differ from the idempotency of PUT?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/",
+          "title": "The Idempotency-Key HTTP Header Field (IETF draft)",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc9110",
+          "title": "RFC 9110: HTTP Semantics",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "http-headers",
+        "rest-and-http-basics"
+      ],
+      "notCoveredYet": false,
+      "reviewed": false
+    },
+    {
+      "id": "aspnet-core-output-vs-response-caching",
+      "topic": "aspnet-core",
+      "subtopic": "rest-and-http",
+      "difficulty": "mid",
+      "question": "What is the difference between response caching and output caching in ASP.NET Core?",
+      "shortAnswer": "Response caching follows HTTP caching headers (`Cache-Control`), so clients can bypass it and it only stores in memory; output caching (.NET 7+) is configured on the server, ignores client cache directives, can use other stores, supports tag-based eviction, locks to prevent cache stampedes, and revalidation with 304 Not Modified.",
+      "answer": "**Key points**\n- **Response caching** (`[ResponseCache]` + `UseResponseCaching`): sets/obeys `Cache-Control`; a browser sending `Cache-Control: max-age=0` effectively disables it; memory only; little control over invalidation.\n- **Output caching** (`AddOutputCache` + `UseOutputCache` + `.CacheOutput()` / `[OutputCache]`): server-side policies, extensible storage, `EvictByTagAsync` for invalidation, resource locking, ETag/`If-Modified-Since` revalidation.\n- Default output-cache rules: only 200 responses, only GET/HEAD, not responses that set cookies, not authenticated requests.\n- Ordering: `UseOutputCache` after authentication and authorization, and `UseCors` before response caching.\n- Separate idea: `Cache-Control` headers you send let *clients and CDNs* cache, regardless of server-side caching.\n\n**Detail**\nCache only what's safe to share: vary the key by query values, route values or headers that change the response, and never cache per-user data in a shared policy.",
+      "code": {
+        "lang": "csharp",
+        "source": "builder.Services.AddOutputCache(o =>\n    o.AddPolicy(\"products\", p => p.Expire(TimeSpan.FromMinutes(5)).Tag(\"products\").SetVaryByQuery(\"page\")));\n\napp.UseAuthentication();\napp.UseAuthorization();\napp.UseOutputCache();\n\napp.MapGet(\"/products\", (int page, IProductService s) => s.ListAsync(page)).CacheOutput(\"products\");\napp.MapPost(\"/products\", async (Product p, IProductService s, IOutputCacheStore cache, CancellationToken ct) =>\n{\n    await s.AddAsync(p);\n    await cache.EvictByTagAsync(\"products\", ct);   // invalidate listings\n    return Results.Created($\"/products/{p.Id}\", p);\n});"
+      },
+      "pitfalls": [
+        "Expecting `[ResponseCache]` alone to cache on the server; without the middleware it only sets headers.",
+        "Caching responses that differ per user.",
+        "Putting `UseOutputCache` before authorization."
+      ],
+      "followUps": [
+        "How would you share an output cache across instances?",
+        "What is a cache stampede?",
+        "When is `HybridCache` a better fit than output caching?"
+      ],
+      "origin": "web",
+      "sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/overview",
+          "title": "Overview of caching in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/output",
+          "title": "Output caching middleware in ASP.NET Core",
+          "accessed": "2026-10-22"
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/aspnet/core/performance/caching/response",
+          "title": "Response caching in ASP.NET Core",
+          "accessed": "2026-10-22"
+        }
+      ],
+      "relatedLessons": [
+        "http-headers"
+      ],
+      "notCoveredYet": true,
+      "versionNote": "Output caching middleware is .NET 7+; response caching exists since ASP.NET Core 1.x.",
+      "reviewed": false
+    }
+  ]
+}
