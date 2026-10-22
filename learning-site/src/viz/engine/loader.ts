@@ -8,8 +8,9 @@ export interface VizModule {
 export type VizLoader = () => Promise<VizModule>;
 
 /**
- * A code panel that shows C# (or SQL) copied from a note. The build fails if `code` no longer appears
- * verbatim inside some fenced block of `file`, so a visualizer can never show stale code.
+ * A code panel that shows C# (or SQL) copied from a note or a source file. The build fails if `code` no
+ * longer appears verbatim inside some fenced block of `file` (for .md/.txt notes) or anywhere in `file`
+ * (for source files such as the capstone's .cs), so a visualizer can never show stale code.
  */
 export interface VerbatimCheck {
   /** Shown in the error, e.g. "binary search visualizer". */
