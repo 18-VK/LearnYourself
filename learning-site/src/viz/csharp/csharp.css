@@ -278,6 +278,7 @@
   .cs-tl { --label-w: 84px; --gap: 6px; }
   .cs-tl-label { font-size: 11.5px; }
   .cs-seg em { display: none; }
+  .cs-tl-ticks span.is-minor { display: none; }
   .cs-ti { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cs-ti > :is(.cs-shared, .cs-wfg) { grid-column: 1 / -1; }
   .cs-sched .presets { margin-left: 0; }

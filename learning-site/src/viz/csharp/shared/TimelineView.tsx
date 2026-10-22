@@ -34,9 +34,9 @@ export function TimelineView({ s, forever }: { s: TimelineState; forever?: strin
       <div className="cs-tl-axis" aria-hidden="true">
         <span className="cs-tl-label" />
         <div className="cs-tl-track cs-tl-ticks">
-          {ticks(s.axis).map((t) => (
-            <span key={t} style={{ left: pct(t) }}>
-              {t} ms
+          {ticks(s.axis).map((t, i, all) => (
+            <span key={t} className={i % 2 === 1 && i !== all.length - 1 ? 'is-minor' : undefined} style={{ left: pct(t) }}>
+              {i === all.length - 1 ? `${t} ms` : t}
             </span>
           ))}
         </div>

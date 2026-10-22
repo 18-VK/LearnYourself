@@ -162,7 +162,7 @@ function rethrow(): CsPart {
   st.step(L.pdPrint, 'ProcessData logs the message…', { action: 'write' });
   st.s.exception.handled = false;
   st.top().status = 'unwinding';
-  st.step(L.rethrow, '…then throw; re-throws the same exception object. "throw; keeps the original stack trace" (throw ex; would reset it to this line). ProcessData has no other handler, so its frame is unwound.', {
+  st.step(L.rethrow, '…then throw; re-throws the same exception object. "throw; keeps the original stack trace", while throw ex; "resets the stack trace to the current method". ProcessData has no other handler, so its frame is unwound.', {
     action: 'branch',
     predict: { question: 'Where does the exception go after throw; ?', options: ['To Main’s catch block', 'Back into ProcessData’s try', 'The program crashes immediately'], answer: 0 },
   });
