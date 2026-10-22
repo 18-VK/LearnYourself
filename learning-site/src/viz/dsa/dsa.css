@@ -1,0 +1,91 @@
+/* DSA toolbox visualizers: Big-O growth and C# collections. */
+
+/* Big-O series colours: one fixed colour per growth class. Checked with a colour-vision-deficiency validator
+   on --surface in both themes (adjacent ΔE ≥ 8 for protan/deutan/tritan); three light-mode lines sit below
+   3:1 on white, so every line also has a direct label and the table repeats every value. */
+.bo { --bo-1: #2a78d6; --bo-2: #eb6834; --bo-3: #1baf7a; --bo-4: #eda100; --bo-5: #e87ba4; --bo-6: #008300; }
+:root[data-theme="dark"] .bo { --bo-1: #3987e5; --bo-2: #d95926; --bo-3: #199e70; --bo-4: #c98500; --bo-5: #d55181; --bo-6: #008300; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bo { --bo-1: #3987e5; --bo-2: #d95926; --bo-3: #199e70; --bo-4: #c98500; --bo-5: #d55181; --bo-6: #008300; }
+}
+.bo-n { font-weight: 700; color: var(--ink); min-width: 5.5em; display: inline-block; }
+.viz-input input.bo-slider { width: 180px; max-width: 100%; }
+.bo-legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px 0; }
+.bo-key { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink); font-family: var(--mono); font-size: 12.5px; }
+.bo-key:hover { border-color: var(--ink-3); }
+.bo-key[aria-pressed="false"] { color: var(--ink-3); text-decoration: line-through; }
+.bo-key[aria-pressed="false"] .bo-sw { opacity: 0.3; }
+.bo-sw { display: inline-block; flex: none; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; }
+.bo-table .bo-sw { margin-right: 8px; }
+.bo-chart { position: relative; padding: 8px 0 0; overflow: hidden; }
+.bo-chart svg { display: block; touch-action: pan-y; }
+.bo-grid { stroke: var(--line); stroke-width: 1; }
+.bo-axis { stroke: var(--ink-3); stroke-width: 1; }
+.bo-tick { fill: var(--ink-3); font-family: var(--mono); font-size: 11px; }
+.bo-axis-label { fill: var(--ink-2); font-family: var(--mono); font-size: 12px; font-style: italic; }
+.bo-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.bo-label { fill: var(--ink); font-family: var(--mono); font-size: 11.5px; }
+.bo-cross { stroke: var(--ink-3); stroke-dasharray: 3 3; }
+.bo-hit { fill: transparent; cursor: crosshair; }
+.bo-tip { position: absolute; display: grid; gap: 2px; min-width: 150px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); font-family: var(--mono); font-size: 12px; pointer-events: none; }
+.bo-tip i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; }
+.bo-table-wrap { overflow-x: auto; margin: 10px 14px 0; }
+.bo-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.bo-table th, .bo-table td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.bo-table thead th { color: var(--ink-3); font-size: 12px; font-weight: 600; }
+.bo-table tbody th { font-family: var(--mono); font-weight: 600; font-size: 13px; }
+.bo-table tr.is-hidden { opacity: 0.5; }
+.bo-foot { padding-bottom: 14px; }
+
+/* C# collections */
+.cv-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-ops { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.cv-ops .btn { font-family: var(--mono); font-size: 13px; padding: 0.35em 0.7em; }
+.cv-ops .btn:disabled { opacity: 0.45; cursor: default; }
+.viz-input input.cv-num { width: 4.8em; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 4px 6px; font-family: var(--mono); font-size: 13px; }
+.cv-call { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 10px 16px 0; font-size: 14px; }
+.cv-call code { font-size: 13.5px; }
+.cv-cost { display: inline-flex; gap: 6px; align-items: baseline; padding: 2px 9px; border: 1px solid var(--line); border-radius: 99px; background: var(--bg); font-size: 13px; }
+.cv-cost b { font-family: var(--mono); font-size: 12.5px; }
+.cv-stage { display: grid; gap: 14px; padding: 18px 16px 10px; overflow-x: auto; }
+.cv-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-end; }
+.cv-cellcol { display: grid; justify-items: center; gap: 2px; }
+.cv-cell { display: grid; place-items: center; min-width: 38px; height: 34px; padding: 0 5px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--bg); font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; transition: background-color 0.2s, border-color 0.2s; }
+.cv-cell.is-empty { border-style: dashed; color: var(--ink-3); background: transparent; }
+.cv-cell.is-compare { border-color: var(--v-compare); background: color-mix(in srgb, var(--v-compare) 20%, var(--bg)); }
+.cv-cell.is-swap { border-color: var(--v-swap); background: color-mix(in srgb, var(--v-swap) 16%, var(--bg)); }
+.cv-cell.is-active { border-color: var(--v-active); background: color-mix(in srgb, var(--v-active) 16%, var(--bg)); }
+.cv-cell.is-settled { border-color: var(--v-sorted); background: color-mix(in srgb, var(--v-sorted) 20%, var(--bg)); }
+.cv-cell.is-out { opacity: 0.35; }
+.cv-idx { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+.cv-ptr { font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--v-pointer); min-height: 13px; }
+.cv-caption { font-size: 12.5px; color: var(--ink-3); }
+.cv-label { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.cv-arrow { font-family: var(--mono); font-size: 12px; color: var(--ink-3); align-self: center; padding: 0 1px; }
+.cv-stack { display: flex; flex-direction: column-reverse; gap: 4px; align-items: flex-start; min-height: 40px; }
+.cv-log { margin: 0; padding: 0 16px 12px; list-style: none; display: grid; gap: 2px; font-size: 12.5px; color: var(--ink-2); max-height: 9.5em; overflow: auto; }
+.cv-log li { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.cv-log code { font-size: 12px; }
+.cv-tree { width: 100%; max-height: 300px; }
+.cv-tree .edge { stroke: var(--ink-3); stroke-width: 1.5; }
+.cv-tree .node circle { fill: var(--surface); stroke: var(--v-idle); stroke-width: 2.5; transition: fill 0.2s, stroke 0.2s; }
+.cv-tree .node.is-black circle { stroke-width: 4; stroke: var(--ink-2); }
+.cv-tree .node text { fill: var(--ink); font-family: var(--mono); font-size: 13px; }
+.cv-tree .node .sub { fill: var(--ink-3); font-size: 10px; }
+.cv-tree .node.is-compare circle { stroke: var(--v-compare); fill: color-mix(in srgb, var(--v-compare) 22%, var(--surface)); }
+.cv-tree .node.is-swap circle { stroke: var(--v-swap); fill: color-mix(in srgb, var(--v-swap) 18%, var(--surface)); }
+.cv-tree .node.is-active circle { stroke: var(--v-active); fill: color-mix(in srgb, var(--v-active) 18%, var(--surface)); }
+.cv-tree .node.is-settled circle { stroke: var(--v-sorted); fill: color-mix(in srgb, var(--v-sorted) 22%, var(--surface)); }
+.cv-cost-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cv-cost-table th, .cv-cost-table td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.cv-cost-table thead th { color: var(--ink-3); font-size: 12px; font-weight: 600; }
+.cv-cost-table tr.is-current { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cv-costs { padding: 4px 16px 12px; overflow-x: auto; }
+.cv .sw-black { background: var(--surface); border: 3px solid var(--ink-2); border-radius: 50%; }
+.cv .sw-red { background: var(--surface); border: 1.5px solid var(--v-idle); border-radius: 50%; }
+
+@container (max-width: 460px) {
+  .cv-cell { min-width: 32px; height: 30px; font-size: 12px; }
+  .bo-table th, .bo-table td { padding: 4px 6px; }
+  .bo-table .bo-formula { display: none; }
+}
