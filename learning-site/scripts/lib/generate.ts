@@ -596,16 +596,26 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   written.add(interviewFile);
 
   // ── 8. Quizzes, cheat sheets and interview questions (src/data/*, see src/data/schema.ts) ──
-  const data = checkData({
+  const dataInput = {
     lessons: lessonRecords,
     sheetIds: cheatsheets.sheets.map((x) => ({ id: x.id, title: x.title })),
     topics: interviewManifest.topics as { id: string; title: string; subtopics?: string[]; notCoveredYet?: boolean }[],
     interviewSlices,
     omitted,
     falsePositives,
-    errors,
-    warnings,
-  });
+  };
+  const data = checkData({ ...dataInput, errors, warnings });
+  // lets `npm run data:check` re-validate src/data/* in seconds without re-running the pipeline
+  const ctxFile = path.resolve(OUT_DATA, 'data-context.json');
+  emit(
+    ctxFile,
+    JSON.stringify({
+      ...dataInput,
+      omitted: Object.fromEntries([...omitted].map(([k, v]) => [k, [...v]])),
+      falsePositives: [...falsePositives],
+    }),
+  );
+  written.add(ctxFile);
   for (const [name, value] of Object.entries(data.outputs)) {
     const f = path.resolve(OUT_DATA, name);
     emit(f, JSON.stringify(value, null, 1));
