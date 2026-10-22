@@ -42,7 +42,7 @@ the learner's own line numbers.
 
 | Block contains | Shape | What is compiled |
 |---|---|---|
-| top-level statements (+ local functions / types) | `TopLevel` | `snippet.cs` as written; a harness is inserted before the first type, mapped to `harness.cs` |
+| top-level statements (+ local functions / types) | `TopLevel` | `snippet.cs`; type declarations written *before* the statements are moved after them (C# requires statements first), and a harness goes after the statements, each moved part with its own `#line` |
 | only types, one with `static Main` | `EntryPoint` | as written |
 | only types, no Main | `TypesWithHarness` | as written + `harness.cs` (top-level statements) |
 | only methods / fields / properties | `MembersWithHarness` | wrapped in `partial class Snippet { … }` with `#line`; the harness becomes `Snippet.RunHarness()` |
@@ -159,9 +159,11 @@ programs to `Runner.Check`. For each program, the first rule that applies decide
 5. It doesn't compile against the browser's short reference list → `not-in-runner` (names the assemblies).
 6. Otherwise it is run **twice**, each time in a fresh child process (`Runner.Check exec-batch`), one program after
    another in its own `AssemblyLoadContext`, with a 5 s hard timeout enforced by the parent (kill + restart the child
-   with the next program). Timeouts and crashes are excluded. If the two runs differ (random numbers, clocks, string
-   hash codes — randomized per process), the block is marked "output varies" and shows no expected output. Output
-   that contains the build machine's name, user name or paths is treated the same way, so it can never be published.
+   with the next program). Timeouts and crashes are excluded. A block is marked "output varies" and shows no expected
+   output when the two runs differ (string hash codes are randomized per process, for example), when the semantic
+   model shows it reads the clock or unseeded randomness (`DateTime.Now/Today`, `new Random()`, `Guid.NewGuid`,
+   `Stopwatch`, …: two runs a second apart can agree, yet an age computed from `DateTime.Today` changes next year), or
+   when the output contains the build machine's name, user name or paths (so those can never be published).
 
 Results are cached per program (code + harness + stdin + override + a hash of the tool's sources and the SDK
 version) in `src/data/generated/runnable-cache.json`; CI starts without the cache.
