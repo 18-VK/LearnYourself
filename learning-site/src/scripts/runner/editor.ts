@@ -100,7 +100,8 @@ const theme = EditorView.theme({
   '.cm-cursor': { borderLeftColor: 'var(--ink)' },
 });
 
-export function createEditor(parent: HTMLElement, code: string, opts: { label: string; onRun: () => void }): EditorHandle {
+// `language`: another CodeMirror language (the SQL runner, src/scripts/sqlrun/attach.ts, passes SQL); default C#
+export function createEditor(parent: HTMLElement, code: string, opts: { label: string; onRun: () => void; language?: Extension }): EditorHandle {
   const extensions: Extension[] = [
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -110,7 +111,7 @@ export function createEditor(parent: HTMLElement, code: string, opts: { label: s
     indentOnInput(),
     bracketMatching(),
     indentUnit.of('    '),
-    StreamLanguage.define(csharp),
+    opts.language ?? StreamLanguage.define(csharp),
     syntaxHighlighting(classHighlighter),
     markersField,
     theme,

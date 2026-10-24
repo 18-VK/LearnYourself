@@ -229,9 +229,6 @@ export function decide(SQL: SqlJsStatic, input: DecideInput): Decision {
   const literals = ts.filter((t) => t.kind === 'string').map(stringValue).filter((s) => !likePatterns.has(s));
   const data = dataFindings(tables, literals);
   if (data.length) return reject('typing', data[0]!);
-  const values = resultFindings(first.statements);
-  if (values.length) return reject('typing', values[0]!);
-
   // SQL Server's AVG of an INT column is an INT
   const avg = avgAsInteger(code);
   if (avg) {
@@ -239,6 +236,9 @@ export function decide(SQL: SqlJsStatic, input: DecideInput): Decision {
     const same = !alt.error && rowsOf(alt).length === queries.length && rowsOf(alt).every((s, i) => sameRows(s.table!.rows, queries[i]!.table!.rows, true) && s.table!.total === queries[i]!.table!.total);
     if (!same) return reject('typing', { construct: 'AVG of an INT column', detail: "SQL Server's AVG of an INT column drops the fraction (it returns an INT); here that changes the result." });
   }
+
+  const values = resultFindings(first.statements);
+  if (values.length) return reject('typing', values[0]!);
 
   // the same rows must come back when the tables hold their rows in another order
   let reversed: RunResult;
@@ -335,11 +335,11 @@ export function checkLessons(SQL: SqlJsStatic, blocks: Map<string, SqlBlock[]>, 
     const where = `src/data/sqlrun/${lesson}.yaml`;
     const setupOf = new Map<number, string>();
     for (const u of file.uses) for (const b of u.blocks) setupOf.set(b, u.setup);
-    const setupBlocks = new Map<number, string>();
+    const setupBlocks = new Map<number, string[]>();
     const setups: LessonSqlRun['setups'] = {};
     for (const s of file.setups) {
       const code = s.blocks.map((b) => list[b - 1]?.code ?? '').join('\n\n');
-      for (const b of s.blocks) setupBlocks.set(b, s.id);
+      for (const b of s.blocks) setupBlocks.set(b, [...(setupBlocks.get(b) ?? []), s.id]);
       // a setup must itself be plain, checked SQL: nothing T-SQL-only, it runs in SQLite, and its data is safe
       const dialect = dialectFindings(code).filter((f) => f.category === 'tsql-only' || f.category === 'not-tsql');
       if (dialect.length) errors.push(`${where}: setup ${s.id} can't run in SQLite: ${dialect[0]!.construct} (${dialect[0]!.detail})`);
@@ -358,7 +358,7 @@ export function checkLessons(SQL: SqlJsStatic, blocks: Map<string, SqlBlock[]>, 
       const base = { id: b.id, lesson, index: b.index, firstLine: firstLine(b.code) };
       const sid = setupBlocks.get(b.index);
       if (sid) {
-        lessonVerdicts.push({ ...base, category: 'setup', setup: sid });
+        lessonVerdicts.push({ ...base, category: 'setup', setup: sid.join(', ') });
         continue;
       }
       const setup = setupOf.get(b.index);
@@ -375,7 +375,8 @@ export function checkLessons(SQL: SqlJsStatic, blocks: Map<string, SqlBlock[]>, 
       if (v.category === 'tsql-only' && (hasRun || looksLikeQuery(b.code))) label('tsql-only', v.construct ?? '', v.detail ?? '');
       else if (hasRun && v.category === 'typing' && looksLikeQuery(b.code)) label('typing', v.construct ?? '', v.detail ?? '');
       else if (hasRun && v.category === 'setup') {
-        const users = runnable.filter((r) => r.setup === v.setup).map((r) => r.index);
+        const ids = setupBlocks.get(v.index) ?? [];
+        const users = runnable.filter((r) => r.setup && ids.includes(r.setup)).map((r) => r.index);
         if (users.length) label('setup', v.setup ?? '', `Sample data for the runnable ${users.length === 1 ? 'query' : 'queries'} below (SQL blocks ${users.join(', ')}).`);
       }
     }

@@ -76,7 +76,8 @@ const TSQL_FUNCTIONS = new Set(
     'BINARY_CHECKSUM HASHBYTES COMPRESS DECOMPRESS QUOTENAME REPLICATE SPACE LEFT RIGHT REVERSE SQUARE POWER CEILING FLOOR ' +
     'ROUND PERCENTILE_CONT PERCENTILE_DISC STDEV STDEVP VAR VARP COUNT_BIG GROUPING GROUPING_ID APPROX_COUNT_DISTINCT OPENJSON ' +
     'JSON_VALUE JSON_QUERY ISJSON JSON_MODIFY CONCAT_WS TRANSLATE GREATEST LEAST OPENROWSET OPENQUERY CONTAINS FREETEXT ' +
-    'ISNUMERIC ISDATE STR UNICODE NCHAR SOUNDEX DIFFERENCE GENERATE_SERIES DATE_BUCKET DATETRUNC'
+    'ISNUMERIC ISDATE STR UNICODE NCHAR SOUNDEX DIFFERENCE GENERATE_SERIES DATE_BUCKET DATETRUNC HAS_PERMS_BY_NAME ' +
+    'FN_MY_PERMISSIONS IS_MEMBER IS_ROLEMEMBER IS_SRVROLEMEMBER HAS_DBACCESS SUSER_ID USER_ID DATABASEPROPERTYEX SERVERPROPERTY'
   ).split(' '),
 );
 const OTHER_DIALECT_FUNCTIONS = new Set(
@@ -554,7 +555,18 @@ function stripAlias(item: Token[]): { expr: Token[]; alias?: string } {
   return { expr: item };
 }
 
-const hasAggregate = (expr: Token[]) => expr.some((t, i) => t.kind === 'word' && AGGREGATES.has(t.upper) && isOp(expr[i + 1], '(') && !isWord(expr[matchParen(expr, i + 1) + 1], 'OVER'));
+/** An aggregate call at this level of the expression (not inside a subquery, not a window aggregate). */
+function hasAggregate(expr: Token[]): boolean {
+  for (let i = 0; i < expr.length; i++) {
+    const t = expr[i]!;
+    if (isOp(t, '(') && isWord(expr[i + 1], 'SELECT')) {
+      i = matchParen(expr, i);
+      continue;
+    }
+    if (t.kind === 'word' && AGGREGATES.has(t.upper) && isOp(expr[i + 1], '(') && !isWord(expr[matchParen(expr, i + 1) + 1], 'OVER')) return true;
+  }
+  return false;
+}
 
 /**
  * SQL Server rejects a SELECT that groups (GROUP BY or an aggregate) but also lists a column that is neither grouped
