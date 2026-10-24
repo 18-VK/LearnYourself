@@ -1,0 +1,53 @@
+# "Try it yourself" for dsa/searching/more-array-searches. The note gives no sample values for these searches, so all
+# cases are generated (reviewed: false) and checked against the note's own implementations by the build.
+exercises:
+  - id: integer-square-root
+    title: "Write MySqrt"
+    task: "Return the integer square root of x (the largest r with r * r <= x) by binary searching the answer."
+    solution: { block: 2, startsWith: "int MySqrt(int x)" }
+    call: "MySqrt(x)"
+    cases:
+      - { given: { x: 0 }, expected: 0, reviewed: false, source: "Generated" }
+      - { given: { x: 1 }, expected: 1, reviewed: false, source: "Generated" }
+      - { given: { x: 8 }, expected: 2, reviewed: false, source: "Generated: not a perfect square" }
+      - { given: { x: 49 }, expected: 7, reviewed: false, source: "Generated: a perfect square" }
+      - { given: { x: 2147483647 }, expected: 46340, reviewed: false, source: "Generated: int.MaxValue, where mid * mid overflows without the note's (long) cast" }
+  - id: jump-search
+    title: "Write JumpSearch"
+    task: "arr is sorted: jump ahead in blocks of about √n until you pass target, then scan that block; return the index or -1."
+    solution: { block: 3, startsWith: "int JumpSearch(int[] arr, int target)" }
+    call: "JumpSearch(arr, target)"
+    cases:
+      - { given: { arr: [1, 3, 5, 7, 9, 11, 13, 15, 17], target: 13 }, expected: 6, reviewed: false, source: "Generated" }
+      - { given: { arr: [1, 3, 5, 7, 9, 11, 13, 15, 17], target: 1 }, expected: 0, reviewed: false, source: "Generated: the first element" }
+      - { given: { arr: [1, 3, 5, 7, 9, 11, 13, 15, 17], target: 17 }, expected: 8, reviewed: false, source: "Generated: the last element" }
+      - { given: { arr: [1, 3, 5, 7, 9, 11, 13, 15, 17], target: 6 }, expected: -1, reviewed: false, source: "Generated: not found" }
+  - id: interpolation-search
+    title: "Write InterpolationSearch"
+    task: "arr is sorted and evenly spread: guess target's position from its value, then narrow the range; return the index or -1."
+    solution: { block: 4, startsWith: "int InterpolationSearch(int[] arr, int target)" }
+    call: "InterpolationSearch(arr, target)"
+    cases:
+      - { given: { arr: [10, 20, 30, 40, 50, 60], target: 40 }, expected: 3, reviewed: false, source: "Generated" }
+      - { given: { arr: [10, 20, 30, 40, 50, 60], target: 10 }, expected: 0, reviewed: false, source: "Generated: the first element" }
+      - { given: { arr: [10, 20, 30, 40, 50, 60], target: 60 }, expected: 5, reviewed: false, source: "Generated: the last element" }
+      - { given: { arr: [10, 20, 30, 40, 50, 60], target: 35 }, expected: -1, reviewed: false, source: "Generated: not found" }
+  - id: exponential-search
+    title: "Write ExponentialSearch"
+    task: "arr is sorted: double a bound (1, 2, 4, …) until it passes target, then binary search that range; return the index or -1."
+    solution: { block: 5, startsWith: "int ExponentialSearch(int[] arr, int target)" }
+    call: "ExponentialSearch(arr, target)"
+    cases:
+      - { given: { arr: [2, 4, 6, 8, 10, 12, 14], target: 12 }, expected: 5, reviewed: false, source: "Generated" }
+      - { given: { arr: [2, 4, 6, 8, 10, 12, 14], target: 2 }, expected: 0, reviewed: false, source: "Generated: the first element" }
+      - { given: { arr: [2, 4, 6, 8, 10, 12, 14], target: 7 }, expected: -1, reviewed: false, source: "Generated: not found" }
+  - id: ternary-max-index
+    title: "Write TernaryMaxIndex"
+    task: "arr strictly increases, then strictly decreases: return the index of its largest element by ternary search."
+    solution: { block: 6, startsWith: "int TernaryMaxIndex(int[] arr)" }
+    call: "TernaryMaxIndex(arr)"
+    cases:
+      - { given: { arr: [1, 3, 5, 4, 2] }, expected: 2, reviewed: false, source: "Generated" }
+      - { given: { arr: [1, 2, 3, 4, 10, 9] }, expected: 4, reviewed: false, source: "Generated: the peak near the end" }
+      - { given: { arr: [3, 8, 9, 7, 2, 1] }, expected: 2, reviewed: false, source: "Generated" }
+      - { given: { arr: [1, 5, 2] }, expected: 1, reviewed: false, source: "Generated: three elements" }

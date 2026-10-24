@@ -1,0 +1,61 @@
+---
+/**
+ * Interactive extras on a lesson page, placed by src/pages/[course]/[module]/[lesson].astro right after #lesson-body:
+ * - runnable SQL: the data src/scripts/sqlrun/attach.ts needs (#sqlrun-data), from scripts/sqlrun/check.ts;
+ * - practice mode: the "Try it yourself" exercises (scripts/practice/check.ts), run through the C# runner.
+ * Both scripts load only on lessons that have something for them.
+ */
+import { practiceFor } from '../lib/practice';
+import { scriptJson } from '../lib/runnable';
+import { sqlRunFor } from '../lib/sqlrun';
+
+interface Props {
+  lessonId: string;
+}
+const { lessonId } = Astro.props;
+const sql = sqlRunFor(lessonId);
+const practice = practiceFor(lessonId);
+---
+
+{sql && <script type="application/json" id="sqlrun-data" set:html={scriptJson(sql)} />}
+{
+  practice && (
+    <section class="practice" id="try-it-yourself" aria-labelledby="practice-title" data-pagefind-ignore>
+      <h2 id="practice-title">Try it yourself</h2>
+      <p class="practice-intro">
+        Write the method from this lesson yourself, then run the tests in your browser (the C# compiler loads on the first run, about {practice.downloadMB} MB, once).
+        Tests marked <span class="practice-tag practice-tag-note">from the note</span> use the note's own example; <span class="practice-tag practice-tag-generated">generated</span> ones were added for this exercise and are not reviewed yet.
+      </p>
+      {practice.exercises.map((ex) => (
+        <article class="practice-exercise" id={`practice-${ex.id}`} data-exercise={ex.id}>
+          <h3>{ex.title}</h3>
+          <p class="practice-task">{ex.task}</p>
+          <div class="table-wrap" tabindex="0" role="region" aria-label={`Tests for ${ex.title}`}>
+            <table class="practice-cases">
+              <thead>
+                <tr><th scope="col">#</th><th scope="col">Input</th><th scope="col">Expected</th><th scope="col">Source</th></tr>
+              </thead>
+              <tbody>
+                {ex.cases.map((c, i) => (
+                  <tr data-case={i + 1}>
+                    <td>{i + 1}</td>
+                    <td><code>{c.input}</code></td>
+                    <td><code>{c.expected}</code></td>
+                    <td>{c.reviewed ? <span class="practice-tag practice-tag-note" title={c.source}>from the note</span> : <span class="practice-tag practice-tag-generated" title={c.source ?? 'added for this exercise'}>generated</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div class="practice-mount"><button type="button" class="runner-btn runner-run practice-start">Start: open the editor</button></div>
+        </article>
+      ))}
+      <script type="application/json" id="practice-data" set:html={scriptJson(practice)} />
+    </section>
+  )
+}
+
+<script>
+  if (document.getElementById('sqlrun-data')) void import('../scripts/sqlrun/attach');
+  if (document.getElementById('practice-data')) void import('../scripts/practice/attach');
+</script>

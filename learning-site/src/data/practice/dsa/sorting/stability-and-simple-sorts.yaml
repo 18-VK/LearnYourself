@@ -1,0 +1,50 @@
+# "Try it yourself" for dsa/sorting/stability-and-simple-sorts (see README: "Practice mode").
+# The note's one worked example, [2, 5, 7, 3] -> [2, 3, 5, 7] (“3. Insertion Sort”), is the reviewed case; the other
+# cases are generated (reviewed: false) and checked against the note's own implementation by the build.
+exercises:
+  - id: bubble-sort
+    title: "Write BubbleSort"
+    task: "Sort arr in place, in ascending order, by repeatedly swapping adjacent elements that are out of order."
+    solution: { block: 1, startsWith: "void BubbleSort(int[] arr)" }
+    call: "BubbleSort(arr)"
+    result: arr
+    cases: &sorting-cases
+      - given: { arr: [2, 5, 7, 3] }
+        expected: [2, 3, 5, 7]
+        reviewed: true
+        quote: "[2, 5, 7, 3]  ->  [2, 5, 7, 7]  ->  [2, 5, 5, 7]  ->  [2, 3, 5, 7]"
+        source: "The note's example in “3. Insertion Sort”: [2, 5, 7, 3] becomes [2, 3, 5, 7]"
+      - given: { arr: [] }
+        expected: []
+        reviewed: false
+        source: "Generated: an empty array"
+      - given: { arr: [1] }
+        expected: [1]
+        reviewed: false
+        source: "Generated: a single element"
+      - given: { arr: [5, 4, 3, 2, 1] }
+        expected: [1, 2, 3, 4, 5]
+        reviewed: false
+        source: "Generated: reverse sorted (the worst case in the note's table)"
+      - given: { arr: [3, 1, 2, 3, 1] }
+        expected: [1, 1, 2, 3, 3]
+        reviewed: false
+        source: "Generated: duplicates"
+      - given: { arr: [-4, 10, 0, -4, 7] }
+        expected: [-4, -4, 0, 7, 10]
+        reviewed: false
+        source: "Generated: negative numbers"
+  - id: selection-sort
+    title: "Write SelectionSort"
+    task: "Sort arr in place, in ascending order, by repeatedly moving the smallest remaining element to the front."
+    solution: { block: 2, startsWith: "void SelectionSort(int[] arr)" }
+    call: "SelectionSort(arr)"
+    result: arr
+    cases: *sorting-cases
+  - id: insertion-sort
+    title: "Write InsertionSort"
+    task: "Sort arr in place, in ascending order, by inserting each element into the sorted part on its left."
+    solution: { block: 3, startsWith: "void InsertionSort(int[] arr)" }
+    call: "InsertionSort(arr)"
+    result: arr
+    cases: *sorting-cases

@@ -1,0 +1,45 @@
+# "Try it yourself" for dsa/sorting/merge-and-quick-sort. The reviewed case is the sorting example from the same note
+# (“3. Insertion Sort”, in the lesson dsa/sorting/stability-and-simple-sorts). The sorted input [1..7] is the note's
+# own worst case for a last-element pivot (“The mechanism”); its expected output isn't written in the note, so that
+# case counts as generated.
+exercises:
+  - id: merge-sort
+    title: "Write MergeSort"
+    task: "Sort arr[left..right] in place: sort both halves recursively, then merge them (the note's version has a Merge helper)."
+    solution: { block: 1, startsWith: "void MergeSort(int[] arr, int left, int right)" }
+    call: "MergeSort(arr, 0, arr.Length - 1)"
+    result: arr
+    cases: &cases
+      - given: { arr: [2, 5, 7, 3] }
+        expected: [2, 3, 5, 7]
+        reviewed: true
+        quote: "[2, 5, 7, 3]  ->  [2, 5, 7, 7]  ->  [2, 5, 5, 7]  ->  [2, 3, 5, 7]"
+        quoteFrom: stability-and-simple-sorts
+        source: "The sorting example in the same note (“3. Insertion Sort”): [2, 5, 7, 3] becomes [2, 3, 5, 7]"
+      - given: { arr: [1, 2, 3, 4, 5, 6, 7] }
+        expected: [1, 2, 3, 4, 5, 6, 7]
+        reviewed: false
+        source: "Input from the note (“The mechanism”: already sorted, the last-element pivot's worst case); expected output generated"
+      - given: { arr: [] }
+        expected: []
+        reviewed: false
+        source: "Generated: an empty array"
+      - given: { arr: [9, 7, 5, 3, 1, 8, 6, 4, 2] }
+        expected: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        reviewed: false
+        source: "Generated: odd length, no order"
+      - given: { arr: [3, 1, 2, 3, 1] }
+        expected: [1, 1, 2, 3, 3]
+        reviewed: false
+        source: "Generated: duplicates"
+      - given: { arr: [-4, 10, 0, -4, 7] }
+        expected: [-4, -4, 0, 7, 10]
+        reviewed: false
+        source: "Generated: negative numbers"
+  - id: quick-sort
+    title: "Write QuickSort"
+    task: "Sort arr[low..high] in place: partition around a pivot, then sort both sides recursively (the note's version has a Partition helper)."
+    solution: { block: 2, startsWith: "void QuickSort(int[] arr, int low, int high)" }
+    call: "QuickSort(arr, 0, arr.Length - 1)"
+    result: arr
+    cases: *cases
