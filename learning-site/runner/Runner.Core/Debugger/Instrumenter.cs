@@ -119,8 +119,6 @@ public sealed class Instrumenter
         public bool Iterator { get; init; }
         /// <summary>Fully qualified return type for Ret, or null when return values aren't recorded here.</summary>
         public string? ReturnType { get; init; }
-        /// <summary>The function's own locals (from data-flow analysis of its body), in declaration order.</summary>
-        public required IReadOnlyList<ILocalSymbol> Locals { get; init; }
         /// <summary>Extra values every step records: `this`, or the wrapper class's fields.</summary>
         public required IReadOnlyList<(string Name, string Type, string Expression)> Extra { get; init; }
     }
@@ -146,7 +144,7 @@ public sealed class Instrumenter
             {
                 var statements = globals.Select(g => g.Statement).ToList();
                 var name = _shape == ProgramShape.TypesWithHarness ? "harness" : "top-level statements";
-                fn = NewFunction(entry, name, entry: true, Line(statements[0]), Line(statements[^1].GetLastToken()), [], LocalsOf(statements), statements, isIterator: false, returnType: null);
+                fn = NewFunction(entry, name, entry: true, Line(statements[0]), Line(statements[^1].GetLastToken()), [], statements, isIterator: false, returnType: null);
             }
             _fns.Push(fn);
             var body = InstrumentList(globals.Select(g => g.Statement));
@@ -164,21 +162,21 @@ public sealed class Instrumenter
                         members.AddRange(body.Select(s => SyntaxFactory.GlobalStatement(s)));
                         continue;
                     }
-                    var first = body[0];
-                    var last = body[^1];
-                    body[0] = first.WithLeadingTrivia(SyntaxTriviaList.Empty);
-                    body[^1] = body[^1 == 0 ? 0 : body.Count - 1].WithTrailingTrivia(SyntaxTriviaList.Empty);
+                    var leading = body[0].GetLeadingTrivia();
+                    var trailing = body[^1].GetTrailingTrivia();
+                    body[0] = body[0].WithLeadingTrivia(SyntaxTriviaList.Empty);
+                    body[^1] = body[^1].WithTrailingTrivia(SyntaxTriviaList.Empty);
                     var block = SyntaxFactory.Block(
-                        SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithLeadingTrivia(first.GetLeadingTrivia()),
+                        SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithLeadingTrivia(leading),
                         SyntaxFactory.List(body),
                         SyntaxFactory.Token(SyntaxKind.CloseBraceToken));
-                    var wrapped = WrapBody(fn, block).WithTrailingTrivia(last.GetTrailingTrivia());
+                    var wrapped = WrapBody(fn, block).WithTrailingTrivia(trailing);
                     members.Add(SyntaxFactory.GlobalStatement(wrapped));
                 }
                 else members.Add((MemberDeclarationSyntax)Visit(m)!);
             }
-            var rest = (CompilationUnitSyntax)base.VisitCompilationUnit(node.WithMembers(default))!;
-            return rest.WithMembers(SyntaxFactory.List(members)).WithEndOfFileToken(node.EndOfFileToken);
+            // (using directives and attributes hold nothing to instrument)
+            return node.WithMembers(SyntaxFactory.List(members));
         }
 
         private ProgramShape _shape => owner._shape;
@@ -285,7 +283,7 @@ public sealed class Instrumenter
             // expression lambdas (x => x * 2) are left alone: they have no statements, and a block body could change
             // how an overload or an expression tree is chosen
             if (block is null || model.GetSymbolInfo(node).Symbol is not IMethodSymbol symbol || IsHidden(node)) return Skip(node, () => visitChildren(node), keepContext: block is null);
-            return VisitFunction(node, symbol, "lambda", false, block.OpenBraceToken, block, null, visitChildren, (n, b) => withBlock(n, b), isLambda: true);
+            return VisitFunction(node, symbol, "lambda", false, node.GetFirstToken(), block, null, visitChildren, (n, b) => withBlock(n, b), isLambda: true);
         }
 
         /// <summary>Visits a function's children with its context pushed, then wraps its (block or expression) body.</summary>
@@ -296,10 +294,10 @@ public sealed class Instrumenter
             string? returnType = null;
             if (Level >= 2 && !entry && !isLambda && !symbol.IsAsync && !iterator && !symbol.ReturnsVoid && !symbol.ReturnsByRef && !symbol.ReturnsByRefReadonly && Recordable(symbol.ReturnType))
                 returnType = symbol.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            IReadOnlyList<ILocalSymbol> locals = body is not null ? LocalsOf(body.Statements) : expressionBody is not null ? LocalsOf(expressionBody.Expression) : [];
             int endLine = body is not null ? Line(body.CloseBraceToken) : expressionBody is not null ? Line(expressionBody.Expression.GetLastToken()) : Line(nameToken);
-            var parameters = entry ? [] : symbol.Parameters.Where(p => p.RefKind != RefKind.Out && Recordable(p.Type)).Select(p => (ISymbol)p).ToList();
-            var fn = NewFunction(symbol, name, entry, Line(nameToken), endLine, parameters, locals, body?.Statements ?? (IEnumerable<SyntaxNode>)[expressionBody!.Expression], iterator, returnType, isLambda);
+            List<ISymbol> parameters = entry ? [] : [.. symbol.Parameters.Where(p => p.RefKind != RefKind.Out && !p.IsDiscard && Recordable(p.Type))];
+            IEnumerable<SyntaxNode> bodyNodes = body is not null ? body.Statements : expressionBody is not null ? [expressionBody.Expression] : [];
+            var fn = NewFunction(symbol, name, entry, Line(nameToken), endLine, parameters, bodyNodes, iterator, returnType, isLambda);
             _fns.Push(fn);
             var visited = visitChildren(node)!;
             _fns.Pop();
@@ -340,10 +338,10 @@ public sealed class Instrumenter
             return withBody(visited, newBody);
         }
 
-        private Fn NewFunction(IMethodSymbol symbol, string name, bool entry, int line, int endLine, IReadOnlyList<ISymbol> parameters, IReadOnlyList<ILocalSymbol> locals,
+        private Fn NewFunction(IMethodSymbol symbol, string name, bool entry, int line, int endLine, IReadOnlyList<ISymbol> parameters,
             IEnumerable<SyntaxNode> bodyNodes, bool isIterator, string? returnType, bool isLambda = false)
         {
-            var extra = isLambda ? [] : ExtraValues(symbol);
+            IReadOnlyList<(string Name, string Type, string Expression)> extra = isLambda ? [] : ExtraValues(symbol);
             var variables = new List<SiteVariable>();
             variables.AddRange(extra.Select(e => new SiteVariable(e.Name, e.Type)));
             variables.AddRange(parameters.Select(p => new SiteVariable(p.Name, TypeText(((IParameterSymbol)p).Type))));
@@ -367,8 +365,7 @@ public sealed class Instrumenter
                 Site = site,
                 Iterator = isIterator,
                 ReturnType = returnType,
-                Locals = locals,
-                Extra = isLambda ? [] : extra,
+                Extra = extra,
             };
         }
 
@@ -699,23 +696,29 @@ public sealed class Instrumenter
         /// </summary>
         private List<ISymbol> VisibleVariables(Fn fn, SyntaxNode node)
         {
-            var result = new List<ISymbol>();
-            ImmutableHashSetLike assigned;
+            HashSet<ISymbol> assigned;
+            System.Collections.Immutable.ImmutableArray<ISymbol> onEntry;
             try
             {
                 var flow = node is ExpressionSyntax e ? model.AnalyzeDataFlow(e) : node is StatementSyntax s ? model.AnalyzeDataFlow(s) : null;
                 if (flow is null || !flow.Succeeded) return Parameters(fn, null);
-                assigned = new ImmutableHashSetLike(flow.DefinitelyAssignedOnEntry);
+                onEntry = flow.DefinitelyAssignedOnEntry;
+                assigned = new HashSet<ISymbol>(onEntry, SymbolEqualityComparer.Default);
             }
             catch (ArgumentException)
             {
                 return Parameters(fn, null);
             }
-            result.AddRange(Parameters(fn, assigned));
+            var result = Parameters(fn, assigned);
             int position = node.SpanStart;
-            foreach (var local in fn.Locals)
+            var locals = onEntry.OfType<ILocalSymbol>()
+                .Where(l => SymbolEqualityComparer.Default.Equals(l.ContainingSymbol, fn.Symbol) && Recordable(l.Type))
+                .Select(l => (Local: l, At: l.Locations.FirstOrDefault(x => x.IsInSource)?.SourceSpan.Start ?? int.MaxValue))
+                // declared before this point (in unreachable code everything counts as assigned, even later locals)
+                .Where(x => x.At < position)
+                .OrderBy(x => x.At);
+            foreach (var (local, _) in locals)
             {
-                if (!assigned.Contains(local) || !Recordable(local.Type)) continue;
                 // in scope here, and not hidden by something else with the same name
                 var found = model.LookupSymbols(position, name: local.Name);
                 if (found.Length == 1 && SymbolEqualityComparer.Default.Equals(found[0], local)) result.Add(local);
@@ -723,52 +726,18 @@ public sealed class Instrumenter
             return result;
         }
 
-        private List<ISymbol> Parameters(Fn fn, ImmutableHashSetLike? assigned)
+        private List<ISymbol> Parameters(Fn fn, HashSet<ISymbol>? assigned)
         {
             var list = new List<ISymbol>();
-            if (fn.Site >= 0 && owner._sites[fn.Site].Entry) return list; // Main(string[] args): args is never interesting
+            if (owner._sites[fn.Site].Entry) return list; // Main(string[] args): args is never interesting
             foreach (var p in fn.Symbol.Parameters)
             {
-                if (!Recordable(p.Type)) continue;
-                if (p.RefKind == RefKind.Out && (assigned is null || !assigned.Value.Contains(p))) continue;
+                if (!Recordable(p.Type) || p.IsDiscard) continue;
+                if (p.RefKind == RefKind.Out && (assigned is null || !assigned.Contains(p))) continue;
                 list.Add(p);
             }
             return list;
         }
-
-        private readonly struct ImmutableHashSetLike(System.Collections.Immutable.ImmutableArray<ISymbol> symbols)
-        {
-            private readonly HashSet<ISymbol> _set = new(symbols, SymbolEqualityComparer.Default);
-            public bool Contains(ISymbol s) => _set.Contains(s);
-        }
-
-        /// <summary>The locals declared directly in a function's body (not in lambdas or local functions inside it).</summary>
-        private IReadOnlyList<ILocalSymbol> LocalsOf(IEnumerable<SyntaxNode> nodes)
-        {
-            var list = nodes.ToList();
-            if (list.Count == 0) return [];
-            var fn = model.GetEnclosingSymbol(list[0].SpanStart);
-            try
-            {
-                DataFlowAnalysis? flow = list[0] is StatementSyntax first && list[^1] is StatementSyntax last
-                    ? (first.Parent == last.Parent ? model.AnalyzeDataFlow(first, last) : null)
-                    : list.Count == 1 && list[0] is ExpressionSyntax e ? model.AnalyzeDataFlow(e) : null;
-                if (flow is null || !flow.Succeeded) return [];
-                return [.. flow.VariablesDeclared.OfType<ILocalSymbol>()
-                    .Where(l => SymbolEqualityComparer.Default.Equals(l.ContainingSymbol, fn))
-                    .OrderBy(l => l.Locations.FirstOrDefault()?.SourceSpan.Start ?? 0)];
-            }
-            catch (ArgumentException)
-            {
-                return [];
-            }
-        }
-
-        private IReadOnlyList<ILocalSymbol> LocalsOf(ExpressionSyntax expression) => LocalsOf([expression]);
-
-        private IReadOnlyList<ILocalSymbol> LocalsOf(SyntaxList<StatementSyntax> statements) => LocalsOf(statements.Cast<SyntaxNode>());
-
-        private IReadOnlyList<ILocalSymbol> LocalsOf(List<StatementSyntax> statements) => LocalsOf(statements.Cast<SyntaxNode>());
 
         /// <summary>
         /// Values every step of a member records besides its locals: <c>this</c> for an instance member of a class with
@@ -843,8 +812,8 @@ public sealed class Instrumenter
 
         private bool IsHidden(SyntaxNode node) => _tree.GetLineVisibility(node.SpanStart) != LineVisibility.Visible;
 
-        private static bool IsEntry(IMethodSymbol symbol) =>
-            symbol.Name == "Main" && symbol.IsStatic && symbol.ContainingAssembly is { } a && SymbolEqualityComparer.Default.Equals(a.GetEntryPoint(), symbol);
+        private bool IsEntry(IMethodSymbol symbol) =>
+            symbol.Name == "Main" && symbol.IsStatic && SymbolEqualityComparer.Default.Equals(model.Compilation.GetEntryPoint(default), symbol);
 
         /// <summary>The generated <c>static void Main() =&gt; new Snippet().RunHarness();</c> of a block of bare methods.</summary>
         private bool IsGeneratedHarnessMain(MethodDeclarationSyntax node, IMethodSymbol symbol) =>

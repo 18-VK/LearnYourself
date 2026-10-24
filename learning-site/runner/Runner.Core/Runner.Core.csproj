@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Shared by the browser runner (Runner.Wasm) and the build-time check (Runner.Check):
-    how a note's block becomes a program, how it is compiled, and how it is run.
+    how a note's block becomes a program, how it is compiled, and how it is run (and traced, for the debugger).
     Keeping one copy is what makes "runnable at build time" mean "runs in the browser".
   -->
   <PropertyGroup>
@@ -10,5 +10,9 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The debugger's recorder: compiled into each traced program, not into Runner.Core (see Debugger/Instrumenter.cs). -->
+    <EmbeddedResource Include="Debugger/Recorder.cs.txt" LogicalName="LyDebug.Recorder.cs" />
   </ItemGroup>
 </Project>
