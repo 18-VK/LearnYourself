@@ -1,0 +1,748 @@
+#line hidden
+// The tracing debugger's recorder (runner/NOTES.md, "Debugger"). This file is NOT part of Runner.Core: the
+// instrumenter adds it to every program it instruments, so it is compiled into the learner's own assembly, against the
+// same reference assemblies, and needs nothing else at run time (in the browser or in the build-time check).
+//
+// The instrumented program calls Enter / Step / Cond / Ret / Thrown / Exit. Each call appends one event (five ints)
+// and interns the snapshots of the variables it was given. The host (TraceSession) sets the limits below through
+// reflection before Main runs and reads the recorded lists afterwards.
+//
+// Rules that keep the program's behaviour unchanged:
+// - nothing here writes to the console or touches the learner's state;
+// - snapshots never run the learner's code: object fields are read with reflection (auto-properties through their
+//   backing fields), never through property getters, ToString overrides, Equals or GetHashCode;
+//   only the standard library's own ToString is called (numbers, dates, StringBuilder, ...);
+// - every name below is fully qualified or imported inside this namespace, so a learner's class called List, Type or
+//   Stack in the global namespace can't change what this code binds to.
+#nullable disable
+namespace LyDebug
+{
+    using global::System;
+    using global::System.Collections;
+    using global::System.Collections.Generic;
+    using global::System.Globalization;
+    using global::System.Reflection;
+    using global::System.Text;
+
+    internal static class Recorder
+    {
+        // ── limits and hooks, set by the host before Main runs ──
+        public static int MaxEvents = 10000;
+        public static int MaxDepth = 1000;
+        public static int MaxValueChars = 4000000;
+        public static int MaxItems = 64;
+        public static int MaxFields = 24;
+        public static int MaxNesting = 3;
+        public static int MaxString = 200;
+        public static Func<int> OutputLength;
+        public static Action OnStop;
+
+        // ── what the host reads after the run ──
+        /// <summary>Five ints per event: kind, frame, site, output length so far, payload (set, value or flag).</summary>
+        public static readonly List<int> Events = new List<int>();
+        /// <summary>Interned value snapshots, each a JSON object.</summary>
+        public static readonly List<string> Values = new List<string>();
+        /// <summary>Interned lists of value ids (the variables of one step, in the site's order).</summary>
+        public static readonly List<int[]> Sets = new List<int[]>();
+        public static readonly List<int> FrameSite = new List<int>();
+        public static readonly List<int> FrameParent = new List<int>();
+        /// <summary>null while recording; "steps", "depth" or "size" once a limit stopped the program.</summary>
+        public static string Stopped;
+        public static int StopOutput = -1;
+
+        public const int KindEnter = 1, KindStep = 2, KindReturn = 3, KindThrow = 4, KindExit = 5;
+
+        private static readonly Dictionary<string, int> valueIds = new Dictionary<string, int>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, int> setIds = new Dictionary<string, int>(StringComparer.Ordinal);
+        private static readonly Dictionary<object, int> objectIds = new Dictionary<object, int>(ReferenceEqualityComparer.Instance);
+        private static readonly List<int> frameDepth = new List<int>();
+        private static readonly HashSet<int> unwinding = new HashSet<int>();
+        private static readonly List<object> path = new List<object>();
+        private static readonly StringBuilder sb = new StringBuilder();
+        private static readonly StringBuilder key = new StringBuilder();
+        private static readonly Assembly self = typeof(Recorder).Assembly;
+        private static int current = -1;
+        private static int events;
+        private static int valueChars;
+        private static object lastException;
+
+        /// <summary>Thrown into the program when a limit is reached, so a runaway program ends.</summary>
+        public sealed class StopException : Exception
+        {
+            public StopException(string reason)
+                : base(reason == "depth" ? "The debugger stopped the program: the call stack got too deep."
+                    : reason == "size" ? "The debugger stopped the program: the recorded values got too large."
+                    : "The debugger stopped the program after the maximum number of steps.")
+            {
+            }
+        }
+
+        // ── called by the instrumented program ──
+
+        /// <summary>A method (or lambda, local function, accessor) starts. Returns the new frame's id.</summary>
+        public static int Enter(int site, object[] args)
+        {
+            Check();
+            int depth = current < 0 ? 1 : frameDepth[current] + 1;
+            if (depth > MaxDepth)
+            {
+                Stop("depth");
+                throw new StopException(Stopped);
+            }
+            int frame = FrameSite.Count;
+            FrameSite.Add(site);
+            FrameParent.Add(current);
+            frameDepth.Add(depth);
+            current = frame;
+            Record(KindEnter, frame, site, args == null ? -1 : SetOf(args));
+            return frame;
+        }
+
+        /// <summary>The statement at <paramref name="site"/> is about to run; <paramref name="values"/> are its variables.</summary>
+        public static void Step(int site, int frame, object[] values)
+        {
+            Check();
+            current = frame;
+            Record(KindStep, frame, site, values == null ? -1 : SetOf(values));
+        }
+
+        /// <summary>A loop condition is about to be evaluated: a step on the loop's line. Always true.</summary>
+        public static bool Cond(int site, int frame, object[] values)
+        {
+            Step(site, frame, values);
+            return true;
+        }
+
+        /// <summary>A return statement's value, recorded on the way out.</summary>
+        public static T Ret<T>(int site, int frame, T value)
+        {
+            Check();
+            current = frame;
+            Record(KindReturn, frame, site, ValueOf(value));
+            return value;
+        }
+
+        /// <summary>
+        /// An exception filter that never catches: records where an exception was thrown (once per exception object).
+        /// <paramref name="escaping"/> is 1 for the filter around a whole method body (the exception leaves the frame).
+        /// </summary>
+        public static bool Thrown(Exception e, int frame, int escaping)
+        {
+            try
+            {
+                if (e == null || e is StopException || Stopped != null) return false;
+                if (escaping != 0) unwinding.Add(frame);
+                if (e.GetType().FullName == "LearnYourself.Runner.OutputLimitExceededException") return false;
+                if (ReferenceEquals(e, lastException)) return false;
+                lastException = e;
+                if (events >= MaxEvents) return false;
+                Record(KindThrow, frame, 0, ExceptionValue(e));
+            }
+            catch (Exception)
+            {
+                // a failure here must never change what the program does
+            }
+            return false;
+        }
+
+        /// <summary>A frame ends (from a finally block, so it also runs when an exception leaves the method).</summary>
+        public static void Exit(int frame)
+        {
+            try
+            {
+                if (frame < 0 || frame >= FrameSite.Count) return;
+                bool unwind = unwinding.Remove(frame);
+                if (Stopped == null && events < MaxEvents) Record(KindExit, frame, FrameSite[frame], unwind ? 1 : 0);
+                if (current == frame) current = FrameParent[frame];
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        // ── recording ──
+
+        private static void Check()
+        {
+            if (Stopped != null) throw new StopException(Stopped);
+            if (events >= MaxEvents)
+            {
+                Stop("steps");
+                throw new StopException(Stopped);
+            }
+        }
+
+        private static void Stop(string reason)
+        {
+            if (Stopped != null) return;
+            Stopped = reason;
+            StopOutput = Output();
+            try
+            {
+                OnStop?.Invoke();
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private static int Output()
+        {
+            try
+            {
+                return OutputLength == null ? 0 : OutputLength();
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
+        private static void Record(int kind, int frame, int site, int payload)
+        {
+            Events.Add(kind);
+            Events.Add(frame);
+            Events.Add(site);
+            Events.Add(Output());
+            Events.Add(payload);
+            events++;
+        }
+
+        private static int SetOf(object[] values)
+        {
+            var ids = new int[values.Length];
+            for (int i = 0; i < values.Length; i++) ids[i] = ValueOf(values[i]);
+            key.Clear();
+            foreach (var id in ids) key.Append(id).Append(',');
+            var k = key.ToString();
+            if (!setIds.TryGetValue(k, out int set))
+            {
+                set = Sets.Count;
+                Sets.Add(ids);
+                setIds.Add(k, set);
+            }
+            return set;
+        }
+
+        private static int ValueOf(object v)
+        {
+            sb.Clear();
+            path.Clear();
+            try
+            {
+                Write(v, 0);
+            }
+            catch (Exception)
+            {
+                sb.Clear();
+                sb.Append("{\"k\":\"o\",\"t\":\"?\"}");
+            }
+            return Intern(sb.ToString());
+        }
+
+        private static int Intern(string json)
+        {
+            if (!valueIds.TryGetValue(json, out int id))
+            {
+                id = Values.Count;
+                Values.Add(json);
+                valueIds.Add(json, id);
+                valueChars += json.Length;
+                if (valueChars > MaxValueChars) Stop("size");
+            }
+            return id;
+        }
+
+        private static int ExceptionValue(Exception e)
+        {
+            sb.Clear();
+            path.Clear();
+            try
+            {
+                WriteException(e);
+            }
+            catch (Exception)
+            {
+                sb.Clear();
+                sb.Append("{\"k\":\"exc\",\"t\":");
+                Str(e.GetType().FullName ?? e.GetType().Name);
+                sb.Append('}');
+            }
+            return Intern(sb.ToString());
+        }
+
+        // ── value snapshots (JSON) ──
+        //   {"k":"null"}                                   null
+        //   {"k":"v","t":"int","v":"5"}                    numbers, bool, char, enums, dates, ... (display text)
+        //   {"k":"s","n":3,"v":"abc"}                      strings (n = full length, v cut at MaxString)
+        //   {"k":"seq","t":"int[]","id":1,"n":4,"items":[...]}      arrays, lists, sets, queues, stacks
+        //   {"k":"grid","t":"int[,]","id":2,"r":2,"c":3,"items":[[...],[...]]}
+        //   {"k":"map","t":"Dictionary<string, int>","id":3,"n":2,"items":[[k,v],...]}
+        //   {"k":"tup","t":"(int, string)","items":[...]}  tuples, KeyValuePair
+        //   {"k":"obj","t":"Person","id":4,"f":[["Name",{...}],...]}  the learner's classes and structs
+        //   {"k":"ref","t":"Node","id":4}                  already shown higher up (a cycle) or nested too deep
+        //   {"k":"exc","t":"System.Exception","m":"..."}  exceptions
+        //   {"k":"o","t":"Func<int, int>"}                 anything else (delegates, queries, ...)
+
+        private static void Write(object v, int depth)
+        {
+            if (v == null)
+            {
+                sb.Append("{\"k\":\"null\"}");
+                return;
+            }
+            var t = v.GetType();
+            if (v is string s)
+            {
+                sb.Append("{\"k\":\"s\",\"n\":").Append(s.Length.ToString(CultureInfo.InvariantCulture)).Append(",\"v\":");
+                Str(s.Length > MaxString ? s.Substring(0, MaxString) : s);
+                sb.Append('}');
+                return;
+            }
+            if (v is bool b)
+            {
+                Prim(t, b ? "true" : "false");
+                return;
+            }
+            if (v is char c)
+            {
+                Prim(t, CharLiteral(c));
+                return;
+            }
+            if (t.IsPrimitive || v is decimal)
+            {
+                Prim(t, v is IFormattable f ? f.ToString(null, CultureInfo.InvariantCulture) : v.ToString());
+                return;
+            }
+            if (t.IsEnum)
+            {
+                Prim(t, TypeName(t) + "." + v.ToString());
+                return;
+            }
+            if (v is Delegate)
+            {
+                Opaque(t, null);
+                return;
+            }
+            if (v is Exception ex)
+            {
+                WriteException(ex);
+                return;
+            }
+            if (v is Array a)
+            {
+                WriteArray(a, t, depth);
+                return;
+            }
+            if (t.Name.StartsWith("<", StringComparison.Ordinal))
+            {
+                // compiler-generated (an iterator from a `yield` method, a library query): enumerating it would run code
+                var e = EnumerableInterface(t);
+                Opaque(e ?? t, e != null ? "not run yet" : null);
+                return;
+            }
+            if (t.Assembly != self)
+            {
+                WriteLibraryValue(v, t, depth);
+                return;
+            }
+            WriteObject(v, t, depth);
+        }
+
+        private static void Prim(Type t, string text)
+        {
+            sb.Append("{\"k\":\"v\",\"t\":");
+            Str(TypeName(t));
+            sb.Append(",\"v\":");
+            Str(text.Length > MaxString ? text.Substring(0, MaxString) + "…" : text);
+            sb.Append('}');
+        }
+
+        private static void Opaque(Type t, string note)
+        {
+            sb.Append("{\"k\":\"o\",\"t\":");
+            Str(TypeName(t));
+            if (note != null)
+            {
+                sb.Append(",\"note\":");
+                Str(note);
+            }
+            sb.Append('}');
+        }
+
+        private static void WriteException(Exception e)
+        {
+            var t = e.GetType();
+            sb.Append("{\"k\":\"exc\",\"t\":");
+            Str(t.FullName ?? t.Name);
+            sb.Append(",\"m\":");
+            Str(Message(e));
+            sb.Append('}');
+        }
+
+        /// <summary>The message, without running a Message override written by the learner.</summary>
+        private static string Message(Exception e)
+        {
+            var t = e.GetType();
+            if (t.Assembly != self) return e.Message;
+            for (var x = t; x != null && x.Assembly == self; x = x.BaseType)
+            {
+                var p = x.GetProperty("Message", BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+                if (p != null)
+                {
+                    var field = typeof(Exception).GetField("_message", BindingFlags.Instance | BindingFlags.NonPublic);
+                    return field?.GetValue(e) as string ?? "";
+                }
+            }
+            return e.Message;
+        }
+
+        private static bool Open(object v, int depth, Type t, out int id)
+        {
+            id = 0;
+            if (t.IsValueType) return depth < MaxNesting;
+            id = ObjectId(v);
+            if (depth >= MaxNesting) return false;
+            foreach (var p in path)
+            {
+                if (ReferenceEquals(p, v)) return false;
+            }
+            return true;
+        }
+
+        private static void Ref(Type t, int id)
+        {
+            sb.Append("{\"k\":\"ref\",\"t\":");
+            Str(TypeName(t));
+            if (id > 0) sb.Append(",\"id\":").Append(id.ToString(CultureInfo.InvariantCulture));
+            sb.Append('}');
+        }
+
+        private static int ObjectId(object v)
+        {
+            if (!objectIds.TryGetValue(v, out int id))
+            {
+                id = objectIds.Count + 1;
+                objectIds.Add(v, id);
+            }
+            return id;
+        }
+
+        private static void Head(string kind, Type t, int id)
+        {
+            sb.Append("{\"k\":\"").Append(kind).Append("\",\"t\":");
+            Str(TypeName(t));
+            if (id > 0) sb.Append(",\"id\":").Append(id.ToString(CultureInfo.InvariantCulture));
+        }
+
+        private static void WriteArray(Array a, Type t, int depth)
+        {
+            if (!Open(a, depth, t, out int id))
+            {
+                Ref(t, id);
+                return;
+            }
+            path.Add(a);
+            if (a.Rank == 1)
+            {
+                Head("seq", t, id);
+                int n = a.Length;
+                sb.Append(",\"n\":").Append(n.ToString(CultureInfo.InvariantCulture)).Append(",\"items\":[");
+                int lower = a.GetLowerBound(0);
+                for (int i = 0; i < n && i < MaxItems; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    Write(a.GetValue(lower + i), depth + 1);
+                }
+                sb.Append("]}");
+            }
+            else if (a.Rank == 2)
+            {
+                Head("grid", t, id);
+                int rows = a.GetLength(0), cols = a.GetLength(1);
+                int r0 = a.GetLowerBound(0), c0 = a.GetLowerBound(1);
+                sb.Append(",\"r\":").Append(rows.ToString(CultureInfo.InvariantCulture)).Append(",\"c\":").Append(cols.ToString(CultureInfo.InvariantCulture)).Append(",\"items\":[");
+                int limit = Math.Max(1, MaxItems / 4);
+                for (int r = 0; r < rows && r < limit; r++)
+                {
+                    if (r > 0) sb.Append(',');
+                    sb.Append('[');
+                    for (int col = 0; col < cols && col < limit; col++)
+                    {
+                        if (col > 0) sb.Append(',');
+                        Write(a.GetValue(r0 + r, c0 + col), depth + 1);
+                    }
+                    sb.Append(']');
+                }
+                sb.Append("]}");
+            }
+            else
+            {
+                Opaque(t, null);
+            }
+            path.RemoveAt(path.Count - 1);
+        }
+
+        private static bool IsCollectionNamespace(string ns) =>
+            ns == "System.Collections.Generic" || ns == "System.Collections" || ns == "System.Collections.Concurrent"
+            || ns == "System.Collections.ObjectModel" || ns == "System.Collections.Specialized";
+
+        /// <summary>A value of a standard library type: collections by their items, tuples by their parts, the rest by its own ToString.</summary>
+        private static void WriteLibraryValue(object v, Type t, int depth)
+        {
+            var ns = t.Namespace ?? "";
+            var full = t.FullName ?? "";
+            if (t.IsGenericType && (full.StartsWith("System.ValueTuple`", StringComparison.Ordinal) || full.StartsWith("System.Tuple`", StringComparison.Ordinal) || full.StartsWith("System.Collections.Generic.KeyValuePair`", StringComparison.Ordinal)))
+            {
+                WriteTuple(v, t, depth);
+                return;
+            }
+            if (full.StartsWith("System.Collections.Generic.PriorityQueue`", StringComparison.Ordinal))
+            {
+                // not enumerable itself; UnorderedItems lists (element, priority) pairs in heap order
+                var items = t.GetProperty("UnorderedItems")?.GetValue(v) as IEnumerable;
+                if (items == null || !Open(v, depth, t, out int pid))
+                {
+                    Opaque(t, null);
+                    return;
+                }
+                path.Add(v);
+                Head("seq", t, pid);
+                sb.Append(",\"n\":").Append(CountOf(v, t).ToString(CultureInfo.InvariantCulture)).Append(",\"note\":\"heap order\",\"items\":[");
+                int i = 0;
+                var en = items.GetEnumerator();
+                while (i < MaxItems && en.MoveNext())
+                {
+                    if (i++ > 0) sb.Append(',');
+                    Write(en.Current, depth + 1);
+                }
+                sb.Append("]}");
+                path.RemoveAt(path.Count - 1);
+                return;
+            }
+            if (IsCollectionNamespace(ns) && v is IEnumerable e)
+            {
+                if (!Open(v, depth, t, out int id))
+                {
+                    Ref(t, id);
+                    return;
+                }
+                path.Add(v);
+                if (v is IDictionary d)
+                {
+                    Head("map", t, id);
+                    sb.Append(",\"n\":").Append(d.Count.ToString(CultureInfo.InvariantCulture)).Append(",\"items\":[");
+                    int i = 0;
+                    var en = d.GetEnumerator();
+                    while (i < MaxItems && en.MoveNext())
+                    {
+                        if (i++ > 0) sb.Append(',');
+                        sb.Append('[');
+                        Write(en.Key, depth + 1);
+                        sb.Append(',');
+                        Write(en.Value, depth + 1);
+                        sb.Append(']');
+                    }
+                    sb.Append("]}");
+                }
+                else
+                {
+                    Head("seq", t, id);
+                    int count = v is ICollection c ? c.Count : CountOf(v, t);
+                    if (count >= 0) sb.Append(",\"n\":").Append(count.ToString(CultureInfo.InvariantCulture));
+                    sb.Append(",\"items\":[");
+                    int i = 0;
+                    var en = e.GetEnumerator();
+                    while (i < MaxItems && en.MoveNext())
+                    {
+                        if (i++ > 0) sb.Append(',');
+                        Write(en.Current, depth + 1);
+                    }
+                    sb.Append("]}");
+                }
+                path.RemoveAt(path.Count - 1);
+                return;
+            }
+            if (ns.StartsWith("System.Linq", StringComparison.Ordinal))
+            {
+                Opaque(EnumerableInterface(t) ?? t, "query, not run yet");
+                return;
+            }
+            if (t.IsGenericType)
+            {
+                Opaque(t, null);
+                return;
+            }
+            var toString = t.GetMethod("ToString", Type.EmptyTypes);
+            if (toString != null && toString.DeclaringType != typeof(object) && toString.DeclaringType != typeof(ValueType))
+            {
+                Prim(t, v is IFormattable f ? f.ToString(null, CultureInfo.CurrentCulture) : v.ToString() ?? "");
+                return;
+            }
+            Opaque(t, null);
+        }
+
+        private static int CountOf(object v, Type t)
+        {
+            var p = t.GetProperty("Count", BindingFlags.Instance | BindingFlags.Public);
+            return p != null && p.PropertyType == typeof(int) && p.GetIndexParameters().Length == 0 ? (int)p.GetValue(v) : -1;
+        }
+
+        private static Type EnumerableInterface(Type t)
+        {
+            foreach (var i in t.GetInterfaces())
+            {
+                if (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)) return i;
+            }
+            return null;
+        }
+
+        private static void WriteTuple(object v, Type t, int depth)
+        {
+            if (!Open(v, depth, t, out int id))
+            {
+                Ref(t, id);
+                return;
+            }
+            path.Add(v);
+            sb.Append("{\"k\":\"tup\",\"t\":");
+            Str(TypeName(t));
+            sb.Append(",\"items\":[");
+            var full = t.FullName ?? "";
+            int i = 0;
+            if (full.StartsWith("System.ValueTuple`", StringComparison.Ordinal))
+            {
+                foreach (var f in t.GetFields(BindingFlags.Instance | BindingFlags.Public))
+                {
+                    if (i++ > 0) sb.Append(',');
+                    Write(f.GetValue(v), depth + 1);
+                }
+            }
+            else
+            {
+                // Tuple<...>.Item1.. and KeyValuePair<K, V>.Key/Value: the library's own getters
+                foreach (var name in full.StartsWith("System.Collections.Generic.KeyValuePair`", StringComparison.Ordinal) ? new[] { "Key", "Value" } : new[] { "Item1", "Item2", "Item3", "Item4", "Item5", "Item6", "Item7", "Rest" })
+                {
+                    var p = t.GetProperty(name, BindingFlags.Instance | BindingFlags.Public);
+                    if (p == null) continue;
+                    if (i++ > 0) sb.Append(',');
+                    Write(p.GetValue(v), depth + 1);
+                }
+            }
+            sb.Append("]}");
+            path.RemoveAt(path.Count - 1);
+        }
+
+        /// <summary>The learner's own class or struct: its fields (auto-properties through their backing fields).</summary>
+        private static void WriteObject(object v, Type t, int depth)
+        {
+            if (!Open(v, depth, t, out int id))
+            {
+                Ref(t, id);
+                return;
+            }
+            path.Add(v);
+            Head("obj", t, id);
+            sb.Append(",\"f\":[");
+            var chain = new List<Type>();
+            for (var x = t; x != null && x.Assembly == self; x = x.BaseType) chain.Insert(0, x);
+            int n = 0;
+            foreach (var type in chain)
+            {
+                foreach (var f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    var name = FieldName(f.Name);
+                    if (name == null) continue;
+                    if (n >= MaxFields) break;
+                    if (n++ > 0) sb.Append(',');
+                    sb.Append('[');
+                    Str(name);
+                    sb.Append(',');
+                    if (f.FieldType.IsByRefLike || f.FieldType.IsPointer) Opaque(f.FieldType, null);
+                    else Write(f.GetValue(v), depth + 1);
+                    sb.Append(']');
+                }
+            }
+            sb.Append("]}");
+            path.RemoveAt(path.Count - 1);
+        }
+
+        /// <summary>Field names as the learner wrote them; null for compiler-generated fields that aren't theirs.</summary>
+        internal static string FieldName(string name)
+        {
+            if (!name.StartsWith("<", StringComparison.Ordinal)) return name;
+            int close = name.IndexOf('>');
+            if (close < 2) return null;
+            var inner = name.Substring(1, close - 1);
+            var rest = name.Substring(close + 1);
+            // auto-property backing field, anonymous type member, captured primary constructor parameter
+            if (rest == "k__BackingField" || rest == "i__Field" || rest == "P") return inner;
+            return null;
+        }
+
+        // ── names ──
+
+        private static readonly Dictionary<Type, string> keywords = new Dictionary<Type, string>
+        {
+            [typeof(int)] = "int", [typeof(long)] = "long", [typeof(short)] = "short", [typeof(byte)] = "byte",
+            [typeof(uint)] = "uint", [typeof(ulong)] = "ulong", [typeof(ushort)] = "ushort", [typeof(sbyte)] = "sbyte",
+            [typeof(double)] = "double", [typeof(float)] = "float", [typeof(decimal)] = "decimal", [typeof(bool)] = "bool",
+            [typeof(char)] = "char", [typeof(string)] = "string", [typeof(object)] = "object", [typeof(nint)] = "nint", [typeof(nuint)] = "nuint",
+        };
+
+        internal static string TypeName(Type t)
+        {
+            if (keywords.TryGetValue(t, out var k)) return k;
+            if (t.IsArray)
+            {
+                var e = t.GetElementType();
+                return TypeName(e) + "[" + new string(',', t.GetArrayRank() - 1) + "]";
+            }
+            var u = Nullable.GetUnderlyingType(t);
+            if (u != null) return TypeName(u) + "?";
+            var name = t.Name;
+            if (name.StartsWith("<", StringComparison.Ordinal)) return name.Contains("AnonymousType") ? "anonymous type" : "object";
+            int tick = name.IndexOf('`');
+            if (tick >= 0) name = name.Substring(0, tick);
+            if (!t.IsGenericType) return name;
+            var args = t.GetGenericArguments();
+            var parts = new string[args.Length];
+            for (int i = 0; i < args.Length; i++) parts[i] = TypeName(args[i]);
+            if ((t.FullName ?? "").StartsWith("System.ValueTuple`", StringComparison.Ordinal)) return "(" + string.Join(", ", parts) + ")";
+            return name + "<" + string.Join(", ", parts) + ">";
+        }
+
+        private static string CharLiteral(char c) => c switch
+        {
+            '\'' => "'\\''",
+            '\\' => "'\\\\'",
+            '\n' => "'\\n'",
+            '\r' => "'\\r'",
+            '\t' => "'\\t'",
+            '\0' => "'\\0'",
+            _ => c < ' ' ? "'\\u" + ((int)c).ToString("x4", CultureInfo.InvariantCulture) + "'" : "'" + c + "'",
+        };
+
+        private static void Str(string s)
+        {
+            sb.Append('"');
+            foreach (var c in s)
+            {
+                switch (c)
+                {
+                    case '"': sb.Append("\\\""); break;
+                    case '\\': sb.Append("\\\\"); break;
+                    case '\n': sb.Append("\\n"); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    default:
+                        // (surrogates are escaped too: a string cut at MaxString may end in half a pair)
+                        if (c < ' ' || c == (char)0x2028 || c == (char)0x2029 || char.IsSurrogate(c)) sb.Append("\\u").Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                        else sb.Append(c);
+                        break;
+                }
+            }
+            sb.Append('"');
+        }
+    }
+}
