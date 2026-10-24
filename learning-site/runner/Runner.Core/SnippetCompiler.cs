@@ -78,19 +78,27 @@ public sealed class SnippetCompiler
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var compilation = CreateCompilation(program);
         if (transform is not null) compilation = transform(compilation);
+        return Emit(compilation, started);
+    }
+
+    /// <summary>Emits an assembly and portable PDB in memory; <paramref name="started"/> is a Stopwatch timestamp for the timing.</summary>
+    public static CompileResult Emit(CSharpCompilation compilation, long started)
+    {
         using var pe = new MemoryStream();
         using var pdb = new MemoryStream();
         var emit = compilation.Emit(pe, pdb, options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
-        var diagnostics = emit.Diagnostics
-            .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
-            .Select(ToDiagnostic)
-            .OrderBy(d => d.Severity == "error" ? 0 : 1).ThenBy(d => d.File).ThenBy(d => d.Line).ThenBy(d => d.Column)
-            .ToList();
+        var diagnostics = Sort(emit.Diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning));
         var ms = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         return emit.Success
             ? new CompileResult(true, diagnostics, pe.ToArray(), pdb.ToArray(), ms)
             : new CompileResult(false, diagnostics, null, null, ms);
     }
+
+    /// <summary>Errors first, then by file, line and column, in the learner's coordinates.</summary>
+    public static List<CompileDiagnostic> Sort(IEnumerable<Diagnostic> diagnostics) => diagnostics
+        .Select(ToDiagnostic)
+        .OrderBy(d => d.Severity == "error" ? 0 : 1).ThenBy(d => d.File).ThenBy(d => d.Line).ThenBy(d => d.Column)
+        .ToList();
 
     public static CompileDiagnostic ToDiagnostic(Diagnostic d)
     {

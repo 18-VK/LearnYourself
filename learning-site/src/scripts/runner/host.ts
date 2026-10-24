@@ -10,6 +10,13 @@
 
 export const TIMEOUT_MS = 5000;
 export const MAX_OUTPUT = 64 * 1024;
+/** The debugger's step cap (runner/NOTES.md, "Debugger"). */
+export const MAX_STEPS = 10_000;
+/**
+ * After the debugger's step cap stops a program, the worker posts the trace and the program normally ends at once.
+ * A program that catches everything may keep running instead; the page then waits this long before stopping it.
+ */
+const STOP_GRACE_MS = 400;
 const COMPILE_TIMEOUT_MS = 60_000;
 
 export interface Diagnostic {
@@ -36,21 +43,25 @@ export interface WorkerResult {
   compiled?: boolean;
   compileMs?: number;
   diagnostics?: Diagnostic[];
-  run?: { outcome: 'completed' | 'exception' | 'output-limit'; exitCode: number; truncated: boolean; ms: number; error?: RuntimeError };
+  run?: { outcome: 'completed' | 'exception' | 'output-limit' | 'trace-limit'; exitCode: number; truncated: boolean; ms: number; error?: RuntimeError };
+  /** Debug mode: the instrumentation level used (-1 with `error`: the program can't be traced), steps, and why recording stopped. */
+  debug?: { level: number; error?: string | null; instrumentMs?: number; steps?: number; stop?: string | null };
   internalError?: string;
 }
 
+/** `trace` (debug mode): the execution trace's JSON, when the worker delivered one. */
 export type RunOutcome =
-  | { kind: 'result'; result: WorkerResult; output: string }
-  | { kind: 'timeout'; output: string }
-  | { kind: 'fatal'; message: string; output: string };
+  | { kind: 'result'; result: WorkerResult; output: string; trace?: string }
+  | { kind: 'timeout'; output: string; trace?: string }
+  | { kind: 'fatal'; message: string; output: string; trace?: string };
 
 export interface RunRequest {
   code: string;
   harness?: string | null;
   stdin?: string;
-  /** Room for the tracing debugger: 'debug' requests carry their own options (see runner/NOTES.md). */
-  mode?: 'run';
+  /** 'debug': trace the program for the debugger (the outcome carries the trace). */
+  mode?: 'run' | 'debug';
+  maxSteps?: number;
 }
 
 export interface RunCallbacks {
@@ -59,7 +70,7 @@ export interface RunCallbacks {
   onOutput?: (text: string) => void;
 }
 
-type Pending = { resolve: (o: RunOutcome) => void; callbacks: RunCallbacks; output: string; timer?: number };
+type Pending = { resolve: (o: RunOutcome) => void; callbacks: RunCallbacks; output: string; timer?: number; trace?: string };
 
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 export const RUNNER_URL = `${base}runner/`;
@@ -91,6 +102,7 @@ class RunnerHost {
           resolve();
         } else if (m.type === 'phase') this.onPhase(m.id!, m.phase as string);
         else if (m.type === 'output') this.onOutput(m.id!, m.text as string);
+        else if (m.type === 'trace') this.onTrace(m.id!, m.json as string, Boolean(m.stopped));
         else if (m.type === 'result') this.finish(m.id!, { kind: 'result', result: m.result as WorkerResult, output: '' });
         else if (m.type === 'fatal') {
           if (m.id) this.finish(m.id, { kind: 'fatal', message: String(m.message), output: '' });
@@ -139,12 +151,27 @@ class RunnerHost {
     p.callbacks.onOutput?.(text);
   }
 
+  private onTrace(id: number, json: string, stopped: boolean): void {
+    const p = this.pending.get(id);
+    if (!p) return;
+    p.trace = json;
+    if (!stopped) return;
+    // a limit stopped the program: it should end right away; if it doesn't (it caught the debugger's exception and
+    // carries on), stop the worker rather than wait for the timeout; the trace is already here
+    window.clearTimeout(p.timer);
+    p.timer = window.setTimeout(() => {
+      this.reset();
+      this.finish(id, { kind: 'timeout', output: '' });
+      this.warmUp();
+    }, STOP_GRACE_MS);
+  }
+
   private finish(id: number, outcome: RunOutcome): void {
     const p = this.pending.get(id);
     if (!p) return;
     window.clearTimeout(p.timer);
     this.pending.delete(id);
-    p.resolve({ ...outcome, output: p.output });
+    p.resolve({ ...outcome, output: p.output, ...(p.trace ? { trace: p.trace } : {}) });
   }
 
   /**
@@ -180,7 +207,16 @@ class RunnerHost {
         this.finish(id, { kind: 'fatal', message: 'the compiler did not answer within a minute', output: '' });
       }, COMPILE_TIMEOUT_MS);
       this.pending.set(id, { resolve, callbacks, output: '', timer });
-      this.worker!.postMessage({ type: 'run', id, code: req.code, harness: req.harness ?? null, stdin: req.stdin ?? '', maxOutput: MAX_OUTPUT });
+      this.worker!.postMessage({
+        type: 'run',
+        id,
+        code: req.code,
+        harness: req.harness ?? null,
+        stdin: req.stdin ?? '',
+        maxOutput: MAX_OUTPUT,
+        mode: req.mode ?? 'run',
+        maxSteps: req.maxSteps ?? MAX_STEPS,
+      });
     });
   }
 }

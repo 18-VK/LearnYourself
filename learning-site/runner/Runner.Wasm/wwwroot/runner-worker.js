@@ -3,13 +3,16 @@
 // The page talks to this worker with postMessage (protocol in runner/NOTES.md, "Worker protocol"):
 //   page → worker  { type: 'init', warm? }                   boot the runtime (downloads on first use); warm: also
 //                                                           compile a small program so the first Run is quick
-//                  { type: 'run', id, code, harness, stdin, maxOutput }
+//                  { type: 'run', id, code, harness, stdin, maxOutput, mode?, maxSteps? }
+//                                                           mode 'debug': trace the program (the tracing debugger)
 //   worker → page  { type: 'progress', loaded, total }      bytes downloaded so far (compressed)
 //                  { type: 'ready', info }                  runtime + compiler ready
 //                  { type: 'phase', id, phase, ms }         'running' when execution starts (the page's timeout
 //                                                           starts here, not during compilation), 'compiled' on errors
 //                  { type: 'output', id, text }             console output, in chunks, as it is written
-//                  { type: 'result', id, result }           JSON result from RunnerExports.Run
+//                  { type: 'trace', id, json, stopped }     debug mode: the execution trace (JSON), posted before the
+//                                                           result; stopped = a limit (step cap) ended the recording
+//                  { type: 'result', id, result }           JSON result from RunnerExports.Run / Debug
 //                  { type: 'fatal', id?, message }          the runtime could not start or crashed
 //
 // A runaway program is stopped by the page terminating this worker; nothing here needs to cooperate.
@@ -128,6 +131,7 @@ async function boot() {
   runtime.setModuleImports('runner-host', {
     output: (id, text) => post({ type: 'output', id, text }),
     phase: (id, phase, ms) => post({ type: 'phase', id, phase, ms }),
+    trace: (id, json, stopped) => post({ type: 'trace', id, json, stopped }),
   });
   const downloadMs = performance.now() - started;
   const exports = await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName);
@@ -149,7 +153,10 @@ self.addEventListener('message', async (e) => {
     if (msg.type === 'run') {
       booting ??= boot();
       await booting;
-      const json = await api.Run(msg.id, msg.code, msg.harness ?? null, msg.stdin ?? '', msg.maxOutput ?? 65536);
+      const json =
+        msg.mode === 'debug'
+          ? await api.Debug(msg.id, msg.code, msg.harness ?? null, msg.stdin ?? '', msg.maxOutput ?? 65536, msg.maxSteps ?? 10000)
+          : await api.Run(msg.id, msg.code, msg.harness ?? null, msg.stdin ?? '', msg.maxOutput ?? 65536);
       post({ type: 'result', id: msg.id, result: JSON.parse(json) });
     }
   } catch (err) {
