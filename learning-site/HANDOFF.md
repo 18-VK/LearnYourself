@@ -160,6 +160,22 @@ enabled. That is expected.
   - Line-ending warnings from git (`LF will be replaced by CRLF`) are harmless.
   - `.NET` blocks: 754 fail to compile as fragments. That's expected; only notes with sample inputs get harnesses.
 
+### Continuing on another machine or account
+
+`main` and the two unfinished branches, `wt/runner` and `wt/extras`, are on GitHub. On a fresh clone:
+
+```bash
+git clone https://github.com/18-VK/LearnYourself.git && cd LearnYourself
+git fetch origin wt/runner wt/extras
+git worktree add ../ly-wt/runner wt/runner     # debugger work
+git worktree add ../ly-wt/extras wt/extras     # SQL runner + practice mode
+```
+
+In each checkout, `cd learning-site && npm ci`. You also need Node ≥ 22.22 and the .NET 10 SDK; on this machine they
+were portable installs in `learning-site/.tools`, which is gitignored. `npm run content` regenerates the gitignored
+lessons and data before a build. `heavy.sh` and `setup.sh` (section 4) exist only on the original machine, under
+`D:/Data/ly-wt/`. On a machine with enough memory you don't need the lock.
+
 ## 5. Files to read, in order
 
 1. `WEBSITE_BUILD_PROMPT.md`: §5–§14, especially §11 (runner and debugger) and §13–14 (checkpoints, definition of done).
