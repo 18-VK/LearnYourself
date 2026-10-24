@@ -1,0 +1,56 @@
+{
+  "lesson": "git-working-tree-staging-and-line-endings",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "In which order do changes move through Git's three areas?",
+      "options": [
+        "Repository → staging area → working directory",
+        "Working directory → staging area → repository",
+        "Staging area → working directory → repository",
+        "Working directory → repository → staging area"
+      ],
+      "answer": 1,
+      "explanation": "Working directory → `git add` → staging area → `git commit` → repository (`.git/objects`).",
+      "source": {
+        "section": "## 9. Working tree, staging area, and repository"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What happens if you delete the `.git` folder?",
+      "options": [
+        "Nothing: it is only a cache",
+        "You lose the repository history",
+        "Only the remotes are lost",
+        "Only the staging area is lost"
+      ],
+      "answer": 1,
+      "explanation": "The `.git` folder is Git's internal database and configuration store; deleting it loses the history.",
+      "source": {
+        "section": "## 10. .git folder"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which `core.autocrlf` setting does the note recommend on Windows?",
+      "options": [
+        "`false`",
+        "`true`",
+        "`input`",
+        "`auto`"
+      ],
+      "answer": 1,
+      "explanation": "Windows: `core.autocrlf true`; Linux/macOS: `input`. `false` is to be avoided unless necessary, because mixed line endings create noisy diffs.",
+      "source": {
+        "section": "## 11. Line endings: CRLF vs LF"
+      },
+      "reviewed": false
+    }
+  ]
+}

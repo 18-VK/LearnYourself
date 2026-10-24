@@ -39,6 +39,22 @@ assets:
     publish: false        # application icon inside the WPF project; not a note asset
 
   # ── Third-party files: view-only, credited ─────────────────────────────────────────────
+  - file: "Git-Github/FlowChart.webp"
+    usedBy: git-github/core-commands/git-working-tree-staging-and-line-endings
+    authorship: likely-third-party
+    credit: "Unknown author (diagram shared online)"
+    alt: "Git flow between the working directory, staging area, local repository and remote repository: git add, git commit, git push, git pull and git checkout"
+    publish: true
+    mode: view
+
+  - file: "Git-Github/GitHub-Pull-request-flow.png"
+    usedBy: git-github/branches-and-pull-requests/git-pull-requests-and-branch-lifecycle
+    authorship: likely-third-party
+    credit: "Unknown author (diagram shared online)"
+    alt: "GitHub pull request flow: a developer clones, creates a branch, makes commits, creates a pull request, the project community discusses it, and the pull request is merged or closed"
+    publish: true
+    mode: view
+
   - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/Join.jpg"
     usedBy: phase-1/linq/linq-joins
     authorship: third-party

@@ -1,7 +1,8 @@
 # LearnYourself (learning site)
 
-A static learning site generated from the .NET study notes in this repository: seven courses, step-through
-algorithm visualizers, lesson quizzes, printable cheat sheets and an interview question bank. Hosted on GitHub Pages at
+A static learning site generated from the .NET study notes in this repository: eight courses, step-through
+algorithm visualizers, lesson quizzes, printable cheat sheets, an interview question bank, and C# examples you can edit,
+run and debug in the browser (plus runnable SQL and practice exercises). Hosted on GitHub Pages at
 **https://18-vk.github.io/LearnYourself/**.
 
 The notes stay where they are and remain the source of truth. This folder only holds the curriculum
@@ -11,8 +12,8 @@ manifests that map notes to lessons, the build pipeline, and the site itself. No
 
 - **Node 22.22 or newer** (Node 24 LTS recommended; CI uses 24). Check with `node --version`.
 - No other services: no database, no accounts, no paid APIs. Progress is stored in the browser.
-- **.NET SDK 10** (current LTS; 10.0.402 used here) for the in-browser C# runner. Optional locally: without it,
-  `npm run build` warns and builds the site without Run buttons. CI installs it and sets `LY_REQUIRE_RUNNER=1`, which
+- **.NET SDK 10** (current LTS; 10.0.402 used here) for the in-browser C# runner, its debugger and the practice
+  exercises. Optional locally: without it, `npm run build` warns and builds the site without them. CI installs it and sets `LY_REQUIRE_RUNNER=1`, which
   turns a missing SDK into an error. Check with `dotnet --list-sdks`.
 
 If your system Node is older, put a portable Node in `learning-site/.tools/node/` and run
@@ -46,9 +47,11 @@ Run these from `learning-site/`:
 | `npm test` | Unit tests (trace generators) |
 | `npm run test:e2e` | Playwright smoke tests against `astro preview` (every lesson, every visualizer, search, 404) |
 | `npm run check` | Type-check Astro pages and TypeScript |
-| `npm run runner` | C# runner only: publish the browser bundle to `public/runner/` and run the runnable-block check (what `npm run build` does; `npm run dev` skips it, so run this once to get Run buttons in dev) |
+| `npm run runner` | C# runner only: publish the browser bundle to `public/runner/`, run the runnable-block check (plain and traced runs), then the practice-mode check (what `npm run build` does; `npm run dev` skips it, so run this once to get Run, Debug and Try-it-yourself in dev) |
 | `npm run runner:check` | Only the runnable-block check; writes `runnable-report.md` |
-| `npm run test:runner` | .NET unit tests for the runner (`runner/Runner.Tests`) |
+| `npm run test:runner` | .NET unit tests for the runner (`runner/Runner.Tests`), including the debugger's instrumenter and recorder |
+| `npm run sqlrun` | Only the runnable-SQL check (sql.js, no .NET needed): which SQL blocks get a Run button; writes `sqlrun-report.md` |
+| `npm run practice` | Only the practice-mode check: builds and verifies the "Try it yourself" exercises (needs the .NET SDK and a built `Runner.Check`); writes `practice-report.md` |
 
 Before the first `npm run test:e2e`, install the browser once: `npx playwright install chromium`.
 
@@ -61,8 +64,11 @@ notes (*.md, *.txt)         curriculum/*.yaml (manifests)
                     |
    src/content/lessons/**.md + src/data/generated/*.json + public/generated/assets/   (all gitignored)
                     |
-   scripts/runner/step.ts   (needs the .NET SDK) ← C# runner bundle → public/runner/; runnable-block check →
-                    |                              src/data/generated/runnable.json + runnable-report.md
+   scripts/sqlrun/check.ts  (sql.js in Node, no SDK) ← runnable-SQL check → src/data/generated/sqlrun.json + sqlrun-report.md
+                    |
+   scripts/runner/step.ts   (needs the .NET SDK) ← C# runner bundle → public/runner/; runnable-block check (plain and
+                    |                              traced runs) → src/data/generated/runnable.json + runnable-report.md;
+                    |                              then scripts/practice/check.ts → practice.json + practice-report.md
                     |
    astro build  (src/markdown/* plugins: callouts, ❌/✅ cards, interview sections, visualizer slots, code frames)
                     |
@@ -82,7 +88,11 @@ notes (*.md, *.txt)         curriculum/*.yaml (manifests)
   `runner/_framework/*.gz` files are approved by path, and their size is reported separately);
 - the C# shown in a visualizer no longer matches the note it came from;
 - a harness or override in `src/data/runnable/` points at a block that moved or changed, or doesn't make its block
-  runnable (see below).
+  runnable (see below);
+- a `src/data/sqlrun/` file names a setup block that moved, a setup that fails in SQLite, or a setup that feeds no
+  runnable query (see "Runnable SQL");
+- a practice exercise's reviewed case doesn't quote its note, the note's own implementation fails one of the cases, or
+  the starter code already passes them all (see "Practice mode").
 
 `coverage-report.md` lists every note and where it went, per-lesson counts, recovered code blocks,
 omitted lines, exclusions and assets. CI keeps it as a build artifact.
@@ -168,8 +178,8 @@ its ticks are the same ones as the page checklist.
 
 ## C# runner
 
-C# blocks that can run in a browser get **Edit**, **Run** and **Reset** buttons, a stdin box, an output panel and
-the output recorded at build time ("Expected output"). The code compiles and runs only in the learner's browser: the
+C# blocks that can run in a browser get **Edit**, **Run**, **Debug** and **Reset** buttons, a stdin box, an output panel
+and the output recorded at build time ("Expected output"). The code compiles and runs only in the learner's browser: the
 .NET WebAssembly runtime and Roslyn run in a Web Worker, downloaded (about 7 MB, gzip) the first time someone presses
 Run and cached after that. A run is stopped after 5 seconds or 64 KB of output. Design and reasons:
 [`runner/NOTES.md`](runner/NOTES.md); measurements: [`CHECKPOINT-3.md`](CHECKPOINT-3.md).
@@ -184,7 +194,31 @@ Which blocks are runnable is decided at build time with the real .NET SDK (`runn
 - every runnable block is run twice; when the two outputs differ (random numbers, the clock), the block says "output
   varies" instead of showing an expected output.
 
-`runnable-report.md` (gitignored, kept by CI as an artifact) lists every C# block and why it is or isn't runnable.
+`runnable-report.md` (gitignored, kept by CI as an artifact) lists every C# block and why it is or isn't runnable, and
+whether it can be debugged.
+
+## Debugger
+
+**Debug** on a runnable block records every step of the program and lets you walk through them: **Continue** (to the next
+breakpoint, F5), **Step over** (F10), **Step into** (F11), **Step out** (Shift+F11), **Step back** (←), **Restart** and
+**Stop**, plus a timeline you can scrub and play. The panel shows the current line (highlighted in the code block, or in
+the editor once you pressed Edit), **Variables** (values flash when they change; `this` with its fields for instance
+members), the **Call stack** (click a caller to see its variables), the **Console** output up to that step, the exception
+and its line when one is thrown, and arrays and lists drawn as cells with the `int` variables that index them (`i`,
+`j`, `lo`, `hi`, `mid`, …) as pointers. Click a line number in the code (or press F9 in the editor) to set a breakpoint.
+
+It is a *tracing* debugger, like Python Tutor: nothing is attached to a running process. Before compiling, a Roslyn
+syntax rewriter instruments the code (`runner/Runner.Core/Debugger/Instrumenter.cs`) so that it reports each statement,
+the locals and parameters in scope there, every call and return, and every exception to a recorder that is compiled into
+the program (`Recorder.cs.txt`). The program runs once in the worker; the page replays the trace with the visualizers'
+player, which is why stepping back is instant. Limits: 10,000 steps (an endless loop stops there, with its first steps
+shown), 1,000 nested calls, and the usual 5 s / 64 KB. Values: primitives, strings (first 200 chars), arrays, lists,
+sets, queues, stacks and dictionaries (first 64 items), tuples, and your own objects by their fields, three levels deep,
+without running any of your code (no property getters or `ToString`). Design notes: [`runner/NOTES.md`](runner/NOTES.md), "Debugger".
+
+Which blocks get the button is decided by the build-time check: every runnable program is also compiled with the
+instrumenter and run, and its output must be exactly the plain run's. A block whose traced run differs (or whose
+instrumented code doesn't compile) keeps Run but gets no Debug; `runnable-report.md` says why.
 
 ## Mark a code block runnable, or add a harness for it
 
@@ -230,7 +264,104 @@ Rules:
   longer matches. Run `npm run runner:check` to try a change in seconds (results are cached per block).
 - Problems in a note's code go in `CONTENT_ISSUES.md`, never into a harness that works around them silently.
 
-## Quizzes, cheat sheets and interview questions: the data files
+## Runnable SQL
+
+SQL blocks that can run in the browser get the same **Edit**, **Run** and **Reset** buttons as C#, a result table per
+statement, "Show expected result" (recorded at build time) and "Show setup". The engine is **sql.js** (SQLite compiled to
+WebAssembly, about 0.4 MB), loaded in a Web Worker on the first Run; every run starts from a fresh in-memory database
+filled with the lesson's own sample data. Nothing is sent anywhere.
+
+The notes are SQL Server notes and SQLite is not SQL Server, so a block is runnable **only when the build proves the
+result can't differ**: `scripts/sqlrun/check.ts` rejects T-SQL-only syntax (TOP, APPLY, `@variables`, GO, `[names]`, …)
+and syntax SQL Server lacks (LIMIT, `||`, …), runs the block in sql.js on the lesson's sample data, checks the data fits
+its declared types the way SQL Server stores them, rejects queries whose result depends on SQLite's typing (arithmetic
+on DECIMAL columns, integer division, implicit conversions, …) or collation, re-runs AVG of INT columns as integer
+averages, and re-runs each query with the tables' rows stored in reverse order to catch results that depend on that.
+Queries without `ORDER BY` run, with a note that SQL Server may order the rows differently. Never fake results: when
+in doubt, a block gets no button. Blocks that aren't runnable are labelled on pages that have Run buttons: **T-SQL
+only** (with the construct), **SQLite could give a different result**, and **Sample data** on setup blocks.
+`sqlrun-report.md` (gitignored) lists every SQL block and its verdict.
+
+Which blocks hold a lesson's sample data, and which queries use it, is declared in `src/data/sqlrun/<lesson id>.yaml`.
+Blocks are numbered by their position among the lesson's **SQL** blocks:
+
+```yaml
+setups:
+  - id: customers-orders
+    blocks: [1]                                  # the CREATE TABLE / INSERT blocks, in the order they run
+    startsWith: "-- Customers (left)"            # guard: fails the build if the note's block changes or moves
+    from: "the note's “Sample data (use these for all examples)”"   # shown under "Show setup"
+uses:
+  - setup: customers-orders
+    blocks: [2, 3, 4, 5]                         # queries that run on those tables
+overrides:
+  - block: 9
+    runnable: false                              # only off: the build can't be overruled towards running
+    reason: "Prints server-specific metadata"
+```
+
+A setup must itself be plain SQL that runs in SQLite, and must feed at least one runnable query, or the build fails.
+Queries not listed under `uses` run on an empty database, so they are runnable only if they create their own tables.
+Edited queries run too; when an edit leaves the dialect both engines share, the page says so under the result.
+
+## Practice mode
+
+DSA lessons with exercises end with **Try it yourself**: for each method in the note, a starter (the note's signature with
+an empty body), the test cases with their expected values, **Start** (opens the editor), **Run tests** (compiles your code
+with the tests in the C# runner and shows pass/fail per case, item by item for lists), and **Show solution** (the note's
+own implementation, which you can load into the editor). Cases marked **from the note** quote the note's example; the
+others are **generated** and marked `reviewed: false`. A failed case says what it tests (the case's `source`), and
+**Hint** reveals the note's solution one line at a time (a faded worked example), so a stuck learner gets the next
+step rather than the whole answer.
+
+Exercises live in `src/data/practice/<lesson id>.yaml`:
+
+```yaml
+exercises:
+  - id: insertion-sort
+    title: "Write InsertionSort"
+    task: "Sort arr in place, in ascending order, by inserting each element into the sorted part on its left."
+    solution: { block: 3, startsWith: "void InsertionSort(int[] arr)" }   # the note's implementation (C# block number)
+    call: "InsertionSort(arr)"                   # how a test calls it
+    result: arr                                  # what is compared after the call (omit: the return value)
+    cases:
+      - given: { arr: [2, 5, 7, 3] }
+        expected: [2, 3, 5, 7]
+        reviewed: true
+        quote: "[2, 5, 7, 3]  ->  [2, 5, 7, 7]  ->  [2, 5, 5, 7]  ->  [2, 3, 5, 7]"   # verbatim from the note
+        source: "The note's example in “3. Insertion Sort”"
+      - given: { arr: [5, 4, 3, 2, 1] }
+        expected: [1, 2, 3, 4, 5]
+        reviewed: false
+        source: "Generated: reverse sorted"
+```
+
+Values are plain YAML (numbers, strings, booleans, lists) typed from the method's parameters, or `{ csharp, show }` for
+anything else; `types:` declares variables that aren't parameters, `call:` on a case calls another method of the block,
+and `starter:` replaces the generated starter when emptying the bodies isn't right. The build (`scripts/practice/check.ts`,
+after the C# runner step) checks that every reviewed case's quote is in its lesson, then compiles and runs two programs
+per exercise with `Runner.Check`: the note's implementation must pass every case (otherwise fix the case, or log the
+note's bug in `CONTENT_ISSUES.md`), and the starter must compile and fail at least one. `practice-report.md` (gitignored)
+lists the exercises. Exercises only show when the C# runner is in the build.
+
+## Pre-test, spaced review and mastery
+
+Three things built on the quizzes, with no extra content:
+
+- **Before you read.** A lesson with a quiz opens with two of its multiple-choice questions (`src/components/PreTest.astro`).
+  A guess before reading makes the answer stick (the pretesting effect); the quiz at the end asks the same questions
+  for the score. Each guess is recorded for review.
+- **Review today** (`/review/`). Every quiz question you answer, in the lesson quiz or the pre-test, is scheduled for
+  review (`src/scripts/review-schedule.ts`, stored as `review` in `ly-progress-v1`): a wrong answer comes back
+  tomorrow, a right one in 4 days, then 2.5× the previous interval, up to 180 days. The page fetches the due lessons'
+  questions from `review-data/<lesson id>.json` (one file per lesson, rendered at build time by
+  `src/pages/review-data/[...lesson].json.ts`), shows them interleaved across courses (consecutive questions come from
+  different places), grades each answer at once and reschedules it. The home page and the progress page show a
+  "Review today: N due" card when anything is due; it also counts the flashcards in the "Review again" pile.
+  "Put in order" questions are listed with a link to the lesson quiz, where they are checked and rescheduled.
+- **Mastery.** On the progress page a lesson counts as mastered when its best quiz score is at least 80 %; the lessons
+  under that are the course's weak spots (marked in the list and counted in the summary).
+
 
 Three folders hold hand-edited data. Their schema is `src/data/schema.ts`; the content pipeline validates every
 file on each build and resolves it into `src/data/generated/*.json`, which is all the pages read. A file that
@@ -409,7 +540,7 @@ Keep the site non-commercial, as GitHub's free Pages terms require.
 
 ## Progress data
 
-Lesson completion, quiz scores, checklist ticks and "continue where you left off" are kept in
+Lesson completion, quiz scores, the review schedule, checklist ticks and "continue where you left off" are kept in
 `localStorage` (key `ly-progress-v1`). The **Your progress** page (footer link) exports and imports them as JSON.
 
 ## Content issues

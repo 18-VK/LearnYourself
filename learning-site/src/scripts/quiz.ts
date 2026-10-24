@@ -4,7 +4,7 @@
  * Order-steps questions reorder by dragging the handle (mouse, pen or touch) or with the ↑/↓ buttons;
  * Alt+↑/↓ also moves the focused step.
  */
-import { loadProgress, recordQuizScore, type QuizScore } from './progress';
+import { loadProgress, recordQuestionResult, recordQuizScore, type QuizScore } from './progress';
 
 const qsa = <T extends Element = HTMLElement>(root: ParentNode, sel: string): T[] => [...root.querySelectorAll<T>(sel)];
 
@@ -155,6 +155,8 @@ export function initQuiz(root: HTMLElement): void {
       q.classList.toggle('is-incorrect', !ok);
       fb.hidden = false;
       if (ok) score++;
+      // each answer schedules the question for review (wrong: tomorrow; right: later and later)
+      if (q.dataset.qid) recordQuestionResult(id, q.dataset.qid, ok);
     }
     checked = true;
     setDisabled(true);

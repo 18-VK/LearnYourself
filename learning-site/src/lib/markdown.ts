@@ -24,7 +24,7 @@ import { remarkCallouts, remarkCompare, remarkEscapeHtml, remarkRemoteImages } f
 
 /** Keep in step with markdown.shikiConfig in astro.config.ts. */
 const SHIKI = {
-  themes: { light: 'github-light', dark: 'github-dark' } as const,
+  themes: { light: 'github-light-high-contrast', dark: 'github-dark-high-contrast' } as const,
   defaultColor: false as const,
   langAlias: { cmd: 'bat', xpath: 'xml', cs: 'csharp', 'c#': 'csharp', none: 'plaintext' },
   transformers: [transformerMetaHighlight()],

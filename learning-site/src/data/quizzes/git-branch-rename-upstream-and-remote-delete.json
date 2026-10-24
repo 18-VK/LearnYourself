@@ -1,0 +1,73 @@
+{
+  "lesson": "git-branch-rename-upstream-and-remote-delete",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the difference between `git branch -m` and `git branch -M`?",
+      "options": [
+        "None",
+        "`-M` also renames the remote branch",
+        "`-M` forces the rename even if a branch with that name already exists",
+        "`-m` deletes the old branch"
+      ],
+      "answer": 2,
+      "explanation": "`-m` renames the current branch; `-M` renames it and overwrites an existing branch with that name.",
+      "source": {
+        "section": "## 1. `git branch -m` vs `git branch -M`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "After `git push -u origin feature/login`, what can you run?",
+      "options": [
+        "Only `git push origin feature/login`",
+        "Plain `git push` and `git pull`",
+        "`git merge` only",
+        "Nothing until you fetch"
+      ],
+      "answer": 1,
+      "explanation": "`-u` sets the upstream tracking, so plain `git push` and `git pull` work afterwards.",
+      "source": {
+        "section": "## 2. `git push -u` vs `git push`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which command shows which remote branch your local branch tracks?",
+      "options": [
+        "`git branch -a`",
+        "`git branch -vv`",
+        "`git remote show`",
+        "`git status -s`"
+      ],
+      "answer": 1,
+      "explanation": "`git branch -vv` lists local branches with their upstream tracking branch.",
+      "source": {
+        "section": "### Check upstream tracking"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "How do you delete a branch on the remote?",
+      "options": [
+        "`git branch -D master`",
+        "`git push origin --delete master`",
+        "`git remote remove master`",
+        "`git delete master`"
+      ],
+      "answer": 1,
+      "explanation": "`git push origin --delete <branch>`; the note's example does it after renaming `master` to `main`.",
+      "source": {
+        "section": "## 3. Delete remote branch"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "lesson": "git-repository-setup-and-remotes",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does `git pull --rebase` do?",
+      "options": [
+        "Downloads changes without touching your branch",
+        "Fetches from the tracked remote branch and puts your local commits on top of the remote ones",
+        "Pushes your commits and rebases the remote",
+        "Deletes the remote branch"
+      ],
+      "answer": 1,
+      "explanation": "It is equivalent to `git fetch` followed by `git rebase`: your local commits are replayed on top of the fetched ones.",
+      "source": {
+        "section": "### `git pull`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "In a fork-based setup, what do `origin` and `upstream` usually point to?",
+      "options": [
+        "`origin` = the original repository, `upstream` = your fork",
+        "`origin` = your fork, `upstream` = the original repository",
+        "Both point to your fork",
+        "`upstream` is a local branch"
+      ],
+      "answer": 1,
+      "explanation": "The typical setup: `origin` → your fork, `upstream` → the original repository.",
+      "source": {
+        "section": "### Why use multiple remotes?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which command connects a local repository to a remote for the first time?",
+      "options": [
+        "`git remote -v`",
+        "`git remote add origin <url>`",
+        "`git fetch origin`",
+        "`git clone`"
+      ],
+      "answer": 1,
+      "explanation": "`git remote add origin <url>` connects the local repo to a remote; `git remote -v` lists the remotes you have.",
+      "source": {
+        "section": "### `git remote add origin <url>`"
+      },
+      "reviewed": false
+    }
+  ]
+}

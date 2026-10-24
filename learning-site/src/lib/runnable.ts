@@ -25,6 +25,8 @@ export interface RunnableBlockData {
   readsInput: boolean;
   varies: boolean;
   expected?: RunnableExpected;
+  /** Set when the debugger can't step through this program (the build-time check's reason); no Debug button then. */
+  noDebug?: string;
 }
 export interface RunnableData {
   available: boolean;

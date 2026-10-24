@@ -36,6 +36,7 @@ export const GLYPH: Record<string, string> = {
   dsa: 'O(n)',
   math: '∑',
   'backend-roadmap': '↗',
+  'git-github': 'git',
 };
 
 export function readingTime(minutes: number): string {

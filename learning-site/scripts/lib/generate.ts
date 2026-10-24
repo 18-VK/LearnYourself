@@ -36,7 +36,7 @@ import {
   type Slice,
 } from './schema';
 
-export const COURSE_FILES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa', 'math', 'backend-roadmap'] as const;
+export const COURSE_FILES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa', 'math', 'backend-roadmap', 'git-github'] as const;
 
 export interface BuildOptions {
   mode: 'build' | 'dev' | 'check';

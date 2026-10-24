@@ -1,0 +1,90 @@
+{
+  "lesson": "git-stash-clean-tags-and-more",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the difference between `git stash pop` and `git stash apply`?",
+      "options": [
+        "None",
+        "`pop` applies the stash and removes it from the list; `apply` keeps it",
+        "`apply` deletes the stash",
+        "`pop` only lists stashes"
+      ],
+      "answer": 1,
+      "explanation": "`git stash pop` applies the most recent stash and removes it; `git stash apply` applies it but keeps it in the list.",
+      "source": {
+        "section": "## git stash"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does the note say to do before `git clean -fd`?",
+      "options": [
+        "Commit everything",
+        "Preview with `git clean -n`",
+        "Run `git reset --hard`",
+        "Nothing"
+      ],
+      "answer": 1,
+      "explanation": "`git clean` is permanent, so always preview what will be deleted with `git clean -n` first.",
+      "source": {
+        "section": "## Git Clean"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which kind of tag stores the tagger's name, date and a message?",
+      "options": [
+        "A lightweight tag",
+        "An annotated tag (`git tag -a v1.0 -m \"...\"`)",
+        "A branch",
+        "A remote"
+      ],
+      "answer": 1,
+      "explanation": "Annotated tags are full objects with metadata and are recommended for public releases; lightweight tags are just pointers.",
+      "source": {
+        "section": "## git tag"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`git checkout v1.3.0` puts you in which state?",
+      "options": [
+        "On a new branch",
+        "Detached HEAD: not on a branch, so new commits are not attached to any branch",
+        "On `main`",
+        "In a merge"
+      ],
+      "answer": 1,
+      "explanation": "Checking out a tag detaches HEAD: fine for building, testing and packaging, not for continuing development.",
+      "source": {
+        "section": "# Rollback using a tag"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "How do you clone a repository so that its submodules are filled?",
+      "options": [
+        "`git clone <repo>`",
+        "`git clone --recurse-submodules <repo>`",
+        "`git pull --submodules`",
+        "`git fetch --all`"
+      ],
+      "answer": 1,
+      "explanation": "A normal clone leaves submodule folders empty; use `git clone --recurse-submodules`, or `git submodule update --init --recursive` after cloning.",
+      "source": {
+        "section": "# git submodule"
+      },
+      "reviewed": false
+    }
+  ]
+}

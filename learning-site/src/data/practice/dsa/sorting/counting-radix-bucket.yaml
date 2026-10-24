@@ -1,0 +1,105 @@
+# "Try it yourself" for dsa/sorting/counting-radix-bucket. Reviewed cases: the sorting example from the same note
+# (“3. Insertion Sort”, lesson dsa/sorting/stability-and-simple-sorts) and the worked Employee example (its “Input:”
+# and “Output:” blocks). Everything else is generated and checked against the note's own implementation by the build.
+exercises:
+  - id: counting-sort
+    title: "Write CountingSort (stable version)"
+    task: "Sort arr in place by counting each value, turning the counts into positions, and placing elements right to left."
+    solution: { block: 1, startsWith: "void CountingSort(int[] arr)" }
+    call: "CountingSort(arr)"
+    result: arr
+    cases: &counting
+      - given: { arr: [2, 5, 7, 3] }
+        expected: [2, 3, 5, 7]
+        reviewed: true
+        quote: "[2, 5, 7, 3]  ->  [2, 5, 7, 7]  ->  [2, 5, 5, 7]  ->  [2, 3, 5, 7]"
+        quoteFrom: stability-and-simple-sorts
+        source: "The sorting example in the same note (“3. Insertion Sort”): [2, 5, 7, 3] becomes [2, 3, 5, 7]"
+      - given: { arr: [] }
+        expected: []
+        reviewed: false
+        source: "Generated: an empty array"
+      - given: { arr: [4, 2, 2, 8, 3, 3, 1] }
+        expected: [1, 2, 2, 3, 3, 4, 8]
+        reviewed: false
+        source: "Generated: duplicates"
+      - given: { arr: [-4, 10, 0, -4, 7] }
+        expected: [-4, -4, 0, 7, 10]
+        reviewed: false
+        source: "Generated: negative numbers (the note's versions shift by the minimum)"
+  - id: counting-sort-simple
+    title: "Write CountingSortSimple"
+    task: "Sort arr in place by counting each value, then writing every value back as many times as it occurred."
+    solution: { block: 2, startsWith: "void CountingSortSimple(int[] arr)" }
+    call: "CountingSortSimple(arr)"
+    result: arr
+    cases: *counting
+  - id: counting-sort-by-age
+    title: "Write CountingSortByAge"
+    task: "Sort the employees by Age, in place, keeping employees of the same age in their original order (a stable sort)."
+    solution: { block: 3, startsWith: "class Employee" }
+    call: "CountingSortByAge(staff)"
+    result: staff
+    types: { staff: "Employee[]" }
+    cases:
+      - given:
+          staff:
+            csharp: 'new Employee[] { new Employee("Aman", 30), new Employee("Riya", 25), new Employee("Karan", 30), new Employee("Sana", 25), new Employee("Vikram", 28) }'
+            show: "[Aman (30), Riya (25), Karan (30), Sana (25), Vikram (28)]"
+        expected: ["Riya (25)", "Sana (25)", "Vikram (28)", "Aman (30)", "Karan (30)"]
+        reviewed: true
+        quote: "Riya (25) Sana (25) Vikram (28) Aman (30) Karan (30)"
+        source: "The note's worked example: its “Input:” block (staff) and “Output:” block"
+      - given:
+          staff: { csharp: "new Employee[] { }", show: "[]" }
+        expected: []
+        reviewed: false
+        source: "Generated: no employees"
+      - given:
+          staff:
+            csharp: 'new Employee[] { new Employee("Lee", 40), new Employee("Ann", 21), new Employee("Bo", 40), new Employee("Cy", 21) }'
+            show: "[Lee (40), Ann (21), Bo (40), Cy (21)]"
+        expected: ["Ann (21)", "Cy (21)", "Lee (40)", "Bo (40)"]
+        reviewed: false
+        source: "Generated: two ties, so the order inside each age shows stability"
+  - id: radix-sort
+    title: "Write RadixSort"
+    task: "Sort arr in place digit by digit, from the least significant, with a stable counting sort per digit (the note's version has a CountingSortByDigit helper)."
+    solution: { block: 5, startsWith: "void RadixSort(int[] arr)" }
+    call: "RadixSort(arr)"
+    result: arr
+    cases:
+      - given: { arr: [2, 5, 7, 3] }
+        expected: [2, 3, 5, 7]
+        reviewed: true
+        quote: "[2, 5, 7, 3]  ->  [2, 5, 7, 7]  ->  [2, 5, 5, 7]  ->  [2, 3, 5, 7]"
+        quoteFrom: stability-and-simple-sorts
+        source: "The sorting example in the same note (“3. Insertion Sort”): [2, 5, 7, 3] becomes [2, 3, 5, 7]"
+      - given: { arr: [170, 45, 75, 90, 802, 24, 2, 66] }
+        expected: [2, 24, 45, 66, 75, 90, 170, 802]
+        reviewed: false
+        source: "Generated: numbers with one to three digits"
+      # (no empty-array case: the note's RadixSort calls arr.Max(), which throws on an empty array; see CONTENT_ISSUES Q-86)
+      - given: { arr: [10, 1, 100, 1, 10] }
+        expected: [1, 1, 10, 10, 100]
+        reviewed: false
+        source: "Generated: duplicates and zero digits"
+  - id: bucket-sort
+    title: "Write BucketSort"
+    task: "Sort arr (values in [0, 1)) in place: spread the values over n buckets, sort each bucket, then concatenate them."
+    solution: { block: 6, startsWith: "void BucketSort(float[] arr)" }
+    call: "BucketSort(arr)"
+    result: arr
+    cases:
+      - given: { arr: [0.42, 0.32, 0.23, 0.52, 0.25, 0.47, 0.51] }
+        expected: [0.23, 0.25, 0.32, 0.42, 0.47, 0.51, 0.52]
+        reviewed: false
+        source: "Generated: the note gives no example, only that values must be in [0, 1)"
+      - given: { arr: [0.9, 0.1, 0.5] }
+        expected: [0.1, 0.5, 0.9]
+        reviewed: false
+        source: "Generated"
+      - given: { arr: [] }
+        expected: []
+        reviewed: false
+        source: "Generated: an empty array"

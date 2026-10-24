@@ -83,6 +83,8 @@ public sealed class Checker
         var runnerCompilation = _runner.CreateCompilation(program);
         var readsInput = Classifier.ReadsInput(runnerCompilation);
         var nondeterminism = Classifier.Nondeterminism(runnerCompilation);
+        // what the browser's Debug button compiles: the same program through the debugger's instrumenter
+        var debug = Debugger.DebugCompiler.Compile(_runner, program);
         return new CheckVerdict
         {
             Id = p.Id,
@@ -93,6 +95,11 @@ public sealed class Checker
             Assemblies = used,
             Assembly = compiled.Assembly,
             Pdb = compiled.Pdb,
+            Debug = debug.CanRun ? null : false,
+            DebugReason = debug.CanRun ? null : $"the debugger's instrumentation does not compile: {debug.Error}",
+            DebugLevel = debug.CanRun ? debug.Level : null,
+            DebugAssembly = debug.Assembly,
+            DebugPdb = debug.Pdb,
         };
     }
 

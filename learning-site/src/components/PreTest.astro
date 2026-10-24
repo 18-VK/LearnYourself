@@ -1,0 +1,62 @@
+---
+/**
+ * "Before you read": two of the lesson's own multiple-choice quiz questions, asked before the text (the pretesting
+ * effect: a question seen before reading makes the answer stick, even when the guess was wrong). Answers feed the
+ * review queue (src/scripts/review-schedule.ts); the quiz at the end asks the same questions again for the score.
+ * Sits outside #lesson-body, so the output verifier's counts are unaffected.
+ */
+import '../styles/quiz.css';
+import '../styles/review.css';
+import { quizzes } from '../lib/data';
+import { renderInline } from '../lib/markdown';
+
+interface Props {
+  /** The lesson's short id (frontmatter `lesson`), as quiz files name it. */
+  lesson: string;
+  /** The lesson's full id (its URL path), which progress is keyed by. */
+  pageId: string;
+}
+const { lesson, pageId } = Astro.props;
+const picked = (quizzes[lesson] ?? []).filter((q) => q.type === 'mcq').slice(0, 2);
+const items = picked.map((q) => (q.type === 'mcq' ? { q, prompt: renderInline(q.prompt), options: q.options.map((o) => renderInline(o)) } : null)).filter((x) => x !== null);
+const sectionTitle = (s: string) => s.replace(/^\s*#{1,6}\s+/, '');
+---
+
+{items.length > 0 && (
+  <section class="pretest" id="ly-pretest" aria-labelledby="ly-pretest-title" data-pretest={pageId} data-pagefind-ignore>
+    <p class="eyebrow">Before you read</p>
+    <h2 id="ly-pretest-title">What would you guess?</h2>
+    <p class="pretest-intro muted">A guess now makes the answer stick when you read it. The quiz at the end asks again.</p>
+    {items.map(({ q, prompt, options }, i) => (
+      <fieldset class="quiz-choice pretest-q" data-qid={q.id} data-answer={q.answer}>
+        <legend class="quiz-prompt"><span class="pretest-num">{i + 1}.</span> <span set:html={prompt} /></legend>
+        <div class="quiz-options">
+          {options.map((o, k) => (
+            <label class="quiz-opt">
+              <input type="radio" name={`ly-pre-${q.id}`} value={k} />
+              <span set:html={o} />
+            </label>
+          ))}
+        </div>
+        <p class="pretest-fb" role="status" hidden>
+          <span class="pretest-verdict"></span>
+          {q.source.anchor && (
+            <>
+              {' '}
+              <a href={`#${q.source.anchor}`}>It comes up under “{sectionTitle(q.source.section)}”.</a>
+            </>
+          )}
+        </p>
+      </fieldset>
+    ))}
+    <div class="pretest-actions">
+      <button type="button" class="btn btn-primary" data-pretest-check>Check my guesses</button>
+      <a class="btn" href="#lesson-body" data-pretest-skip>Skip to the lesson</a>
+    </div>
+  </section>
+)}
+
+<script>
+  const el = document.querySelector<HTMLElement>('.pretest[data-pretest]');
+  if (el) void import('../scripts/pretest').then((m) => m.initPretest(el));
+</script>

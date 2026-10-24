@@ -1,0 +1,73 @@
+{
+  "lesson": "git-daily-scenarios",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A commit is already on the remote and must be undone. Which command keeps the shared history intact?",
+      "options": [
+        "`git reset --hard HEAD~1`",
+        "`git revert <sha>`",
+        "`git restore .`",
+        "`git commit --amend`"
+      ],
+      "answer": 1,
+      "explanation": "`git revert` adds a new commit that undoes the change; `git reset` would rewrite history that others already have.",
+      "source": {
+        "section": "## 5. Undo a commit that is already on the remote"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "You committed on `main` instead of your feature branch and have not pushed. What is the note's first step?",
+      "options": [
+        "`git push --force`",
+        "`git branch feature/login-form`, a new branch pointing at the commit, then reset `main` back",
+        "`git revert HEAD`",
+        "`git stash`"
+      ],
+      "answer": 1,
+      "explanation": "Create the branch at the current commit first (nothing is lost), then `git reset --hard HEAD~1` moves `main` back, then switch to the feature branch.",
+      "source": {
+        "section": "## 3. You committed on the wrong branch (not pushed yet)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "After rebasing a branch you had already pushed, how do you push it?",
+      "options": [
+        "`git push`",
+        "`git push --force-with-lease`",
+        "`git push --force`",
+        "`git pull` then `git push`"
+      ],
+      "answer": 1,
+      "explanation": "A rebase rewrites the pushed commits, so the push needs `--force-with-lease`, never plain `--force`.",
+      "source": {
+        "section": "## 7. Bring your branch up to date with main"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "You added a file to `.gitignore`, but Git still tracks it. What removes it from the index while keeping your copy?",
+      "options": [
+        "`git restore <file>`",
+        "`git rm --cached <file>`",
+        "`git clean -f`",
+        "`git reset --hard`"
+      ],
+      "answer": 1,
+      "explanation": "`.gitignore` only affects untracked files; `git rm --cached <file>` stops tracking it and leaves the file on disk.",
+      "source": {
+        "section": "## 13. A file should never have been committed (local settings, build output)"
+      },
+      "reviewed": false
+    }
+  ]
+}

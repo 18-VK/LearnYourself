@@ -48,8 +48,20 @@ public sealed record CheckVerdict
     public List<RunRecord> Runs { get; init; } = [];
     /// <summary>What the browser should print: set only when both runs agree and the output holds no host data.</summary>
     public RunRecord? Expected { get; init; }
+    /// <summary>
+    /// The debugger can step through it: the instrumented program compiled and printed what the plain one printed
+    /// (or a prefix of it, when the step cap stopped it). Null for programs that aren't runnable.
+    /// </summary>
+    public bool? Debug { get; init; }
+    /// <summary>Why the debugger can't step through it, when <see cref="Debug"/> is false.</summary>
+    public string? DebugReason { get; init; }
+    /// <summary>The instrumentation level that compiled (2 = full, 1 = no loop conditions/returns, 0 = no variables).</summary>
+    public int? DebugLevel { get; init; }
+    public RunRecord? DebugRun { get; init; }
     [JsonIgnore] public byte[]? Assembly { get; init; }
     [JsonIgnore] public byte[]? Pdb { get; init; }
+    [JsonIgnore] public byte[]? DebugAssembly { get; init; }
+    [JsonIgnore] public byte[]? DebugPdb { get; init; }
 }
 
 public sealed record CheckOutput
@@ -68,5 +80,5 @@ public sealed record CheckOutput
 [JsonSerializable(typeof(RunRecord))]
 internal sealed partial class CheckJson : JsonSerializerContext;
 
-/// <summary>One compiled program handed to the child process that runs it.</summary>
-public sealed record BatchItem(string Id, byte[] Assembly, byte[]? Pdb, string Stdin);
+/// <summary>One compiled program handed to the child process that runs it. <c>Traced</c>: built by the debugger's instrumenter.</summary>
+public sealed record BatchItem(string Id, byte[] Assembly, byte[]? Pdb, string Stdin, bool Traced = false);

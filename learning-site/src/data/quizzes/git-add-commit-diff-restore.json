@@ -1,0 +1,56 @@
+{
+  "lesson": "git-add-commit-diff-restore",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the difference between `git add .` and `git add -A`?",
+      "options": [
+        "There is none",
+        "`git add .` stages the current directory and below; `git add -A` stages all changes in the repo",
+        "`git add -A` only stages deleted files",
+        "`git add .` also commits"
+      ],
+      "answer": 1,
+      "explanation": "`git add .` stages changes in the current directory and below; `git add -A` stages all changes in the whole repository.",
+      "source": {
+        "section": "## 5. git add"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What happens when you run `git commit` without `-m`?",
+      "options": [
+        "The commit fails",
+        "Git opens your editor for the message",
+        "Git uses the last message again",
+        "Git commits with an empty message"
+      ],
+      "answer": 1,
+      "explanation": "`-m` writes the message inline; without it, Git opens the configured editor so you can write the message.",
+      "source": {
+        "section": "## 6. git commit"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does `git restore --staged app.js` do?",
+      "options": [
+        "Discards the edits in `app.js`",
+        "Unstages `app.js` and keeps the edits",
+        "Deletes `app.js`",
+        "Commits `app.js`"
+      ],
+      "answer": 1,
+      "explanation": "`git restore --staged <file>` only unstages; `git restore <file>` discards the working-tree changes.",
+      "source": {
+        "section": "## 8. git restore"
+      },
+      "reviewed": false
+    }
+  ]
+}

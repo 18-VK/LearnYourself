@@ -1,0 +1,73 @@
+{
+  "lesson": "git-must-know-commands",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the safe way to overwrite remote history after a rebase?",
+      "options": [
+        "`git push --force`",
+        "`git push --force-with-lease`",
+        "`git push -u`",
+        "`git push --all`"
+      ],
+      "answer": 1,
+      "explanation": "`git push --force-with-lease` is the safe way; plain `--force` is the dangerous one.",
+      "source": {
+        "section": "## 10) Important safety commands"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does `git fetch origin` do?",
+      "options": [
+        "Merges remote changes into your branch",
+        "Downloads remote updates without changing your current branch",
+        "Pushes your commits",
+        "Deletes the remote"
+      ],
+      "answer": 1,
+      "explanation": "Fetch downloads updates without touching your current branch; `git pull` downloads and merges.",
+      "source": {
+        "section": "## 3) Remote commands"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You resolved the conflicts during a rebase. What comes next?",
+      "options": [
+        "`git rebase --abort`",
+        "`git add <fixed-files>` then `git rebase --continue`",
+        "`git commit --amend`",
+        "`git push --force`"
+      ],
+      "answer": 1,
+      "explanation": "Stage each resolved file, then `git rebase --continue` (or `git merge --continue` after a merge); `--abort` cancels instead.",
+      "source": {
+        "section": "### Conflict resolution pathway"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What is `git reflog` useful for?",
+      "options": [
+        "Formatting log output",
+        "Viewing recent branch and commit movements, to recover from mistakes",
+        "Listing remotes",
+        "Tagging releases"
+      ],
+      "answer": 1,
+      "explanation": "The reflog shows recent branch and commit movements and is the usual way to recover lost commits or branches.",
+      "source": {
+        "section": "## 5) Undo and recovery commands"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "lesson": "git-staging-commits-and-undo",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does `git commit -am \"Update styles\"` do?",
+      "options": [
+        "Stages new untracked files too, then commits",
+        "Stages modified tracked files and commits them in one step (new untracked files are not included)",
+        "Amends the last commit",
+        "Commits only what was already staged"
+      ],
+      "answer": 1,
+      "explanation": "`-a` stages modified tracked files; newly created, untracked files are not included.",
+      "source": {
+        "section": "### `git commit -am`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which reset mode moves the branch back one commit but keeps the changes staged?",
+      "options": [
+        "`--soft`",
+        "`--mixed`",
+        "`--hard`",
+        "`--keep`"
+      ],
+      "answer": 0,
+      "explanation": "`--soft` keeps the changes staged, `--mixed` (the default) unstages them, `--hard` discards them.",
+      "source": {
+        "section": "#### `git reset --soft HEAD~1`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which one shows recent actions such as checkout, reset and branch movement?",
+      "options": [
+        "`git log`",
+        "`git reflog`",
+        "Both",
+        "Neither"
+      ],
+      "answer": 1,
+      "explanation": "`git log` is for commit history; `git reflog` is for recent recovery history: checkouts, commits, merges, resets and branch movement.",
+      "source": {
+        "section": "### `git log` vs `git reflog`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "Which command undoes an older commit by creating a new commit?",
+      "options": [
+        "`git reset --hard`",
+        "`git revert <commit-hash>`",
+        "`git restore`",
+        "`git reflog`"
+      ],
+      "answer": 1,
+      "explanation": "`git revert` creates a new commit that undoes an older one safely, without rewriting history.",
+      "source": {
+        "section": "### `git revert`"
+      },
+      "reviewed": false
+    }
+  ]
+}

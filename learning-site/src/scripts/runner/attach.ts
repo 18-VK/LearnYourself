@@ -58,6 +58,7 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
   let editor: EditorHandle | null = null;
   let editorHost: HTMLElement | null = null;
   let running = false;
+  const editorListeners = new Set<(ed: EditorHandle) => void>();
 
   // ── toolbar ──
   const bar = el('span', { className: 'runner-actions' });
@@ -93,7 +94,7 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
   const status = el('p', { className: 'runner-status' });
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
-  const outLabel = el('p', { className: 'runner-label', textContent: 'Output' });
+  const outLabel = el('p', { className: 'runner-label runner-output-label', textContent: 'Output' });
   const output = el('pre', { className: 'runner-pre runner-output', tabIndex: 0 });
   output.setAttribute('aria-label', `Output of ${name}`);
   const problems = el('ul', { className: 'runner-problems' });
@@ -151,6 +152,7 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
     editBtn.hidden = true;
     resetBtn.hidden = false;
     io.hidden = false;
+    for (const l of editorListeners) l(editor);
     return editor;
   }
 
@@ -256,12 +258,19 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
     setStatus(`Finished in ${run.ms < 10 ? run.ms.toFixed(1) : Math.round(run.ms)} ms${run.exitCode ? ` with exit code ${run.exitCode}` : ''}${same ? ': same as the expected output' : ''}.`, 'ok');
   }
 
-  async function run(): Promise<void> {
-    if (running) return;
+  const run = async (): Promise<void> => void (await execute('run'));
+
+  /**
+   * Run, or debug: the same compile errors, progress bar and status line. A debug run that compiled is handed back to
+   * the debugger (src/scripts/runner/debug/) instead of being shown in the output panel.
+   */
+  async function execute(mode: 'run' | 'debug'): Promise<RunOutcome | null> {
+    if (running) return null;
     running = true;
     runBtn.disabled = true;
     runBtn.setAttribute('aria-busy', 'true');
     io.hidden = false;
+    io.dataset.mode = mode;
     resetBtn.hidden = false;
     clearMarks();
     output.textContent = '';
@@ -269,7 +278,7 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
     delete panel.dataset.matches;
     try {
       const outcome = await runner.run(
-        { code: getCode(), harness: entry.harness ?? null, stdin: stdin.value },
+        { code: getCode(), harness: entry.harness ?? null, stdin: stdin.value, mode },
         {
           onPhase: (p) => {
             progress.hidden = p !== 'loading';
@@ -281,12 +290,21 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
             progressText.textContent = `Loading the C# compiler, one-time download of about ${data.downloadMB ?? 7} MB… ${total ? Math.round((loaded / total) * 100) : 0} %`;
           },
           onOutput: (text) => {
-            output.textContent += text;
+            if (mode === 'run') output.textContent += text;
           },
         },
       );
       progress.hidden = true;
-      showOutcome(outcome);
+      if (mode === 'run') {
+        showOutcome(outcome);
+        return outcome;
+      }
+      const r = outcome.kind === 'result' ? outcome.result : null;
+      if (outcome.kind === 'fatal' || (r && (r.internalError || r.problem || !r.compiled))) {
+        showOutcome(outcome);
+        return null;
+      }
+      return outcome;
     } finally {
       running = false;
       runBtn.disabled = false;
@@ -320,16 +338,30 @@ function mount(frame: HTMLElement, entry: RunnableBlockData, ordinal: number): v
     openEditor,
     setStatus,
     run: (callbacks) => runner.run({ code: getCode(), harness: entry.harness ?? null, stdin: stdin.value }, callbacks),
+    name,
+    pre,
+    merged: Boolean(entry.merged?.length),
+    noDebug: entry.noDebug ?? null,
+    editor: () => editor,
+    onEditorOpen: (listener) => {
+      editorListeners.add(listener);
+      return () => editorListeners.delete(listener);
+    },
+    debug: () => execute('debug'),
   };
   for (const action of runnerActions()) {
+    if (action.available && !action.available(ctx)) continue;
     const b = button(action.label, `runner-${action.id}`, `${action.label} ${name}`);
     b.addEventListener('click', () => void action.onClick(ctx));
     bar.insertBefore(b, (action.order ?? 50) < 30 ? resetBtn : null);
   }
 }
 
-/** Extensions that add buttons through registerRunnerAction (the debugger will be imported here). */
-async function loadExtensions(): Promise<void> {}
+/** Extensions that add buttons through registerRunnerAction. */
+async function loadExtensions(): Promise<void> {
+  // the Debug button (small: the debugger itself loads on the first press)
+  await import('./debug/action');
+}
 
 function mountAll(): void {
   const frames = [...document.querySelectorAll<HTMLElement>('#lesson-body figure.code-frame')].filter((f) => CSHARP.has(f.dataset.lang ?? ''));

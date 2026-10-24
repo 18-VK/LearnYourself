@@ -1,0 +1,118 @@
+/* The tracing debugger: the panel under a code block, the breakpoint gutter and the current line.
+   Loaded with src/scripts/runner/debug/session.tsx on the first press of Debug. Colours are the site's tokens and the
+   visualizers' (--v-*), so the array view means the same as in every visualizer and both themes work. */
+
+.dbg .sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.dbg { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 10px 12px; }
+.dbg-body { display: grid; gap: 10px; min-width: 0; }
+
+/* controls */
+.dbg-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.dbg-btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px;
+  padding: 3px 10px; font: 500 12.5px/1.3 var(--font); cursor: pointer; min-height: 30px;
+}
+.dbg-btn:hover:not(:disabled) { border-color: var(--ink-3); }
+.dbg-btn:focus-visible, .dbg-frame:focus-visible, .dbg-scrub:focus-visible, .dbg-speed:focus-visible, .dbg-console:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dbg-btn:disabled { opacity: 0.5; cursor: default; }
+.dbg-btn.dbg-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.dbg-btn.dbg-stop { margin-left: auto; color: var(--bad); }
+.dbg-timeline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dbg-scrub { flex: 1 1 160px; accent-color: var(--v-pointer); min-width: 120px; }
+.dbg-stepno { font: 12px/1.4 var(--mono); color: var(--ink-3); white-space: nowrap; }
+.dbg-speed { font: 12px/1.4 var(--mono); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; }
+
+/* status, notes, exceptions */
+.dbg-status { margin: 0; font-size: 14px; color: var(--ink-2); min-height: 1.4em; }
+.dbg-status[data-kind="error"] { color: var(--bad); }
+.dbg-status[data-kind="ok"] { color: var(--good); }
+.dbg-note { margin: 0; padding: 6px 10px; border-left: 3px solid var(--warn); background: var(--warn-bg); color: var(--ink); font-size: 13.5px; border-radius: 0 6px 6px 0; }
+.dbg-stale { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--warn); font-size: 14px; }
+.dbg-exception { padding: 6px 10px; border-left: 3px solid var(--bad); background: var(--bad-bg); color: var(--bad); font: 13px/1.5 var(--mono); border-radius: 0 6px 6px 0; overflow-wrap: anywhere; }
+.dbg-sub { color: var(--ink-3); font-weight: 400; font-size: 0.92em; }
+.dbg-name { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
+.dbg-type { font: 11.5px/1.4 var(--mono); color: var(--ink-3); margin-left: 6px; }
+.dbg-h { margin: 0 0 4px; font: 600 11px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+
+/* arrays and lists with their index pointers (T2 auto-visualize) */
+.dbg-viz { display: grid; gap: 8px; }
+.dbg-arr { margin: 0; display: grid; gap: 4px; min-width: 0; }
+.dbg-cells { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 2px; }
+.dbg-cell { display: grid; grid-template-rows: auto auto auto; justify-items: center; min-width: 2.4em; flex: 0 0 auto; }
+.dbg-cell-v {
+  display: block; min-width: 2.4em; padding: 4px 6px; text-align: center; box-sizing: border-box;
+  border: 1.5px solid var(--v-idle); border-radius: 6px; background: var(--code-bg); color: var(--code-ink); font: 13px/1.4 var(--mono);
+  transition: background-color 0.25s, border-color 0.25s;
+}
+.dbg-cell.is-changed .dbg-cell-v { border-color: var(--v-swap); background: color-mix(in srgb, var(--v-swap) 16%, var(--code-bg)); }
+.dbg-cell.is-ghost .dbg-cell-v { border-style: dashed; border-color: var(--line); color: var(--ink-3); background: transparent; min-height: 1.95em; }
+.dbg-cell-i { font: 10.5px/1.4 var(--mono); color: var(--ink-3); }
+.dbg-cell-p { font: 600 11px/1.3 var(--mono); color: var(--v-pointer); min-height: 1.3em; }
+.dbg-cell-p:not(:empty)::before { content: "↑ "; }
+
+/* variables and the call stack */
+.dbg-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 10px; align-items: start; }
+.dbg-vars { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dbg-vars caption { text-align: left; font: 600 11px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 4px; }
+.dbg-vars caption .dbg-sub { text-transform: none; letter-spacing: 0; }
+.dbg-vars th, .dbg-vars td { text-align: left; vertical-align: top; padding: 3px 6px; border-top: 1px solid var(--line); }
+.dbg-vars th { font-weight: 400; white-space: nowrap; }
+.dbg-value { font: 12.5px/1.5 var(--mono); color: var(--code-ink); overflow-wrap: anywhere; }
+.dbg-ref { margin-left: 6px; font: 11px/1.4 var(--mono); color: var(--v-active); }
+.dbg-empty { color: var(--ink-3); font-style: italic; }
+.dbg-vars tr.is-changed td, .dbg-vars tr.is-changed th { animation: dbg-flash 0.9s ease-out; }
+.dbg-vars tr.is-changed .dbg-value { color: var(--v-swap); font-weight: 600; }
+.dbg-vars tr.is-return th, .dbg-vars tr.is-return td { background: var(--good-bg); }
+@keyframes dbg-flash { from { background: color-mix(in srgb, var(--v-compare) 30%, transparent); } to { background: transparent; } }
+.dbg-stack ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.dbg-frame {
+  display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); padding: 3px 6px; font: inherit;
+}
+.dbg-frame:hover { border-color: var(--line); }
+.dbg-frame[aria-current="true"] { background: var(--code-cur); border-color: var(--v-pointer); }
+
+/* console up to the current step */
+.dbg-console {
+  margin: 0; padding: 6px 10px; max-height: 12em; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: var(--code-bg); color: var(--code-ink); border: 1px solid var(--line); border-radius: 8px; font: 12.5px/1.5 var(--mono);
+}
+.dbg-harness .viz-code { border: 1px solid var(--line); border-radius: 8px; max-height: 14em; }
+
+/* the code block while debugging: a gutter of breakpoint buttons and the current line */
+.code-frame.is-debugging pre .line { position: relative; padding-left: 3.4em; }
+.dbg-bp {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3em; padding: 0 0.5em 0 0; margin: 0; border: 0; background: transparent;
+  cursor: pointer; text-align: right; font: inherit; color: var(--ink-3); opacity: 0.75;
+}
+.dbg-bp::after { content: attr(data-line); }
+.dbg-bp::before {
+  content: ""; position: absolute; left: 0.45em; top: 50%; width: 0.62em; height: 0.62em; margin-top: -0.31em; border-radius: 50%;
+  background: var(--bad); opacity: 0; transition: opacity 0.12s;
+}
+.dbg-bp:hover::before { opacity: 0.35; }
+.dbg-bp.is-on::before { opacity: 1; }
+.dbg-bp:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; opacity: 1; }
+.code-frame pre .line.dbg-current { background: var(--code-cur); box-shadow: inset 3px 0 0 var(--v-pointer); }
+.code-frame pre .line.dbg-current-exception { background: var(--bad-bg); box-shadow: inset 3px 0 0 var(--bad); }
+
+/* the same in the editor */
+.cm-dbg-gutter { width: 1.1em; cursor: pointer; }
+.cm-dbg-gutter .cm-gutterElement { display: flex; align-items: center; justify-content: center; }
+.cm-dbg-bp-dot { display: inline-block; width: 0.62em; height: 0.62em; border-radius: 50%; background: var(--bad); }
+.cm-dbg-current { background: var(--code-cur) !important; box-shadow: inset 3px 0 0 var(--v-pointer); }
+.cm-dbg-current-exception { background: var(--bad-bg) !important; box-shadow: inset 3px 0 0 var(--bad); }
+
+@media (max-width: 640px) {
+  .dbg-grid { grid-template-columns: minmax(0, 1fr); }
+  .dbg-btn.dbg-stop { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dbg-vars tr.is-changed td, .dbg-vars tr.is-changed th { animation: none; }
+  .dbg-cell-v { transition: none; }
+}
+@media print {
+  .dbg, .dbg-bp { display: none !important; }
+}

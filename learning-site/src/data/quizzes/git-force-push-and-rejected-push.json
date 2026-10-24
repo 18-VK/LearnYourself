@@ -1,0 +1,56 @@
+{
+  "lesson": "git-force-push-and-rejected-push",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A teammate pushed commit D after your base; you run `git push --force` with your rewritten C'. What happens to D?",
+      "options": [
+        "It is merged into C'",
+        "It is gone from the remote",
+        "Git refuses the push",
+        "It is moved to a new branch"
+      ],
+      "answer": 1,
+      "explanation": "`--force` overwrites the remote branch regardless of recent changes: the teammate's commit D is gone. `--force-with-lease` would have refused.",
+      "source": {
+        "section": "## 4. git push --force-with-lease vs git push --force"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Your push was rejected (non-fast-forward). What does the note's recovery flow start with?",
+      "options": [
+        "`git push --force`",
+        "`git fetch origin`, then inspect the log and diff, rebase onto the remote branch, and push with `--force-with-lease`",
+        "`git reset --hard`",
+        "Cloning again"
+      ],
+      "answer": 1,
+      "explanation": "Fetch first, look at `HEAD..origin/your-branch`, rebase onto it, fix conflicts, continue, then `git push --force-with-lease`.",
+      "source": {
+        "section": "## 5. Safe recovery flow after a rejected push"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "According to the comparison table, which command downloads but does not update your branch?",
+      "options": [
+        "`git fetch`",
+        "`git pull`",
+        "`git push`",
+        "`git merge`"
+      ],
+      "answer": 0,
+      "explanation": "`git fetch`: downloads yes, updates branch no, low risk. `git pull` downloads and updates the branch.",
+      "source": {
+        "section": "## 6. Practical comparison"
+      },
+      "reviewed": false
+    }
+  ]
+}

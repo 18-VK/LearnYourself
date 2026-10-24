@@ -88,8 +88,8 @@ td.cs-src-col a.cs-docs-link { color: var(--tip); }
   html:root[data-theme],
   html:root:not([data-theme="light"]) {
     --bg: #fff; --surface: #fff; --surface-2: #eef1f5; --ink: #111; --ink-2: #2b3442; --ink-3: #4f5b6c; --line: #c8cfd9;
-    --link: #1d4aa8; --code-bg: #f5f7fa; --code-ink: #1d2633; --tip: #2b5fc4; --tip-bg: #fff; --good: #1d7f53; --bad: #b8343f;
-    --phase1: #6a4cd8; --desktop: #0e7f7b; --phase2: #3b55c9; --sql: #c23a5a; --dsa: #a05f08; --math: #1b8455; --backend: #b84f17;
+    --link: #1d4aa8; --code-bg: #f5f7fa; --code-ink: #1d2633; --tip: #2b5fc4; --tip-bg: #fff; --good: #2f7a45; --bad: #b8343f;
+    --phase1: #3f66c9; --desktop: #50009b; --phase2: #112c67; --sql: #c13d2f; --dsa: #9f4903; --math: #2f7a45; --backend: #6e450e; --git: #0b6ea8;
     color-scheme: light;
   }
   html:root .astro-code, html:root .astro-code span { color: var(--shiki-light) !important; }

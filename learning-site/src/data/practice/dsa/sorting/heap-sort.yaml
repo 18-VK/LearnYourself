@@ -1,0 +1,32 @@
+# "Try it yourself" for dsa/sorting/heap-sort. The reviewed case is the sorting example from the same note
+# (“3. Insertion Sort”, lesson dsa/sorting/stability-and-simple-sorts); the others are generated.
+exercises:
+  - id: heap-sort
+    title: "Write HeapSort"
+    task: "Sort arr in place: build a max-heap, then repeatedly swap the root to the end and restore the heap (the note's version has a Heapify helper)."
+    solution: { block: 1, startsWith: "void HeapSort(int[] arr)" }
+    call: "HeapSort(arr)"
+    result: arr
+    cases:
+      - given: { arr: [2, 5, 7, 3] }
+        expected: [2, 3, 5, 7]
+        reviewed: true
+        quote: "[2, 5, 7, 3]  ->  [2, 5, 7, 7]  ->  [2, 5, 5, 7]  ->  [2, 3, 5, 7]"
+        quoteFrom: stability-and-simple-sorts
+        source: "The sorting example in the same note (“3. Insertion Sort”): [2, 5, 7, 3] becomes [2, 3, 5, 7]"
+      - given: { arr: [] }
+        expected: []
+        reviewed: false
+        source: "Generated: an empty array"
+      - given: { arr: [1] }
+        expected: [1]
+        reviewed: false
+        source: "Generated: a single element"
+      - given: { arr: [9, 7, 5, 3, 1, 8, 6, 4, 2] }
+        expected: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        reviewed: false
+        source: "Generated: odd length, no order"
+      - given: { arr: [3, 1, 2, 3, 1] }
+        expected: [1, 1, 2, 3, 3]
+        reviewed: false
+        source: "Generated: duplicates"

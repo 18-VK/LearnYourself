@@ -7,7 +7,7 @@ site:
 
 catalogue:
   # Order of the course cards on the home page.
-  order: [phase-1, sql-server, phase-2, backend-roadmap, dsa, math, desktop]
+  order: [phase-1, sql-server, phase-2, backend-roadmap, dsa, math, desktop, git-github]
 
 suggestedPath:
   main: [phase-1, sql-server, phase-2, backend-roadmap]
@@ -18,6 +18,9 @@ suggestedPath:
     - course: math
       alongside: [dsa]
       note: "Pick topics from each level as DSA problems need them."
+    - course: git-github
+      alongside: [phase-1, sql-server, phase-2, backend-roadmap]
+      note: "Needed from the first project on: start it with Phase 1 and keep it open."
   branches:
     - course: desktop
       after: phase-1
@@ -41,6 +44,10 @@ interview:
 # run (ignoring Markdown formatting: fences, emphasis, heading levels, list markers, quote markers, punctuation
 # style) and fails with a diff if the copies ever diverge, so edits to either copy are never silently lost.
 duplicates:
+  - file: "Git-Github/1.BasicCommands copy.md"
+    duplicateOf: "Git-Github/1.BasicCommands.md"
+    check: formatting-insensitive
+    reason: "A byte-for-byte copy of 1.BasicCommands.md (CONTENT_ISSUES Q-87)."
   - file: "Phase1-CSharp_And_DotNet_core_fundamental/Dot Net_CLI.md"
     duplicateOf: "Phase1-CSharp_And_DotNet_core_fundamental/15.C#_AdvanceTopics/Dot Net_CLI.md"
     check: formatting-insensitive
@@ -59,6 +66,8 @@ linkOnly:
 
 # Notes kept out of the site. Each needs a reason; the coverage report lists them.
 excluded:
+  - file: "Git-Github/2.Git commands copy.md"
+    reason: "A copy of 2.Git commands.md with one extra line (a YouTube link); the original is mapped (CONTENT_ISSUES Q-87)."
   - file: "InterviewPrep/InterviewPrep/Intro/IntroForInterview.txt"
     reason: "Personal: a self-introduction with name, employer and experience. Excluded by default per the prompt; ask before including."
   - file: "InterviewPrep/Things, I'll focus on.md"

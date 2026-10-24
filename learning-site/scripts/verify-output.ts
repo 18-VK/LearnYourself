@@ -55,9 +55,11 @@ const BINARY = /\.(pdf|docx?|pptx?|xlsx?|jpe?g|png|gif|webp|avif|bmp|ico|zip|was
 // the C# runner bundle: .NET WebAssembly runtime, assemblies (webcil .wasm) and ICU data, published as .gz only
 // (scripts/runner/publish.ts, runner/NOTES.md); approved by path, nowhere else
 const RUNNER_BINARY = /^runner\/_framework\/[\w.-]+\.(wasm|dat)\.gz$/;
+// the SQL runner's engine (sql.js, SQLite compiled to WebAssembly), bundled by Vite with the site's other assets
+const SQL_BINARY = /^_astro\/sql-wasm-browser[.-][\w-]+\.wasm$/;
 for (const f of files) {
   if (!BINARY.test(f.rel)) continue;
-  if (RUNNER_BINARY.test(f.rel)) continue;
+  if (RUNNER_BINARY.test(f.rel) || SQL_BINARY.test(f.rel)) continue;
   const m = /^generated\/assets\/(.+?)(?:-\d+)?\.(webp|pdf)$/.exec(f.rel);
   if (!m || !approvedSlugs.has(m[1]!)) problems.push(`Binary file not on the approved publishing list: ${f.rel}`);
 }
@@ -161,6 +163,10 @@ const runnerFiles = files.filter((f) => f.rel.startsWith('runner/'));
 if (runnerFiles.length) {
   const bytes = runnerFiles.reduce((n, f) => n + f.size, 0);
   console.log(`verify: of which the C# runner bundle (runner/) is ${runnerFiles.length} files, ${(bytes / 1048576).toFixed(1)} MB`);
+}
+const sqlFiles = files.filter((f) => SQL_BINARY.test(f.rel));
+if (sqlFiles.length) {
+  console.log(`verify: the SQL runner's engine (sql.js) is ${sqlFiles.length} file${sqlFiles.length === 1 ? '' : 's'}, ${(sqlFiles.reduce((s, f) => s + f.size, 0) / 1048576).toFixed(1)} MB`);
 }
 if (problems.length) {
   console.error(`\n${problems.length} problem(s):`);

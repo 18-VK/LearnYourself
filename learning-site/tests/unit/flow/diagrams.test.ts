@@ -8,7 +8,7 @@ import { focusOf } from '../../../src/viz/flow/state';
 import type { FlowDiagramData } from '../../../src/viz/flow/types';
 
 const DIR = 'src/viz/flow/diagrams';
-const COURSES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa', 'math', 'backend-roadmap'];
+const COURSES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa', 'math', 'backend-roadmap', 'git-github'];
 
 interface Placement {
   lesson: string;

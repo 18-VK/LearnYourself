@@ -1,0 +1,73 @@
+{
+  "lesson": "git-revert-and-reflog",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "A bad commit is already pushed to `main`. What is the note's rule?",
+      "options": [
+        "Reset, then force push",
+        "Revert, don't reset",
+        "Delete the branch",
+        "Amend the commit"
+      ],
+      "answer": 1,
+      "explanation": "For a public or shared branch: revert; reset is for local, private branches.",
+      "source": {
+        "section": "### Why you should use git revert"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does `git revert a1b2c3d..f4e5d6c` revert?",
+      "options": [
+        "Only a1b2c3d",
+        "The commits after a1b2c3d up to f4e5d6c",
+        "Only f4e5d6c",
+        "Every commit on the branch"
+      ],
+      "answer": 1,
+      "explanation": "A range reverts the commits after `a1b2c3d` up to and including `f4e5d6c`.",
+      "source": {
+        "section": "### Basic usage"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You ran `git reset --hard HEAD~1` by mistake. How do you get the commit back?",
+      "options": [
+        "`git revert HEAD`",
+        "`git reflog`, then `git reset --hard HEAD@{1}`",
+        "`git pull`",
+        "It is lost"
+      ],
+      "answer": 1,
+      "explanation": "The reflog still has the previous position: find it, then `git reset --hard HEAD@{1}`.",
+      "source": {
+        "section": "### Common recovery scenarios (REAL LIFE)"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `git reflog` record?",
+      "options": [
+        "Every commit on every branch",
+        "Every move of HEAD in your local repository",
+        "The remote's history",
+        "Only merges"
+      ],
+      "answer": 1,
+      "explanation": "The reflog records every move of HEAD locally, even to commits that are no longer reachable from any branch.",
+      "source": {
+        "section": "## git reflog"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "lesson": "git-branching-and-switching",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which command creates a branch without switching to it?",
+      "options": [
+        "`git switch -c feature/login`",
+        "`git branch feature/login`",
+        "`git checkout -b feature/login`",
+        "`git switch feature/login`"
+      ],
+      "answer": 1,
+      "explanation": "`git branch <name>` only creates the branch; `git switch -c` (or the older `git checkout -b`) creates and switches.",
+      "source": {
+        "section": "### `git branch <branch-name>`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Git refuses `git branch -d feature/login` because the branch is not fully merged. What does the note say?",
+      "options": [
+        "Only `git branch -D` can ever delete it",
+        "Merge it or keep it; `-D` force-deletes if you are sure",
+        "Delete the remote branch first",
+        "Rename it instead"
+      ],
+      "answer": 1,
+      "explanation": "If Git says the branch is not fully merged, merge it or keep it; `git branch -D` force-deletes a branch when you are sure it is safe.",
+      "source": {
+        "section": "### `git branch -d` / delete not possible"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You deleted a branch by mistake. How does the note recover it?",
+      "options": [
+        "`git branch --undo`",
+        "`git reflog` to find the last commit, then recreate the branch at that hash",
+        "`git restore --branch`",
+        "It cannot be recovered"
+      ],
+      "answer": 1,
+      "explanation": "There is no undo for a branch delete: find the commit with `git reflog` and recreate the branch with `git switch -c <name> <hash>` or `git branch <name> <hash>`.",
+      "source": {
+        "section": "### Recovering a deleted or mistaken branch"
+      },
+      "reviewed": false
+    }
+  ]
+}

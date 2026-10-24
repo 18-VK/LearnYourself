@@ -1,0 +1,17 @@
+# Runnable SQL for sql-server/data-types-and-commands/data-types. The NULL examples near the end of the note create a
+# Users table with one NULL MiddleName (block 43), query it (block 44), then add a row with an empty string (block 46)
+# and query that (block 47). Each query runs on the rows the note has inserted by that point.
+setups:
+  - id: users-null
+    blocks: [43]
+    startsWith: "CREATE TABLE Users ("
+    from: "the note's Users table with a NULL MiddleName (the block before the query)"
+  - id: users-null-and-empty
+    blocks: [43, 46]
+    startsWith: "CREATE TABLE Users ("
+    from: "the note's Users table with a NULL MiddleName, plus the row with an empty MiddleName inserted just above"
+uses:
+  - setup: users-null
+    blocks: [44]
+  - setup: users-null-and-empty
+    blocks: [47]

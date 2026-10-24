@@ -2,7 +2,7 @@
 
 The runner lets a learner edit and run a C# block from a lesson **in their own browser**. Nothing is sent to a
 server: the .NET WebAssembly runtime and the Roslyn compiler run inside a Web Worker on the page. This note explains
-how the pieces fit and *why* each decision was made, so the tracing debugger (next checkpoint) can be built on top.
+how the pieces fit and *why* each decision was made, and how the tracing debugger is built on top (section 6).
 
 | Piece | Where | Runs |
 |---|---|---|
@@ -10,6 +10,8 @@ how the pieces fit and *why* each decision was made, so the tracing debugger (ne
 | Browser bundle (`[JSExport]` API + worker script) | `Runner.Wasm/` → `public/runner/` | browser (Web Worker) |
 | Runnable-block check | `Runner.Check/` + `scripts/runner/check.ts` | build time (CI) |
 | Page UI (buttons, panel, editor) | `src/scripts/runner/*`, `src/styles/runner.css` | browser (page) |
+| Debugger: instrumenter, recorder, trace | `Runner.Core/Debugger/` | in the browser **and** at build time |
+| Debugger UI | `src/scripts/runner/debug/*`, `src/styles/debugger.css` | browser (page) |
 | Unit tests | `Runner.Tests/` (xUnit v3) | `npm run test:runner` |
 
 ## 1. Why one shared core
@@ -120,19 +122,23 @@ entries whose names are no longer in `runner-manifest.json` (an older runner bui
 
 ```text
 page → worker   { type: 'init', warm? }                       boot; warm = also compile a small program
-                { type: 'run', id, code, harness, stdin, maxOutput }
+                { type: 'run', id, code, harness, stdin, maxOutput, mode: 'run'|'debug', maxSteps }
 worker → page   { type: 'progress', loaded, total }           compressed bytes so far / expected (manifest)
                 { type: 'ready', info }                       runtime and compiler ready (timings in info)
                 { type: 'phase', id, phase: 'running'|'compiled', ms }
                 { type: 'output', id, text }                  console output chunk
-                { type: 'result', id, result }                RunnerExports.Run's JSON (below)
+                { type: 'trace', id, json, stopped }          debug mode: the execution trace (section 6), posted
+                                                              before the result; stopped = a limit ended recording
+                { type: 'result', id, result }                RunnerExports.Run's / Debug's JSON (below)
                 { type: 'fatal', id?, message }
 ```
 
 `result`: `{ id, shape, problem, compiled, compileMs, diagnostics: [{ id, severity, message, file, line, column,
 endLine, endColumn }], run: { outcome: 'completed'|'exception'|'output-limit', exitCode, truncated, ms, error: { type,
 message, file, line, stack: [{ method, file, line }] } }, internalError? }`. Lines and files are the learner's (after
-`#line` mapping): `snippet.cs` is the code in the editor, `harness.cs` the added harness.
+`#line` mapping): `snippet.cs` is the code in the editor, `harness.cs` the added harness. In debug mode `run.outcome` can also be
+`trace-limit` (the recorder's step, depth or size cap stopped the program) and the result carries `debug: { level,
+instrumentMs, steps, stop }`, or `debug: { level: -1, error }` when the program can't be traced.
 
 **Timeouts are enforced by the page** (`src/scripts/runner/host.ts`): a program stuck in `while (true) { }` never
 yields, so nothing inside the worker could stop it. When the worker reports `running`, the page starts a 5 s timer; on
@@ -190,24 +196,100 @@ the build checked, so a stale JSON can never put the wrong program behind a bloc
 - `actions.ts`: `registerRunnerAction()` adds buttons (with a `RunnerBlockContext`: code, harness, stdin, editor,
   status, run) — the hook for **Debug**.
 
-## 6. Adding the debugger (next checkpoint)
+## 6. Debugger
 
-What is already in place for it:
+A tracing debugger (Python Tutor style): the program is rewritten to report what it does, runs once, and the page replays
+the recording. Nothing attaches to a running process, which is what makes it possible in a single-threaded WebAssembly
+runtime, and what makes Step Back free.
 
-- **Protocol**: add `mode: 'debug'` (and options such as a step cap) to the `run` message; the worker passes it to a
-  new `[JSExport] Debug(...)` or to `Run` with a mode argument. The result can carry a `trace` array. Keep `run` as is.
-- **Compile pipeline**: `SnippetCompiler.Compile(program, transform)`. The instrumenter is a `CompilationTransform`:
-  for each tree whose `DocumentPath` is `snippet.cs` or `harness.cs`, rewrite statements with a `CSharpSyntaxRewriter`
-  using `compilation.GetSemanticModel(tree)` for in-scope locals, then `compilation.ReplaceSyntaxTree`. Mapped line
-  numbers come from `tree.GetMappedLineSpan(node.Span)` (the `#line` directives already map to the learner's lines).
-  The trace recorder can live in a source file added by the transform (no new reference assembly needed).
-- **Same output**: the plain run's output is recorded at build time; a unit test can assert that the instrumented
-  program prints the same.
-- **UI**: `registerRunnerAction({ id: 'debug', label: 'Debug', order: 20, onClick })` from a module imported in
-  `attach.ts`'s `loadExtensions()`; `ctx.openEditor()` gives the CodeMirror view for the current-line highlight and
-  gutter breakpoints; the visualizer player (`src/viz/engine`) replays the trace.
-- **Step cap**: the instrumented code can count steps itself and stop at ~10,000; the 5 s page timeout stays as the
-  backstop.
+### Instrumenter (`Runner.Core/Debugger/Instrumenter.cs`)
+
+A `CSharpSyntaxRewriter` applied as `SnippetCompiler`'s `CompilationTransform`, after parsing and before emitting, to
+`snippet.cs` and `harness.cs` only (never `usings.cs`, never `#line hidden` code). For every function (method,
+constructor, accessor, operator, local function, block lambda) the body becomes
+
+    { int f = Recorder.Enter(site, new object[] { args… }); try { BODY } catch (Exception e) when (Recorder.Thrown(e, f, 1)) { throw; } finally { Recorder.Exit(f); } }
+
+and before every statement goes `Recorder.Step(site, f, new object[] { locals… })` with the parameters and locals that
+are in scope there *and definitely assigned on entry* (Roslyn data-flow analysis), so the inserted reads always compile.
+Loop conditions become `Recorder.Cond(…) && (cond)` (a step per iteration, with the loop variable), `return expr`
+becomes `return Recorder.Ret<T>(…, expr)` (the value shows on the Return step), and a `catch … when (Thrown(e, f, 0))`
+clause that never catches is put in front of the learner's own catch clauses, so an exception is shown where it was
+thrown even when the program handles it. Sites (`TraceSite`) are numbered as they are created and carry the mapped
+file and line (`GetMappedLineSpan`, so `#line` directives already give the learner's coordinates) plus, for functions,
+their name, their parameters and the "index hints" (`arr[j + 1]` → `j` indexes `arr`) the array view uses.
+
+Rules the rewriter keeps:
+- **The learner's lines never move.** Inserted code has no line breaks and takes over the leading trivia of the statement
+  it precedes; expression bodies become blocks laid out on the same lines. The transform throws if a file's line count
+  changes, so a wrong highlight can't ship.
+- **Behaviour is unchanged.** The recorder never writes to the console and never runs the learner's code to read a
+  value: objects are read by their fields (auto-properties through backing fields), library collections by enumeration,
+  and only the standard library's `ToString` is called. `Runner.Tests/DebuggerTests.cs` runs a set of programs plain and
+  instrumented and compares output, outcome, exception type and line; the build-time check does the same for every
+  runnable block (below).
+- **Levels.** `DebugCompiler.Compile` tries full instrumentation (level 2), then without conditions, return values and
+  caught exceptions (level 1), then without variables (level 0), and keeps the first that compiles. Level 2 can fail on
+  code like `while ((x = Next()) != 0) …; Use(x);` — the `Cond() && (…)` wrapper makes `x` "not definitely assigned"
+  after the loop. The learner's compile errors are always those of the un-instrumented program.
+- Iterators get no catch clause (`yield` can't sit in a try with a catch), finalizers and expression lambdas are left
+  alone (a lambda body could change overload resolution or an expression tree), generic ref-struct and pointer values
+  aren't recorded.
+
+### Recorder (`Runner.Core/Debugger/Recorder.cs.txt`)
+
+Not part of Runner.Core: it is an embedded resource (`LyDebug.Recorder.cs`) that the instrumenter adds to the program
+as one more syntax tree, so it is compiled against the same reference assemblies as the learner's code and needs nothing
+at run time. (The `.cs.txt` name keeps it out of Runner.Core's own compilation; `WithCulture="false"` on the item is
+required, or MSBuild reads `.cs` as the Czech culture and ships the file in a satellite assembly.) Every name in it is
+fully qualified, so a learner's `class List` can't rebind it.
+
+It appends one event (five ints: kind, frame, site, output length so far, payload) per `Enter` / `Step` / `Ret` /
+`Thrown` / `Exit` and interns the value snapshots (JSON, one object per value) and the per-step variable sets, so a
+10,000-step trace of a sorting loop is a few hundred KB. Snapshots cover null, primitives, enums, strings (cut at 200
+chars), arrays (1-D and 2-D, first 64 items), library collections, tuples, the learner's own classes and structs (fields,
+three levels deep, cycles as references with an object id) and exceptions; delegates and LINQ queries are shown opaque
+("not run yet") rather than enumerated. Limits are fields the host sets through reflection before `Main` runs:
+`MaxEvents` (10,000), `MaxDepth` (1,000) and `MaxValueChars` (4 MB). Hitting one calls `OnStop` (the host posts the
+trace right away) and throws `StopException` into the program; a program that catches everything throws again on its
+next step, so it still ends, and the page's 5 s timeout is the backstop.
+
+### Running (`TraceSession`, `IRunObserver`)
+
+`SnippetExecutor.RunAsync` takes an `IRunObserver`: `TraceSession.BeforeRun` finds the recorder type in the learner's
+assembly and sets its limits and hooks, `AfterRun` copies the lists out before the assembly is unloaded, and
+`Outcome(exception)` turns the recorder's `StopException` into the run outcome `trace-limit` (no error shown).
+`TraceBuilder` turns the raw events into steps — `Line`, `Call` (with the arguments), `Return` (with the value), `Exception`
+(with the exception, on the frame's current line), `End` — each with its frame (method, parent frame, depth, call site)
+and its variables; the entry frame (`Main`, top-level statements, the harness) shows no Call step. `ExecutionTrace.ToJson`
+writes the compact form the page reads (`src/scripts/runner/debug/trace.ts`): interned `names`, `values` and `vars`,
+`methods`, `frames` as `[method, parent, depth, callFile, callLine]` and `steps` as `[kind, frame, file, line,
+outputLength, vars, value]`.
+
+### Page (`src/scripts/runner/debug/`)
+
+`action.ts` registers the **Debug** button (`registerRunnerAction`, only on blocks the build marked debuggable);
+`session.tsx` runs the block in debug mode through the same host and worker as Run (`mode: 'debug'`, the trace arrives
+as a `trace` message before the result), then mounts `Panel.tsx` under the block. The panel drives the step index with
+`src/viz/engine/usePlayer` — the visualizers' player — so Step Back, the timeline, autoplay and ←/→/Space behave as in
+every visualizer; Continue / Step over / Step into / Step out are jumps computed from the frames' depths
+(`trace.ts`), and breakpoints are a set of lines the Continue search stops at. The current line and the breakpoint
+gutter live in the rendered code block (`code-view.ts`, a button per line) until the learner opens the editor, then in
+CodeMirror (`editor-view.ts`, a gutter plus F9); breakpoints carry over, and editing the code marks the trace stale.
+The array view (`values.ts`) draws one-dimensional arrays and lists of scalars as cells with the frame's `int` variables
+as pointers: the instrumenter's index hints first, then index-like names (`i`, `j`, `lo`, `hi`, `mid`, …).
+
+### Build-time check
+
+`Runner.Check` compiles every runnable program through `DebugCompiler` too and runs the instrumented assembly in a third
+batch (with the recorder's default limits). The verdict's `Debug` is true only when that run printed exactly what the
+plain run printed, ended the same way, and threw the same exception on the same line (a run the step cap stopped counts
+when its output is a prefix of the plain output). `runnable.json` carries `noDebug: <reason>` for the others, so they get
+Run but no Debug; `runnable-report.md` has a Debug column. `DebuggerTests` covers the rest: line numbers after moved
+types and `#line`, loop conditions, foreach variables, definite assignment, out parameters, `this`, wrapper-class fields,
+recursion depth and return values, expression-bodied members, lambdas, uncaught / callee / caught exceptions, the step
+and depth caps (also when the program catches everything), value snapshots (collections, objects, cycles, truncation,
+no learner code run), the level-1 fallback, the trace JSON, and output equality for two dozen programs.
 
 ## 7. Versions (all exact, each at least 7 days old when chosen on 2026-10-22)
 

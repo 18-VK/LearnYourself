@@ -5,7 +5,9 @@ import { runnableFor, scriptJson } from '../../../lib/runnable';
 import { courseById, courseUrl, GLYPH, lessonsOf, lessonUrl, url } from '../../../lib/site';
 // ── study sections (quiz, cheat sheets, interview questions) ──
 import LessonExtras from '../../../components/LessonExtras.astro';
+import PreTest from '../../../components/PreTest.astro';
 import Quiz from '../../../components/Quiz.astro';
+import TryIt from '../../../components/TryIt.astro';
 import { sheetsFor } from '../../../lib/data';
 // ── end study sections ──
 
@@ -88,9 +90,15 @@ const sheets = sheetsFor([d.lesson], d.cheatsheets); // study sections: manifest
         </section>
       )}
 
+      {/* two of the quiz's questions, asked before the text (answers feed the review queue) */}
+      <PreTest lesson={d.lesson} pageId={entry.id} />
+
       <div class="prose" id="lesson-body" data-kind={d.kind}>
         <Content />
       </div>
+
+      {/* runnable SQL (data for its script) and the "Try it yourself" exercises, both decided at build time */}
+      <TryIt lessonId={entry.id} />
 
       {(assets.length > 0 || links.length > 0) && (
         <section class="prose" style="margin-top:2.4em" data-pagefind-ignore>

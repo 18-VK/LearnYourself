@@ -1,0 +1,40 @@
+/* Spaced review (src/pages/review.astro, the "Review today" cards) and the "Before you read" box
+   (src/components/PreTest.astro). Question styling comes from quiz.css; colours are the site's tokens. */
+
+/* before you read */
+.pretest { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 12px; padding: 16px 20px; max-width: 70ch; margin-bottom: 32px; }
+.pretest h2 { font-size: 1.2rem; margin-top: 4px; }
+.pretest-intro { margin: 6px 0 0; font-size: 14.5px; }
+.pretest-q { border: 0; padding: 0; margin: 14px 0 0; }
+.pretest-q .quiz-prompt { font-size: 16px; }
+.pretest-num { color: var(--ink-3); font-family: var(--mono); font-size: 13px; margin-right: 4px; }
+.pretest-fb { margin: 8px 0 0; font-size: 14.5px; color: var(--ink-2); }
+.pretest-fb[hidden] { display: none; }
+.pretest-fb.is-right .pretest-verdict { color: var(--good); font-weight: 600; }
+.pretest-fb.is-wrong .pretest-verdict { color: var(--bad); font-weight: 600; }
+.pretest-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+/* the review card on the home and progress pages */
+.home-side { display: grid; gap: 12px; align-content: end; }
+.review-card { border-left: 4px solid var(--brand); }
+.review-card[hidden] { display: none; }
+.review-card .review-count { font-size: 1.6rem; font-weight: 650; line-height: 1; }
+.review-card .row { font-size: 14px; }
+
+/* the review page */
+.review-page { max-width: 70ch; }
+.review-page h1 { font-size: 2rem; margin-top: 8px; }
+.review-intro { margin-top: 10px; color: var(--ink-2); }
+.review-status { margin: 18px 0 0; font-weight: 600; }
+.review-list { margin-top: 16px; }
+.review-q { position: relative; }
+.review-lesson { font-size: 13px; color: var(--ink-3); text-decoration: none; }
+.review-lesson:hover { color: var(--ink); text-decoration: underline; }
+.review-open { margin: 8px 0 0; font-size: 15px; }
+.review-flashcards { margin-top: 20px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.review-flashcards[hidden] { display: none; }
+.review-note { margin-top: 24px; font-size: 14px; }
+
+/* progress page: lessons whose best quiz score is under 80 % */
+.quiz-summary li.is-weak a::after { content: " · below 80 %"; color: var(--warn); font-size: 12.5px; }
+.quiz-summary li.is-mastered [data-quiz-badge] { color: var(--good); }

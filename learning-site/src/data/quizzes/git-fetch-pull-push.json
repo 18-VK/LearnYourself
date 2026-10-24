@@ -1,0 +1,56 @@
+{
+  "lesson": "git-fetch-pull-push",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does `git fetch` NOT do?",
+      "options": [
+        "Download remote changes",
+        "Update your local branch automatically",
+        "Work with a specific branch",
+        "Run safely before merging"
+      ],
+      "answer": 1,
+      "explanation": "`git fetch` downloads remote changes without changing your current branch or working files; it does not update your local branch.",
+      "source": {
+        "section": "## 1. git fetch"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Under the hood, `git pull` is…",
+      "options": [
+        "`git fetch` only",
+        "`git fetch` plus merge, or plus rebase depending on config",
+        "`git push` plus merge",
+        "`git clone` again"
+      ],
+      "answer": 1,
+      "explanation": "`git pull = git fetch + merge` or `git fetch + rebase`, depending on configuration; that is why it can create merge conflicts.",
+      "source": {
+        "section": "## 2. git pull"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What does `-u` mean in `git push -u origin feature/login`?",
+      "options": [
+        "Update",
+        "`--set-upstream`: remember the mapping between the local and remote branch",
+        "Unsafe",
+        "Undo"
+      ],
+      "answer": 1,
+      "explanation": "`-u` is `--set-upstream`: Git remembers the remote branch, so later `git push` and `git pull` need no arguments.",
+      "source": {
+        "section": "## 3. git push"
+      },
+      "reviewed": false
+    }
+  ]
+}

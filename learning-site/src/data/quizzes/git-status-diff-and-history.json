@@ -1,0 +1,56 @@
+{
+  "lesson": "git-status-diff-and-history",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "`git diff` with no arguments shows…",
+      "options": [
+        "staged changes",
+        "unstaged changes",
+        "the last commit",
+        "two branches"
+      ],
+      "answer": 1,
+      "explanation": "`git diff` shows unstaged changes; `git diff --staged` shows what is staged.",
+      "source": {
+        "section": "### `git diff`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which command compares the working tree plus the staging area against the last commit?",
+      "options": [
+        "`git diff`",
+        "`git diff --staged`",
+        "`git diff HEAD`",
+        "`git diff --stat`"
+      ],
+      "answer": 2,
+      "explanation": "`git diff HEAD` compares working tree + staging area with the last commit; `--stat` only summarizes changed files.",
+      "source": {
+        "section": "### `git diff HEAD`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which command shows which commit last changed each line of a file?",
+      "options": [
+        "`git log app.js`",
+        "`git show app.js`",
+        "`git blame app.js`",
+        "`git diff app.js`"
+      ],
+      "answer": 2,
+      "explanation": "`git blame <file>` annotates each line with the commit that last changed it.",
+      "source": {
+        "section": "### `git blame`"
+      },
+      "reviewed": false
+    }
+  ]
+}

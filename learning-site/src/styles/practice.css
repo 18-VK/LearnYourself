@@ -1,0 +1,46 @@
+/* Practice mode ("Try it yourself", src/components/TryIt.astro + src/scripts/practice/attach.ts).
+   Buttons, panel and editor come from runner.css (the C# runner); this file styles the exercise cards, the test table
+   and the pass/fail cells. Colours are the site's tokens, so both themes work. */
+
+.practice { margin-top: 2.4em; max-width: none; }
+.practice > h2 { margin-bottom: 0.3em; }
+.practice-intro { color: var(--ink-2); font-size: 15px; max-width: 70ch; margin: 0 0 1em; }
+.practice-exercise { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 14px 16px 16px; margin: 0 0 16px; }
+.practice-exercise > h3 { margin: 0 0 4px; font-size: 1.15em; }
+.practice-task { margin: 0 0 10px; color: var(--ink-2); font-size: 15px; }
+.practice-exercise .table-wrap { margin: 0 0 10px; }
+.practice-cases { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.practice-cases th, .practice-cases td { text-align: left; vertical-align: top; padding: 5px 8px; border-top: 1px solid var(--line); }
+.practice-cases thead th { border-top: 0; font: 600 11px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.practice-cases code { font: 12.5px/1.5 var(--mono); overflow-wrap: anywhere; }
+.practice-tag { display: inline-block; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); font: 500 11px/1.6 var(--font); white-space: nowrap; color: var(--ink-2); }
+.practice-tag-note { border-color: color-mix(in srgb, var(--good) 50%, var(--line)); color: var(--good); }
+.practice-tag-generated { border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); color: var(--warn); }
+.practice-mount { display: flex; }
+.practice-mount[hidden] { display: none; }
+.practice-work { display: grid; gap: 8px; }
+.practice-work[hidden] { display: none; }
+.practice-toolbar { margin-left: 0; }
+.practice-editor .cm-editor { border: 1px solid var(--line); border-radius: 8px; }
+.practice-solution { border-left-color: var(--good); }
+.practice-tests[hidden], .practice-solution[hidden] { display: none; }
+
+/* results */
+.practice-result { white-space: normal; color: var(--ink-3); }
+.practice-result.is-pass { color: var(--good); font-weight: 600; }
+.practice-result.is-fail, .practice-result.is-error, .practice-result.is-timeout, .practice-result.is-crash { color: var(--bad); }
+.practice-mark { font-weight: 700; }
+.practice-diff mark { background: var(--bad-bg); color: var(--bad); border-radius: 3px; padding: 0 2px; }
+.practice-note { color: var(--ink-3); font-weight: 400; }
+.practice-hint { display: block; color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
+.practice-hints { border-left-color: var(--brand); }
+.practice-hints[hidden] { display: none; }
+.practice-hint-code { max-height: 16em; }
+.runner-problems .practice-note { color: var(--ink-2); font-family: var(--font); list-style: none; margin-left: -1.2em; }
+
+@media (max-width: 640px) {
+  .practice-exercise { padding: 12px; }
+}
+@media print {
+  .practice-mount, .practice-work { display: none !important; }
+}

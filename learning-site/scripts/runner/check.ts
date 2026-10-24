@@ -71,6 +71,11 @@ export interface Verdict {
   diagnostics?: Diagnostic[];
   runs?: RunRecord[];
   expected?: RunRecord;
+  /** Runnable programs: whether the debugger can step through it (its traced run matched the plain run). */
+  debug?: boolean;
+  debugReason?: string;
+  debugLevel?: number;
+  debugRun?: RunRecord;
 }
 
 export interface CheckSummary {
@@ -80,6 +85,7 @@ export interface CheckSummary {
   withHarness: number;
   merged: number;
   varies: number;
+  debuggable: number;
   excluded: Record<string, number>;
 }
 
@@ -218,7 +224,7 @@ export function writeUnavailable(note: string): void {
 }
 
 function summarize(programs: ProgramSpec[], verdicts: Map<string, Verdict>, blockCount: number): CheckSummary {
-  const s: CheckSummary = { blocks: blockCount, programs: programs.length, runnable: 0, withHarness: 0, merged: 0, varies: 0, excluded: {} };
+  const s: CheckSummary = { blocks: blockCount, programs: programs.length, runnable: 0, withHarness: 0, merged: 0, varies: 0, debuggable: 0, excluded: {} };
   for (const p of programs) {
     const v = verdicts.get(p.id)!;
     if (v.runnable) {
@@ -226,6 +232,7 @@ function summarize(programs: ProgramSpec[], verdicts: Map<string, Verdict>, bloc
       if (p.harness) s.withHarness++;
       if (p.blocks.length > 1) s.merged++;
       if (v.varies) s.varies++;
+      if (v.debug) s.debuggable++;
     } else {
       s.excluded[v.category ?? 'unknown'] = (s.excluded[v.category ?? 'unknown'] ?? 0) + 1;
     }
@@ -255,6 +262,8 @@ function writeOutputs(programs: ProgramSpec[], verdicts: Map<string, Verdict>, s
       entry.harness = p.harness;
       entry.input = p.input;
     }
+    // no Debug button where tracing would change what the program does, or doesn't compile
+    if (!v.debug) entry.noDebug = v.debugReason ?? 'the debugger was not checked for this program';
     if (v.expected) entry.expected = { stdout: v.expected.stdout, outcome: v.expected.outcome, ...(v.expected.error ? { error: v.expected.error } : {}) };
     (lessons[p.lesson] ??= []).push(entry);
   }
@@ -275,6 +284,7 @@ function writeOutputs(programs: ProgramSpec[], verdicts: Map<string, Verdict>, s
     '',
     `- C# blocks: **${summary.blocks}**, checked as ${summary.programs} programs (merged blocks count once)`,
     `- Runnable: **${summary.runnable}** (with a harness: ${summary.withHarness}, merged: ${summary.merged}; output varies between runs: ${summary.varies})`,
+    `- Debuggable (traced run prints the same as the plain run): **${summary.debuggable}** of ${summary.runnable}`,
     `- Not runnable: **${summary.programs - summary.runnable}**`,
     '',
     '| Reason | Programs |',
@@ -285,12 +295,12 @@ function writeOutputs(programs: ProgramSpec[], verdicts: Map<string, Verdict>, s
     '',
     '## Per block',
     '',
-    '| Block | Runnable | Reason | First line |',
-    '|---|---|---|---|',
+    '| Block | Runnable | Reason | Debug | First line |',
+    '|---|---|---|---|---|',
     ...programs.map((p) => {
       const v = verdicts.get(p.id)!;
       const esc = (s: string) => s.replace(/\|/g, '\\|').replace(/`/g, "'");
-      return `| \`${p.id}\` | ${v.runnable ? (v.varies ? 'yes (output varies)' : 'yes') : 'no'} | ${esc(v.runnable ? (p.harness ? 'harness' : '') : `${v.category}: ${v.reason ?? ''}`)} | ${esc(firstLine(p.code).slice(0, 60))} |`;
+      return `| \`${p.id}\` | ${v.runnable ? (v.varies ? 'yes (output varies)' : 'yes') : 'no'} | ${esc(v.runnable ? (p.harness ? 'harness' : '') : `${v.category}: ${v.reason ?? ''}`)} | ${v.runnable ? (v.debug ? `yes (level ${v.debugLevel ?? '?'})` : esc(`no: ${v.debugReason ?? ''}`)) : ''} | ${esc(firstLine(p.code).slice(0, 60))} |`;
     }),
     '',
   ];
@@ -354,7 +364,7 @@ export async function runRunnableCheck(opts: { log?: (m: string) => void } = {})
     if (p.force === 'on' && !v.runnable) errors.push(`src/data/runnable/${p.lesson}.yaml: block ${p.blocks.map((b) => b.index).join('+')} is forced on but ${v.category}: ${v.reason}`);
   }
   log(
-    `runner: ${summary.runnable} of ${summary.programs} programs runnable (${summary.withHarness} with a harness, ${summary.varies} with varying output); ` +
+    `runner: ${summary.runnable} of ${summary.programs} programs runnable (${summary.withHarness} with a harness, ${summary.varies} with varying output, ${summary.debuggable} debuggable); ` +
       `not runnable: ${Object.entries(summary.excluded)
         .sort((a, b) => b[1] - a[1])
         .map(([k, n]) => `${k} ${n}`)

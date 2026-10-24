@@ -5,6 +5,7 @@ import type { AstroIntegration } from 'astro';
 import { buildContent } from './lib/generate';
 import { CURRICULUM_DIR, REPO_ROOT, SITE_ROOT, SKIP_DIRS } from './lib/paths';
 import { runnerBuildStep } from './runner/step';
+import { runSqlCheck } from './sqlrun/check';
 
 /**
  * Astro caches rendered Markdown by each file's content, not by the remark/rehype plugins that render it.
@@ -42,6 +43,12 @@ export function contentPipeline(): AstroIntegration {
           for (const e of result.errors) logger.error(e);
           if (command === 'build') throw new Error(`Content pipeline found ${result.errors.length} problem(s). See the log above and coverage-report.md.`);
         }
+        // runnable SQL (sql.js, no SDK needed): which SQL blocks get Run buttons, from the generated lessons
+        if (result.ok) {
+          const sql = await runSqlCheck({ log: (m) => logger.info(m) });
+          for (const e of sql.errors) logger.error(e);
+          if (!sql.ok && command === 'build') throw new Error(`The runnable-SQL check found ${sql.errors.length} problem(s). See the log above and sqlrun-report.md.`);
+        }
         // C# runner (builds only): publish the browser bundle and decide which C# blocks get Run buttons.
         // Needs the generated lessons, so it runs here, after the pipeline. Skipped with a warning without a .NET SDK.
         if (command === 'build' && result.ok) {
@@ -69,6 +76,7 @@ export function contentPipeline(): AstroIntegration {
           try {
             const r = await buildContent({ mode: 'dev', log: (m) => logger.info(m) });
             for (const e of r.errors) logger.error(e);
+            if (r.ok) for (const e of (await runSqlCheck({ log: (m) => logger.info(m) })).errors) logger.error(e);
           } finally {
             running = false;
             if (again) {

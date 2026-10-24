@@ -1,0 +1,56 @@
+{
+  "lesson": "git-configuration-and-identity",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "The same setting is defined on the command line, in the local repo config and in the global config. Which one wins?",
+      "options": [
+        "The global config",
+        "The local repo config",
+        "The command-line argument",
+        "The system config"
+      ],
+      "answer": 2,
+      "explanation": "Git reads settings in this order: command-line arguments, environment variables, local repo config, global config, system config. The first one found wins.",
+      "source": {
+        "section": "### Configuration levels"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What does `git config user.name \"Office Name\"` (without `--global`) change?",
+      "options": [
+        "The identity for every repository on the machine",
+        "The identity for the current repository only",
+        "Your GitHub login name",
+        "The system config"
+      ],
+      "answer": 1,
+      "explanation": "Without `--global` the setting is **local**: it applies only to one repository. Global config applies to all repositories on your machine.",
+      "source": {
+        "section": "## 6. Global vs local config"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which command makes `git st` run `git status`?",
+      "options": [
+        "`git alias st status`",
+        "`git config --global alias.st status`",
+        "`git config st=status`",
+        "`git st --alias status`"
+      ],
+      "answer": 1,
+      "explanation": "Aliases are config entries: `git config --global alias.st status` (and `alias.br branch` for `git br`).",
+      "source": {
+        "section": "### Create aliases"
+      },
+      "reviewed": false
+    }
+  ]
+}

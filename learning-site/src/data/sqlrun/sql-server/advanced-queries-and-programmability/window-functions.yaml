@@ -1,0 +1,10 @@
+# Runnable SQL for sql-server/advanced-queries-and-programmability/window-functions. The note's “Sample Data” block
+# feeds every example, including the one just above it (block 2), which queries the same Employees table.
+setups:
+  - id: employees
+    blocks: [3]
+    startsWith: "CREATE TABLE Employees ("
+    from: "the note's “Sample Data”: five employees in IT, HR and Finance"
+uses:
+  - setup: employees
+    blocks: [2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18]

@@ -1,9 +1,8 @@
-# Checkpoints 4–8: content, visualizers, quizzes, C# runner, cheat sheets, Interview Prep
+# Checkpoints 4–8: content, visualizers, quizzes, C# runner and debugger, runnable SQL, practice mode, cheat sheets, Interview Prep
 
-> **DRAFT.** Markers ending in `_PENDING` are filled in when the debugger, SQL runner and practice mode are done. See `HANDOFF.md`.
-
-Status: **built and verified locally; not pushed or deployed.** Everything below is committed on `main` in this
-repository. Publishing (push + turning on GitHub Pages) waits for your OK. See "Go-live" at the end.
+Status: **built and verified locally on 2026-10-24; not committed, pushed or deployed.** Everything below is in the
+working tree of the clone at `D:\Data\ly-wt\repo` (uncommitted, for you to review with `git diff` and commit).
+Publishing (push + turning on GitHub Pages) waits for your OK. See "Go-live" at the end.
 
 You asked me to complete every point, so I didn't stop at two planned review points:
 - **Checkpoint 3 (runner spike):** the result was a clear go (numbers in `CHECKPOINT-3.md`), so I built on it.
@@ -65,7 +64,34 @@ order-the-steps).
   - The other 1,175 programs aren't runnable. Most are fragments that don't compile on their own (754), use
     threading (189), or have no entry point (133). The rest use files, ASP.NET, WPF, a database or the network.
   - Details: `runnable-report.md`.
-- **Debug** (step-through tracing debugger): DEBUGGER_PENDING
+- **Debug** (step-through tracing debugger, like Python Tutor) is on every runnable block.
+  - Controls: Continue (to the next breakpoint), Step over, Step into, Step out, **Step back**, Restart, Stop, a
+    timeline to scrub and play, and keyboard shortcuts (F5, F10, F11, Shift+F11, ←/→, Space). Breakpoints are set by
+    clicking a line number (or F9 in the editor).
+  - Panels: the current line highlighted in the code block or the editor; Variables (values flash when they change,
+    `this` with its fields, a shared-object marker when two variables point at the same object); Call stack (click a
+    caller to see its variables); Console output up to the current step; the exception and its line; the harness's
+    line when it is running; and the **auto-visualization**: arrays and lists as cells with `i`, `j`, `lo`, `hi`,
+    `mid` and the other index variables drawn as pointers, so every sorting and searching snippet has a basic
+    visualization without any extra work.
+  - How it works: before compiling, a Roslyn syntax rewriter instruments the program (a step before every statement
+    with the locals and parameters that are in scope and definitely assigned there, a frame per call, return values,
+    exceptions where they are thrown); a recorder compiled into the program writes the trace; the program runs once in
+    the worker; the page replays the trace with the visualizers' player. Values: primitives, strings, arrays, lists,
+    sets, queues, stacks, dictionaries (first 64 items), tuples, your own objects by their fields (three levels, cycles
+    marked), without running any learner code. The learner's line numbers never move.
+  - Limits: 10,000 steps (an endless loop stops there and its first steps are shown; the page stays responsive),
+    1,000 nested calls, 4 MB of recorded values, and the usual 5 s and 64 KB.
+  - **Instrumentation changes nothing the learner can see.** The build-time check runs every runnable program a
+    third time, instrumented, and gives it a Debug button only when the output, outcome, exception type and line are
+    identical to the plain run: **206 of 206** pass, all at full instrumentation. `runnable-report.md` has a Debug
+    column.
+  - Tests: 28 .NET tests on the instrumenter and recorder (line numbers after moved types, loop conditions, foreach,
+    definite assignment, out parameters, `this`, recursion, lambdas, three kinds of exception, the step and depth caps,
+    value snapshots, the trace format) plus 24 programs run plain and instrumented with identical output; 13 unit
+    tests on the stepping rules and the array view; 2 browser tests (debugging a sorting method through its harness
+    with a breakpoint and Step back; `while (true)` under Debug stopped by the step cap with the page responsive).
+  - Design: `runner/NOTES.md`, section 6.
 
 ### Checkpoint 7: cheat sheets and Interview Prep
 - **Cheat sheets:**
@@ -86,17 +112,74 @@ order-the-steps).
   - Each question has an origin badge and links to its lessons, and each lesson lists its interview questions.
 
 ### Checkpoint 8: Tier 2 and 3
-- Tier 2 visualizers: all built (listed above), including debugger auto-visualize (DEBUGGER_PENDING).
-- Tier 3: StringBuilder and ThreadPool visualizers are built. Runnable SQL with sql.js: SQLRUN_PENDING. Practice
-  mode for DSA lessons: PRACTICE_PENDING.
+- Tier 2 visualizers: all built (listed above), including the debugger's auto-visualization of arrays and lists.
+- Tier 3: StringBuilder and ThreadPool visualizers are built, and:
+- **Runnable SQL (sql.js).** SQL blocks that can run in the browser get the same Edit / Run / Reset as C#, a result
+  table per statement, "Show expected result" (recorded at build time) and "Show setup". SQLite (sql.js, 0.6 MB)
+  runs in a Web Worker, from a fresh in-memory database filled with the lesson's own sample data on every run.
+  - **Never fake results:** a block is runnable only when the build proves SQLite's result can't differ from SQL
+    Server's. The check rejects T-SQL-only syntax and syntax SQL Server lacks, runs the block on the lesson's data,
+    checks the data fits its declared types the way SQL Server stores them, rejects anything that depends on
+    SQLite's typing (DECIMAL arithmetic, integer division, implicit conversion) or collation, re-runs AVG of INT
+    columns as integer averages, and re-runs each query with the table rows stored in reverse order. Queries without
+    ORDER BY run with a note that SQL Server may order the rows differently.
+  - Result: of 408 SQL blocks in 23 lessons, **47 are runnable**, in 5 lessons (joins, subqueries, CTEs, window
+    functions, data types), fed by 7 sample-data blocks. 184 are T-SQL only (42 of them carry the **T-SQL only** label
+    on the page, with the construct: `dbo.`, `@variables`, IDENTITY, OFFSET … FETCH, …), 97 query tables the note never
+    creates, 24 return no rows, 16 use non-SQL Server syntax, 4 depend on SQLite typing. `sqlrun-report.md` lists
+    every block and its verdict.
+  - Sample data and which queries use it: `src/data/sqlrun/<lesson>.yaml` (5 files), with a drift guard on the
+    setup block's first line.
+  - Edited queries run too; when an edit leaves the dialect both engines share, the page says so under the result.
+  - Tests: 15 unit tests (tokenizer, dialect rules, grouping, ORDER BY detection, the engine's formatting and
+    errors, the reverse-order check, the per-block decision); 3 browser tests (a note's query matches the recorded
+    result; labels; an edited query with LIMIT gets the heads-up).
+- **Practice mode ("Try it yourself").** 6 DSA lessons (sorting and searching) end with exercises: a starter (the
+  note's method signature with an empty body), the cases with expected values, Start → editor, Run tests (through the
+  C# runner; pass/fail per case, lists compared item by item), Show solution (the note's implementation, loadable into
+  the editor).
+  - **20 exercises, 91 test cases**: 12 quote the note's own examples (`reviewed: true`, the quote is checked against
+    the lesson), 79 are generated and marked unreviewed on the page.
+  - The build compiles and runs two programs per exercise with `Runner.Check`: the note's implementation must pass
+    every case, and the starter must compile and fail at least one. It did find one note bug: `RadixSort` throws on an
+    empty array (Q-86), so that exercise has no empty-array case.
+  - Tests: 20 unit tests (signatures, starter code, C# literals, the harness, the output protocol, the diff); 1
+    browser test (starter fails → solution passes → a wrong signature is explained).
+
+### After the checkpoints: learning-effectiveness features (2026-10-24, at your request)
+Built from the existing quizzes, exercises and progress data, with no new hand-written content:
+- **Before you read** (`src/components/PreTest.astro`): a lesson with a quiz opens with two of its multiple-choice
+  questions. A guess before reading makes the answer stick (the pretesting effect); the end-of-lesson quiz asks
+  them again for the score. 165 lessons have one.
+- **Review today** (`/review/`, `src/scripts/review-schedule.ts`): every quiz question you answer, in the quiz, the
+  pre-test or the review page, is scheduled for spaced review (wrong → tomorrow; right → 4 days, then ×2.5, up to
+  180 days). Due questions are fetched per lesson (`review-data/<lesson>.json`, 165 files, about 1.5 MB in all,
+  loaded only when due), shown interleaved across courses, graded at once and rescheduled; "put in order" questions
+  link to their lesson quiz. The home and progress pages show a "Review today: N due" card, which also counts the
+  flashcards in the "Review again" pile.
+- **Mastery signals** (progress page): a lesson counts as mastered at a best quiz score ≥ 80 %; the others are
+  listed as the course's weak spots.
+- **Practice hints**: a failed test case says what it tests (its own description), and a **Hint** button reveals the
+  note's solution one line at a time (a faded worked example).
+- Tests: 11 unit tests (the schedule, interleaving); browser tests for the whole review flow (wrong guess → home
+  card → review page → rescheduled → weak spot on the progress page) and the hints.
+- **Git & GitHub course** (added the same day, from the new `Git-Github/` notes you dropped in): 22 lessons in six
+  modules (basics, core commands, command reference, remotes and undo, branches and pull requests, daily practice),
+  a quiz for every lesson (77 questions, unreviewed), the two diagrams in the folder as view-only resources, and a
+  new note `Git-Github/4.DailyScenarios.md` with 18 everyday situations and their commands, written for the site and
+  labelled as such (commands checked against git-scm.com). The two "copy" files are a verified duplicate and an
+  exclusion (Q-87); Q-88 and Q-89 note rendering and wording issues in the notes.
+- Not built, because each needs per-lesson authoring or its own review: "repair it" exercises from the notes'
+  ❌/✅ pairs, guided debugging tasks with predictions, self-explanation prompts under visualizers, and offline use
+  (a service worker). Worth doing next, in that order.
 
 ## How to run
 
 ```bash
 cd learning-site
-source scripts/local-env.sh   # this machine only: portable Node 24 and .NET 10 SDK, caches on D:
+source scripts/local-env.sh   # this machine only: portable .NET 10 SDK in .tools/, caches on D:
 npm ci
-npm run dev                    # http://localhost:4321/LearnYourself/ (run `npm run runner` once for Run buttons in dev)
+npm run dev                    # http://localhost:4321/LearnYourself/ (run `npm run runner` once for Run, Debug and Try it yourself in dev)
 npm run build && npm run preview
 ```
 
@@ -104,24 +187,39 @@ npm run build && npm run preview
 
 | Check | Result |
 |---|---|
-| Content pipeline | 140/140 notes mapped or excluded; 178 lessons; 0 errors, 0 warnings |
-| Data checks | 165/165 lessons have a quiz; 14/14 sheets; 464 interview questions pass schema, link and verbatim checks |
+| Content pipeline | 149/149 notes mapped or excluded; 200 lessons; 0 errors, 0 warnings |
+| Data checks | 187/187 lessons have a quiz; 14/14 sheets; 464 interview questions pass schema, link and verbatim checks |
+| Runnable C# | 206 programs runnable, 206 debuggable (traced output identical) |
+| Runnable SQL | 47 of 408 blocks; 5 data files valid; 7 setups each feed a runnable query |
+| Practice | 20 exercises verified: the note's code passes 91/91 cases, every starter fails at least one |
 | Source vs rendered counts | All 178 lessons match (headings, code blocks, tables, ❌/✅/👉 markers) |
-| Internal links and anchors | 19,703 checked, 0 broken |
-| Unit tests (`npm test`) | 1,486 passed (RESULTS_PENDING) |
-| .NET runner tests | 50 passed (RESULTS_PENDING) |
-| Browser tests (`npm run test:e2e`) | 234 passed: every lesson, every visualizer mounts, quizzes, cheat sheet filter and print, Interview Prep, Run (RESULTS_PENDING) |
-| Type check | Clean |
-| Lighthouse (mobile) | LIGHTHOUSE_PENDING |
+| Internal links and anchors | 22,114 checked, 0 broken |
+| Unit tests (`npm test`) | 1,530 passed in 48 files |
+| .NET runner tests (`npm run test:runner`) | 99 passed |
+| Browser tests (`npm run test:e2e`) | 264 passed: every one of the 200 lesson pages, every visualizer mounts, quizzes, cheat sheet filter and print, Interview Prep, Run, Debug (2), runnable SQL (3), practice with hints (1), pre-test → review queue → weak spots (1) |
+| Type check (`npm run check`) | `tsc` clean; `astro check` 0 errors, 0 warnings |
+| Lighthouse, mobile, lesson page with visualizers, Run/Debug and exercises (`dsa/sorting/stability-and-simple-sorts`) | Performance **96**, Accessibility **98** (targets ≥ 90 and ≥ 95); a Git lesson scored 96 / 100 |
+| Lighthouse, mobile, home page | Performance **95**, Accessibility **96** |
+
+Lighthouse was run with `.cache/tmp/lh/run.sh` (Playwright's Chromium + lighthouse 13.4.1, simulated mobile
+throttling) against `astro preview`. Two accessibility findings were fixed on the way: the header's search button had
+no name at phone widths (its text label is hidden there), and the light code theme's red and grey were under the
+4.5:1 contrast ratio on the code background. The site's colours were then changed twice at your request, finally to
+the **Coding Ninjas palette** read from codingninjas.com's own CSS variables: orange `#fa7328` as the brand,
+`#141414` text on `#fafafa`, ash greys, and their blue, basil, red, purple and yellow as course accents (`global.css`
+tokens for both modes; code in `github-light-high-contrast` / `github-dark-high-contrast`). Their orange is 2.8:1 on
+white, so it carries the brand (bars, chips, borders, dark-mode text) while light-mode links use a darker orange of the
+same family. Every text colour was checked against every surface it sits on (`.cache/tmp/token-contrast.mjs`, 257
+pairs ≥ 4.5:1).
 
 ## Budgets
 
 | Budget | Limit | Now |
 |---|---|---|
-| Total size | 200 MB | 36.7 MB (C# runner 7.2 MB of it) |
-| Files | 20,000 | 732 |
+| Total size | 200 MB | 41.5 MB (C# runner 7.3 MB, sql.js 0.6 MB and the review data 1.6 MB of it) |
+| Files | 20,000 | 988 (187 of them the per-lesson review-data JSON files) |
 | Largest file | 25 MiB | 2.0 MB (the compiler, gzipped) |
-| Binaries outside the approved list | 0 | 0 (the runner's `.wasm.gz`/`.dat.gz` files have their own narrow allowlist entry) |
+| Binaries outside the approved list | 0 | 0 (the runner's `.wasm.gz`/`.dat.gz` files and sql.js's one `.wasm` have narrow allowlist entries by path) |
 
 ## Interview questions by topic and origin
 
@@ -143,7 +241,7 @@ Reviewed so far: 0. Set `"reviewed": true` per question as you check them (see t
 
 ## New entries in CONTENT_ISSUES.md
 
-About 140 new entries; 90 are marked `open` (need your call). Nothing in the notes was changed. Where a note is
+About 141 new entries; 91 are marked `open` (need your call). Nothing in the notes was changed. Where a note is
 wrong, no quiz uses it as a right answer; interview questions follow the docs they cite; visualizers say what they
 do. The main groups:
 
@@ -151,7 +249,7 @@ do. The main groups:
 |---|---|
 | Formatting that affects rendering (new rows 18–22) | 5 |
 | SQL Server (SQL-1…12), searching/collections (S1…8), C# visualizers (CS1…7), ASP.NET (A1…8), diagrams (F1…5), runner (R1, R2) | 42 |
-| Found while writing quizzes, cheat sheets and interview questions (Q-1…Q-85) | 85 |
+| Found while writing quizzes, cheat sheets and interview questions (Q-1…Q-85), and Q-86 from practice mode | 86 |
 
 Worth fixing first because they render wrongly on the page (and on GitHub):
 - the unclosed code fence in `1.Notes_SQL.md` (#19);
@@ -160,10 +258,46 @@ Worth fixing first because they render wrongly on the page (and on GitHub):
 - `[*]` instead of `[x]` in the WPF checklist (#22).
 
 ## Not done or limited
-- RESIDUAL_PENDING
+- **Heading order.** Lighthouse's `heading-order` audit (weight 3) still flags lessons whose note skips heading
+  levels (`##` straight to `####`, e.g. "Quick concept: what does stable mean" in the sorting note). The levels are the
+  notes' own structure, so I left them; a rehype plugin that closes the gaps would be a presentation-only fix if you
+  want it.
+- **Home-page glyphs.** Lighthouse's `color-contrast` audit on the home page flags the course cards' decorative
+  glyphs (`aria-hidden`, drawn in a course's accent colour on a 13 % tint of the same colour, a little under 4.5:1
+  for the lighter accents). They carry no information, so I left them; the home page still scores 96. Darkening
+  the glyph text (or using `--ink` for it) would clear it.
+- **Runnable SQL is deliberately narrow:** 47 of 408 blocks. The biggest groups it leaves out are the 97 queries on
+  tables the notes never create (a note that added sample data would make them runnable) and arithmetic on DECIMAL
+  columns, which SQLite computes differently.
+- **Practice cases:** 79 of 91 are generated and unreviewed; they pass with the notes' own implementations, but only
+  you can say whether they are good teaching cases. `RadixSort` has no empty-array case (Q-86).
+- **Debugger:** expression-bodied lambdas (`x => x * 2`) and iterator blocks are stepped through only partly
+  (no steps inside expression lambdas, no catch step in iterators); loops whose condition assigns a variable used
+  after the loop fall back to a trace without loop-condition steps and return values (level 1); the trace stops at
+  10,000 steps.
 - The Browse page holds all 464 questions (about 650 KB of HTML). It works, but rendering from JSON would be lighter.
 - Changes you make to visualizer inputs aren't saved across reloads.
 
 ## Go-live (Checkpoint 9): waiting for your OK
 
-GO_LIVE_PENDING
+Nothing has been pushed or deployed, and GitHub Pages is still off. Before the first public deploy, these are the
+personal-data scan's findings on the final build (`npm run scan:personal`, full list in `personal-data-report.md`),
+none of them new:
+
+| Finding | Where | What it is |
+|---|---|---|
+| 4 sample passwords (`Strong@123`, `MyPassword`, `StrongP@ssw0rd!`, `__FROM_ENV__`) | notes' connection-string examples | sample values from the notes, not real credentials |
+| `DESKTOP-ABC123\SQLEXPRESS` | the SQL Server setup note | the note's own example instance name |
+| "Kumar" (44×) and "aman kumar" in sample data | records, XML/JSON and OOP examples, one refresh-token example | kept under your Checkpoint 1 decision (Q9) |
+| Email addresses | font and PDF metadata inside two third-party PDFs, Pagefind's credits | third-party; none of yours |
+| `/home/web_user` | the .NET WebAssembly runtime and the sql.js worker | the runtimes' virtual file system, not a real path |
+| PDF metadata: author "kommula Harikareddy" | `interviewques1.pdf` | the third-party PDF's own author field |
+| Q-85 | `19. OtherTopics/Notes.md` | the chat line that addresses you by name; an `omitLines` entry would drop it |
+
+On your OK:
+1. Review the working tree in `D:\Data\ly-wt\repo` (`git status`, `git diff`), commit and push `main`.
+2. In the repository: Settings → Pages → Build and deployment → Source: **GitHub Actions**. Then re-run the
+   "Deploy learning site" workflow (or push again).
+3. Verify the live site at https://18-vk.github.io/LearnYourself/: the home page, one lesson per course, a
+   visualizer, Run and Debug on a C# example, Run on a SQL example (`sql-server/querying/joins`), a practice exercise
+   (`dsa/sorting/stability-and-simple-sorts`), search, a cheat sheet, and Interview Prep.

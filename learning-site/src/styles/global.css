@@ -3,68 +3,74 @@
 /* Layout: sticky top bar; home = path-shaped catalogue; lesson = course nav · 70ch article · on-this-page,
    collapsing to one column on phones. All colours are tokens with light and dark values. */
 :root {
-  --bg: #f4f6f9;
+  /* Coding Ninjas palette (codingninjas.com): their orange #fa7328 as the brand, near-black #141414 text, #fafafa
+     page, ash greys, their blue / basil / red / purple / yellow as the course accents. Their orange is 2.8:1 on white,
+     so it carries the brand (bars, chips, borders, dark-mode text) while light-mode links use a darker orange of the
+     same family; every text colour is at least 4.5:1 on every surface it sits on (.cache/tmp/token-contrast.mjs). */
+  --bg: #fafafa;
   --surface: #ffffff;
-  --surface-2: #eceff4;
-  --ink: #161e2a;
-  --ink-2: #435064;
-  --ink-3: #5f6b7e;
-  --line: #d9dfe7;
-  --focus: #2f6fde;
-  --link: #2b55b8;
-  --code-bg: #f0f3f7;
-  --code-ink: #1d2633;
-  --code-cur: #dfe8fb;
-  --phase1: #6a4cd8;
-  --desktop: #0e7f7b;
-  --phase2: #3b55c9;
-  --sql: #c23a5a;
-  --dsa: #a05f08;
-  --math: #1b8455;
-  --backend: #b84f17;
+  --surface-2: #f2f2f2;
+  --ink: #141414;
+  --ink-2: #403f3f;
+  --ink-3: #6c6865;
+  --line: #dedddc;
+  --brand: #fa7328;
+  --focus: #b8420c;
+  --link: #b8420c;
+  --code-bg: #f7f7f7;
+  --code-cur: #fff6e4;
+  --code-ink: #1f1f1f;
+  --phase1: #3f66c9;
+  --desktop: #50009b;
+  --phase2: #112c67;
+  --sql: #c13d2f;
+  --dsa: #9f4903;
+  --math: #2f7a45;
+  --backend: #6e450e;
+  --git: #0b6ea8;
   /* visualizer colour meanings: identical in every visualizer, ≥3:1 against the surface in both themes */
-  --v-idle: #8a95a6;
-  --v-compare: #b57400;
+  --v-idle: #8c8c96;
+  --v-compare: #b07a10;
   --v-swap: #d23f4f;
-  --v-sorted: #1f9d6b;
-  --v-pointer: #2f6fde;
+  --v-sorted: #228f63;
+  --v-pointer: #3f66c9;
   --v-active: #7d4ee0;
-  --good: #1d7f53;
-  --good-bg: #e7f4ec;
-  --bad: #b8343f;
-  --bad-bg: #fbebed;
-  --tip: #2b5fc4;
-  --tip-bg: #e8effc;
-  --warn: #8f5500;
-  --warn-bg: #fcf2e0;
-  --important: #b8343f;
-  --important-bg: #fdeeee;
-  --int: #6a3fc8;
+  --good: #2f7a45;
+  --good-bg: #e9f5ed;
+  --bad: #c13d2f;
+  --bad-bg: #ffedf2;
+  --tip: #3f66c9;
+  --tip-bg: #e6f0ff;
+  --warn: #9f4903;
+  --warn-bg: #fff6e4;
+  --important: #c13d2f;
+  --important-bg: #ffedf2;
+  --int: #50009b;
   --int-bg: #f1ecfc;
-  --shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 4px 14px rgb(16 24 40 / 0.05);
+  --shadow: 0 1px 2px rgb(20 20 20 / 0.06), 0 4px 14px rgb(20 20 20 / 0.05);
   --font: "Literata Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Code", Consolas, monospace;
   --header-h: 60px;
-  --accent: var(--ink-2);
+  --accent: var(--brand);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d1116; --surface: #141920; --surface-2: #1b222b; --ink: #e6e9ee; --ink-2: #b2bbc8; --ink-3: #959fae; --line: #28303b;
-    --focus: #6ea3ff; --link: #8fb1ff; --code-bg: #10151b; --code-ink: #dde3ea; --code-cur: #1d2a40;
-    --phase1: #a891ff; --desktop: #43c4bf; --phase2: #8e9dff; --sql: #f37f97; --dsa: #efab4b; --math: #57cf95; --backend: #f3935b;
-    --v-idle: #5d6878; --v-compare: #f2b13c; --v-swap: #ff6b7a; --v-sorted: #3ccf92; --v-pointer: #6ea3ff; --v-active: #b494ff;
-    --good: #58cf97; --good-bg: #11261c; --bad: #ff8a95; --bad-bg: #2c1519; --tip: #86aefc; --tip-bg: #142036; --warn: #f2b13c; --warn-bg: #2a2010;
-    --important: #ff8a95; --important-bg: #2c1519; --int: #c3a9ff; --int-bg: #1f1834; --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --bg: #141414; --surface: #1f1f1f; --surface-2: #2a2a2a; --ink: #fafafa; --ink-2: #d3d1cf; --ink-3: #a3a19e; --line: #363636;
+    --brand: #fa7328; --focus: #fb813e; --link: #fb813e; --code-bg: #181818; --code-ink: #ededed; --code-cur: #2e2217;
+    --phase1: #8aa6f0; --desktop: #b48cf5; --phase2: #8fa7ff; --sql: #f6655a; --dsa: #ffc147; --math: #7fcf96; --backend: #d9a46e; --git: #5fb8ef;
+    --v-idle: #737070; --v-compare: #ffc147; --v-swap: #ff7a70; --v-sorted: #5ccb95; --v-pointer: #8aa6f0; --v-active: #b79cf5;
+    --good: #7fcf96; --good-bg: #16261d; --bad: #ff8f8a; --bad-bg: #2f1a18; --tip: #93b5f0; --tip-bg: #1a2233; --warn: #ffc147; --warn-bg: #2c2213;
+    --important: #ff8f8a; --important-bg: #2f1a18; --int: #c6aefc; --int-bg: #231b34; --shadow: 0 1px 2px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0d1116; --surface: #141920; --surface-2: #1b222b; --ink: #e6e9ee; --ink-2: #b2bbc8; --ink-3: #959fae; --line: #28303b;
-  --focus: #6ea3ff; --link: #8fb1ff; --code-bg: #10151b; --code-ink: #dde3ea; --code-cur: #1d2a40;
-  --phase1: #a891ff; --desktop: #43c4bf; --phase2: #8e9dff; --sql: #f37f97; --dsa: #efab4b; --math: #57cf95; --backend: #f3935b;
-  --v-idle: #5d6878; --v-compare: #f2b13c; --v-swap: #ff6b7a; --v-sorted: #3ccf92; --v-pointer: #6ea3ff; --v-active: #b494ff;
-  --good: #58cf97; --good-bg: #11261c; --bad: #ff8a95; --bad-bg: #2c1519; --tip: #86aefc; --tip-bg: #142036; --warn: #f2b13c; --warn-bg: #2a2010;
-  --important: #ff8a95; --important-bg: #2c1519; --int: #c3a9ff; --int-bg: #1f1834; --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --bg: #141414; --surface: #1f1f1f; --surface-2: #2a2a2a; --ink: #fafafa; --ink-2: #d3d1cf; --ink-3: #a3a19e; --line: #363636;
+  --brand: #fa7328; --focus: #fb813e; --link: #fb813e; --code-bg: #181818; --code-ink: #ededed; --code-cur: #2e2217;
+  --phase1: #8aa6f0; --desktop: #b48cf5; --phase2: #8fa7ff; --sql: #f6655a; --dsa: #ffc147; --math: #7fcf96; --backend: #d9a46e; --git: #5fb8ef;
+  --v-idle: #737070; --v-compare: #ffc147; --v-swap: #ff7a70; --v-sorted: #5ccb95; --v-pointer: #8aa6f0; --v-active: #b79cf5;
+  --good: #7fcf96; --good-bg: #16261d; --bad: #ff8f8a; --bad-bg: #2f1a18; --tip: #93b5f0; --tip-bg: #1a2233; --warn: #ffc147; --warn-bg: #2c2213;
+  --important: #ff8f8a; --important-bg: #2f1a18; --int: #c6aefc; --int-bg: #231b34; --shadow: 0 1px 2px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }
 [data-course="phase-1"] { --accent: var(--phase1); }
@@ -74,6 +80,7 @@
 [data-course="dsa"] { --accent: var(--dsa); }
 [data-course="math"] { --accent: var(--math); }
 [data-course="backend-roadmap"] { --accent: var(--backend); }
+[data-course="git-github"] { --accent: var(--git); }
 
 @theme {
   --font-sans: var(--font);
@@ -190,7 +197,7 @@
   @media (max-width: 860px) { .course-hero { grid-template-columns: 1fr; } }
 
   /* lesson */
-  .lesson-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr) 196px; gap: 40px; align-items: start; }
+  .lesson-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr) 252px; gap: 40px; align-items: start; }
   .course-nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--header-h) + 24px); max-height: calc(100vh - var(--header-h) - 48px); overflow: auto; font-size: 14.5px; padding-right: 4px; }
   .course-nav .cn-title { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; text-decoration: none; color: var(--ink); font-weight: 650; }
   .course-nav .glyph { min-width: 32px; height: 32px; font-size: 12px; }
@@ -211,10 +218,10 @@
   .lesson-meta a { color: var(--ink-2); }
   .objectives { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; max-width: 70ch; margin-bottom: 32px; }
   .objectives ul { margin: 10px 0 0; padding-left: 1.15em; display: grid; gap: 4px; color: var(--ink-2); list-style: disc; }
-  .toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--header-h) + 28px); font-size: 13.5px; max-height: calc(100vh - var(--header-h) - 56px); overflow: auto; }
+  .toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--header-h) + 28px); font-size: 14px; max-height: calc(100vh - var(--header-h) - 56px); overflow: auto; padding-right: 6px; }
   .toc ol { list-style: none; margin: 10px 0 0; padding: 0; border-left: 1px solid var(--line); }
-  .toc a { display: block; padding: 4px 0 4px 12px; margin-left: -1px; border-left: 2px solid transparent; color: var(--ink-3); text-decoration: none; line-height: 1.35; }
-  .toc a.depth-3 { padding-left: 24px; font-size: 13px; }
+  .toc a { display: block; padding: 5px 0 5px 12px; margin-left: -1px; border-left: 2px solid transparent; color: var(--ink-3); text-decoration: none; line-height: 1.4; overflow-wrap: anywhere; }
+  .toc a.depth-3 { padding-left: 24px; font-size: 13.5px; }
   .toc a:hover { color: var(--ink); }
   .toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent); font-weight: 600; }
   .lesson-end { display: grid; gap: 18px; margin-top: 44px; max-width: 70ch; }
@@ -227,7 +234,7 @@
   .side-card { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
   .side-card ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; font-size: 15px; }
   .course-nav-toggle { display: none; }
-  @media (max-width: 1240px) { .lesson-shell { grid-template-columns: 220px minmax(0, 1fr); } .toc { display: none; } }
+  @media (max-width: 1320px) { .lesson-shell { grid-template-columns: 220px minmax(0, 1fr); } .toc { display: none; } }
   @media (max-width: 880px) {
     .lesson-shell { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .course-nav { position: static; max-height: none; display: none; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); }

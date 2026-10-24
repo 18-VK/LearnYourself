@@ -10,6 +10,7 @@
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runPracticeCheck } from '../practice/check';
 import { runRunnableCheck, writeUnavailable } from './check';
 import { findDotnet } from './dotnet';
 import { publishRunner } from './publish';
@@ -27,12 +28,17 @@ export async function runnerBuildStep(log: StepLog): Promise<{ ok: boolean; erro
     const msg = 'runner: no .NET SDK 10 or newer found, so the C# blocks get no Run buttons. Install it (README, "C# runner") or put a portable SDK in .tools/dotnet.';
     if (required) return { ok: false, errors: [`${msg} LY_REQUIRE_RUNNER=1 makes this an error.`] };
     log.warn(msg);
-    return { ok: true, errors: [] };
+    // the exercises' data files are still checked (their C# isn't run, and the pages show no exercises)
+    const practice = await runPracticeCheck({ log: log.info, verify: false });
+    return { ok: practice.ok, errors: practice.errors };
   }
   try {
     await publishRunner({ log: log.info });
     const check = await runRunnableCheck({ log: log.info });
-    return { ok: check.ok, errors: check.errors };
+    if (!check.ok) return { ok: false, errors: check.errors };
+    // practice mode: every exercise is compiled and run with the same tool (scripts/practice/check.ts)
+    const practice = await runPracticeCheck({ log: log.info });
+    return { ok: practice.ok, errors: practice.errors };
   } catch (e) {
     return { ok: false, errors: [`runner: ${(e as Error).message}`] };
   }

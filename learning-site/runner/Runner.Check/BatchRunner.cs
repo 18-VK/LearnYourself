@@ -92,7 +92,9 @@ public static class BatchRunner
         {
             await protocol.WriteLineAsync(StartMark + i.ToString(System.Globalization.CultureInfo.InvariantCulture));
             var stdout = new System.Text.StringBuilder();
-            var r = await SnippetExecutor.RunAsync(items[i].Assembly, items[i].Pdb, items[i].Stdin, new ExecutionLimits(maxOutput), t => stdout.Append(t));
+            // a traced program gets the recorder's limits, as in the browser (its trace itself isn't needed here)
+            var observer = items[i].Traced ? new Debugger.TraceSession(null, Debugger.DebugLimits.Default) : null;
+            var r = await SnippetExecutor.RunAsync(items[i].Assembly, items[i].Pdb, items[i].Stdin, new ExecutionLimits(maxOutput), t => stdout.Append(t), observer);
             var record = new RunRecord
             {
                 Outcome = r.Outcome,

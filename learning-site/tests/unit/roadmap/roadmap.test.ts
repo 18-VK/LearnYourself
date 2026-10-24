@@ -25,7 +25,7 @@ describe('checklist keys', () => {
 });
 
 // ── the real roadmap lessons, built the way the content pipeline builds them ──────────────
-const COURSES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa', 'math', 'backend-roadmap'];
+const COURSES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa', 'math', 'backend-roadmap', 'git-github'];
 interface Lesson {
   id: string;
   title: string;

@@ -1,0 +1,31 @@
+---
+/**
+ * "Review today": the quiz questions whose review is due (src/scripts/review-schedule.ts), interleaved across
+ * courses, plus the flashcards in the "Review again" pile. Everything comes from this browser's progress; the
+ * questions themselves are fetched per lesson from review-data/<lesson>.json.
+ */
+import '../styles/quiz.css';
+import '../styles/review.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { url } from '../lib/site';
+---
+
+<BaseLayout title="Review today" description="Quiz questions that are due for review, spaced out so they stick." nav="none">
+  <section class="review-page">
+    <p class="eyebrow">Review</p>
+    <h1>Review today</h1>
+    <p class="review-intro">
+      Questions you answered in a lesson quiz or a “Before you read” box come back here: tomorrow after a wrong answer, and at longer and longer intervals after right ones. A few minutes a day beats re-reading.
+    </p>
+    <p class="review-status" role="status" aria-live="polite" data-review-status>Loading what is due…</p>
+    <ol class="quiz-list review-list" data-review-list></ol>
+    <p class="review-flashcards" data-review-flashcards hidden>
+      <a href={url('interview-prep/flashcards/')}>Flashcards: <span data-review-flashcards-count>0</span> in your “Review again” pile</a>
+    </p>
+    <p class="muted review-note">Progress lives only in this browser; see <a href={url('progress/')}>Your progress</a> to export it.</p>
+    <noscript><p class="muted">The review queue needs JavaScript.</p></noscript>
+  </section>
+  <script>
+    import '../scripts/review';
+  </script>
+</BaseLayout>

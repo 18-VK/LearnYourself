@@ -1,0 +1,56 @@
+{
+  "lesson": "git-github-authentication-and-ssh",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Do `user.name` and `user.email` log you in to GitHub?",
+      "options": [
+        "Yes, they are your GitHub credentials",
+        "No: GitHub authenticates you only during remote operations such as `git push`",
+        "Only when you use SSH",
+        "Only on Windows"
+      ],
+      "answer": 1,
+      "explanation": "They are commit metadata. GitHub authenticates you when you connect for remote operations, with HTTPS (username/password or token) or an SSH key.",
+      "source": {
+        "section": "## 8. GitHub authentication"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which command does the note use to generate an SSH key?",
+      "options": [
+        "`ssh-keygen -t rsa -b 1024`",
+        "`ssh-keygen -t ed25519 -C \"you@example.com\"`",
+        "`git ssh new`",
+        "`git config --global ssh.key`"
+      ],
+      "answer": 1,
+      "explanation": "`ssh-keygen -t ed25519 -C \"you@example.com\"`; the RSA 4096 form is the alternative for older systems. The `.pub` key is then added under GitHub → Settings → SSH and GPG keys.",
+      "source": {
+        "section": "### Generate SSH key"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Git opened `git log` in the pager. Which key quits?",
+      "options": [
+        "b",
+        "d",
+        "q",
+        "f"
+      ],
+      "answer": 2,
+      "explanation": "`q` quits the pager; `b` goes back a page, `d` moves to the next section, `f` and Space move forward a page.",
+      "source": {
+        "section": "## 11. Git pager navigation"
+      },
+      "reviewed": false
+    }
+  ]
+}

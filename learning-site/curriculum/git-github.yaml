@@ -1,0 +1,185 @@
+# Git & GitHub
+# Source: Git-Github/ (added by the owner on 2026-10-24). The numbered notes are split at their own "##" sections; the
+# unnumbered ones become one or two lessons each. 4.DailyScenarios.md was written for the site (see its header).
+# The two "copy" files are a verified duplicate and an exclusion in _site.yaml.
+
+id: git-github
+title: "Git & GitHub"
+shortTitle: "Git"
+kind: course
+accent: sky
+icon: branch
+prerequisites: []
+summary: >-
+  Version control as developers use it every day: what Git and GitHub are, the commands behind status, add,
+  commit, diff and restore, a command reference for remotes, history, undo, branching, merge and rebase, safe
+  force pushes and recovery, pull requests, and a set of daily scenarios with the commands that handle them.
+
+modules:
+  - id: foundations
+    title: "Git and GitHub basics"
+    lessons:
+      - id: git-and-github
+        title: "What Git and GitHub are"
+        reason: "Git-Github.md is unnumbered; its first three sections introduce Git, GitHub and how they work together."
+        sources:
+          - file: "Git-Github/Git-Github.md"
+            until: "## 4. Why Git configuration matters"
+      - id: git-configuration-and-identity
+        title: "Configuration and identity"
+        reason: "Git-Github.md, sections 4–7: why config matters, identity, global vs local config, examples."
+        sources:
+          - file: "Git-Github/Git-Github.md"
+            from: "## 4. Why Git configuration matters"
+            until: "## 8. GitHub authentication"
+      - id: git-github-authentication-and-ssh
+        title: "GitHub authentication, SSH and the daily workflow"
+        reason: "Git-Github.md, sections 8–12: authentication, SSH keys, the practical workflow, pager keys, summary."
+        sources:
+          - file: "Git-Github/Git-Github.md"
+            from: "## 8. GitHub authentication"
+
+  - id: core-commands
+    title: "Core commands"
+    lessons:
+      - id: git-config-init-clone-status
+        title: "config, init, clone and status"
+        reason: "1.BasicCommands.md is split at its sections: 1–4 here."
+        sources:
+          - file: "Git-Github/1.BasicCommands.md"
+            until: "## 5. git add"
+      - id: git-add-commit-diff-restore
+        title: "add, commit, diff and restore"
+        reason: "1.BasicCommands.md, sections 5–8."
+        sources:
+          - file: "Git-Github/1.BasicCommands.md"
+            from: "## 5. git add"
+            until: "## 9. Working tree, staging area, and repository"
+      - id: git-working-tree-staging-and-line-endings
+        title: "Working tree, staging area, the .git folder and line endings"
+        reason: "1.BasicCommands.md, sections 9–11, with the local/remote flow diagram from the same folder."
+        sources:
+          - file: "Git-Github/1.BasicCommands.md"
+            from: "## 9. Working tree, staging area, and repository"
+            until: "## 12. Common mistakes to avoid"
+        resources:
+          - asset: "Git-Github/FlowChart.webp"
+      - id: git-mistakes-reference-and-workflow
+        title: "Common mistakes, quick reference and the beginner workflow"
+        reason: "1.BasicCommands.md, sections 12–14."
+        sources:
+          - file: "Git-Github/1.BasicCommands.md"
+            from: "## 12. Common mistakes to avoid"
+
+  - id: command-reference
+    title: "Command reference"
+    lessons:
+      - id: git-repository-setup-and-remotes
+        title: "Repository setup, remotes and multiple remotes"
+        reason: "2.Git commands.md is split at its sections: 1–3 here."
+        sources:
+          - file: "Git-Github/2.Git commands.md"
+            until: "## 4. Status and diff commands"
+      - id: git-status-diff-and-history
+        title: "Status, diff and history"
+        reason: "2.Git commands.md, sections 4–5."
+        sources:
+          - file: "Git-Github/2.Git commands.md"
+            from: "## 4. Status and diff commands"
+            until: "## 6. Staging and commits"
+      - id: git-staging-commits-and-undo
+        title: "Staging, commits, undo and recovery"
+        reason: "2.Git commands.md, sections 6–7 (add, commit, amend, restore, reset modes, revert, reflog)."
+        sources:
+          - file: "Git-Github/2.Git commands.md"
+            from: "## 6. Staging and commits"
+            until: "## 8. Branching and switching"
+      - id: git-branching-and-switching
+        title: "Branching and switching"
+        reason: "2.Git commands.md, section 8."
+        sources:
+          - file: "Git-Github/2.Git commands.md"
+            from: "## 8. Branching and switching"
+            until: "## 9. Merge and rebase"
+      - id: git-merge-and-rebase
+        title: "Merge, rebase and cherry-pick"
+        reason: "2.Git commands.md, section 9."
+        sources:
+          - file: "Git-Github/2.Git commands.md"
+            from: "## 9. Merge and rebase"
+            until: "## 10. Force push and safety"
+      - id: git-force-push-stash-and-workflow
+        title: "Force push safety, stash and the best-practice workflow"
+        reason: "2.Git commands.md, sections 10–13."
+        sources:
+          - file: "Git-Github/2.Git commands.md"
+            from: "## 10. Force push and safety"
+
+  - id: remotes-and-undo
+    title: "Remotes, and undoing safely"
+    lessons:
+      - id: git-fetch-pull-push
+        title: "fetch, pull and push"
+        reason: "3.Git commands_2.md is split at its sections: 1–3 here."
+        sources:
+          - file: "Git-Github/3.Git commands_2.md"
+            until: "## 4. `git push --force-with-lease` vs `git push --force`"
+      - id: git-force-push-and-rejected-push
+        title: "force-with-lease vs force, and recovering from a rejected push"
+        reason: "3.Git commands_2.md, sections 4–8."
+        sources:
+          - file: "Git-Github/3.Git commands_2.md"
+            from: "## 4. `git push --force-with-lease` vs `git push --force`"
+            until: "## 9. `git revert` vs `git reset` vs `git restore`"
+      - id: git-revert-reset-restore
+        title: "revert vs reset vs restore"
+        reason: "3.Git commands_2.md, sections 9–11 and the reset-mode decision guide."
+        sources:
+          - file: "Git-Github/3.Git commands_2.md"
+            from: "## 9. `git revert` vs `git reset` vs `git restore`"
+            until: "## git revert"
+      - id: git-revert-and-reflog
+        title: "git revert and git reflog in real life"
+        reason: "3.Git commands_2.md: the git revert and git reflog sections that follow the cheat sheet."
+        sources:
+          - file: "Git-Github/3.Git commands_2.md"
+            from: "## git revert"
+            until: "# Stash & clean"
+      - id: git-stash-clean-tags-and-more
+        title: "Stash, clean, tags, detached HEAD and submodules"
+        reason: "3.Git commands_2.md: everything from 'Stash & clean' to the end (tags, releases, rollback, submodules)."
+        sources:
+          - file: "Git-Github/3.Git commands_2.md"
+            from: "# Stash & clean"
+
+  - id: branches-and-pull-requests
+    title: "Branches and pull requests"
+    lessons:
+      - id: git-branch-rename-upstream-and-remote-delete
+        title: "Renaming branches, upstream tracking and deleting remote branches"
+        reason: "Extra.md is unnumbered; sections 1–3 here."
+        sources:
+          - file: "Git-Github/Extra.md"
+            until: "## 4. How branches share data"
+      - id: git-pull-requests-and-branch-lifecycle
+        title: "Pull requests, multiple remotes and the branch lifecycle"
+        reason: "Extra.md, sections 4–10, with the pull-request flow diagram from the same folder."
+        sources:
+          - file: "Git-Github/Extra.md"
+            from: "## 4. How branches share data"
+        resources:
+          - asset: "Git-Github/GitHub-Pull-request-flow.png"
+
+  - id: daily-practice
+    title: "Daily practice"
+    lessons:
+      - id: git-must-know-commands
+        title: "Must-know Git commands"
+        reason: "MustKnowGitCommands.md is unnumbered: the practical command list, the beginner order and the conflict pathway."
+        sources:
+          - file: "Git-Github/MustKnowGitCommands.md"
+      - id: git-daily-scenarios
+        title: "Daily Git scenarios"
+        reason: "4.DailyScenarios.md: situations developers meet most days, with the commands that handle them (written for the site; see the note's header)."
+        sources:
+          - file: "Git-Github/4.DailyScenarios.md"

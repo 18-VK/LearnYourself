@@ -21,13 +21,21 @@ function render() {
     const rows = [...box.querySelectorAll<HTMLElement>('[data-lesson-id]')];
     const done = rows.filter((r) => quiz[r.dataset.lessonId ?? '']);
     rows.forEach((r) => (r.hidden = !quiz[r.dataset.lessonId ?? '']));
+    // mastery: a lesson counts as known when its best score is at least 80 %; the others are the weak spots
+    const score = (r: HTMLElement) => quiz[r.dataset.lessonId!]!.best / quiz[r.dataset.lessonId!]!.of;
+    const mastered = done.filter((r) => score(r) >= 0.8);
+    const weak = done.filter((r) => score(r) < 0.8);
+    done.forEach((r) => {
+      r.classList.toggle('is-mastered', score(r) >= 0.8);
+      r.classList.toggle('is-weak', score(r) < 0.8);
+    });
     const text = box.querySelector<HTMLElement>('[data-quiz-summary-text]');
     if (text) {
       if (!rows.length) text.textContent = 'No quizzes in this course yet.';
       else if (!done.length) text.textContent = `${rows.length} lesson quiz${rows.length === 1 ? '' : 'zes'}, none taken yet.`;
       else {
         const pct = Math.round((done.reduce((n, r) => n + quiz[r.dataset.lessonId!]!.best / quiz[r.dataset.lessonId!]!.of, 0) / done.length) * 100);
-        text.textContent = `Quizzes: ${done.length} of ${rows.length} taken · average best score ${pct}%`;
+        text.textContent = `Quizzes: ${done.length} of ${rows.length} taken · average best score ${pct}% · mastered (≥ 80 %): ${mastered.length}${weak.length ? ` · weak spots: ${weak.length}` : ''}`;
       }
     }
   });

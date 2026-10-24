@@ -19,7 +19,7 @@ const links = [
       {links.map((l) => <a href={l.href} aria-current={nav === l.key ? 'page' : undefined}>{l.label}</a>)}
     </nav>
     <div class="top-tools">
-      <button type="button" class="search-open" id="search-open" aria-haspopup="dialog" aria-controls="search-dialog">
+      <button type="button" class="search-open" id="search-open" aria-label="Search (press /)" aria-haspopup="dialog" aria-controls="search-dialog">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
         <span class="label">Search</span><kbd>/</kbd>
       </button>

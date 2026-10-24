@@ -38,11 +38,15 @@ Console.WriteLine($"check: analyzed {verdicts.Count} programs in {sw.Elapsed.Tot
 var candidates = verdicts.Where(v => v.Runnable).ToList();
 var stdinOf = input.Programs.ToDictionary(p => p.Id, p => p.Stdin);
 var batch = candidates.Select(v => new BatchItem(v.Id, v.Assembly!, v.Pdb, stdinOf[v.Id])).ToList();
+// and once more as the debugger runs them, to check that tracing changes nothing the learner can see
+var traced = candidates.Where(v => v.DebugAssembly is not null).Select(v => new BatchItem(v.Id, v.DebugAssembly!, v.DebugPdb, stdinOf[v.Id], Traced: true)).ToList();
 sw.Restart();
 var runs = await Task.WhenAll(
     BatchRunner.RunAsync(batch, input.TimeoutMs, input.MaxOutputChars, work),
-    BatchRunner.RunAsync(batch, input.TimeoutMs, input.MaxOutputChars, work));
-Console.WriteLine($"check: ran {candidates.Count} programs twice in {sw.Elapsed.TotalSeconds:F1} s");
+    BatchRunner.RunAsync(batch, input.TimeoutMs, input.MaxOutputChars, work),
+    BatchRunner.RunAsync(traced, input.TimeoutMs, input.MaxOutputChars, work));
+var tracedRuns = traced.Select((t, i) => (t.Id, Run: runs[2][i])).ToDictionary(x => x.Id, x => x.Run);
+Console.WriteLine($"check: ran {candidates.Count} programs twice and {traced.Count} traced in {sw.Elapsed.TotalSeconds:F1} s");
 
 var host = HostStrings();
 var final = new List<CheckVerdict>(verdicts.Count);
@@ -69,8 +73,12 @@ foreach (var v in verdicts)
     bool hostData = host.Any(h => a.Stdout.Contains(h, StringComparison.OrdinalIgnoreCase) || (a.Error?.Message.Contains(h, StringComparison.OrdinalIgnoreCase) ?? false));
     bool needsInput = v.ReadsInput && string.IsNullOrEmpty(stdinOf[v.Id]);
     bool varies = !same || hostData || v.VariesReason is not null;
+    var (debug, debugReason) = v.Debug == false ? (false, v.DebugReason) : DebugMatches(a, tracedRuns.GetValueOrDefault(v.Id), varies);
     final.Add(v with
     {
+        Debug = debug,
+        DebugReason = debugReason,
+        DebugRun = tracedRuns.GetValueOrDefault(v.Id),
         Varies = varies,
         VariesReason = v.VariesReason ?? (!same ? "the two runs printed different output" : hostData ? "the output contains details of the build machine" : null),
         Runs = [a, b],
@@ -86,8 +94,24 @@ var output = new CheckOutput
     Programs = final,
 };
 await File.WriteAllTextAsync(outputPath, JsonSerializer.Serialize(output, CheckJson.Default.CheckOutput));
-Console.WriteLine($"check: {final.Count(v => v.Runnable)} runnable, {final.Count(v => v.Runnable && v.Varies)} with output that varies");
+Console.WriteLine($"check: {final.Count(v => v.Runnable)} runnable, {final.Count(v => v.Runnable && v.Varies)} with output that varies, {final.Count(v => v.Debug == true)} debuggable");
 return 0;
+
+// The traced run must look exactly like the plain one: same output, same outcome and the same exception on the same
+// line. A run the debugger's step cap stopped counts when what it printed is the start of the plain output.
+// (Output that varies from run to run is only compared by outcome.)
+static (bool, string?) DebugMatches(RunRecord plain, RunRecord? traced, bool varies)
+{
+    if (traced is null) return (false, "the traced program was not run");
+    if (traced.Outcome is "timeout" or "crash") return (false, $"the traced program {(traced.Outcome == "timeout" ? "timed out" : "crashed")}");
+    if (traced.Outcome == "trace-limit")
+        return varies || plain.Stdout.StartsWith(traced.Stdout, StringComparison.Ordinal) ? (true, null) : (false, "the traced program printed something else before the step limit");
+    if (traced.Outcome != plain.Outcome) return (false, $"the traced program ended with {traced.Outcome}, the plain one with {plain.Outcome}");
+    if (traced.Error?.Type != plain.Error?.Type || traced.Error?.Line != plain.Error?.Line || (!varies && traced.Error?.Message != plain.Error?.Message))
+        return (false, "the traced program threw a different exception");
+    if (!varies && traced.Stdout != plain.Stdout) return (false, "the traced program printed something else");
+    return (true, null);
+}
 
 // Machine-specific strings that must never appear in a published "Expected output".
 static List<string> HostStrings()

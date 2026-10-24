@@ -19,7 +19,7 @@ public sealed record RuntimeError(string Type, string Message, string? File, int
 
 /// <summary>
 /// <c>completed</c>: Main returned; <c>exception</c>: an exception escaped Main; <c>output-limit</c>: the output cap
-/// was hit and the program was stopped. (A timeout can't be reported from inside: the host terminates the worker
+/// was hit and the program was stopped; <c>trace-limit</c>: the debugger's step, depth or size limit stopped it. (A timeout can't be reported from inside: the host terminates the worker
 /// or process and reports <c>timeout</c> itself.)
 /// </summary>
 public sealed record RunResult(string Outcome, int ExitCode, RuntimeError? Error, bool OutputTruncated, double Milliseconds);
@@ -38,6 +38,8 @@ public sealed class CappedWriter(int limit, Action<string> sink) : TextWriter
     private int _written;
     private long _lastFlush = System.Diagnostics.Stopwatch.GetTimestamp();
     public bool LimitHit { get; private set; }
+    /// <summary>Characters the program has written so far (including what is still buffered).</summary>
+    public int Written => _written;
     public override Encoding Encoding => Encoding.UTF8;
 
     public override void Write(char value)
@@ -80,6 +82,22 @@ public sealed class CappedWriter(int limit, Action<string> sink) : TextWriter
 }
 
 /// <summary>
+/// Watches one run from the inside: the debugger's trace session (Debugger/TraceSession.cs) sets up the recorder that
+/// the instrumenter compiled into the program before Main runs, and reads what it recorded afterwards.
+/// </summary>
+public interface IRunObserver
+{
+    /// <summary>Called after the program's assembly is loaded, before its entry point runs.</summary>
+    void BeforeRun(Assembly program, Func<int> outputLength);
+
+    /// <summary>Called when the run ends (also after an exception), before the assembly is unloaded.</summary>
+    void AfterRun(Assembly program);
+
+    /// <summary>The run's outcome for an exception that belongs to the observer (the debugger's step cap), or null.</summary>
+    string? Outcome(Exception escaped);
+}
+
+/// <summary>
 /// Loads a compiled snippet into its own AssemblyLoadContext and runs its entry point with Console redirected.
 /// Used in the browser worker and in the build-time check's child process.
 /// </summary>
@@ -87,7 +105,7 @@ public static class SnippetExecutor
 {
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "The learner's assembly is compiled against reference assemblies whose implementations the browser bundle keeps untrimmed (References.props, RunnerKeep).")]
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Reflection only over the learner's own (untrimmed) assembly.")]
-    public static async Task<RunResult> RunAsync(byte[] assembly, byte[]? pdb, string stdin, ExecutionLimits limits, Action<string> output)
+    public static async Task<RunResult> RunAsync(byte[] assembly, byte[]? pdb, string stdin, ExecutionLimits limits, Action<string> output, IRunObserver? observer = null)
     {
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var writer = new CappedWriter(limits.MaxOutputChars, output);
@@ -100,26 +118,31 @@ public static class SnippetExecutor
         Console.SetIn(new StringReader(ProgramBuilder.Normalize(stdin)));
         int exitCode = 0;
         RuntimeError? error = null;
+        string? observed = null;
+        Assembly? asm = null;
         try
         {
-            var asm = pdb is null ? context.LoadFromStream(new MemoryStream(assembly)) : context.LoadFromStream(new MemoryStream(assembly), new MemoryStream(pdb));
+            asm = pdb is null ? context.LoadFromStream(new MemoryStream(assembly)) : context.LoadFromStream(new MemoryStream(assembly), new MemoryStream(pdb));
+            observer?.BeforeRun(asm, () => writer.Written);
             exitCode = await InvokeEntryPointAsync(asm);
         }
         catch (Exception e)
         {
             var ex = Unwrap(e);
-            if (ex is not OutputLimitExceededException) error = Describe(ex, pdb);
-            exitCode = ex is OutputLimitExceededException ? 0 : 1;
+            observed = observer?.Outcome(ex);
+            if (ex is not OutputLimitExceededException && observed is null) error = Describe(ex, pdb);
+            exitCode = ex is OutputLimitExceededException || observed is not null ? 0 : 1;
         }
         finally
         {
             try { writer.Flush(); } catch (OutputLimitExceededException) { }
+            if (asm is not null) observer?.AfterRun(asm);
             Console.SetOut(oldOut);
             Console.SetError(oldErr);
             Console.SetIn(TextReader.Null);
             if (context.IsCollectible) context.Unload();
         }
-        var outcome = writer.LimitHit ? "output-limit" : error is not null ? "exception" : "completed";
+        var outcome = writer.LimitHit ? "output-limit" : observed ?? (error is not null ? "exception" : "completed");
         return new RunResult(outcome, exitCode, error, writer.LimitHit, System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
     }
 

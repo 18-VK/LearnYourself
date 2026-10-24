@@ -252,3 +252,17 @@ note is left as it is. Entries already listed above (SQL-n, S-n, CS-n) are not r
 | # | File › heading | Observation | Status |
 |---|---|---|---|
 | Q-85 | `19. OtherTopics/Notes.md` › C++ Risks & Best Practices (line 654) | "👉 Aman, since you're exploring IT job opportunities, I'd recommend…" is a chat line that addresses you by name and mentions job hunting. It was kept under your Checkpoint 1 decision on your name (Q9), but it is personal information on a public site, and it now also appears in the C++ interview answer. An `omitLines` entry would drop it from the site. | open |
+
+### DSA notes (found while building practice mode)
+
+| # | File › heading (or lesson › heading) | Observation | Status |
+|---|---|---|---|
+| Q-86 | `Competitive Programming/sorting-algorithms-notes.md` › Radix Sort (lesson counting-radix-bucket) | `RadixSort` starts with `int max = arr.Max();`, which throws `InvalidOperationException: Sequence contains no elements` for an empty array; the other sorts in the note handle `[]`. The practice exercise therefore has no empty-array case for it. | open |
+
+### Git & GitHub notes (found while adding the course, 2026-10-24)
+
+| # | File › heading (or lesson › heading) | Observation | Status |
+|---|---|---|---|
+| Q-87 | `Git-Github/1.BasicCommands copy.md`, `Git-Github/2.Git commands copy.md` | Copies of the numbered notes: the first is byte-for-byte identical, the second adds one line (a YouTube link). The site maps the originals and lists the copies as a verified duplicate and an exclusion; deleting the copies would be simplest. | open |
+| Q-88 | `Git-Github/3.Git commands_2.md` › from "11. Final cheat sheet" to the end | Most command examples after the cheat sheet (`Three reset modes`, `git revert`, `git reflog`, stash, clean, tags) are plain lines rather than fenced code, so they render as prose; a stray `cherr` line and several `?` where emoji were lost; the outline jumps to `#` headings mid-file ("Stash & clean", "Tags & releases", "Detach HEAD", "Rollback using a tag", "git submodule"). Fencing the commands and using `##` for those headings would fix the rendering. | open |
+| Q-89 | `Git-Github/MustKnowGitCommands.md` › Rename branch | `git branch -m old-name new-name` is described as "Rename the current branch"; with two names it renames `old-name`, whichever branch is checked out. | open |

@@ -1,0 +1,73 @@
+{
+  "lesson": "git-config-init-clone-status",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What does `git init` create?",
+      "options": [
+        "A remote repository on GitHub",
+        "A `.git` folder with Git's internal data",
+        "A first commit",
+        "A feature branch"
+      ],
+      "answer": 1,
+      "explanation": "`git init` initializes a repository in the current folder by creating the `.git` folder that holds Git's internal data.",
+      "source": {
+        "section": "## 2. git init"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "`git clone <repository-url>` is used to…",
+      "options": [
+        "start a new empty repository",
+        "copy an existing remote repository to your machine",
+        "push local commits",
+        "show the repository status"
+      ],
+      "answer": 1,
+      "explanation": "`git clone` copies an existing remote repository (GitHub, GitLab, Bitbucket) to your local machine.",
+      "source": {
+        "section": "## 3. git clone"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which of these does `git status` NOT show?",
+      "options": [
+        "Modified files",
+        "Staged files",
+        "Untracked files",
+        "The full commit history"
+      ],
+      "answer": 3,
+      "explanation": "`git status` shows modified, staged and untracked files and the branch name. History is `git log`.",
+      "source": {
+        "section": "## 4. git status"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "`user.name` and `user.email` are…",
+      "options": [
+        "your login credentials for GitHub",
+        "metadata stored inside every commit",
+        "the names of your remotes",
+        "settings that only affect the editor"
+      ],
+      "answer": 1,
+      "explanation": "They are not login credentials; Git stores them as author information in every commit.",
+      "source": {
+        "section": "## 1. Git config"
+      },
+      "reviewed": false
+    }
+  ]
+}

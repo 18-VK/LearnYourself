@@ -1,0 +1,56 @@
+{
+  "lesson": "git-and-github",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is Git?",
+      "options": [
+        "A hosting platform for repositories",
+        "A distributed version control system",
+        "A code editor",
+        "A CI/CD service"
+      ],
+      "answer": 1,
+      "explanation": "Git is a **distributed version control system**: it tracks changes over time and lets you move between versions safely. GitHub is the hosting platform built around it.",
+      "source": {
+        "section": "## 1. What is Git?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which of these does GitHub add on top of Git?",
+      "options": [
+        "The staging area",
+        "Pull requests, code review, issues and CI/CD",
+        "Line-ending conversion",
+        "Local commit history"
+      ],
+      "answer": 1,
+      "explanation": "Git keeps the history locally; GitHub stores and shares it online and adds pull requests, review, issue tracking, CI/CD and team collaboration.",
+      "source": {
+        "section": "## 2. What is GitHub?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "In the typical flow, what comes right after `git commit`?",
+      "options": [
+        "`git add`",
+        "`git push`",
+        "Opening a pull request",
+        "Code review"
+      ],
+      "answer": 1,
+      "explanation": "The flow is write code → `git add` → `git commit` → `git push` → GitHub → review → merge.",
+      "source": {
+        "section": "## 3. How Git and GitHub work together"
+      },
+      "reviewed": false
+    }
+  ]
+}

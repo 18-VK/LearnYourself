@@ -1,0 +1,73 @@
+{
+  "lesson": "git-pull-requests-and-branch-lifecycle",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is a branch?",
+      "options": [
+        "A full copy of the project folder",
+        "A pointer to a commit",
+        "A remote repository",
+        "A tag"
+      ],
+      "answer": 1,
+      "explanation": "A branch is a pointer to a commit, not a folder copy; branches share their base commits and Git stores only the differences.",
+      "source": {
+        "section": "## 4. How branches share data"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Why do pull requests exist?",
+      "options": [
+        "To download changes",
+        "To formally request a merge so the code can be reviewed, tested by CI and approved first",
+        "To delete branches",
+        "To rename remotes"
+      ],
+      "answer": 1,
+      "explanation": "A pull request is a formal request to merge one branch into another: review, CI, discussion, approvals and accountability before the merge.",
+      "source": {
+        "section": "## 5. Why pull requests exist"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What is the difference between `git branch -d` and `git branch -D`?",
+      "options": [
+        "None",
+        "`-d` only deletes a merged branch; `-D` deletes even an unmerged one",
+        "`-D` deletes the remote branch",
+        "`-d` deletes all branches"
+      ],
+      "answer": 1,
+      "explanation": "`-d` is the safe delete (only if merged); `-D` is the force delete.",
+      "source": {
+        "section": "## 9. Safe delete vs force delete"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "With a fork, what does `upstream` refer to?",
+      "options": [
+        "Your fork",
+        "The official repository",
+        "Your local branch",
+        "A tag"
+      ],
+      "answer": 1,
+      "explanation": "`origin` → your fork, `upstream` → the official repository; `upstream/main` is the official project's main branch.",
+      "source": {
+        "section": "## 7. Example of multiple remotes"
+      },
+      "reviewed": false
+    }
+  ]
+}

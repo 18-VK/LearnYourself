@@ -22,6 +22,8 @@
     "verify": "tsx scripts/verify-output.ts",
     "runner": "tsx scripts/runner/step.ts",
     "runner:check": "tsx scripts/runner/check.ts",
+    "sqlrun": "tsx scripts/sqlrun/check.ts",
+    "practice": "tsx scripts/practice/check.ts",
     "test:runner": "cd runner && dotnet test --project Runner.Tests/Runner.Tests.csproj -c Release",
     "scan:personal": "tsx scripts/scan-personal.ts"
   },
@@ -40,7 +42,8 @@
     "d3-scale": "4.0.2",
     "motion": "14.2.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sql.js": "1.14.2"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",

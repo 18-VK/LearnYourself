@@ -1,4 +1,5 @@
 ---
+import '../styles/review.css';
 import CourseCard from '../components/CourseCard.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { courseById, lessonUrl, site, url } from '../lib/site';
@@ -20,13 +21,23 @@ main.forEach((c, i) => (tags[c.id] = i === 0 ? 'Step 1 · Start here' : `Step ${
         Every lesson is a study note, split into readable pieces. Algorithms and request flows come with step-through visualizers that run the notes' own C# code.
       </p>
     </div>
-    <div class="continue" id="continue-card" data-course={first.id}>
-      <p class="eyebrow" data-continue-label>Start here</p>
-      <p class="crumb"><span class="course-name" data-continue-course>{first.title}</span></p>
-      <h2 data-continue-title>{first.modules[0]?.lessons[0]?.title}</h2>
-      <div class="row">
-        <span data-continue-note>First lesson of the suggested path</span>
-        <a class="btn btn-primary" data-continue-link href={first.firstLesson ? lessonUrl(first.firstLesson) : url()}>Start lesson</a>
+    <div class="home-side">
+      <div class="continue" id="continue-card" data-course={first.id}>
+        <p class="eyebrow" data-continue-label>Start here</p>
+        <p class="crumb"><span class="course-name" data-continue-course>{first.title}</span></p>
+        <h2 data-continue-title>{first.modules[0]?.lessons[0]?.title}</h2>
+        <div class="row">
+          <span data-continue-note>First lesson of the suggested path</span>
+          <a class="btn btn-primary" data-continue-link href={first.firstLesson ? lessonUrl(first.firstLesson) : url()}>Start lesson</a>
+        </div>
+      </div>
+      <div class="continue review-card" id="review-card" data-review-card hidden>
+        <p class="eyebrow">Review today</p>
+        <h2><span class="review-count" data-review-count>0</span> due</h2>
+        <div class="row">
+          <span data-review-note></span>
+          <a class="btn btn-primary" href={url('review/')}>Review now</a>
+        </div>
       </div>
     </div>
   </section>
@@ -68,5 +79,6 @@ main.forEach((c, i) => (tags[c.id] = i === 0 ? 'Step 1 · Start here' : `Step ${
   </div>
   <script>
     import '../scripts/catalogue';
+    import '../scripts/review-badge';
   </script>
 </BaseLayout>

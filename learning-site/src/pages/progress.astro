@@ -1,7 +1,8 @@
 ---
+import '../styles/review.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { quizzes } from '../lib/data';
-import { courses, courseUrl, lessonsOf, lessonUrl } from '../lib/site';
+import { courses, courseUrl, lessonsOf, lessonUrl, url } from '../lib/site';
 ---
 
 <BaseLayout title="Your progress" nav="none">
@@ -15,6 +16,14 @@ import { courses, courseUrl, lessonsOf, lessonUrl } from '../lib/site';
       <button type="button" class="btn btn-primary" id="export-progress">Export progress (JSON)</button>
       <label class="btn" for="import-progress" style="cursor:pointer">Import progress…</label>
       <input type="file" id="import-progress" accept="application/json,.json" class="sr-only" />
+    </div>
+    <div class="continue review-card" data-review-card hidden style="margin-top:24px">
+      <p class="eyebrow">Review today</p>
+      <h2><span class="review-count" data-review-count>0</span> due</h2>
+      <div class="row">
+        <span data-review-note></span>
+        <a class="btn btn-primary" href={url('review/')}>Review now</a>
+      </div>
     </div>
     <div style="display:grid;gap:12px;margin-top:28px">
       {courses.map((c) => (
@@ -39,6 +48,7 @@ import { courses, courseUrl, lessonsOf, lessonUrl } from '../lib/site';
   <script>
     import '../scripts/catalogue';
     import '../scripts/quiz-scores';
+    import '../scripts/review-badge';
     import { toast } from '../scripts/global';
     import { exportProgress, importProgress } from '../scripts/progress';
 

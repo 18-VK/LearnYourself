@@ -60,12 +60,13 @@
 .cm-runner-msg-error, .cm-runner-msg-exception { color: var(--bad); background: var(--bad-bg); }
 .cm-runner-msg-warning { color: var(--warn); background: var(--warn-bg); }
 
-/* C# syntax colours (classHighlighter's tok-* classes), close to the github-light / github-dark Shiki themes */
-.runner-editor { --tok-kw: #cf222e; --tok-str: #0a3069; --tok-num: #0550ae; --tok-com: #6e7781; --tok-type: #953800; --tok-def: #8250df; --tok-meta: #116329; }
+/* C# syntax colours (classHighlighter's tok-* classes), close to the github-light-high-contrast /
+   github-dark-high-contrast Shiki themes the lessons use (every colour is at least 4.5:1 on --code-bg) */
+.runner-editor { --tok-kw: #a0111f; --tok-str: #032563; --tok-num: #023b95; --tok-com: #4b535d; --tok-type: #702c00; --tok-def: #622cbc; --tok-meta: #024c1a; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .runner-editor { --tok-kw: #ff7b72; --tok-str: #a5d6ff; --tok-num: #79c0ff; --tok-com: #8b949e; --tok-type: #ffa657; --tok-def: #d2a8ff; --tok-meta: #7ee787; }
+  :root:not([data-theme="light"]) .runner-editor { --tok-kw: #ff9492; --tok-str: #addcff; --tok-num: #91cbff; --tok-com: #9ea7b3; --tok-type: #ffb757; --tok-def: #dbb7ff; --tok-meta: #72f088; }
 }
-:root[data-theme="dark"] .runner-editor { --tok-kw: #ff7b72; --tok-str: #a5d6ff; --tok-num: #79c0ff; --tok-com: #8b949e; --tok-type: #ffa657; --tok-def: #d2a8ff; --tok-meta: #7ee787; }
+:root[data-theme="dark"] .runner-editor { --tok-kw: #ff9492; --tok-str: #addcff; --tok-num: #91cbff; --tok-com: #9ea7b3; --tok-type: #ffb757; --tok-def: #dbb7ff; --tok-meta: #72f088; }
 .runner-editor .tok-keyword, .runner-editor .tok-modifier, .runner-editor .tok-controlKeyword { color: var(--tok-kw); }
 .runner-editor .tok-string, .runner-editor .tok-string2 { color: var(--tok-str); }
 .runner-editor .tok-number, .runner-editor .tok-bool, .runner-editor .tok-atom { color: var(--tok-num); }

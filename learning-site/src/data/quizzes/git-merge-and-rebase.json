@@ -1,0 +1,73 @@
+{
+  "lesson": "git-merge-and-rebase",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "After `git merge feature/login` into `main` (no fast-forward possible), what does the history contain?",
+      "options": [
+        "The feature commits rewritten as E' and F'",
+        "A new merge commit M, with both branches' history kept",
+        "Only the feature commits",
+        "Nothing new"
+      ],
+      "answer": 1,
+      "explanation": "A merge creates a merge commit unless a fast-forward is possible, and keeps the full history of both branches.",
+      "source": {
+        "section": "### `git merge`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "When does the note recommend `git rebase`?",
+      "options": [
+        "On shared branches",
+        "When your branch is private and you want a cleaner, linear history",
+        "When you want a merge commit",
+        "Never"
+      ],
+      "answer": 1,
+      "explanation": "Rebase for a linear history on a private or not-yet-shared branch, and to update it with the latest `main` before merging; merge for shared branches and preserved history.",
+      "source": {
+        "section": "### `git merge` vs `git rebase`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which command stops a rebase and restores the original branch state?",
+      "options": [
+        "`git rebase --continue`",
+        "`git merge --abort`",
+        "`git rebase --abort`",
+        "`git reset --hard`"
+      ],
+      "answer": 2,
+      "explanation": "`git rebase --abort` stops the rebase and restores the branch; `--continue` goes on after you fixed the conflicts.",
+      "source": {
+        "section": "### Conflict commands"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What does `git cherry-pick a1b2c3d` do?",
+      "options": [
+        "Deletes commit a1b2c3d",
+        "Applies that specific commit onto the current branch",
+        "Rebases onto a1b2c3d",
+        "Shows the commit"
+      ],
+      "answer": 1,
+      "explanation": "`git cherry-pick` applies one (or several) specific commits onto the current branch.",
+      "source": {
+        "section": "### `git cherry-pick`"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -77,17 +77,17 @@
 .viz-code li::before { counter-increment: ln; content: counter(ln); display: inline-block; width: 2.6em; padding-right: 0.9em; text-align: right; color: var(--ink-3); opacity: 0.7; }
 .viz-code li.is-current { background: var(--code-cur); box-shadow: inset 3px 0 0 var(--v-pointer); }
 .viz-code-head { position: sticky; top: 0; display: flex; justify-content: space-between; padding: 6px 12px; background: var(--code-bg); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--ink-3); z-index: 1; }
-.tk-kw { color: #6a3fc8; }
-.tk-type { color: #0b7a75; }
-.tk-str, .tk-num { color: #9c4317; }
+.tk-kw { color: #6b40c0; }
+.tk-type { color: #0f6e6a; }
+.tk-str, .tk-num { color: #9a4a12; }
 .tk-com { color: var(--ink-3); font-style: italic; }
-:root[data-theme="dark"] .tk-kw { color: #b99dff; }
-:root[data-theme="dark"] .tk-type { color: #5ccfc8; }
-:root[data-theme="dark"] :is(.tk-str, .tk-num) { color: #f1a272; }
+:root[data-theme="dark"] .tk-kw { color: #dbb7ff; }
+:root[data-theme="dark"] .tk-type { color: #56d4dd; }
+:root[data-theme="dark"] :is(.tk-str, .tk-num) { color: #ffb757; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .tk-kw { color: #b99dff; }
-  :root:not([data-theme="light"]) .tk-type { color: #5ccfc8; }
-  :root:not([data-theme="light"]) :is(.tk-str, .tk-num) { color: #f1a272; }
+  :root:not([data-theme="light"]) .tk-kw { color: #dbb7ff; }
+  :root:not([data-theme="light"]) .tk-type { color: #56d4dd; }
+  :root:not([data-theme="light"]) :is(.tk-str, .tk-num) { color: #ffb757; }
 }
 .viz-side { display: grid; align-content: start; gap: 14px; padding: 14px; }
 .narr { min-height: 4.6em; font-size: 15.5px; line-height: 1.5; }

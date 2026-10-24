@@ -1,0 +1,56 @@
+{
+  "lesson": "git-force-push-stash-and-workflow",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Why is `git push --force-with-lease` safer than `git push --force`?",
+      "options": [
+        "It asks for confirmation",
+        "Git checks that the remote branch still matches what you last saw and rejects the push if someone pushed meanwhile",
+        "It only pushes tags",
+        "It creates a backup branch"
+      ],
+      "answer": 1,
+      "explanation": "With `--force-with-lease`, the push is rejected if the remote branch changed since your last fetch, so you cannot overwrite someone else's newer work.",
+      "source": {
+        "section": "### `git push --force-with-lease`"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "When do you usually need a force push?",
+      "options": [
+        "After every commit",
+        "After a rebase or another history rewrite on your own branch",
+        "When a pull has conflicts",
+        "To delete a remote branch"
+      ],
+      "answer": 1,
+      "explanation": "After `git rebase`, after `git reset --hard` when the remote must follow, or when you intentionally rewrite history on your own branch.",
+      "source": {
+        "section": "### When do you usually use force push?"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "`git stash` is used when…",
+      "options": [
+        "publishing a release",
+        "switching branches without committing unfinished changes",
+        "deleting untracked files",
+        "renaming a branch"
+      ],
+      "answer": 1,
+      "explanation": "Stash saves current work temporarily so you can switch branches without committing; `git stash pop` brings it back.",
+      "source": {
+        "section": "### `git stash`"
+      },
+      "reviewed": false
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+/* Runnable SQL (src/scripts/sqlrun/attach.ts): result tables and block labels. Buttons, panel and editor come from
+   runner.css (the C# runner), so both runners look the same. Colours are the site's tokens (both themes). */
+
+.sqlrun-output, .sqlrun-results { display: grid; gap: 8px; }
+.sqlrun-table-wrap { margin: 0; max-height: 26em; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.sqlrun-table { border-collapse: collapse; width: max-content; min-width: 100%; font: 13px/1.45 var(--mono); color: var(--code-ink); }
+.sqlrun-table caption { caption-side: top; text-align: left; padding: 6px 10px; font: 600 11px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.sqlrun-table th, .sqlrun-table td { padding: 4px 12px; border-top: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.sqlrun-table th { background: var(--code-bg); font-weight: 600; position: sticky; top: 0; }
+.sqlrun-table td.sqlrun-null { color: var(--ink-3); font-style: italic; }
+.sqlrun-message { margin: 0; font: 13px/1.5 var(--mono); color: var(--ink-2); }
+.sqlrun-hint { border-left: 3px solid var(--warn); padding-left: 8px; }
+.sqlrun-hint[hidden], .sqlrun-expected[hidden], .sqlrun-setup[hidden] { display: none; }
+.sqlrun-toggles { gap: 6px; flex-wrap: wrap; }
+.sqlrun-setup { border-left-color: var(--good); }
+
+/* labels on blocks without a Run button */
+.code-frame .code-head .sqlrun-label {
+  margin-left: auto; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line);
+  font: 500 11.5px/1.5 var(--font); color: var(--ink-2); background: var(--surface); white-space: normal;
+}
+.code-frame .code-head .sqlrun-label + .code-copy { margin-left: 8px; }
+.sqlrun-label-tsql-only { border-color: color-mix(in srgb, var(--sql) 45%, var(--line)) !important; }
+.sqlrun-label-typing { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)) !important; }
+.sqlrun-label-setup { border-color: color-mix(in srgb, var(--good) 45%, var(--line)) !important; }
+.sqlrun-label-why { color: var(--ink-3); }
+
+@media print {
+  .sqlrun-toggles, .code-frame .code-head .sqlrun-label { display: none !important; }
+}

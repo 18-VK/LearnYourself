@@ -1,0 +1,56 @@
+{
+  "lesson": "git-mistakes-reference-and-workflow",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which of these is listed as a common mistake?",
+      "options": [
+        "Running `git status` too often",
+        "Forgetting `--wait` after setting VS Code as the editor",
+        "Using `git clone`",
+        "Writing commit messages"
+      ],
+      "answer": 1,
+      "explanation": "The list: forgetting `--wait`, mixing CRLF and LF, committing without checking `git status`, a wrong identity, pushing without checking the branch state.",
+      "source": {
+        "section": "## 12. Common mistakes to avoid"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "What is the basic everyday Git cycle in the note?",
+      "options": [
+        "clone → pull → push",
+        "status → add → commit → push",
+        "init → add → merge",
+        "fetch → rebase → push"
+      ],
+      "answer": 1,
+      "explanation": "`git status`, `git add .`, `git commit -m \"...\"`, `git push origin main`.",
+      "source": {
+        "section": "## 14. Beginner workflow"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "Which quick-reference command unstages a file?",
+      "options": [
+        "`git restore <file>`",
+        "`git restore --staged <file>`",
+        "`git diff`",
+        "`git add .`"
+      ],
+      "answer": 1,
+      "explanation": "`git restore --staged <file>` unstages; `git restore <file>` discards the edits.",
+      "source": {
+        "section": "## 13. Quick reference"
+      },
+      "reviewed": false
+    }
+  ]
+}

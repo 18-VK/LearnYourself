@@ -26,3 +26,7 @@ runner/**/bin/
 runner/**/obj/
 runner/**/TestResults/
 runnable-report.md
+
+# runnable SQL and practice mode: build reports (scripts/sqlrun/check.ts, scripts/practice/check.ts)
+sqlrun-report.md
+practice-report.md

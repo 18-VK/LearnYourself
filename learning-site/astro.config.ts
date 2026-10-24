@@ -52,7 +52,7 @@ export default defineConfig({
       rehypePlugins: [rehypeCodeFrame, rehypeTables, rehypeExternalLinks],
     }),
     shikiConfig: {
-      themes: { light: 'github-light', dark: 'github-dark' },
+      themes: { light: 'github-light-high-contrast', dark: 'github-dark-high-contrast' }, // both ≥ 4.5:1 on --code-bg (Lighthouse)
       defaultColor: false,
       langAlias: { cmd: 'bat', xpath: 'xml', cs: 'csharp', 'c#': 'csharp', none: 'plaintext' },
       transformers: [transformerMetaHighlight()],

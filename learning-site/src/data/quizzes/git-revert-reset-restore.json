@@ -1,0 +1,73 @@
+{
+  "lesson": "git-revert-reset-restore",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which command restores a file from the previous commit without moving HEAD?",
+      "options": [
+        "`git reset --hard HEAD~1`",
+        "`git restore --source=HEAD~1 file.txt`",
+        "`git revert HEAD`",
+        "`git checkout HEAD~1`"
+      ],
+      "answer": 1,
+      "explanation": "`git restore --source=HEAD~1 file.txt` restores one file from the previous commit; `restore` never moves HEAD.",
+      "source": {
+        "section": "### 1. git restore"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "prompt": "Which of the three commands changes history?",
+      "options": [
+        "`git restore`",
+        "`git reset`",
+        "`git revert`",
+        "None of them"
+      ],
+      "answer": 1,
+      "explanation": "`git reset` rewrites branch history; `git revert` creates a new commit instead; `git restore` works on files only.",
+      "source": {
+        "section": "### Quick comparison"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "You want to undo the latest commit but keep its changes staged, ready to recommit. Which command?",
+      "options": [
+        "`git revert HEAD`",
+        "`git reset --soft HEAD~1`",
+        "`git reset --hard HEAD~1`",
+        "`git restore file.txt`"
+      ],
+      "answer": 1,
+      "explanation": "`git reset --soft HEAD~1` moves HEAD back one commit and keeps the changes staged.",
+      "source": {
+        "section": "### Example scenario"
+      },
+      "reviewed": false
+    },
+    {
+      "id": "q4",
+      "type": "mcq",
+      "prompt": "What is the default mode of `git reset HEAD~1`?",
+      "options": [
+        "`--soft`",
+        "`--mixed`: moves HEAD back and unstages, keeping the file edits",
+        "`--hard`",
+        "`--merge`"
+      ],
+      "answer": 1,
+      "explanation": "`--mixed` is the default: HEAD moves back, changes are unstaged but the file edits stay.",
+      "source": {
+        "section": "### Three reset modes (VERY important)"
+      },
+      "reviewed": false
+    }
+  ]
+}
