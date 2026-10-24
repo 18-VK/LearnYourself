@@ -1,0 +1,17 @@
+# Runnable SQL for sql-server/querying/subqueries. The note has two sample-data blocks: Employees/Departments
+# (“Sample Table”) for the first examples, and Customers/Orders (“Sample Tables” under “Commonly used commands”) for
+# EXISTS, IN and the set operators. Block 15 queries Employees_US/Employees_UK, which the note only describes.
+setups:
+  - id: employees-departments
+    blocks: [1]
+    startsWith: "CREATE TABLE Employees ("
+    from: "the note's “Sample Table”: Employees and Departments"
+  - id: customers-orders
+    blocks: [7]
+    startsWith: "CREATE TABLE Customers ("
+    from: "the note's “Sample Tables” under “Commonly used commands”: Customers and Orders"
+uses:
+  - setup: employees-departments
+    blocks: [2, 3, 4, 5, 6]
+  - setup: customers-orders
+    blocks: [8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19]

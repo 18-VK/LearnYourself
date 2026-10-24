@@ -40,7 +40,8 @@
     "d3-scale": "4.0.2",
     "motion": "14.2.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sql.js": "1.14.2"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",

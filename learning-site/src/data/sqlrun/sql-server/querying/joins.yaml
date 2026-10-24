@@ -1,0 +1,12 @@
+# Runnable SQL for sql-server/querying/joins (see README: "Runnable SQL"). Block numbers count SQL blocks only.
+# The note's own sample data ("Sample data (use these for all examples)") feeds the join examples. Block 7 creates
+# its own Employees table and needs no setup. Blocks 18-20 query Student/Courses/Instructors tables the note never
+# creates, so they stay without a Run button.
+setups:
+  - id: customers-orders
+    blocks: [1]
+    startsWith: "-- Customers (left)"
+    from: "the note's “Sample data (use these for all examples)”: Customers and Orders, including the orphan order with CustomerId = 4"
+uses:
+  - setup: customers-orders
+    blocks: [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
