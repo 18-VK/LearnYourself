@@ -461,7 +461,8 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
         // Roadmap lessons (and the checklists of a roadmap course) open with an interactive graph built
         // from the note's own headings (src/viz/roadmap/extract.ts). It counts as one more visualizer.
         const hasGraph = lesson.kind === 'roadmap' || (course.kind === 'roadmap' && lesson.kind === 'checklist');
-        if (hasGraph) {
+        // a roadmap whose note is missing has no slices; its "file not found" error is already recorded
+        if (hasGraph && plan.slices.length > 0) {
           const first = plan.slices[0]!;
           const markdown = plan.slices
             .map((r) => loadNote(r.rel).lines.slice(r.start, r.end).filter((_, k) => !omitted.get(r.rel)?.has(r.start + k)).join('\n'))

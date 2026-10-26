@@ -1,0 +1,15 @@
+﻿namespace Task_Management_System_API.Src.API.DTOs.Responses
+{
+    public class ProjectListResponse
+    {
+        public IEnumerable<ProjectResponse>? Projects { get; set; }
+        public int Page { get; set; }
+
+        public int PageSize { get; set; }
+
+        public int TotalCount { get; set; }
+
+        public int TotalPages { get; set; }
+
+    }
+}
