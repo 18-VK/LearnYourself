@@ -1,244 +1,254 @@
-# Basic explaination - Git and Github
+# Git and GitHub Explained
 
-## Git 
-Git is a version control system.
+This file explains what Git is, how GitHub fits into the workflow, and why Git configuration matters.
 
-In simple words:
-Git helps you track changes in your code over time.
+---
 
-What Git does:
+## 1. What is Git?
 
-- Keeps history of every change
-- Lets you go back to older versions
-- Allows multiple people to work on the same code
-- Helps avoid “my code vs your code” chaos
+Git is a distributed version control system.
 
-Git works locally, You can use Git without internet.
+It helps you:
+- track code changes over time
+- go back to earlier versions
+- work with others without overwriting each other’s code
+- review history and debug issues
 
-## Github
+### In simple words
+Git keeps a history of your project and lets you move between versions safely.
 
-GitHub is a cloud platform that hosts Git repositories.
+---
 
-In simple words:
+## 2. What is GitHub?
 
-GitHub is a place on the internet where your Git projects live.
+GitHub is a hosting platform for Git repositories.
 
-What GitHub adds on top of Git:
+It adds:
+- online backups of your repo
+- pull requests
+- code review
+- issue tracking
+- CI/CD workflows
+- collaboration across teams
 
-- Online backup of your code
-- Team collaboration
-- Pull Requests (code review)
-- Issues (bug tracking)
-- Actions (CI/CD automation)
+### In simple words
+Git keeps your project history locally. GitHub stores and shares that history online.
 
-GitHub needs internet, It connects multiple developers using Git.
+---
 
-## How Git and GitHub work together
+## 3. How Git and GitHub work together
 
 Typical flow:
 
-- Write code on your laptop
-- Git tracks changes
-- Commit changes locally
-- Push to GitHub
-- Others pull your changes
-- Review & merge(If require)
+```text
+Write code -> git add -> git commit -> git push -> GitHub -> review -> merge
+```
 
-# Git config : What is it and why do we need it?
+### Real-world example
 
-Git configuration is a system that allows you to customize how Git behaves and operates across your system, user account, or individual repositories. 
-It uses the git config command to set and manage configuration variables that control everything from user identity to default behaviors and preferences.
+- create a feature branch
+- make code changes
+- commit locally
+- push to GitHub
+- open a pull request
+- merge after review
 
-## Configuration Levels
-Git reads settings from three hierarchical levels, with local taking precedence over global, which in turn overrides system settings:
+---
 
-- Local: Repository-specific settings stored in .git/config within the project directory. 
-- Global: User-specific settings applied to all repositories for a given user, stored in ~/.gitconfig (Unix) or C:\Users\<username>\.gitconfig (Windows). 
-- System: Machine-wide settings applied to all users and repositories, stored in the system Git installation path (e.g., $(prefix)/etc/gitconfig on Unix, 
-          C:\ProgramData\Git\config on Windows).
+## 4. Why Git configuration matters
 
-## Precedence (which wins)
+Git needs configuration to know:
+- who you are
+- how to handle line endings
+- which editor to open for commit messages
+- how your repos should behave
 
-From highest precedence to lowest:
+### Configuration levels
 
-- Command-line options (e.g., git -c key=value ...)
-- Environment variables (e.g., GIT_AUTHOR_NAME)
-- Local (repository) config (.git/config)
-- Global (~/.gitconfig)
-- System (/etc/gitconfig)
+Git reads settings in this order:
 
-So a setting in the repo will override the same setting in your global config.
+1. command-line arguments
+2. environment variables
+3. local repo config
+4. global config
+5. system config
 
-## Why Git needs config at all
+### Example
 
-Git is not just storing files.
-It’s creating a history of changes. Every change (commit) must answer:
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
 
-- Who made this change?
-- How should Git behave while working?
-- How should Git talk to remotes and tools?
+---
 
-All of that comes from Git configuration.
+## 5. Identity and commit metadata
 
-Without config, Git would be:
+Every commit stores author information.
 
-- Anonymous
-- Inconsistent
-- Hard to automate
-- Impossible to use properly in teams
+Example:
 
-1️⃣ Identity: Who made this change? (MOST IMPORTANT)
-
-When you commit, Git permanently stores:
-
+```text
 Author: Aman Kumar <aman@email.com>
 Committer: Aman Kumar <aman@email.com>
+```
 
-That comes from:
+This matters because:
+- teammates know who changed code
+- GitHub links commits to you
+- audit and debugging become easier
 
-user.name
-user.email
+### Without identity
 
-Why this matters
+Git may show:
 
-- Shows who wrote the code
-- Required for collaboration
-- Used by GitHub / GitLab to link commits to your account
-- Needed for audit & accountability in companies
-
-❌ Without it:
-
+```bash
 fatal: unable to auto-detect email address
+```
 
-📌 Real-world example
-In a team of 10 developers, when a bug appears:
+---
 
-“Who committed this change?”
-Git answers that — because of config.
+## 6. Global vs local config
 
-2️⃣ Different behavior for different projects (Global vs Local)
-You don’t work the same way everywhere.
+### Global config
+Applies to all repositories on your machine.
 
-Example: Work vs Personal
+```bash
+git config --global user.name "Your Name"
+```
 
-- Personal project → personal email
-- Office project → company email
+### Local config
+Applies only to one repository.
 
-That’s why:
+```bash
+git config user.name "Office Name"
+```
 
-- Global config = default behavior
-- Local config = project-specific rules
+### Why both exist
 
-📌 This avoids:
+You may want different identity settings for:
+- personal projects
+- company projects
+- public vs private repos
 
-- Leaking company email into public repos
-- Mixing identities
-- Compliance issues
+---
 
-3️⃣ Consistency & automation (How Git behaves)
+## 7. Git config examples
 
-Configs control how Git works, not just who you are.
+### Set editor
 
-Examples:
+```bash
+git config --global core.editor "code --wait"
+```
 
-- Line endings (Windows vs Linux)
-- Merge tools
-- Default branch name
-- Commit message editor
-- Rebase vs merge behavior
+### Set line endings
 
-4️⃣ Collaboration & safety in teams
+```bash
+git config --global core.autocrlf true
+```
 
-Config helps prevent human mistakes.
+### Create aliases
 
-Examples:
-
-- Push behavior (push.default)
-- Pull strategy (pull.rebase)
-- Commit signing (GPG)
-- Conflict resolution tools
-
-📌 In companies:
-
-Wrong config can break builds
-Right config prevents disasters
-
-5️⃣ Productivity (why senior devs care a LOT)
-
-Configs make Git faster and easier.
-
-Examples:
-
-Aliases:
-
-git config --global alias.co checkout
-git config --global alias.br branch
+```bash
 git config --global alias.st status
+git config --global alias.br branch
+```
 
+---
 
-Now:
+## 8. GitHub authentication
 
-git st
+`user.name` and `user.email` do not log you into GitHub.
 
-instead of:
+GitHub authenticates you only when you connect for remote operations like:
 
-git status
-
-📌 Over months/years → huge time saver
-
-## Git does NOT take a password with user.name and user.email.
-
-What user.name and user.email actually do
-
-git config --global user.name "Aman Kumar"
-git config --global user.email "aman@gmail.com"
-
-These are NOT login credentials.
-
-They are only:
-
-- Labels stored inside each commit
-- Used for author identification
-- Shown in git log, GitHub history, blame, etc.
-
-📌 They are like:
-
-Writing your name on a document, not logging into an account.
-
-## how does GitHub know it’s me?
-
-GitHub does not use user.name or user.email to authenticate you.
-
-Authentication happens ONLY when talking to GitHub
-
-When you run:
-
+```bash
 git push
+```
 
-GitHub asks:
-“Who are you? Prove it.”
+### Common authentication methods
+- HTTPS with username/password or token
+- SSH key
 
-That’s where authentication happens — NOT during commit.
+---
 
-## Connect Git to Github account 
+## 9. SSH setup for GitHub
 
-Must watch : https://youtu.be/snCP3c7wXw0
+### Generate SSH key
 
-1) To connect, need to generate SSH public key of github account..
-
-Recommended: Configure SSH (one-time)
-
-> Generate SSH key (ed25519 recommended):
-
+```bash
 ssh-keygen -t ed25519 -C "you@example.com"
+```
 
-Note : 
-If you are using a legacy system that doesn't support the Ed25519 algorithm, use:
+### Alternative for older systems
 
+```bash
 ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+```
 
-> Now find for id_ed25519.pub file
+### Add key to GitHub
 
-copy key from file 
+1. open the generated `.pub` file
+2. copy the key
+3. go to GitHub → Settings → SSH and GPG keys
+4. paste and save
 
-2) Add key into github aacount under setting-> SSH and GPG Keys 
+Then you can push without entering a password repeatedly.
+
+---
+
+## 10. Practical GitHub workflow
+
+```bash
+git switch -c feature/login
+git add .
+git commit -m "Add login screen"
+git push -u origin feature/login
+```
+
+Then:
+- open a pull request
+- review changes
+- merge after approval
+
+---
+
+## 11. Git pager navigation
+
+When Git output opens in a pager, such as with `git log` or `git diff`, use:
+
+```text
+b  -> go back one page
+d  -> move to the next section/page
+q  -> quit and exit
+```
+
+Other useful keys:
+
+```text
+f  -> move forward one full page
+Space -> move forward one page
+↑ / ↓ -> move one line
+```
+
+---
+
+## 12. Summary
+
+Git is the version control engine. GitHub is the online collaboration platform built around Git.
+
+Without proper Git config:
+- commit metadata is wrong
+- editor behavior is confusing
+- collaboration becomes messy
+- remote pushes may fail
+
+The most important config values to remember are:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+git config --global core.editor "code --wait"
+```
+
+This basic setup is enough to work cleanly in most repos.
