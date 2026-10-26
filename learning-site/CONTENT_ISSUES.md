@@ -251,7 +251,7 @@ note is left as it is. Entries already listed above (SQL-n, S-n, CS-n) are not r
 
 | # | File › heading | Observation | Status |
 |---|---|---|---|
-| Q-85 | `19. OtherTopics/Notes.md` › C++ Risks & Best Practices (line 654) | "👉 Aman, since you're exploring IT job opportunities, I'd recommend…" is a chat line that addresses you by name and mentions job hunting. It was kept under your Checkpoint 1 decision on your name (Q9), but it is personal information on a public site, and it now also appears in the C++ interview answer. An `omitLines` entry would drop it from the site. | open |
+| Q-85 | `19. OtherTopics/Notes.md` › C++ Risks & Best Practices (line 654) | "👉 Aman, since you're exploring IT job opportunities, I'd recommend…" is a chat line that addresses you by name and mentions job hunting. **Hidden from the site on 2026-10-26 at your request** (an `omitLines` entry in `_site.yaml`), so it no longer appears in the lesson or the C++ interview answer. The note itself is unchanged, so the line is still in the note in the GitHub repository. | resolved |
 
 ### DSA notes (found while building practice mode)
 

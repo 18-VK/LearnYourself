@@ -106,6 +106,9 @@ omitLines:
     startsWith: "Want me to go deep on any one of these"
   - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
     startsWith: "Would you like me to show you a step-by-step example of loading an embedded DLL"
+  # 2026-10-26, owner's decision: a chat line addressing the owner by name about job hunting (CONTENT_ISSUES Q-85)
+  - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
+    startsWith: "👉 Aman, since you"
   - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
     startsWith: "Would you like me to show you a full example of using this loop"
   - file: "Phase1-CSharp_And_DotNet_core_fundamental/19. OtherTopics/Notes.md"
