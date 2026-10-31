@@ -184,6 +184,40 @@ operations.
 - Supports typical set operations (`UnionWith`, `IntersectWith`, etc.).
 - `Add`/`Remove`/`Contains` are typically O(1).
 
+> `Dictionary<TKey, TValue>` and `HashSet<T>` are different:
+> - `Dictionary` stores `key -> value` pairs and is used for lookup by key.
+> - `HashSet` stores only unique values and is used for membership and set math.
+> - `Dictionary` does not support `UnionWith`/`IntersectWith`; those belong to `HashSet<T>`.
+
+#### Set operations in `HashSet<T>`
+
+`HashSet<T>` supports mathematical set operations. These are very useful when working with unique values.
+
+- `Union`: all unique items from both sets.
+- `Intersection`: common items present in both sets.
+- `Difference`: items in one set that are not in the other.
+
+**Common methods:**
+
+- `UnionWith(otherSet)`: combines the current set with another set.
+- `IntersectWith(otherSet)`: keeps only the elements that exist in both sets.
+- `ExceptWith(otherSet)`: removes elements that are also present in another set.
+- `IsSubsetOf(otherSet)`: checks whether all elements are contained in another set.
+- `IsSupersetOf(otherSet)`: checks whether the set contains all elements of another set.
+
+**Example:**
+
+```csharp
+var setA = new HashSet<int> { 1, 2, 3, 4 };
+var setB = new HashSet<int> { 3, 4, 5, 6 };
+
+setA.UnionWith(setB);       // {1, 2, 3, 4, 5, 6}
+setA = new HashSet<int> { 1, 2, 3, 4 };
+setA.IntersectWith(setB);   // {3, 4}
+setA = new HashSet<int> { 1, 2, 3, 4 };
+setA.ExceptWith(setB);       // {1, 2}
+```
+
 #### Methods
 
 **Common HashSet Methods**

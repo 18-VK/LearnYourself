@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using HealthChecks.SqlServer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Serilog;
+using Serilog;  
 using System.Threading.RateLimiting;
 using Task_Management_System_API.Src.API.Extensions;
 using Task_Management_System_API.Src.API.Filters;
@@ -40,26 +43,49 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync(
             "Too many requests. Please try again later.", token);
     };
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-    {
-        // partition key (example: use a client id header or IP; change as needed)
-        var clientId = context.Request.Headers["X-ClientId"].ToString();
-        if (string.IsNullOrEmpty(clientId))
-        {
-            clientId = "anonymous";
-        }
 
-        return RateLimitPartition.GetTokenBucketLimiter(clientId, _ => new TokenBucketRateLimiterOptions
+    options.GlobalLimiter = PartitionedRateLimiter.CreateChained<HttpContext>(
+        PartitionedRateLimiter.Create<HttpContext, string>(context =>
         {
-            TokenLimit = 10,
-            TokensPerPeriod = 10,
-            ReplenishmentPeriod = TimeSpan.FromSeconds(5),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = 0,
-            AutoReplenishment = true
-        });
-    });
+            // partition key (example: use a client id header or IP; change as needed)
+            var clientId = context.Request.Headers["X-ClientId"].ToString();
+            if (string.IsNullOrEmpty(clientId))
+            {
+                clientId = "anonymous";
+            }
+
+            return RateLimitPartition.GetTokenBucketLimiter(clientId, _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 10,
+                TokensPerPeriod = 10,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(5),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+        }),
+        PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        {
+            // partition key (example: use a client id header or IP; change as needed)
+            return RateLimitPartition.GetConcurrencyLimiter("Global", _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = 5,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+        }));
 });
+// Health check
+
+builder.Services.AddHealthChecks()
+    .AddCheck("Self", () => HealthCheckResult.Healthy(), tags: new[] { "live" })
+    .AddSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection") 
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not configured."),
+        name: "sqlserver",
+        tags: new[] { "live" },
+        failureStatus: HealthStatus.Unhealthy,
+        timeout : TimeSpan.FromSeconds(10));
 
 //ApplicationServices
 builder.Services.AddApplicationServices();
@@ -110,5 +136,3 @@ if (!success)
     Environment.FailFast("Identity seeding failed. Application will not start.");
 }
 app.Run();
-
-

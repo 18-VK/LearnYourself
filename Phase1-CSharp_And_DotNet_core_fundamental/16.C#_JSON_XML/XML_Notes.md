@@ -303,24 +303,6 @@ class Program
 
 ## Using MemoryStream
 
-`MemoryStream` and `FileStream` are both .NET streams, so both let you read, write, and seek through bytes. The difference is **where the bytes live**:
-
-| | `MemoryStream` | `FileStream` |
-|---|---|---|
-| Data location | RAM | A file on disk |
-| Persistence | Lost when the stream is discarded, unless you save the data elsewhere | Persists in the file |
-| Best for | Temporary data, buffers, tests, building content before sending it | Reading or writing files |
-
-```csharp
-using var memory = new MemoryStream();
-```
-
-```csharp
-using var file = File.OpenRead("data.bin");
-```
-
-Choose `MemoryStream` when you need temporary in-memory bytes; choose `FileStream` when you need to access a file. Both implement `Stream`, so APIs that accept `Stream` can often work with either. One gotcha: after writing, the stream’s position is at the end—set `Position = 0` before reading what you just wrote.
-
 ### Why MemoryStream is Useful
 
 - ✔️ Return XML from Web API without saving to disk.

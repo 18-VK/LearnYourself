@@ -1,10 +1,6 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TaskFlowStudio.Model;
 
-namespace TaskFlowStudio.Services
+namespace TaskFlowStudio.Model
 {
     public class Project
     {
@@ -18,5 +14,4 @@ namespace TaskFlowStudio.Services
 
         public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
     }
-
 }

@@ -54,6 +54,7 @@ namespace Task_Management_System_API.Src.API.Controllers
         }
 
         [HttpPost("refresh")]
+        [Authorize]
         public async Task<IActionResult> Refresh(RefreshTokenRequest request, CancellationToken ct)
         {
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();

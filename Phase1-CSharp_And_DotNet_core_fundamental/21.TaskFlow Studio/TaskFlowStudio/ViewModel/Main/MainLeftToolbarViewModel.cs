@@ -1,43 +1,34 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Update.Internal;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
+﻿using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Security.Cryptography.Xml;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Threading;
 using TaskFlowStudio.Commands;
 using TaskFlowStudio.Services;
 using TaskFlowStudio.Services.Interfaces;
+using TaskFlowStudio.ViewModel;
 
 namespace TaskFlowStudio.ViewModel.Main
 {
     public class MainLeftToolbarViewModel : ViewModelBase
     {
-        IUIServices UIServices { get; }
-        ILogger _logger { get; }
-        public ICommand ImportFile {  get; set; }
+        private readonly IUIServices _uiServices;
+        private readonly ILogger<MainLeftToolbarViewModel> _logger;
+        private readonly ProjectService _projectService;
+        private readonly TaskItemService _taskItemService;
+        private readonly DispatcherTimer _searchTimer;
+
+        public ICommand ImportFile { get; set; }
         public ICommand ExportFile { get; set; }
         public ICommand cmdLiveMonitor { get; set; }
         public ICommand cmdSetting { get; set; }
-
         public ICommand AddProject { get; set; }
 
-        private ProjectService _projectService;
-        private TaskItemService _taskitemService;
-
-        private readonly DispatcherTimer _searchTimer;
         public class ProjectList : ViewModelBase
         {
             private bool _isCompleted;
             public bool IsCompleted
             {
                 get => _isCompleted;
-
                 set
                 {
                     if (_isCompleted != value)
@@ -49,114 +40,127 @@ namespace TaskFlowStudio.ViewModel.Main
             }
 
             private string? _name;
-
             public string? Name
             {
                 get => _name;
                 set
                 {
-                    if(_name != value)
+                    if (_name != value)
                     {
                         _name = value;
                         OnPropertyChanged(nameof(Name));
                     }
                 }
             }
-
         }
-        private string? _SearchText;
+
+        private string? _searchText;
         public string? SearchText
         {
-            get => _SearchText;
+            get => _searchText;
             set
             {
-                if (_SearchText != value)
+                if (_searchText != value)
                 {
-                    _SearchText = value;
+                    _searchText = value;
                     OnPropertyChanged(nameof(SearchText));
-                    // call function to search project name from lists
-                    _searchTimer?.Stop();
-                    _searchTimer?.Start();
+                    _searchTimer.Stop();
+                    _searchTimer.Start();
                 }
             }
         }
-        public ObservableCollection<ProjectList>? ActiveProjects { get; set; }
-        public ObservableCollection<ProjectList>? CompletedProjects { get; set; }
 
-        public MainLeftToolbarViewModel(IUIServices UIservices, 
-                                        ILogger<MainLeftToolbarViewModel> logger,
-                                        ProjectService projectService,
-                                        TaskItemService taskitemService) 
+        public ObservableCollection<ProjectList> ActiveProjects { get; set; } = new();
+        public ObservableCollection<ProjectList> CompletedProjects { get; set; } = new();
+
+        public MainLeftToolbarViewModel(
+            IUIServices uiServices,
+            ILogger<MainLeftToolbarViewModel> logger,
+            ProjectService projectService,
+            TaskItemService taskItemService)
         {
-            UIServices = UIservices;
+            _uiServices = uiServices;
             _logger = logger;
+            _projectService = projectService;
+            _taskItemService = taskItemService;
 
             ImportFile = new RelayCommand(ProcessImportFile);
             ExportFile = new RelayCommand(ProcessExportFile);
-
             cmdLiveMonitor = new RelayCommand(ShowLiveMonitor);
             cmdSetting = new RelayCommand(ShowSettingWidow);
-
             AddProject = new RelayCommand(ProcessAddProject);
-            _projectService = projectService;
-            _taskitemService = taskitemService;
 
-            _searchTimer = new DispatcherTimer() { Interval = TimeSpan.FromMilliseconds(300) }; // 300ms waiting time
-
+            _searchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
             _searchTimer.Tick += (_, __) =>
             {
                 _searchTimer.Stop();
-                // call apply serach
                 ApplySearch();
             };
-            // Update Initially 
-            UpdateProjects();
 
+            UpdateProjects();
         }
 
-        // Functions 
         private void ProcessImportFile()
         {
-
-            return;
+            _logger.LogInformation("Import file action triggered");
         }
+
         private void ProcessExportFile()
         {
-
-            return;
+            _logger.LogInformation("Export file action triggered");
         }
+
         private void ShowLiveMonitor()
         {
-            UIServices?.WindowsService.Show<LiveMonitorViewModel>();
+            _uiServices.WindowsService.Show<LiveMonitorViewModel>();
         }
+
         private void ShowSettingWidow()
         {
-            UIServices?.WindowsService.ShowDialog<SettingsViewModel>();
+            _uiServices.WindowsService.ShowDialog<SettingsViewModel>();
         }
+
         private void UpdateProjects()
         {
-            if (ActiveProjects == null)
-                ActiveProjects = new ObservableCollection<ProjectList>();
-
-            if (CompletedProjects == null)
-                CompletedProjects = new ObservableCollection<ProjectList>();
+            ActiveProjects.Clear();
+            CompletedProjects.Clear();
 
             ActiveProjects.Add(new ProjectList { IsCompleted = false, Name = "RAS Estamping" });
-            ActiveProjects.Add(new ProjectList { IsCompleted = true, Name = "RAS Estamping 1" });
+            ActiveProjects.Add(new ProjectList { IsCompleted = false, Name = "Client Portal" });
+            ActiveProjects.Add(new ProjectList { IsCompleted = false, Name = "Finance Ops" });
 
-
-            CompletedProjects.Add(new ProjectList { IsCompleted = false, Name = "RAS Estamping 3" });
-            CompletedProjects.Add(new ProjectList { IsCompleted = true, Name = "RAS Estamping 4" });
-
+            CompletedProjects.Add(new ProjectList { IsCompleted = true, Name = "Launch Checklist" });
+            CompletedProjects.Add(new ProjectList { IsCompleted = true, Name = "Marketing Assets" });
         }
 
         private void ProcessAddProject()
         {
-            return;
+            var projectName = string.IsNullOrWhiteSpace(SearchText)
+                ? "New Project"
+                : SearchText.Trim();
+
+            ActiveProjects.Add(new ProjectList { IsCompleted = false, Name = projectName });
+            SearchText = string.Empty;
         }
+
         private void ApplySearch()
         {
-            return;
+            if (string.IsNullOrWhiteSpace(SearchText))
+            {
+                UpdateProjects();
+                return;
+            }
+
+            var term = SearchText.Trim();
+            ActiveProjects = new ObservableCollection<ProjectList>(
+                ActiveProjects.Where(x => x.Name != null && x.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+            );
+            CompletedProjects = new ObservableCollection<ProjectList>(
+                CompletedProjects.Where(x => x.Name != null && x.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+            );
+
+            OnPropertyChanged(nameof(ActiveProjects));
+            OnPropertyChanged(nameof(CompletedProjects));
         }
     }
 }

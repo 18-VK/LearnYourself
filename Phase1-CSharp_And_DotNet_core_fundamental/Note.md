@@ -19,19 +19,10 @@
    mono program.exe
    ```
 
-> **Note:** `csc` and `mono` above are the .NET Framework / Mono toolchain. On modern .NET, use one of the options below.
+> **Note:** for newer versions like .NET 8 and 9
 
-## .NET 10 and later
-
-```bash
-dotnet run program.cs
-```
-
-## Earlier .NET versions (6 to 9): dotnet script
-
-`dotnet script` is a community global tool, not part of the SDK. Install it once, then run the file:
+## For version 7
 
 ```bash
-dotnet tool install -g dotnet-script
 dotnet script <filename>
 ```

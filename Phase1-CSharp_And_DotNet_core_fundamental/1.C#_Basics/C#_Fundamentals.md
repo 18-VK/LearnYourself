@@ -21,6 +21,68 @@ public class GFG {
 - **Main**: Method name
 - **x**: Variable name
 
+## Top-Level Statements
+
+Top-level statements let you write a program's entry-point code directly in a C# file without explicitly declaring a `Program` class or a `Main` method. The compiler generates the entry point behind the scenes. This feature was introduced in C# 9.
+
+### Traditional entry point
+
+Before top-level statements, a simple console program was usually written like this:
+
+```csharp
+using System;
+
+class Program
+{
+    static void Main()
+    {
+        Console.WriteLine("Hello, world!");
+    }
+}
+```
+
+### With top-level statements
+
+The same program can be written more concisely:
+
+```csharp
+using System;
+
+Console.WriteLine("Hello, world!");
+```
+
+The statements are still executed as the program's entry point; the `Program` class and `Main` method are just implicit.
+
+### Ordering rules
+
+- `using` directives go before the top-level statements.
+- Top-level statements must come before type declarations such as classes and structs.
+- Only one source file in a project can contain top-level statements.
+- Types can be declared after the top-level statements.
+
+For example, this ordering is valid:
+
+```csharp
+Console.WriteLine("Hello, world!");
+
+class Person
+{
+    public string? Name { get; set; }
+}
+```
+
+But declaring `Person` before the executable statements causes a compiler error:
+
+```csharp
+class Person
+{
+}
+
+Console.WriteLine("Hello, world!"); // Error: top-level statements must come first
+```
+
+This is why a file that starts with a class declaration and then has free-standing code may fail to compile. Move the type declarations below the top-level statements, or put the code inside a `Main` method.
+
 ## C# Data Types
 
 Data types specify the type of data that a valid C# variable can hold. C# is a strongly typed programming language

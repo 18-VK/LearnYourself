@@ -10,6 +10,8 @@ OpenAPI is the specification: a standard, language-agnostic way to describe HTTP
 shapes, authentication, and metadata without reading source code or inspecting traffic. The OpenAPI Initiative describes it as a formal standard for
 HTTP APIs, and the current official spec text says the consumer can understand and interact with the service with minimal implementation logic.
 
+video link : https://youtu.be/PenvYHJ9Koc
+
 ## What OpenAPI gives you
 
 An OpenAPI document can describe:
@@ -52,6 +54,8 @@ paths:
 
 That is an OpenAPI document.
 
+**Note : can use yml or json to defined OpenAPI specification**
+
 ## Use OpenAPI when you want to:
 
 - document your REST API
@@ -73,6 +77,9 @@ OpenAPI helps define the API contract in a language-neutral way.
 Swagger is the set of tools built around OpenAPI.
 Swagger is the tooling ecosystem around that spec. Swagger UI renders interactive API docs from an OpenAPI file, and Swagger's docs explicitly say
 OpenAPI was formerly known as the Swagger Specification.
+
+**Video link :** 
+<https://youtu.be/2pyUYJ4NiMI>
 
 **Common Swagger tools:**
 

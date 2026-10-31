@@ -11,6 +11,45 @@
 - **`FileOptions.Asynchronous`** — hint for async `FileStream` usage.
 - Always dispose streams (`using` or `using var`) to free resources.
 
+### Example: using these types together
+
+```csharp
+using System;
+using System.IO;
+
+string folder = Path.Combine(Environment.CurrentDirectory, "demo-files");
+string fileName = "notes.txt";
+string fullPath = Path.Combine(folder, fileName);
+
+// Directory helpers
+Directory.CreateDirectory(folder);
+
+// File helpers
+File.WriteAllText(fullPath, "Hello from File.WriteAllText!\nSecond line");
+
+// FileInfo + Path helpers
+FileInfo fileInfo = new FileInfo(fullPath);
+Console.WriteLine($"File exists: {fileInfo.Exists}");
+Console.WriteLine($"Extension: {Path.GetExtension(fullPath)}");
+Console.WriteLine($"File name: {Path.GetFileName(fullPath)}");
+
+// FileStream + StreamReader for controlled reading
+using (FileStream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+using (StreamReader reader = new StreamReader(stream))
+{
+    string content = reader.ReadToEnd();
+    Console.WriteLine(content);
+}
+```
+
+This example shows the common flow in C# file handling:
+
+- `Directory` creates the folder.
+- `Path` builds the full file path safely.
+- `File` writes the text quickly.
+- `FileInfo` gives metadata about the file.
+- `FileStream` + `StreamReader` are used when you want more control over the read operation.
+
 ## Usage of These
 
 ### 1) Simple text file — synchronous

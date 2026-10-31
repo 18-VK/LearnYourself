@@ -1,4 +1,5 @@
-﻿using Task_Management_System_API.Src.Infrastructure.AppDBContext;
+﻿using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Task_Management_System_API.Src.Infrastructure.AppDBContext;
 
 namespace Task_Management_System_API.Src.API.Extensions
 {
@@ -27,6 +28,25 @@ namespace Task_Management_System_API.Src.API.Extensions
             app.UseRateLimiter();
             app.UseAuthentication();
             app.UseAuthorization();
+
+            // Add endpoint routing for heath checks
+
+            // LIVENESS probe
+            app.MapHealthChecks("/Health/live", new HealthCheckOptions
+            {
+                Predicate = reg => reg.Tags.Contains("live")
+            })
+            .AllowAnonymous()
+            .DisableRateLimiting();
+
+
+            // READINESS probe
+            app.MapHealthChecks("/Health/ready", new HealthCheckOptions
+            {
+                Predicate = reg => reg.Tags.Contains("ready")
+            })
+            .AllowAnonymous()
+            .DisableRateLimiting();
 
             // MapControllers is an endpoint routing method
             app.MapControllers();
