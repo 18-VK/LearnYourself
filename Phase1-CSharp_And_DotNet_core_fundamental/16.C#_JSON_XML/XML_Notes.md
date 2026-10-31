@@ -216,6 +216,32 @@ Console.WriteLine(xml);
 - `doc.CreateComment("some comment")` → Adds comments to XML.
 - `doc.CreateProcessingInstruction("xml-stylesheet", "type='text/xsl' href='style.xsl'")` → For special instructions.
 
+In `XmlDocument`, both methods create XML nodes, but they create different kinds:
+
+- **`CreateElement`** creates an XML tag, such as `<Name>`.
+- **`CreateTextNode`** creates the text content inside a tag, such as `Alice`.
+
+```csharp
+var doc = new XmlDocument();
+
+XmlElement nameElement = doc.CreateElement("Name");
+XmlText nameText = doc.CreateTextNode("Alice");
+
+nameElement.AppendChild(nameText);
+doc.AppendChild(nameElement);
+
+Console.WriteLine(doc.OuterXml); // <Name>Alice</Name>
+```
+
+For the common case of setting an element’s text, `InnerText` is simpler:
+
+```csharp
+XmlElement nameElement = doc.CreateElement("Name");
+nameElement.InnerText = "Alice";
+```
+
+That also handles XML-special characters in the text, such as `&` and `<`, by escaping them appropriately. Use `CreateTextNode` when you specifically need to create and attach a text node yourself.
+
 #### 2. Adding Nodes
 
 - `AppendChild(node)` → Attaches a node as the last child.
