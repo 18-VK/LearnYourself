@@ -242,3 +242,144 @@ class Program
 ```
 
 > **Note:** Delegates must be declared inside a class/struct/namespace, but outside a method.
+
+# Summing return values from a multicast delegate
+
+## The problem
+
+When a `Func<>` delegate has multiple methods attached, calling it runs **all of them**, but you only get the **return value of the last one**. The other results are thrown away.
+
+```csharp
+Func<int> calc = One;
+calc += Two;
+calc += Three;
+
+int result = calc();   // runs One, Two, Three, but result is only Three's value
+
+static int One()   => 10;
+static int Two()   => 20;
+static int Three() => 30;
+
+// result = 30 (not 60)
+```
+
+## The solution: `GetInvocationList()`
+
+`GetInvocationList()` returns each attached method as its own delegate, so you can call them one by one and combine the results yourself.
+
+```csharp
+Func<int> calc = One;
+calc += Two;
+calc += Three;
+
+int total = 0;
+
+foreach (Func<int> f in calc.GetInvocationList())
+{
+    total += f();
+}
+
+Console.WriteLine(total);   // 60
+```
+
+### Shorter with LINQ
+
+```csharp
+int total = calc.GetInvocationList()
+                .Cast<Func<int>>()
+                .Sum(f => f());
+
+Console.WriteLine(total);   // 60
+```
+
+## Delegates with parameters
+
+The same approach works. Pass the arguments to each call:
+
+```csharp
+Func<int, int, int> op = Add;
+op += Multiply;
+op += Subtract;
+
+int total = op.GetInvocationList()
+              .Cast<Func<int, int, int>>()
+              .Sum(f => f(5, 3));
+
+Console.WriteLine(total);   // 8 + 15 + 2 = 25
+
+static int Add(int a, int b)      => a + b;
+static int Multiply(int a, int b) => a * b;
+static int Subtract(int a, int b) => a - b;
+```
+
+## A reusable extension method
+
+If you need this in several places, wrap it once:
+
+```csharp
+public static class DelegateExtensions
+{
+    public static int SumAll(this Func<int> del)
+    {
+        if (del is null) return 0;   // no methods attached
+
+        return del.GetInvocationList()
+                  .Cast<Func<int>>()
+                  .Sum(f => f());
+    }
+}
+
+// usage
+int total = calc.SumAll();
+```
+
+## Things to watch out for
+
+| Point | Detail |
+|---|---|
+| **Null delegate** | If no methods are attached, the delegate is `null`. Calling `calc()` throws `NullReferenceException`, so use `calc?.GetInvocationList()` or a null check. |
+| **Exceptions** | With plain `calc()`, if one method throws, the remaining methods **don't run**. With the loop, you can wrap each call in `try/catch` so one failure doesn't stop the others. |
+| **Order** | Methods run in the order they were added (`+=`). |
+| **Duplicates** | Adding the same method twice runs it twice, and it is counted twice in the sum. |
+| **Side effects** | Each method runs exactly once in the loop, as it would with a normal call. Don't call `calc()` *and* loop over the list, or everything runs twice. |
+| **Overflow** | Summing large `int` values can overflow. Use `checked { }` or sum into a `long` if needed. |
+
+### Handling exceptions per method
+
+```csharp
+int total = 0;
+
+foreach (Func<int> f in calc.GetInvocationList())
+{
+    try
+    {
+        total += f();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"{f.Method.Name} failed: {ex.Message}");
+        // skip this one and continue
+    }
+}
+```
+
+## Same idea for events
+
+Events are multicast delegates too, so this works for them as well. Inside the class that declares the event:
+
+```csharp
+public event Func<int>? Calculated;
+
+public int RaiseAndSum()
+{
+    if (Calculated is null) return 0;
+
+    return Calculated.GetInvocationList()
+                     .Cast<Func<int>>()
+                     .Sum(f => f());
+}
+```
+
+## One-line summary
+
+> A multicast delegate returns only the **last** method's result, so to combine them, loop over `GetInvocationList()`, call each method yourself, and add the results.

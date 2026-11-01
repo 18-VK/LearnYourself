@@ -1,4 +1,4 @@
-# Events and Event Handling in C#
+# Events and Event Handling in `C#`
 
 In C#, events and event handling provide a mechanism for objects to notify other objects about specific
 occurrences or changes in their state, enabling a decoupled, publisher-subscriber model.
