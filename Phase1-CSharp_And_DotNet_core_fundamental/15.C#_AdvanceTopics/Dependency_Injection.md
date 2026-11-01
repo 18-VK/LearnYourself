@@ -605,3 +605,238 @@ public class OrderService
 
 If `DbContext` were Transient, `_orders` and `_products` would each hold a different `DbContext`. Change tracking breaks. Transactions break. You'd have two
 separate connections open for one request.
+
+## DI lifetime dangers, explained with examples
+**Note : Gone through it after once you have idea that how request life cycle works**
+
+The central rule is:
+
+> A service must not hold a dependency for longer than that dependency is intended to live.
+
+| Consumer ↓ / Dependency → | Singleton | Scoped | Transient |
+| ------------------------- | --------- | ------ | --------- |
+| **Singleton**             | OK        | Captive dependency | Captured instance behaves like a singleton |
+| **Scoped**                | OK        | OK     | OK |
+| **Transient**             | OK        | OK when resolved inside a scope | OK |
+
+### Singleton dangers
+
+#### Shared mutable state is not thread-safe
+
+A singleton can serve many requests at the same time. Any mutable state it owns must be safe for concurrent access.
+
+```csharp
+public class VisitCounter
+{
+    private int _count;
+    public int Increment() => ++_count; // Not atomic
+}
+```
+
+`++_count` is a read, increment, and write. Two requests can read the same value and overwrite each other's update. A plain `Dictionary` or `List` modified by multiple threads can also corrupt data or throw.
+
+Use an atomic operation for a simple counter, a concurrent collection for concurrent updates, or a `lock` for compound operations:
+
+```csharp
+public class VisitCounter
+{
+    private int _count;
+    public int Increment() => Interlocked.Increment(ref _count);
+}
+
+public class ProductCache
+{
+    private readonly ConcurrentDictionary<int, Product> _cache = new();
+}
+```
+
+Prefer keeping singletons stateless or immutable where possible.
+
+#### Captive Scoped dependency
+
+`AddDbContext` registers a context as Scoped by default. Injecting it into a Singleton makes the Singleton retain one context beyond its intended scope:
+
+```csharp
+builder.Services.AddDbContext<AppDbContext>();
+builder.Services.AddSingleton<ReportCache>();
+
+public class ReportCache
+{
+    private readonly AppDbContext _db;
+    public ReportCache(AppDbContext db) => _db = db;
+}
+```
+
+This can cause concurrent operations on a non-thread-safe `DbContext`, stale tracked entities, growing tracked state, or incorrect per-request data (such as retaining the first request's user identity). The context's database connection is generally opened for individual operations, rather than held open continuously.
+
+With scope validation enabled, the container reports this lifetime mismatch:
+
+```text
+InvalidOperationException: Cannot consume scoped service 'AppDbContext' from singleton 'ReportCache'.
+```
+
+Choose the fix that matches the work:
+
+- Change `ReportCache` to Scoped if it does not need to be a Singleton.
+- Inject `IDbContextFactory<AppDbContext>` and create a short-lived context for each operation.
+- Inject `IServiceScopeFactory` and create a scope for each unit of scoped work:
+
+```csharp
+public class ReportCache
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    public ReportCache(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
+
+    public async Task<int> CountAsync()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.Reports.CountAsync();
+    }
+}
+```
+
+#### Transient captured by a Singleton
+
+The built-in container's scope validation detects Scoped dependencies captured by a Singleton, but does not reject a Transient dependency in the same way:
+
+```csharp
+builder.Services.AddTransient<IPriceCalculator, PriceCalculator>();
+builder.Services.AddSingleton<OrderService>();
+
+public class OrderService
+{
+    public OrderService(IPriceCalculator calculator) { }
+}
+```
+
+The Singleton gets one calculator when it is constructed and retains that instance. It no longer behaves like a newly created Transient for each use. If the calculator has mutable state or is not thread-safe, the problem can be silent. Use a factory or resolve the dependency within a scope when a fresh instance is required.
+
+### Scoped dangers
+
+#### Resolving a Scoped service from the root provider
+
+Resolving a Scoped service directly from the root provider effectively retains it until the root provider is disposed. With scope validation enabled, this throws instead:
+
+```csharp
+var provider = services.BuildServiceProvider();
+var db = provider.GetRequiredService<AppDbContext>();
+```
+
+Create and use an explicit scope:
+
+```csharp
+using var scope = provider.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+```
+
+#### Scoped services in background work
+
+Hosted services (`IHostedService` and `BackgroundService`) are singletons, and there is no HTTP request scope for their work. Do not inject a Scoped `DbContext` into the hosted service constructor. Create a scope for each unit of work so its services are disposed before the next iteration:
+
+```csharp
+public class CleanupWorker : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    public CleanupWorker(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Logs.RemoveRange(db.Logs.Where(log => log.IsOld));
+                await db.SaveChangesAsync(ct);
+            }
+
+            await Task.Delay(TimeSpan.FromMinutes(5), ct);
+        }
+    }
+}
+```
+
+#### Sharing scoped state across parallel tasks
+
+A Scoped service is shared throughout its scope. Running parallel operations in one request with the same `DbContext` can trigger the context's thread-safety exception. For parallel work, create a separate scope (and therefore a separate context) for each task.
+
+### Transient dangers
+
+#### Disposable Transients accumulate until the scope ends
+
+The container tracks disposable services it creates and disposes them when their scope ends, not immediately after each use. Resolving a disposable Transient repeatedly in one request can therefore retain many resources until the request finishes:
+
+```csharp
+builder.Services.AddTransient<FileExporter>();
+
+public class ReportService
+{
+    private readonly IServiceProvider _services;
+    public ReportService(IServiceProvider services) => _services = services;
+
+    public void ExportAll(IEnumerable<string> rows)
+    {
+        foreach (var row in rows)
+        {
+            var exporter = _services.GetRequiredService<FileExporter>();
+            exporter.Export(row);
+        }
+    }
+}
+```
+
+For a large loop, this can mean many open file handles or other resources at once. Options include reusing one instance, creating a scope per iteration, or using a factory where your code owns and disposes the created instance. Do not manually dispose an object that the container created and owns.
+
+#### Disposable Transients resolved from the root
+
+A disposable Transient resolved from the root provider remains tracked by that provider until application shutdown. Repeated resolutions can retain resources for the lifetime of the app:
+
+```csharp
+public class Worker
+{
+    private readonly IServiceProvider _root;
+    public Worker(IServiceProvider root) => _root = root;
+
+    public void DoWork()
+    {
+        var exporter = _root.GetRequiredService<FileExporter>();
+        exporter.Export("data");
+    }
+}
+```
+
+Resolve it inside a scope instead, so the instance is disposed when the scope ends.
+
+#### Expensive construction
+
+Transient services are recreated each time they are resolved. If a stateless Transient has an expensive constructor and is requested frequently, consider whether it should be shared or whether its expensive work should be moved elsewhere.
+
+### Catch lifetime bugs early
+
+Enable scope and build validation so the container can report lifetime mismatches and missing registrations early:
+
+```csharp
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
+```
+
+For `WebApplication`, both validations are enabled by default in Development, but not generally in Production. Scope validation does not detect a Transient captured by a Singleton.
+
+### Lifetime danger summary
+
+| Lifetime | Danger | Typical symptom | Safer approach |
+| -------- | ------ | --------------- | -------------- |
+| Singleton | Mutable shared state | Lost updates or concurrent collection errors | Use atomic operations, locks, concurrent collections, or immutable state |
+| Singleton | Scoped dependency captured | Validation exception, stale state, or concurrent `DbContext` use | Use a scope or `IDbContextFactory`, or change the Singleton's lifetime |
+| Singleton | Transient dependency captured | Transient silently retained for the Singleton's lifetime | Use a factory or resolve within a scope |
+| Scoped | Resolved from root | Behaves like a Singleton or throws with validation | Always create a scope |
+| Scoped | Used in a background service | Captive context or incorrect state | Create a scope for each unit of work |
+| Scoped | Shared across parallel operations | Thread-safety errors, especially with `DbContext` | Use a separate scope per parallel task |
+| Transient | Disposable instances repeatedly resolved in a scope | Resource buildup until the scope ends | Reuse, scope each unit of work, or own the created instance |
+| Transient | Disposable instance resolved from root | Resources retained until application shutdown | Resolve inside a scope |
+
+> **In short:** Keep shared Singleton state thread-safe, and ensure services and disposable dependencies are resolved and disposed within the scope that matches their work.
