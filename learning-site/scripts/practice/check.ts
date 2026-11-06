@@ -57,7 +57,11 @@ interface Planned {
   data: PracticeExerciseData;
 }
 
-export function planExercises(errors: string[]): Planned[] {
+/**
+ * Exercises are checked against the note's own code, so one that no longer fits the note is left out and reported.
+ * Errors are for broken data files; a note moving on is never one.
+ */
+export function planExercises(errors: string[], warnings: string[] = []): Planned[] {
   const blocks = allBlocks();
   const lessons = fs.existsSync(OUT_LESSONS)
     ? fs
@@ -84,7 +88,7 @@ export function planExercises(errors: string[]): Planned[] {
     }
     const list = blocks.get(lesson);
     if (!list) {
-      errors.push(`${where}: lesson ${lesson} has no C# blocks (or does not exist). The file name must be the lesson id.`);
+      warnings.push(`${where}: ignored: lesson ${lesson} has no C# blocks any more (or does not exist). The file name must be the lesson id.`);
       continue;
     }
     const ids = new Set<string>();
@@ -92,28 +96,31 @@ export function planExercises(errors: string[]): Planned[] {
       const at = `${where}: ${ex.id}`;
       if (ids.has(ex.id)) errors.push(`${at}: duplicate exercise id`);
       ids.add(ex.id);
-      const block = list[ex.solution.block - 1];
+      // a note that gained a block earlier on shifts the numbers: the block's first line finds it again
+      const starts = (b: { code: string } | undefined) => Boolean(b?.code.trimStart().startsWith(ex.solution.startsWith.trim()));
+      const named = list[ex.solution.block - 1];
+      const others = list.filter(starts);
+      const block = starts(named) ? named : others.length === 1 ? others[0] : undefined;
       if (!block) {
-        errors.push(`${at}: C# block ${ex.solution.block} does not exist (the lesson has ${list.length})`);
-        continue;
-      }
-      if (!block.code.trimStart().startsWith(ex.solution.startsWith.trim())) {
-        errors.push(`${at}: C# block ${ex.solution.block} no longer starts with "${ex.solution.startsWith}". The note changed: update the block number.`);
+        warnings.push(`${at}: hidden: no single C# block in the lesson starts with "${ex.solution.startsWith}" any more`);
         continue;
       }
       // a case marked reviewed must quote the note
-      ex.cases.forEach((c, i) => {
-        if (!c.reviewed || !c.quote) return;
+      const unquoted = ex.cases.findIndex((c) => {
+        if (!c.reviewed || !c.quote) return false;
         const from = c.quoteFrom ? resolveLesson(c.quoteFrom, lessons) : lesson;
         const md = from ? lessonMarkdown(from) : null;
-        if (!md) errors.push(`${at}: case ${i + 1}: quoteFrom "${c.quoteFrom}" is not a lesson`);
-        else if (!normalize(md).includes(normalize(c.quote))) errors.push(`${at}: case ${i + 1}: the quote "${c.quote.slice(0, 60)}" is not in lesson ${from} (copy it from the note, or mark the case reviewed: false)`);
+        return !md || !normalize(md).includes(normalize(c.quote));
       });
+      if (unquoted >= 0) {
+        warnings.push(`${at}: hidden: case ${unquoted + 1} quotes "${ex.cases[unquoted]!.quote!.slice(0, 60)}", which is not in the note any more`);
+        continue;
+      }
       let built: BuiltExercise;
       try {
         built = buildExercise(ex, block.code);
       } catch (e) {
-        errors.push(`${at}: ${(e as Error).message}`);
+        warnings.push(`${at}: hidden: ${(e as Error).message}`);
         continue;
       }
       const sig = built.signature;
@@ -153,14 +160,15 @@ interface Verdict {
   runs?: { stdout: string; outcome: string }[];
 }
 
-async function verify(planned: Planned[], log: (m: string) => void, errors: string[]): Promise<{ verified: boolean; notes: Map<string, string> }> {
+async function verify(planned: Planned[], log: (m: string) => void, errors: string[], warnings: string[]): Promise<{ verified: boolean; notes: Map<string, string>; rejected: Set<Planned> }> {
   const notes = new Map<string, string>();
+  const rejected = new Set<Planned>();
   const d = findDotnet();
   if (!d) {
     const msg = 'practice: no .NET SDK 10+ found, so the exercises are not verified and the lesson pages show none.';
     if (process.env.LY_REQUIRE_RUNNER === '1') errors.push(`${msg} LY_REQUIRE_RUNNER=1 makes this an error.`);
     else log(msg);
-    return { verified: false, notes };
+    return { verified: false, notes, rejected };
   }
   if (!fs.existsSync(CHECK_DLL)) {
     log('practice: building Runner.Check…');
@@ -193,20 +201,22 @@ async function verify(planned: Planned[], log: (m: string) => void, errors: stri
     const sol = byId.get(`${p.lesson}#${p.ex.id}#solution`);
     const st = byId.get(`${p.lesson}#${p.ex.id}#starter`);
     const out = (v: Verdict | undefined) => v?.expected?.stdout ?? v?.runs?.[0]?.stdout;
+    const reject = (why: string) => {
+      rejected.add(p);
+      warnings.push(`${at}: hidden: ${why}`);
+    };
     if (!sol?.runnable || out(sol) === undefined) {
-      errors.push(`${at}: the note's implementation with the tests does not run (${sol?.category}: ${sol?.reason ?? sol?.diagnostics?.[0]?.message ?? 'no output'})`);
+      reject(`the note's implementation with the tests does not run (${sol?.category}: ${sol?.reason ?? sol?.diagnostics?.[0]?.message ?? 'no output'})`);
       continue;
     }
     const cases = parseCases(out(sol)!, expected);
-    for (const c of cases) {
-      if (c.status === 'pass') continue;
-      errors.push(`${at}: case ${c.n} fails with the note's own implementation: expected ${expected[c.n - 1]}, got ${c.actual ?? c.error ?? c.status}. Fix the case, or log the note's bug in CONTENT_ISSUES.md.`);
-    }
-    if (!st?.runnable) errors.push(`${at}: the starter code with the tests does not compile (${st?.category}: ${st?.reason ?? ''})`);
-    else if (out(st) !== undefined && parseCases(out(st)!, expected).every((c) => c.status === 'pass')) errors.push(`${at}: the starter code (empty methods) already passes every case: add a case it fails`);
+    const failing = cases.find((c) => c.status !== 'pass');
+    if (failing) reject(`case ${failing.n} fails with the note's own implementation: expected ${expected[failing.n - 1]}, got ${failing.actual ?? failing.error ?? failing.status}. Fix the case, or log the note's bug in CONTENT_ISSUES.md.`);
+    else if (!st?.runnable) reject(`the starter code with the tests does not compile (${st?.category}: ${st?.reason ?? ''})`);
+    else if (out(st) !== undefined && parseCases(out(st)!, expected).every((c) => c.status === 'pass')) reject('the starter code (empty methods) already passes every case: add a case it fails');
     notes.set(p.ex.id, `${cases.filter((c) => c.status === 'pass').length}/${cases.length} pass with the note's code`);
   }
-  return { verified: true, notes };
+  return { verified: true, notes, rejected };
 }
 
 export interface PracticeSummary {
@@ -220,9 +230,12 @@ export interface PracticeSummary {
 export async function runPracticeCheck(opts: { log?: (m: string) => void; verify?: boolean } = {}): Promise<{ ok: boolean; errors: string[]; summary?: PracticeSummary }> {
   const log = opts.log ?? ((m: string) => console.log(m));
   const errors: string[] = [];
-  const planned = planExercises(errors);
+  const warnings: string[] = [];
+  const all = planExercises(errors, warnings);
   if (errors.length) return { ok: false, errors };
-  const { verified, notes } = opts.verify === false ? { verified: false, notes: new Map<string, string>() } : await verify(planned, log, errors);
+  const { verified, notes, rejected } = opts.verify === false ? { verified: false, notes: new Map<string, string>(), rejected: new Set<Planned>() } : await verify(all, log, errors, warnings);
+  const planned = all.filter((p) => !rejected.has(p));
+  for (const w of warnings) log(`warning: ${w}`);
   const lessons: PracticeData['lessons'] = {};
   for (const p of planned) (lessons[p.lesson] ??= []).push(p.data);
   const data: PracticeData = { verified: verified && errors.length === 0, lessons };

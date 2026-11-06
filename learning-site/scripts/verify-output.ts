@@ -2,6 +2,8 @@
  * Post-build checks on dist/ (run by `npm run build` after Astro and Pagefind):
  * 1. every lesson's rendered headings, code blocks, tables and ❌/✅/👉 markers match its source counts;
  * 2. every internal link, asset and #anchor resolves under the base path;
+ *    (1 and 2 are warnings when the cause is inside a lesson's text: a note can be odd without the site being broken.
+ *    If many lessons disagree with their notes at once, that is a pipeline bug and the build fails.)
  * 3. size budgets: ≤ 200 MB total, ≤ 20,000 files, no file over 25 MiB (GitHub Pages / Cloudflare Pages limits);
  * 4. no binary file reaches the output unless it is on the approved list in curriculum/_assets.yaml (or is part of
  *    the C# runner bundle under runner/_framework/, whose size and file count are reported separately).
@@ -25,6 +27,7 @@ const BUDGET_FILES = 20_000;
 const BUDGET_FILE = 25 * 1024 * 1024;
 
 const problems: string[] = [];
+const warnings: string[] = [];
 if (!fs.existsSync(DIST)) {
   console.error('dist/ not found. Run `astro build` first.');
   process.exit(1);
@@ -96,29 +99,33 @@ const linkAttrs: [string, string][] = [
 ];
 let checkedLinks = 0;
 for (const [page, tree] of trees) {
-  const check = (raw: string, attr: string) => {
+  const lessonBody = select('#lesson-body', tree);
+  const fromNote = new Set(lessonBody ? linkAttrs.flatMap(([sel]) => selectAll(sel, lessonBody)) : []);
+  const check = (raw: string, attr: string, el?: Element) => {
     if (!raw || /^(https?:|mailto:|tel:|data:|blob:|javascript:)/i.test(raw)) return;
     checkedLinks++;
+    // a link a note wrote itself can only hurt that one link; the same fault in the site's own pages is a bug
+    const report = (m: string) => (el && fromNote.has(el) ? warnings : problems).push(m);
     const [pathPart, hash] = raw.split('#') as [string, string | undefined];
     let target: string | null = page;
     if (pathPart) {
       if (!pathPart.startsWith('/')) {
-        problems.push(`${page}: relative ${attr}="${raw}" (internal URLs must be absolute under the base path)`);
+        report(`${page}: relative ${attr}="${raw}" (internal URLs must be absolute under the base path)`);
         return;
       }
       if (!pathPart.startsWith(BASE)) {
-        problems.push(`${page}: ${attr}="${raw}" ignores the base path ${BASE}`);
+        report(`${page}: ${attr}="${raw}" ignores the base path ${BASE}`);
         return;
       }
       target = targetFile(pathPart.split('?')[0]!);
       if (!target) {
-        problems.push(`${page}: broken link ${attr}="${raw}"`);
+        report(`${page}: broken link ${attr}="${raw}"`);
         return;
       }
     }
-    if (hash && target.endsWith('.html') && !idsOf.get(target)?.has(decodeURIComponent(hash))) problems.push(`${page}: missing anchor #${hash} in ${target}`);
+    if (hash && target.endsWith('.html') && !idsOf.get(target)?.has(decodeURIComponent(hash))) report(`${page}: missing anchor #${hash} in ${target}`);
   };
-  for (const [sel, attr] of linkAttrs) for (const el of selectAll(sel, tree)) check(String((el as Element).properties?.[attr] ?? ''), attr);
+  for (const [sel, attr] of linkAttrs) for (const el of selectAll(sel, tree)) check(String((el as Element).properties?.[attr] ?? ''), attr, el as Element);
   for (const el of selectAll('img[srcset], source[srcset]', tree)) {
     for (const part of String(el.properties?.srcSet ?? el.properties?.srcset ?? '').split(',')) check(part.trim().split(/\s+/)[0] ?? '', 'srcset');
   }
@@ -150,8 +157,12 @@ for (const l of coverage.lessons) {
   if (tables !== l.source.tables) issues.push(`tables ${l.source.tables}→${tables}`);
   for (const [m, n] of Object.entries(l.markers)) if ((markers[m as keyof typeof markers] ?? 0) !== n) issues.push(`${m} ${n}→${markers[m as keyof typeof markers]}`);
   output[l.id] = { headings, code, tables, markers, ok: issues.length === 0, problems: issues };
-  if (issues.length) problems.push(`${l.id}: rendered output differs from the notes (${issues.join(', ')})`);
+  if (issues.length) warnings.push(`${l.id}: rendered output differs from the notes (${issues.join(', ')})`);
 }
+const mismatched = Object.values(output).filter((o) => !o.ok).length;
+const tolerated = Math.max(5, Math.ceil(coverage.lessons.length * 0.05));
+if (mismatched > tolerated) problems.push(`${mismatched} of ${coverage.lessons.length} lessons render differently from their notes: more than one odd note could explain, so this looks like a pipeline bug.`);
+coverage.warnings = [...new Set([...(coverage.warnings ?? []), ...warnings])];
 coverage.output = output;
 fs.writeFileSync(path.join(OUT_DATA, 'coverage.json'), JSON.stringify(coverage, null, 2));
 writeCoverage(coverage);
@@ -167,6 +178,11 @@ if (runnerFiles.length) {
 const sqlFiles = files.filter((f) => SQL_BINARY.test(f.rel));
 if (sqlFiles.length) {
   console.log(`verify: the SQL runner's engine (sql.js) is ${sqlFiles.length} file${sqlFiles.length === 1 ? '' : 's'}, ${(sqlFiles.reduce((s, f) => s + f.size, 0) / 1048576).toFixed(1)} MB`);
+}
+if (warnings.length) {
+  console.warn(`\n${warnings.length} warning(s), none of which stop the build:`);
+  for (const w of warnings.slice(0, 80)) console.warn(`• ${w}`);
+  if (warnings.length > 80) console.warn(`… and ${warnings.length - 80} more (see coverage-report.md)`);
 }
 if (problems.length) {
   console.error(`\n${problems.length} problem(s):`);

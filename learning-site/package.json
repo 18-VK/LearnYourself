@@ -17,6 +17,7 @@
     "playground": "vite --config playground/vite.config.ts",
     "check": "astro check && tsc --noEmit",
     "test": "vitest run",
+    "test:notes": "vitest run --config vitest.notes.config.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "verify": "tsx scripts/verify-output.ts",

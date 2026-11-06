@@ -1,5 +1,5 @@
 ---
-import { courseMeta, courseUrl, GLYPH, lessonsOf, type CourseData } from '../lib/site';
+import { courseMeta, courseUrl, glyphOf, lessonsOf, type CourseData } from '../lib/site';
 
 interface Props {
   course: CourseData;
@@ -13,7 +13,7 @@ const ids = lessonsOf(course).map((l) => l.id);
 
 <article class="course-card" data-course={course.id}>
   <div class="top">
-    <span class="glyph" aria-hidden="true">{GLYPH[course.id] ?? '•'}</span>
+    <span class="glyph" aria-hidden="true">{glyphOf(course)}</span>
     {tag && (badge ? <span class="badge">{tag}</span> : <span class="step-no">{tag}</span>)}
   </div>
   <h3><a href={courseUrl(course.id)}>{course.title}</a></h3>

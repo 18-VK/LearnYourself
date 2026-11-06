@@ -65,6 +65,7 @@ linkOnly:
     reason: "Near-empty: a heading and a ChatGPT share link (kept as a link, per your decision); shown as 'Further reading' on the XML lesson."
 
 # Notes kept out of the site. Each needs a reason; the coverage report lists them.
+# A new note normally needs no entry anywhere (scripts/lib/auto-curriculum.ts places it). List one here to keep it off the site.
 excluded:
   - file: "Git-Github/2.Git commands copy.md"
     reason: "A copy of 2.Git commands.md with one extra line (a YouTube link); the original is mapped (CONTENT_ISSUES Q-87)."
@@ -82,6 +83,35 @@ ignore:
   - "**/obj/**"
   - "**/.vs/**"
   - "**/node_modules/**"
+  # dot-folders hold tool settings, not notes (.claude, .idea, ...)
+  - "**/.*/**"
+  # what running or testing a project leaves behind, and third-party files inside projects
+  - "**/logs/**"
+  - "**/TestResults/**"
+  - "**/wwwroot/lib/**"
+  - "**/packages/**"
+  - "**/CLAUDE.md"
+  - "**/AGENTS.md"
+
+# New notes matching these never reach the site by themselves. The site is public, so anything personal belongs in
+# one of these places. Matching ignores case; a note that a manifest maps by hand is not affected.
+autoExclude:
+  - pattern: "InterviewPrep/**"
+    reason: "Personal interview preparation. Excluded by default per the build prompt; ask before including."
+  - pattern: "**/private/**"
+    reason: "In a folder named private."
+  - pattern: "**/personal/**"
+    reason: "In a folder named personal."
+  - pattern: "**/*.private.md"
+    reason: "Named .private."
+  - pattern: "**/*.private.txt"
+    reason: "Named .private."
+
+# A new note is held back from the site when it seems to contain personal data (a real email address, a C:\Users path, a
+# machine name, a password or key). The build names the line. If it is fine to publish, list the note here:
+#   - file: "Folder/Note.md"
+#     reason: "The address in the example is a sample."
+publishAnyway: []
 
 # Notes whose C#, XAML, SQL or shell code is written as plain text instead of fenced code blocks.
 # The pipeline detects those runs and renders them as code (the notes are not changed). Every recovered

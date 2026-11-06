@@ -44,7 +44,8 @@ Run these from `learning-site/`:
 | `npm run scan:personal` | After a build: scan `dist/` for personal data (emails, names from your git config or `LY_SCAN_NAMES`, machine names, local paths, connection strings, keys, PDF/image metadata); writes `personal-data-report.md` |
 | `npm run build` | Content pipeline → Astro build → Pagefind search index → output verification (see below) |
 | `npm run preview` | Serve `dist/` exactly as GitHub Pages will, under the base path |
-| `npm test` | Unit tests (trace generators) |
+| `npm test` | Unit tests of the code (trace generators, curriculum). These must pass |
+| `npm run test:notes` | Tests that compare each visualizer with its note. A failure means a visualizer could use a refresh; it never blocks a deploy |
 | `npm run test:e2e` | Playwright smoke tests against `astro preview` (every lesson, every visualizer, search, 404) |
 | `npm run check` | Type-check Astro pages and TypeScript |
 | `npm run runner` | C# runner only: publish the browser bundle to `public/runner/`, run the runnable-block check (plain and traced runs), then the practice-mode check (what `npm run build` does; `npm run dev` skips it, so run this once to get Run, Debug and Try-it-yourself in dev) |
@@ -60,7 +61,7 @@ Before the first `npm run test:e2e`, install the browser once: `npx playwright i
 ```text
 notes (*.md, *.txt)         curriculum/*.yaml (manifests)
         \                          /
-         scripts/build-content.ts   ← checks: every note mapped, anchors exist, every line used exactly once
+         scripts/build-content.ts   ← new notes get a home, renames are followed, every line ends up in exactly one place
                     |
    src/content/lessons/**.md + src/data/generated/*.json + public/generated/assets/   (all gitignored)
                     |
@@ -77,30 +78,72 @@ notes (*.md, *.txt)         curriculum/*.yaml (manifests)
    scripts/verify-output.ts   ← checks: source vs output counts, links/anchors, size budgets, binary allowlist
 ```
 
-`npm run build` fails if:
-- a note is not mapped to a lesson or listed as excluded, link-only or duplicate;
-- a heading anchor in a manifest no longer exists in its note;
-- a note line is unmapped (a gap) or mapped twice (an overlap);
-- a lesson's rendered headings, code blocks, tables or ❌/✅/👉 markers differ from its source note;
-- an internal link, asset or `#anchor` is broken;
+## Adding notes: nothing to update
+
+Write notes, push. No manifest or code change is needed as they grow. `scripts/lib/auto-curriculum.ts` runs at the start
+of every build and brings the curriculum in line with what is on disk:
+
+| You do this | The site does this |
+|---|---|
+| Add text or sections to a note | The lesson holding that part of the note grows |
+| Add a note beside others | It joins their section, in number order (`12.1.X.md` lands after `12.Y.md`) |
+| Add a note to a section's folder | That section grows; a "coming soon" section with that `noteFolder` opens |
+| Add a note with no number, in a folder feeding several sections | It joins the section whose title it matches, else a **More notes** section |
+| Add a sub-folder | A **new section** in that course, in folder-number order |
+| Add a top-level folder | A **new course**, listed on the home page, with a section per sub-folder |
+| Add a long note | It is split at its own headings into lessons of about 2,000 words |
+| Rename or move a note, or a whole folder | Its lessons follow it, so URLs, quizzes and visualizers survive |
+| Reword or renumber a heading | The manifest's anchor follows it to the closest heading |
+| Remove a heading or delete a note | The text joins the lesson before it, or the lesson goes |
+
+Titles come from the note's first heading, or its file name. Automatic lessons have no quiz, visualizer or harness, since
+nothing about them may be invented; add those the usual way when you want them.
+
+**You stay in charge.** A manifest entry always wins, so to rename a section, reorder lessons or fix a placement, write a
+normal entry (see "Add a lesson") or set `noteFolder` on a module to claim a folder. `coverage-report.md` lists every
+automatic placement and why it went there. Automatic lesson URLs come from file names and headings, so renaming a note's
+main heading can change one; a manifest entry pins it.
+
+**What stays off the site.** The site is public and a push to `main` deploys it, so new notes are screened first:
+
+| Note | What happens |
+|---|---|
+| In `InterviewPrep/`, in a folder named `private` or `personal`, or named `*.private.md` | Never published (`autoExclude` in `_site.yaml`; add your own patterns) |
+| Contains a real-looking email, `C:\Users\...` path, machine name, password or private key | **Held back**, and the build log names the line. Fix the note, or list it under `publishAnyway` in `_site.yaml` |
+| A copy of another note | Skipped as a duplicate, and re-checked on every build |
+| A copy of a note kept off the site | Stays off the site |
+| Almost empty, or a `.txt` inside a .NET project | Skipped until it has content / treated as project data |
+| Logs, dot-folders such as `.claude/`, `wwwroot/lib` | Not treated as notes (`ignore` in `_site.yaml`) |
+| Opens with an exported document's author line (`Oct 24, 2026 · @Name`) | Published without that line, which the report lists |
+
+The screen looks for identifiers, not meaning. A personal note with none in it (a plan, say) looks like any other note, so
+keep those in a `private` folder. Pictures and other binaries are not published automatically: a note's link to one opens it
+on GitHub until it is approved in `_assets.yaml`.
+
+`npm run dev` picks all of this up as you save, except a new top-level folder, which it sees after a restart.
+
+**Warnings, not failures.** When a note moves on, whatever depended on it is left out and reported, because the note wins
+and a site must not show what its notes no longer say. Warnings are in the build log and `coverage-report.md`:
+- a quiz question, cheat-sheet row or interview question whose source section is gone or no longer says the same thing is hidden;
+- a visualizer whose section is gone is hidden; one whose code panel no longer matches its note stays and is reported;
+- a harness or exercise finds its block again by `startsWith` when the numbers shift, and is otherwise ignored, so that block has no Run button or exercise.
+
+`npm run build` still fails if:
+- a hand-edited manifest or data file is broken (bad YAML or JSON, a wrong field, a duplicate id);
+- many lessons render differently from their notes at once (more than 5 % of them), which means a pipeline bug rather than an odd note;
+- a link in the site's own pages (not in a note's text) is broken;
 - the output exceeds 200 MB or 20,000 files, or any file is over 25 MiB;
 - a binary file that isn't approved in `curriculum/_assets.yaml` ends up in the output (the C# runner's
-  `runner/_framework/*.gz` files are approved by path, and their size is reported separately);
-- the C# shown in a visualizer no longer matches the note it came from;
-- a harness or override in `src/data/runnable/` points at a block that moved or changed, or doesn't make its block
-  runnable (see below);
-- a `src/data/sqlrun/` file names a setup block that moved, a setup that fails in SQLite, or a setup that feeds no
-  runnable query (see "Runnable SQL");
-- a practice exercise's reviewed case doesn't quote its note, the note's own implementation fails one of the cases, or
-  the starter code already passes them all (see "Practice mode").
+  `runner/_framework/*.gz` files are approved by path, and their size is reported separately).
 
-`coverage-report.md` lists every note and where it went, per-lesson counts, recovered code blocks,
-omitted lines, exclusions and assets. CI keeps it as a build artifact.
+`coverage-report.md` lists every note and where it went, automatic placements, warnings, per-lesson counts, recovered code
+blocks, omitted lines, exclusions and assets. CI keeps it as a build artifact.
 
 ## Add a lesson
 
-Lessons are defined in `curriculum/<course>.yaml`. URLs come from the manifest ids, never from file
-paths, so folder names with spaces, `#` or `..` are fine.
+New notes don't need this (see above). Write an entry when you want to choose the title, the order or the slicing, or to
+give a lesson a stable URL. Lessons are defined in `curriculum/<course>.yaml`, and a new `curriculum/<id>.yaml` is a new
+course. URLs come from the manifest ids, never from file paths, so folder names with spaces, `#` or `..` are fine.
 
 ```yaml
 modules:
@@ -125,14 +168,10 @@ modules:
 - `objectives:` (3–5 items) is optional. Without it, the lesson shows "What this lesson covers" from its own headings.
 - `curriculum/README.md` documents every field.
 
-**New notes.** Add the note anywhere and run `npm run content`. It fails with "Unmapped note: …" until you
-add the note to a lesson. For the Backend course's planned modules, put notes in the module's
-`noteFolder` (for example `BackendRoadmap/1.Caching/1.RedisBasics.md`); the error then prints a
-ready-to-paste lesson entry. Once a planned module has a lesson, remove its `status: planned`.
-
 **Notes that aren't lessons** go in `curriculum/_site.yaml`: `interview` (routed to Interview Prep),
-`duplicates` (re-verified on every build), `linkOnly`, `excluded` (with a reason), `omitLines` (lines dropped
-on purpose, listed in the coverage report) and `recoverUnfencedCode` (notes whose code is unfenced text).
+`duplicates` (re-verified on every build; copies are also found by themselves), `linkOnly`, `excluded` (with a reason),
+`omitLines` (lines dropped on purpose, listed in the coverage report) and `recoverUnfencedCode` (notes whose code is
+unfenced text).
 
 ## Place a visualizer in a lesson
 
@@ -230,7 +269,7 @@ lesson's **C#** blocks (1 = the first C# block on the page; other languages don'
 blocks:
   # A harness: statements that call the note's code with the note's own sample input.
   - block: 3
-    startsWith: "void InsertionSort(int[] arr)"   # guard: fails the build if the note's block changes or moves
+    startsWith: "void InsertionSort(int[] arr)"   # finds the block again if the note gains one earlier on
     input: "the example in “3. Insertion Sort”: [2, 5, 7, 3]"   # required with a harness: where the input is from
     harness: |
       int[] arr = { 2, 5, 7, 3 };
@@ -260,8 +299,8 @@ Rules:
 - Write plain statements; the runner places them: after the block's own statements, as top-level statements next to
   its classes, or (for blocks of bare methods) inside a wrapper class that also holds the methods. Compiler messages
   and exception lines still point at the learner's lines.
-- The build fails if a harness doesn't make its block runnable, a block number doesn't exist, or `startsWith` no
-  longer matches. Run `npm run runner:check` to try a change in seconds (results are cached per block).
+- A harness that doesn't make its block runnable, a block number that doesn't exist, or a `startsWith` no block matches
+  gives a warning and no Run button. Run `npm run runner:check` to try a change in seconds (results are cached per block).
 - Problems in a note's code go in `CONTENT_ISSUES.md`, never into a harness that works around them silently.
 
 ## Runnable SQL
@@ -289,7 +328,7 @@ Blocks are numbered by their position among the lesson's **SQL** blocks:
 setups:
   - id: customers-orders
     blocks: [1]                                  # the CREATE TABLE / INSERT blocks, in the order they run
-    startsWith: "-- Customers (left)"            # guard: fails the build if the note's block changes or moves
+    startsWith: "-- Customers (left)"            # guard: if the note's block changes or moves, this file is ignored, with a warning
     from: "the note's “Sample data (use these for all examples)”"   # shown under "Show setup"
 uses:
   - setup: customers-orders
@@ -300,7 +339,7 @@ overrides:
     reason: "Prints server-specific metadata"
 ```
 
-A setup must itself be plain SQL that runs in SQLite, and must feed at least one runnable query, or the build fails.
+A setup must itself be plain SQL that runs in SQLite, and must feed at least one runnable query, or the build warns.
 Queries not listed under `uses` run on an empty database, so they are runnable only if they create their own tables.
 Edited queries run too; when an edit leaves the dialect both engines share, the page says so under the result.
 
@@ -341,8 +380,9 @@ anything else; `types:` declares variables that aren't parameters, `call:` on a 
 and `starter:` replaces the generated starter when emptying the bodies isn't right. The build (`scripts/practice/check.ts`,
 after the C# runner step) checks that every reviewed case's quote is in its lesson, then compiles and runs two programs
 per exercise with `Runner.Check`: the note's implementation must pass every case (otherwise fix the case, or log the
-note's bug in `CONTENT_ISSUES.md`), and the starter must compile and fail at least one. `practice-report.md` (gitignored)
-lists the exercises. Exercises only show when the C# runner is in the build.
+note's bug in `CONTENT_ISSUES.md`), and the starter must compile and fail at least one. An exercise that fails any of this
+is left out, with a warning. `practice-report.md` (gitignored) lists the exercises. Exercises only show when the C# runner
+is in the build.
 
 ## Pre-test, spaced review and mastery
 
@@ -364,8 +404,9 @@ Three things built on the quizzes, with no extra content:
 
 
 Three folders hold hand-edited data. Their schema is `src/data/schema.ts`; the content pipeline validates every
-file on each build and resolves it into `src/data/generated/*.json`, which is all the pages read. A file that
-fails stops the build with a message naming the file and the field.
+file on each build and resolves it into `src/data/generated/*.json`, which is all the pages read. A broken file
+stops the build with a message naming the file and the field. An item the notes have moved past is hidden instead, with
+a warning.
 
 ```bash
 npm run data:check                  # re-check src/data/* in seconds (after one `npm run content`)
@@ -524,6 +565,8 @@ The workflow is `.github/workflows/deploy-learning-site.yml` at the repository r
 - **pull requests**: install, content checks, unit tests, build with verification, smoke tests. No deploy.
 - **pushes to `main`** (and manual runs): the same, then deploy with `actions/deploy-pages`.
 - It triggers on changes to `learning-site/**` and to notes and their assets anywhere in the repo.
+- A new note goes live with the push that adds it, after the screening described under "Adding notes". The build log lists
+  each one (`new note: …`) and anything held back (`was NOT published`).
 
 **One-time setup:** in the repository, open Settings → Pages → Build and deployment and set **Source** to
 **GitHub Actions**. Free GitHub Pages needs a public repository.

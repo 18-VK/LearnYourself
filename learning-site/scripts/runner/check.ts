@@ -101,7 +101,27 @@ function yamlFiles(dir = RUNNABLE_DIR): string[] {
 
 const firstLine = (code: string) => code.trimStart().split('\n')[0]!.trim();
 
-export function buildPrograms(blocks: Map<string, CsBlock[]>, errors: string[]): ProgramSpec[] {
+/** Which blocks an entry names. A note that gained a block earlier on shifts them all, so `startsWith` finds them again. */
+export function locateEntry(e: RunnableEntry, list: Pick<CsBlock, 'index' | 'code'>[], where: string, warnings: string[]): number[] | null {
+  const idx = 'merge' in e ? e.merge : [e.block];
+  const matches = (b: Pick<CsBlock, 'code'> | undefined) => Boolean(b && e.startsWith && b.code.trimStart().startsWith(e.startsWith.trim()));
+  if (e.startsWith && !matches(list[idx[0]! - 1])) {
+    const found = list.filter(matches);
+    if (found.length !== 1) {
+      warnings.push(`${where}: entry for block ${idx[0]} ignored: no single block starts with "${e.startsWith}" any more, so that block gets no harness`);
+      return null;
+    }
+    const shift = found[0]!.index - idx[0]!;
+    return idx.map((i) => i + shift);
+  }
+  if (idx.some((i) => i < 1 || i > list.length)) {
+    warnings.push(`${where}: entry for block ${idx.join('+')} ignored: the lesson has ${list.length} C# block${list.length === 1 ? '' : 's'} now`);
+    return null;
+  }
+  return idx;
+}
+
+export function buildPrograms(blocks: Map<string, CsBlock[]>, errors: string[], warnings: string[] = []): ProgramSpec[] {
   const entries = new Map<string, RunnableEntry[]>();
   for (const file of yamlFiles()) {
     const rel = path.relative(RUNNABLE_DIR, file).split(path.sep).join('/');
@@ -120,7 +140,7 @@ export function buildPrograms(blocks: Map<string, CsBlock[]>, errors: string[]):
       continue;
     }
     if (!blocks.has(lesson)) {
-      errors.push(`${where}: lesson ${lesson} has no C# blocks (or does not exist). The file name must be the lesson id.`);
+      warnings.push(`${where}: ignored: lesson ${lesson} has no C# blocks any more (or does not exist). The file name must be the lesson id.`);
       continue;
     }
     entries.set(lesson, r.data.blocks);
@@ -129,23 +149,21 @@ export function buildPrograms(blocks: Map<string, CsBlock[]>, errors: string[]):
   const programs: ProgramSpec[] = [];
   for (const [lesson, list] of blocks) {
     const where = `src/data/runnable/${lesson}.yaml`;
-    const claimed = new Map<number, RunnableEntry>();
+    const claimed = new Map<number, { entry: RunnableEntry; idx: number[] }>();
     for (const e of entries.get(lesson) ?? []) {
-      const idx = 'merge' in e ? e.merge : [e.block];
-      for (const i of idx) {
-        if (i > list.length) errors.push(`${where}: block ${i} does not exist (the lesson has ${list.length} C# block${list.length === 1 ? '' : 's'})`);
-        else if (claimed.has(i)) errors.push(`${where}: block ${i} appears in two entries`);
-        else claimed.set(i, e);
+      const idx = locateEntry(e, list, where, warnings);
+      if (!idx) continue;
+      if (idx.some((i) => claimed.has(i))) {
+        warnings.push(`${where}: entry for block ${idx.join('+')} ignored: another entry already covers that block`);
+        continue;
       }
-      const first = list[idx[0]! - 1];
-      if (first && e.startsWith && !first.code.trimStart().startsWith(e.startsWith.trim())) {
-        errors.push(`${where}: block ${idx[0]} no longer starts with "${e.startsWith}" (it starts with "${firstLine(first.code).slice(0, 60)}"). The note changed: update the block number or the harness.`);
-      }
+      for (const i of idx) claimed.set(i, { entry: e, idx });
     }
     for (const b of list) {
-      const e = claimed.get(b.index);
-      if (e && 'merge' in e && e.merge[e.merge.length - 1] !== b.index) continue; // folded into the merge's last block
-      const members = e && 'merge' in e ? e.merge.map((i) => list[i - 1]!).filter(Boolean) : [b];
+      const hit = claimed.get(b.index);
+      const e = hit?.entry;
+      if (hit && 'merge' in hit.entry && hit.idx[hit.idx.length - 1] !== b.index) continue; // folded into the merge's last block
+      const members = hit && 'merge' in hit.entry ? hit.idx.map((i) => list[i - 1]!).filter(Boolean) : [b];
       programs.push({
         id: b.id,
         lesson,
@@ -318,9 +336,10 @@ export interface CheckResult {
 export async function runRunnableCheck(opts: { log?: (m: string) => void } = {}): Promise<CheckResult> {
   const log = opts.log ?? ((m: string) => console.log(m));
   const errors: string[] = [];
+  const warnings: string[] = [];
   const blocks = allBlocks();
   const blockCount = [...blocks.values()].reduce((n, b) => n + b.length, 0);
-  const programs = buildPrograms(blocks, errors);
+  const programs = buildPrograms(blocks, errors, warnings);
   if (errors.length) return { ok: false, errors };
   const d = findDotnet();
   if (!d) {
@@ -357,12 +376,13 @@ export async function runRunnableCheck(opts: { log?: (m: string) => void } = {})
   fs.writeFileSync(CACHE_JSON, JSON.stringify(nextCache));
   const summary = summarize(programs, verdicts, blockCount);
   writeOutputs(programs, verdicts, summary);
-  // every harness must make its block runnable; a broken harness is a build error, not a silent "no Run button"
+  // a harness that no longer works loses its Run button, and says so: the block is still shown, and the note wins
   for (const p of programs) {
     const v = verdicts.get(p.id)!;
-    if (p.harness && !v.runnable) errors.push(`src/data/runnable/${p.lesson}.yaml: the harness for block ${p.blocks.map((b) => b.index).join('+')} does not make it runnable (${v.category}: ${v.reason})`);
-    if (p.force === 'on' && !v.runnable) errors.push(`src/data/runnable/${p.lesson}.yaml: block ${p.blocks.map((b) => b.index).join('+')} is forced on but ${v.category}: ${v.reason}`);
+    if (p.harness && !v.runnable) warnings.push(`src/data/runnable/${p.lesson}.yaml: no Run button: the harness for block ${p.blocks.map((b) => b.index).join('+')} does not make it runnable (${v.category}: ${v.reason})`);
+    if (p.force === 'on' && !v.runnable) warnings.push(`src/data/runnable/${p.lesson}.yaml: no Run button: block ${p.blocks.map((b) => b.index).join('+')} is forced on but ${v.category}: ${v.reason}`);
   }
+  for (const w of warnings) log(`warning: ${w}`);
   log(
     `runner: ${summary.runnable} of ${summary.programs} programs runnable (${summary.withHarness} with a harness, ${summary.varies} with varying output, ${summary.debuggable} debuggable); ` +
       `not runnable: ${Object.entries(summary.excluded)

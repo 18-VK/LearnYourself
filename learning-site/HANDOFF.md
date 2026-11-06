@@ -12,6 +12,10 @@ Pages at `https://18-vk.github.io/LearnYourself/` (repo `https://github.com/18-V
 **Everything in the build prompt is now built and verified locally.** The final report is `CHECKPOINT-4-8.md`.
 What is left is go-live, which is the owner's call (section 4).
 
+**Since 2026-11-06 notes need no manifest or code change** (owner's request, replacing the build prompt's "any unmapped
+file or count mismatch fails the build"). `scripts/lib/auto-curriculum.ts` places new notes, follows renames and re-tiles
+changed notes on every build; what the notes move past is hidden and reported. See "Adding notes" in `README.md`.
+
 ## 2. Rules you must keep (from the build prompt and the owner's decisions)
 
 - **Scope.** Never modify, move or rename anything outside `learning-site/`. The only exception is
@@ -77,17 +81,19 @@ tree and can be deleted once it is committed.
   "Pre-test, spaced review and mastery". Not built: repair-it exercises, guided debug tasks, self-explanation
   prompts, offline (see CHECKPOINT-4-8.md).
 - **Git & GitHub course** (owner's request): `curriculum/git-github.yaml` (22 lessons from the owner's new
-  `Git-Github/` notes, copied from E: into the clone as they were), `COURSE_FILES` in `scripts/lib/generate.ts`,
+  `Git-Github/` notes, copied from E: into the clone as they were),
   the `--git` colour token and `[data-course="git-github"]` rule, the glyph in `src/lib/site.ts`, 22 quiz files,
   two `_assets.yaml` entries, `_site.yaml` (catalogue, suggested path, one duplicate, one exclusion), and the
-  site-written note `Git-Github/4.DailyScenarios.md` (labelled in its header). Adding a course needs all of these.
+  site-written note `Git-Github/4.DailyScenarios.md` (labelled in its header). A new top-level folder or
+  `curriculum/<id>.yaml` is now a course by itself; the glyph, the colour token and the quizzes are optional polish.
 
 ### Full verification (all passed on the final build)
 
 ```bash
 cd learning-site && source scripts/local-env.sh
 npx tsc --noEmit -p . && npx astro check          # clean
-npx vitest run                                     # 1,526 tests
+npm test                                           # the code; must pass
+npm run test:notes                                 # visualizers vs notes; report only
 npm run test:runner                                # 99 .NET tests
 LY_REQUIRE_RUNNER=1 npm run build                  # content, sqlrun, runner + practice checks, astro, pagefind, verify
 npm run scan:personal                              # findings listed in CHECKPOINT-4-8.md

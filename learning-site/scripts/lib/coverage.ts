@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import type { PlacedNote } from './auto-curriculum';
 import type { DataSummary } from './data-check';
 import { COVERAGE_REPORT } from './paths';
 
@@ -25,6 +26,8 @@ export interface OutputCounts {
 }
 export interface CoverageData {
   notes: NoteCoverage[];
+  /** Notes the curriculum step placed by itself on this build. */
+  autoPlaced?: PlacedNote[];
   lessons: LessonCoverage[];
   excluded: { file: string; reason: string }[];
   duplicates: { file: string; duplicateOf: string; reason: string }[];
@@ -44,6 +47,16 @@ export interface CoverageData {
 
 const esc = (s: string) => s.replace(/\|/g, '\\|');
 
+/**
+ * Warnings for a build log. "This interview section isn't collected yet" is a long-running to-do list, not news, so it
+ * shows as a count (the report has them all) and can't push "this note was NOT published" out of sight.
+ */
+export function warningsForLog(warnings: string[]): string[] {
+  const todo = warnings.filter((w) => w.startsWith('interview:'));
+  const rest = warnings.filter((w) => !w.startsWith('interview:'));
+  return todo.length ? [...rest, `${todo.length} interview section(s) not collected into Interview Prep yet (listed in coverage-report.md).`] : rest;
+}
+
 export function writeCoverage(d: CoverageData): void {
   const mapped = d.notes.filter((n) => n.status === 'mapped').length;
   const out = d.output;
@@ -56,6 +69,7 @@ export function writeCoverage(d: CoverageData): void {
   L.push(`| Notes in the repo | ${d.notes.length} |`);
   L.push(`| Notes mapped or explicitly excluded | ${mapped} of ${d.notes.length}${mapped === d.notes.length ? ' ✅' : ' ❌'} |`);
   L.push(`| Lessons | ${d.lessons.length} |`);
+  L.push(`| Notes placed automatically | ${d.autoPlaced?.length ?? 0} |`);
   L.push(`| Recovered code blocks (unfenced code rendered as code) | ${d.recovered.length} |`);
   L.push(`| Lines omitted on purpose | ${d.omitted.length} entries |`);
   L.push(`| Planned modules (coming soon) | ${d.planned.length} |`);
@@ -83,6 +97,13 @@ export function writeCoverage(d: CoverageData): void {
     if (q.quizzes.missing.length) L.push(`Lessons without a quiz: ${q.quizzes.missing.join(', ')}`, '');
   }
 
+  if (d.autoPlaced?.length) {
+    L.push('## Notes placed automatically', '', 'No manifest entry says where these go, so the build chose. Add one under the module you prefer (`curriculum/<course>.yaml`), or set `noteFolder` on a module, to place them yourself.', '');
+    L.push('| Note | Section | Lessons | Why here |', '|---|---|---|---|');
+    for (const p of d.autoPlaced) L.push(`| \`${esc(p.file)}\` | ${esc(p.where)}${p.created ? ` (new ${p.created})` : ''} | ${p.lessons.length} | ${esc(p.why)} |`);
+    L.push('');
+  }
+
   L.push('## Every note', '', '| Note | Goes to |', '|---|---|');
   for (const n of d.notes) L.push(`| \`${esc(n.file)}\` | ${n.status === 'unmapped' ? '❌ **unmapped**' : esc(n.targets.join('<br>'))} |`);
   L.push('');
@@ -100,7 +121,7 @@ export function writeCoverage(d: CoverageData): void {
   }
   L.push('');
 
-  L.push('## Lines omitted on purpose', '', 'Leftover chatbot offers, dropped from the site by decision (see `_site.yaml` → `omitLines`). The notes keep them.', '');
+  L.push('## Lines omitted on purpose', '', 'Leftover chatbot offers and the author lines of exported documents, dropped from the site (see `_site.yaml` → `omitLines`). The notes keep them.', '');
   L.push('| Note | Line(s) | Text |', '|---|---|---|');
   for (const o of d.omitted) L.push(`| \`${esc(o.file)}\` | ${o.lines} | ${esc(o.text)} |`);
   L.push('');
