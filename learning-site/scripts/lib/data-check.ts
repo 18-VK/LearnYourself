@@ -9,6 +9,10 @@
  *
  * Nothing here invents content: notes-origin interview answers are copied from the note, and their short
  * answer, pitfalls, follow-ups and code must be verbatim excerpts of that note section.
+ *
+ * The notes can change at any time, and they win. A question or cheat-sheet row whose source section is gone or
+ * no longer says the same thing is left out of the site and listed as a warning, so it can never show something
+ * the note doesn't say and can never stop the build. Errors are for broken data files only.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +25,7 @@ import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 import YAML from 'yaml';
 import { CheatSheetSchema, InterviewFileSchema, QuizFileSchema, type CheatSheet, type InterviewQuestion, type NoteSection, type QuizQuestion } from '../../src/data/schema';
-import { exactCaseExists, findHeading, loadNote, normText, parseHeadingLine, sectionEnd } from './notes';
+import { closestText, exactCaseExists, loadNote, normText, parseHeadingLine, resolveHeading, sectionEnd } from './notes';
 import { SITE_ROOT } from './paths';
 
 export const DATA_DIR = path.join(SITE_ROOT, 'src', 'data');
@@ -62,6 +66,8 @@ interface Ctx {
   recovered: Map<string, { start: number; end: number; lang: string; labelLine?: number }[]>;
   /** normText of headings that say "interview" but aren't interview material (_interview.yaml falsePositives). */
   falsePositives: Set<string>;
+  /** Notes that moved: old path → new path. */
+  renames?: Record<string, string>;
   errors: string[];
   warnings: string[];
 }
@@ -107,16 +113,19 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
     return { id: slug, path: l.id, title: l.title, course: l.course, courseTitle: l.courseTitle };
   };
 
-  /** Resolves a section heading inside a lesson to its anchor, or records an error. */
+  /** Resolves a section heading inside a lesson to its anchor (following a renamed heading), or warns and returns null. */
   const anchorIn = (lessonId: string, section: string, where: string): string | null => {
     const hs = headingsOf.get(lessonId);
     if (!hs) {
-      errors.push(`${where}: lesson "${lessonId}" does not exist`);
+      // one line per file: a whole sheet can cite a lesson that is gone
+      warnings.push(`${where.split(' ')[0]}: everything citing lesson "${lessonId}" is hidden: it does not exist any more`);
       return null;
     }
     const want = normText(stripHashes(section));
     const hit = hs.find((h) => normText(h.text) === want);
     if (hit) return hit.id;
+    const renamed = closestText(want, hs.map((h) => normText(h.text)));
+    if (renamed >= 0) return hs[renamed]!.id;
     const words = new Set(want.split(' '));
     const near = hs
       .map((h) => ({ h, score: normText(h.text).split(' ').filter((w) => words.has(w)).length }))
@@ -124,7 +133,7 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
       .map((x) => `"${x.h.text}"`);
-    errors.push(`${where}: no heading "${section}" in lesson ${lessonId}${near.length ? ` (closest: ${near.join(', ')})` : ''}`);
+    warnings.push(`${where}: hidden: no heading "${section}" in lesson ${lessonId} any more${near.length ? ` (closest: ${near.join(', ')})` : ''}`);
     return null;
   };
 
@@ -153,7 +162,7 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
     if (quiz.lesson !== f.name) errors.push(`${f.file}: "lesson" is ${quiz.lesson} but the file name says ${f.name}`);
     const lesson = lessonById.get(quiz.lesson);
     if (!lesson) {
-      errors.push(`${f.file}: lesson "${quiz.lesson}" does not exist`);
+      warnings.push(`${f.file}: hidden: lesson "${quiz.lesson}" does not exist any more`);
       continue;
     }
     const ids = new Set<string>();
@@ -169,12 +178,14 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
         errors.push(`${where}: steps repeat`);
       }
       if (q.type === 'predict-output' && !loose(lesson.body).includes(loose(q.code.source))) {
-        errors.push(`${where}: the code is not copied from the lesson (predict-output code must appear in the note)`);
+        warnings.push(`${where}: hidden: its code is no longer in the note`);
+        continue;
       }
       const anchor = anchorIn(quiz.lesson, q.source.section, where);
+      if (!anchor) continue;
       out.push({ ...q, source: { section: q.source.section, anchor } });
     }
-    quizzes[quiz.lesson] = out;
+    if (out.length) quizzes[quiz.lesson] = out;
     quizQuestions += out.length;
   }
   const quizMissing = ctx.lessons.filter((l) => l.kind === 'lesson' && !quizzes[l.slug]).map((l) => l.slug);
@@ -210,29 +221,35 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
       (sheetsByLesson[from.lesson] ??= new Set()).add(sheet.id);
       return { ...lessonRef(from.lesson), section: from.section, anchor };
     };
-    const groups = sheet.groups.map((g, gi) => {
+    const groups = sheet.groups.flatMap((g, gi) => {
       const where = `${f.file} groups[${gi}] "${g.title}"`;
-      const items = (g.items ?? []).map((it, ii) => {
+      const items = (g.items ?? []).flatMap((it, ii) => {
+        if (it.code !== undefined && !it.code.trim()) errors.push(`${where} items[${ii}]: empty code`);
+        const from = resolveFrom(it.from, `${where} items[${ii}]`);
+        if (it.from && !from) return []; // its section is gone: the warning is already recorded
         sheetItems++;
         if (it.docs) fromDocs++;
-        if (it.code !== undefined && !it.code.trim()) errors.push(`${where} items[${ii}]: empty code`);
-        return { ...it, from: resolveFrom(it.from, `${where} items[${ii}]`) };
+        return [{ ...it, from }];
       });
       let table = null;
       if (g.table) {
         const t = g.table;
         const tableFrom = resolveFrom(t.from, `${where} table`);
-        const rows = t.rows.map((row, ri) => {
-          sheetItems++;
+        const rows = t.rows.flatMap((row, ri) => {
           const cells = Array.isArray(row) ? row : row.cells;
           if (cells.length !== t.columns.length) errors.push(`${where} table row ${ri + 1}: ${cells.length} cells but ${t.columns.length} columns`);
-          if (!Array.isArray(row) && row.docs) fromDocs++;
+          const own = !Array.isArray(row) && !row.docs && row.from;
           const from = Array.isArray(row) ? tableFrom : row.docs ? null : row.from ? resolveFrom(row.from, `${where} table row ${ri + 1}`) : tableFrom;
-          return { cells, from, docs: Array.isArray(row) ? null : (row.docs ?? null) };
+          const fromDocsRow = !Array.isArray(row) && Boolean(row.docs);
+          if (!from && !fromDocsRow && (own || t.from)) return [];
+          sheetItems++;
+          if (fromDocsRow) fromDocs++;
+          return [{ cells, from, docs: Array.isArray(row) ? null : (row.docs ?? null) }];
         });
-        table = { columns: t.columns, rows, from: tableFrom };
+        if (rows.length) table = { columns: t.columns, rows, from: tableFrom };
       }
-      return { title: g.title, note: g.note ?? null, items, table };
+      if (!items.length && !table) return [];
+      return [{ title: g.title, note: g.note ?? null, items, table }];
     });
     sheets.push({ id: sheet.id, title: sheet.title, summary: sheet.summary, groups });
   }
@@ -254,17 +271,20 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
   /** The note text a notes question answers from: lines after the heading up to the section end (omitted lines dropped). */
   const sectionText = (src: NoteSection, where: string): { md: string; start: number; end: number; plain: string } | null => {
     if (!exactCaseExists(src.file)) {
-      errors.push(`${where}: note not found with this exact case: ${src.file}`);
+      warnings.push(`${where}: hidden: note not found: ${src.file}`);
       return null;
     }
     const note = loadNote(src.file);
     try {
-      const h = findHeading(note, src.section, src.occurrence ?? 1);
+      const h = resolveHeading(note, src.section, src.occurrence ?? 1)?.heading;
+      if (!h) {
+        warnings.push(`${where}: hidden: heading "${src.section}" is not in ${src.file} any more`);
+        return null;
+      }
       let end = sectionEnd(note, h);
       if (src.until) {
         const u = note.headings.find((x) => x.line > h.line && x.norm === `${parseHeadingLine(src.until!)?.depth} ${normText(parseHeadingLine(src.until!)?.text ?? '')}`);
-        if (!u) errors.push(`${where}: until heading "${src.until}" not found after "${src.section}"`);
-        else end = u.line;
+        if (u) end = u.line;
       }
       const om = ctx.omitted.get(src.file);
       const kept: string[] = [];
@@ -292,7 +312,7 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
       const md = kept.join('\n').trim();
       return { md, start: h.line, end, plain: note.lines.slice(h.line, end).join('\n') };
     } catch (e) {
-      errors.push(`${where}: ${(e as Error).message}`);
+      warnings.push(`${where}: hidden: ${(e as Error).message}`);
       return null;
     }
   };
@@ -330,29 +350,34 @@ export function checkData(ctx: Ctx): { outputs: Record<string, unknown>; summary
       if (!q.id.startsWith(`${file.topic}-`)) errors.push(`${where}: id must start with "${file.topic}-"`);
       if (topic.subtopics && !topic.subtopics.includes(q.subtopic)) errors.push(`${where}: subtopic ${q.subtopic} is not one of ${topic.subtopics.join(', ')}`);
       const related = new Set(q.relatedLessons);
-      for (const id of q.relatedLessons) if (!lessonById.has(id)) errors.push(`${where}: related lesson ${id} does not exist`);
+      for (const id of q.relatedLessons) if (!lessonById.has(id)) warnings.push(`${where}: related lesson ${id} does not exist any more`);
       let answer = q.answer ?? '';
       if (q.origin === 'notes' && q.answerFrom) {
-        const s = sectionText(q.answerFrom, where);
-        if (s) {
-          answer = s.md;
-          const ranges = used.get(q.answerFrom.file) ?? [];
-          ranges.push([s.start, s.end]);
-          used.set(q.answerFrom.file, ranges);
-          const home = lessonOfLine(q.answerFrom.file, s.start);
-          if (home) {
-            related.add(home.slug);
-            usedHeadings.add(`${q.answerFrom.file}#${s.start}`);
-          }
-          const hay = loose(s.plain);
-          const quote = (label: string, text: string) => {
-            const parts = text.split(/\s*(?:…|\.\.\.)\s*/).filter((p) => loose(p).length > 0);
-            if (!parts.every((p) => hay.includes(loose(p)))) errors.push(`${where}: ${label} must be quoted from the note section (it isn't): "${text.slice(0, 80)}"`);
-          };
-          quote('shortAnswer', q.shortAnswer);
-          q.pitfalls.forEach((p, i) => quote(`pitfalls[${i}]`, p));
-          q.followUps.forEach((p, i) => quote(`followUps[${i}]`, p));
-          if (q.code) quote('code', q.code.source);
+        const from = { ...q.answerFrom, file: ctx.renames?.[q.answerFrom.file] ?? q.answerFrom.file };
+        const s = sectionText(from, where);
+        if (!s) continue;
+        const hay = loose(s.plain);
+        const stale: string[] = [];
+        const quote = (label: string, text: string) => {
+          const parts = text.split(/\s*(?:…|\.\.\.)\s*/).filter((p) => loose(p).length > 0);
+          if (!parts.every((p) => hay.includes(loose(p)))) stale.push(`${label}: "${text.slice(0, 60)}"`);
+        };
+        quote('shortAnswer', q.shortAnswer);
+        q.pitfalls.forEach((p, i) => quote(`pitfalls[${i}]`, p));
+        q.followUps.forEach((p, i) => quote(`followUps[${i}]`, p));
+        if (q.code) quote('code', q.code.source);
+        if (stale.length) {
+          warnings.push(`${where}: hidden: the note section no longer says this (${stale[0]})`);
+          continue;
+        }
+        answer = s.md;
+        const ranges = used.get(from.file) ?? [];
+        ranges.push([s.start, s.end]);
+        used.set(from.file, ranges);
+        const home = lessonOfLine(from.file, s.start);
+        if (home) {
+          related.add(home.slug);
+          usedHeadings.add(`${from.file}#${s.start}`);
         }
       }
       if (q.origin === 'notes') c.notes++;

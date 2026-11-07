@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 /** learning-site/ */
 export const SITE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-/** The repository root that holds the notes. */
-export const REPO_ROOT = path.resolve(SITE_ROOT, '..');
+/** The repository root that holds the notes. LY_REPO_ROOT points the pipeline at another copy of them (sandbox runs). */
+export const REPO_ROOT = process.env.LY_REPO_ROOT ? path.resolve(process.env.LY_REPO_ROOT) : path.resolve(SITE_ROOT, '..');
 export const CURRICULUM_DIR = path.join(SITE_ROOT, 'curriculum');
 export const OUT_LESSONS = path.join(SITE_ROOT, 'src', 'content', 'lessons');
 export const OUT_LANDING = path.join(SITE_ROOT, 'src', 'content', 'landing');

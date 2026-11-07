@@ -61,11 +61,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Content pipeline (every note mapped, anchors resolve, partition, counts)
+      - name: Content pipeline (places new notes, follows renames, lists anything worth a look)
         run: npm run content
 
       - name: Unit tests (trace generators and pipeline)
         run: npm test
+
+      # A failure here means a visualizer no longer matches the note it was built from. The note wins, so it doesn't stop the deploy.
+      - name: Note-fidelity tests (report only)
+        run: npm run test:notes
+        continue-on-error: true
 
       # C# runner: the .NET SDK compiles the in-browser runner and decides which C# blocks are runnable
       - uses: actions/setup-dotnet@v6.0.0

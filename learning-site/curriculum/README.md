@@ -1,13 +1,16 @@
 # Curriculum manifests
 
-These YAML files are the single source of truth for how the notes become courses. The notes
-themselves are never edited; the content pipeline (`scripts/build-content.ts`, built at
-Checkpoint 2) reads these manifests, slices the notes and generates lessons.
+These YAML files say how the notes become courses. The notes themselves are never edited; the content pipeline
+(`scripts/build-content.ts`) reads these manifests, slices the notes and generates lessons.
+
+**A new note needs no entry here.** `scripts/lib/auto-curriculum.ts` places notes the manifests don't mention and keeps
+entries in line with notes that were renamed or re-headed (see "Adding notes" in `../README.md`). An entry here always
+wins, so write one to choose a title, an order, a section or a stable URL.
 
 | File | What it defines |
 |---|---|
-| `phase-1.yaml`, `desktop.yaml`, `phase-2.yaml`, `sql-server.yaml`, `dsa.yaml`, `math.yaml`, `backend-roadmap.yaml` | One course each: modules, lessons, source slices, visualizer/diagram placements |
-| `_site.yaml` | Catalogue order, suggested learning path, notes routed outside courses (Interview Prep), duplicates, exclusions |
+| `<course id>.yaml` (any file not starting with `_`) | One course each: modules, lessons, source slices, visualizer/diagram placements. A new file is a new course |
+| `_site.yaml` | Catalogue order, suggested learning path, notes routed outside courses (Interview Prep), duplicates, exclusions, `ignore`, `autoExclude` and `publishAnyway` |
 | `_assets.yaml` | Every binary file in the repo, with an authorship guess and a publish decision (only `publish: true` files enter the build) |
 | `_cheatsheets.yaml` | The proposed cheat sheets and their source notes |
 | `_interview.yaml` | Interview Prep topics, sources from the notes, and web-research targets |
@@ -26,6 +29,7 @@ landing:                    # optional: note slices shown on the course landing 
 modules:
   - id: sorting
     title: Sorting
+    noteFolder: "Competitive Programming/Sorting"  # optional: new notes in this folder (and below it) join this module
     lessons:
       - id: merge-and-quick-sort          # slug; URLs never come from file paths
         title: Merge sort & quick sort
@@ -57,14 +61,15 @@ modules:
 - `fromLine` / `untilLine` name a plain line instead of a heading (for notes with no sub-headings).
 - If an anchor matches more than one heading, add `fromOccurrence: 2` (or `untilOccurrence`, `atOccurrence`).
 - File paths are repo-relative with exact case. The build checks them against the real directory
-  listing, so a case mismatch fails on Windows too, not just on the Linux CI runner.
+  listing, so a case mismatch doesn't pass on Windows and then break on the Linux CI runner.
+- When a note changes, anchors follow it: a reworded or renumbered heading resolves to the closest heading, and an anchor
+  with no close match gives its text to the neighbouring lesson. Each case is listed as a warning.
 
-### Guarantees the build enforces
+### Guarantees
 
-1. **Partition.** For every note, the slices across all manifests and `_site.yaml` cover every line
-   exactly once. A gap or overlap fails the build, so nothing is silently dropped.
-2. **Coverage.** Every `.md`/`.txt` note in the repo (outside `bin/`, `obj/`, `learning-site/`,
-   `CLAUDE.md` and `WEBSITE_BUILD_PROMPT.md`) is mapped to a lesson, a landing page, Interview Prep,
-   a verified duplicate, or an exclusion with a reason.
-3. **Counts.** Headings, code blocks and tables in each lesson's source slices match the generated
-   lesson.
+1. **Partition.** For every note, the slices across all manifests and `_site.yaml` cover every line exactly once. The
+   curriculum step tiles each note to make it so, then the build checks it, so nothing is silently dropped.
+2. **Coverage.** Every `.md`/`.txt` note in the repo (outside the `ignore` globs in `_site.yaml`, `bin/`, `obj/` and
+   `learning-site/`) ends up in a lesson, a landing page, Interview Prep, a verified duplicate, or an exclusion with a reason.
+3. **Counts.** Headings, code blocks and tables in each lesson's source slices are compared with the generated lesson.
+   A difference is a warning, and fails the build only when more than 5 % of lessons disagree, which means a pipeline bug.

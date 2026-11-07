@@ -39,6 +39,9 @@ export const GLYPH: Record<string, string> = {
   'git-github': 'git',
 };
 
+/** A course added automatically has no glyph of its own, so it shows the start of its short title. */
+export const glyphOf = (c: { id: string; shortTitle: string }): string => GLYPH[c.id] ?? c.shortTitle.replace(/[^\p{L}\p{N}#+]/gu, '').slice(0, 3);
+
 export function readingTime(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   const h = minutes / 60;

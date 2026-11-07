@@ -278,7 +278,8 @@ function yamlFiles(dir = SQLRUN_DIR): string[] {
     .sort();
 }
 
-export function loadFiles(blocks: Map<string, SqlBlock[]>, errors: string[]): Map<string, SqlRunFile> {
+/** A file whose block numbers no longer fit its note is ignored as a whole: the lesson's other SQL is still checked, and just runs without that sample data. */
+export function loadFiles(blocks: Map<string, SqlBlock[]>, errors: string[], warnings: string[] = []): Map<string, SqlRunFile> {
   const out = new Map<string, SqlRunFile>();
   for (const file of yamlFiles()) {
     const rel = path.relative(SQLRUN_DIR, file).split(path.sep).join('/');
@@ -298,15 +299,15 @@ export function loadFiles(blocks: Map<string, SqlBlock[]>, errors: string[]): Ma
     }
     const list = blocks.get(lesson);
     if (!list) {
-      errors.push(`${where}: lesson ${lesson} has no SQL blocks (or does not exist). The file name must be the lesson id.`);
+      warnings.push(`${where}: ignored: lesson ${lesson} has no SQL blocks any more (or does not exist). The file name must be the lesson id.`);
       continue;
     }
     const all = [...r.data.setups.flatMap((s) => s.blocks), ...r.data.uses.flatMap((u) => u.blocks), ...r.data.overrides.map((o) => o.block)];
-    for (const b of all) if (b > list.length) errors.push(`${where}: block ${b} does not exist (the lesson has ${list.length} SQL blocks)`);
-    for (const s of r.data.setups) {
-      const firstBlock = list[s.blocks[0]! - 1];
-      if (firstBlock && !firstBlock.code.trimStart().startsWith(s.startsWith.trim()))
-        errors.push(`${where}: setup ${s.id}: block ${s.blocks[0]} no longer starts with "${s.startsWith}" (it starts with "${firstBlock.code.trimStart().split('\n')[0]!.slice(0, 60)}"). The note changed: update the block numbers.`);
+    const missing = all.find((b) => b > list.length);
+    const moved = r.data.setups.find((s) => !list[s.blocks[0]! - 1]?.code.trimStart().startsWith(s.startsWith.trim()));
+    if (missing !== undefined || moved) {
+      warnings.push(`${where}: ignored: the note changed, so its block numbers no longer fit (${moved ? `setup ${moved.id} should start with "${moved.startsWith}"` : `block ${missing} does not exist`}). Blocks that need this sample data get no Run button.`);
+      continue;
     }
     out.set(lesson, r.data);
   }
@@ -327,7 +328,7 @@ const firstLine = (code: string) => code.trimStart().split('\n')[0]!.trim().slic
 /** Blocks a learner would expect to run: queries and data changes (not admin or fragments). */
 const looksLikeQuery = (code: string) => /^(SELECT|WITH|INSERT|UPDATE|DELETE|MERGE)\b/i.test(code.replace(/^\s*(--[^\n]*\n\s*)*/, '').trimStart());
 
-export function checkLessons(SQL: SqlJsStatic, blocks: Map<string, SqlBlock[]>, files: Map<string, SqlRunFile>, errors: string[]): { verdicts: BlockVerdict[]; lessons: Record<string, LessonSqlRun> } {
+export function checkLessons(SQL: SqlJsStatic, blocks: Map<string, SqlBlock[]>, files: Map<string, SqlRunFile>, warnings: string[]): { verdicts: BlockVerdict[]; lessons: Record<string, LessonSqlRun> } {
   const verdicts: BlockVerdict[] = [];
   const lessons: Record<string, LessonSqlRun> = {};
   for (const [lesson, list] of blocks) {
@@ -342,12 +343,12 @@ export function checkLessons(SQL: SqlJsStatic, blocks: Map<string, SqlBlock[]>, 
       for (const b of s.blocks) setupBlocks.set(b, [...(setupBlocks.get(b) ?? []), s.id]);
       // a setup must itself be plain, checked SQL: nothing T-SQL-only, it runs in SQLite, and its data is safe
       const dialect = dialectFindings(code).filter((f) => f.category === 'tsql-only' || f.category === 'not-tsql');
-      if (dialect.length) errors.push(`${where}: setup ${s.id} can't run in SQLite: ${dialect[0]!.construct} (${dialect[0]!.detail})`);
+      if (dialect.length) warnings.push(`${where}: setup ${s.id} can't run in SQLite: ${dialect[0]!.construct} (${dialect[0]!.detail})`);
       let tables: TableInfo[] = [];
       const run = runScript(SQL, code, '', { inspect: (db) => (tables = introspect(db)) });
-      if (run.error) errors.push(`${where}: setup ${s.id} fails in SQLite at line ${run.error.line}: ${run.error.message}`);
+      if (run.error) warnings.push(`${where}: setup ${s.id} fails in SQLite at line ${run.error.line}: ${run.error.message}`);
       const data = dataFindings(tables, []);
-      if (data.length) errors.push(`${where}: setup ${s.id}: ${data[0]!.detail}`);
+      if (data.length) warnings.push(`${where}: setup ${s.id}: ${data[0]!.detail}`);
       setups[s.id] = { code, blocks: s.blocks, from: s.from };
     }
     const off = new Map(file.overrides.map((o) => [o.block, o.reason]));
@@ -382,7 +383,7 @@ export function checkLessons(SQL: SqlJsStatic, blocks: Map<string, SqlBlock[]>, 
     }
     // a setup may also feed queries that turn out T-SQL-only, but one that feeds no runnable query is a sign of drift
     for (const s of file.setups) {
-      if (!runnable.some((r) => r.setup === s.id)) errors.push(`${where}: setup ${s.id} feeds no runnable query. Remove it, or check the blocks listed under uses (sqlrun-report.md says why each one isn't runnable).`);
+      if (!runnable.some((r) => r.setup === s.id)) warnings.push(`${where}: setup ${s.id} feeds no runnable query. Remove it, or check the blocks listed under uses (sqlrun-report.md says why each one isn't runnable).`);
     }
     verdicts.push(...lessonVerdicts);
     if (runnable.length || labels.length) lessons[lesson] = { setups: Object.fromEntries(Object.entries(setups).filter(([id]) => runnable.some((r) => r.setup === id))), blocks: runnable, labels };
@@ -460,12 +461,14 @@ export interface SqlCheckResult {
 export async function runSqlCheck(opts: { log?: (m: string) => void } = {}): Promise<SqlCheckResult> {
   const log = opts.log ?? ((m: string) => console.log(m));
   const errors: string[] = [];
+  const warnings: string[] = [];
   const blocks = allSqlBlocks();
-  const files = loadFiles(blocks, errors);
+  const files = loadFiles(blocks, errors, warnings);
   if (errors.length) return { ok: false, errors };
   const SQL = await initSqlJs();
   const started = Date.now();
-  const { verdicts, lessons } = checkLessons(SQL, blocks, files, errors);
+  const { verdicts, lessons } = checkLessons(SQL, blocks, files, warnings);
+  for (const w of warnings) log(`warning: ${w}`);
   const summary = summarize(verdicts, lessons);
   const data: SqlRunData = { available: true, engine: engineInfo(SQL), lessons };
   fs.mkdirSync(OUT_DATA, { recursive: true });

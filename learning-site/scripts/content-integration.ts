@@ -39,6 +39,7 @@ export function contentPipeline(): AstroIntegration {
         if (command === 'preview') return;
         resetRenderCacheIfPluginsChanged();
         const result = await buildContent({ mode: command === 'dev' ? 'dev' : 'build', log: (m) => logger.info(m) });
+        for (const w of result.warnings) logger.warn(w);
         if (!result.ok) {
           for (const e of result.errors) logger.error(e);
           if (command === 'build') throw new Error(`Content pipeline found ${result.errors.length} problem(s). See the log above and coverage-report.md.`);
@@ -75,6 +76,7 @@ export function contentPipeline(): AstroIntegration {
           running = true;
           try {
             const r = await buildContent({ mode: 'dev', log: (m) => logger.info(m) });
+            for (const w of r.warnings) logger.warn(w);
             for (const e of r.errors) logger.error(e);
             if (r.ok) for (const e of (await runSqlCheck({ log: (m) => logger.info(m) })).errors) logger.error(e);
           } finally {

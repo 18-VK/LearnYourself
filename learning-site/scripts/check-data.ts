@@ -25,6 +25,7 @@ const raw = JSON.parse(fs.readFileSync(ctxFile, 'utf8')) as {
   omitted: Record<string, number[]>;
   recovered?: Record<string, { start: number; end: number; lang: string; labelLine?: number }[]>;
   falsePositives: string[];
+  renames?: Record<string, string>;
 };
 const errors: string[] = [];
 const warnings: string[] = [];

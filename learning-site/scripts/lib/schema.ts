@@ -12,6 +12,8 @@ export const SliceSchema = z
     fromOccurrence: z.number().int().positive().optional(),
     untilOccurrence: z.number().int().positive().optional(),
     reason: z.string().optional(),
+    /** 0-based lines, end exclusive. Worked out by scripts/lib/auto-curriculum.ts on every build, so don't write it in YAML. */
+    range: z.tuple([z.number(), z.number()]).optional(),
   })
   .strict();
 export type Slice = z.infer<typeof SliceSchema>;
@@ -109,6 +111,10 @@ export const SiteSchema = z
     linkOnly: z.array(z.object({ file: z.string(), usedBy: z.string(), reason: z.string() }).strict()),
     excluded: z.array(FileReason),
     ignore: z.array(z.string()),
+    /** Globs for new notes that must never be placed automatically (personal folders and the like). */
+    autoExclude: z.array(z.object({ pattern: z.string(), reason: z.string() }).strict()).default([]),
+    /** New notes the personal-data screen held back and the owner has checked. */
+    publishAnyway: z.array(FileReason).default([]),
     recoverUnfencedCode: z.array(z.object({ file: z.string() }).strict()).default([]),
     omitLines: z
       .array(

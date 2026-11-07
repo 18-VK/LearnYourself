@@ -87,7 +87,14 @@ export function clearNoteCache(): void {
 export function loadNote(relPath: string): Note {
   const hit = cache.get(relPath);
   if (hit) return hit;
-  const text = fs.readFileSync(abs(relPath), 'utf8').replace(/^﻿/, '');
+  const note = parseNote(relPath, fs.readFileSync(abs(relPath), 'utf8'));
+  cache.set(relPath, note);
+  return note;
+}
+
+/** Splits a note's text into lines, headings and code fences. */
+export function parseNote(relPath: string, raw: string): Note {
+  const text = raw.replace(/^﻿/, '');
   const lines = text.split(/\r?\n/);
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   const inFence: boolean[] = new Array(lines.length).fill(false);
@@ -113,10 +120,78 @@ export function loadNote(relPath: string): Note {
     if (h) headings.push({ line: i, depth: h.depth, text: h.text, norm: `${h.depth} ${normText(h.text)}` });
   });
   if (open) fences.push({ start: (open as { start: number }).start, end: lines.length - 1, lang: (open as { lang: string }).lang });
-  const note: Note = { rel: relPath, isTxt: /\.txt$/i.test(relPath), lines, inFence, headings, fences };
-  cache.set(relPath, note);
-  return note;
+  return { rel: relPath, isTxt: /\.txt$/i.test(relPath), lines, inFence, headings, fences };
 }
+
+/** A heading's words, without bare numbers: renumbering a section doesn't rename it. */
+const anchorWords = (norm: string): string[] => {
+  const words = norm.split(' ').filter(Boolean);
+  const named = words.filter((w) => !/^\d+$/.test(w));
+  return named.length ? named : words;
+};
+
+/**
+ * Finds a heading the way findHeading does, but also survives a renamed one: when no heading has this exact
+ * text, the closest heading stands in if it clearly is the same section (most words shared, and no other
+ * heading as close), and a numbered section keeps its number even when it was reworded completely.
+ * Returns null when nothing qualifies or the anchor is not a heading at all.
+ */
+export function resolveHeading(note: Note, anchor: string, occurrence = 1): { heading: NoteHeading; fuzzy: boolean } | null {
+  let key: string;
+  try {
+    key = normHeading(anchor);
+  } catch {
+    return null;
+  }
+  const exact = note.headings.filter((h) => h.norm === key);
+  if (exact.length) return exact[occurrence - 1] ? { heading: exact[occurrence - 1]!, fuzzy: false } : null;
+  const textOf = (h: NoteHeading) => h.norm.slice(h.norm.indexOf(' ') + 1);
+  const want = key.slice(key.indexOf(' ') + 1);
+  const sameLevel = note.headings.filter((h) => key.startsWith(`${h.depth} `));
+  for (const pool of [sameLevel, note.headings]) {
+    const at = closestText(want, pool.map(textOf));
+    if (at >= 0) return { heading: pool[at]!, fuzzy: true };
+  }
+  const [number, ...rest] = want.split(' ');
+  if (rest.length && /^\d+$/.test(number!)) {
+    const same = sameLevel.filter((h) => textOf(h).split(' ')[0] === number);
+    if (same.length === 1) return { heading: same[0]!, fuzzy: true };
+  }
+  return null;
+}
+
+/**
+ * The candidate (normText form) that is clearly the same phrase as `want`, or -1. Scores how much of the two phrases
+ * overlaps and how much of the shorter one the other contains, so "git add" still finds "the git add command"
+ * but "merge sort" doesn't find "heap sort". A tie means it isn't clear, so nothing is chosen.
+ */
+export function closestText(want: string, candidates: string[]): number {
+  const mine = new Set(anchorWords(want));
+  const scored = candidates
+    .map((text, i) => {
+      const theirs = new Set(anchorWords(text));
+      const shared = [...mine].filter((w) => theirs.has(w)).length;
+      const overlap = shared / (mine.size + theirs.size - shared || 1);
+      const contained = shared / (Math.min(mine.size, theirs.size) || 1);
+      return { i, score: (overlap + contained) / 2 };
+    })
+    .filter((x) => x.score >= 0.6)
+    .sort((a, b) => b.score - a.score);
+  if (!scored[0] || scored[1]?.score === scored[0].score) return -1;
+  return scored[0].i;
+}
+
+/** Cleans a heading into a short phrase for titles and "What this lesson covers". */
+export const cleanHeading = (t: string): string =>
+  t
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/[*`_]/g, '')
+    .replace(/\p{Extended_Pictographic}|️|⃣/gu, '')
+    .replace(/^\s*(\d+[.)]|[A-Z]\)|[➤▶•-])\s*/u, '')
+    .replace(/\s*[:–—-]\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /** Finds a heading by its anchor text; throws with the closest candidates when it is missing. */
 export function findHeading(note: Note, anchor: string, occurrence = 1): NoteHeading {

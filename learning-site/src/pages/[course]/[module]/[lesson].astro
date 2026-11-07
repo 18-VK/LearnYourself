@@ -2,7 +2,7 @@
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { runnableFor, scriptJson } from '../../../lib/runnable';
-import { courseById, courseUrl, GLYPH, lessonsOf, lessonUrl, url } from '../../../lib/site';
+import { courseById, courseUrl, glyphOf, lessonsOf, lessonUrl, url } from '../../../lib/site';
 // ── study sections (quiz, cheat sheets, interview questions) ──
 import LessonExtras from '../../../components/LessonExtras.astro';
 import PreTest from '../../../components/PreTest.astro';
@@ -46,7 +46,7 @@ const sheets = sheetsFor([d.lesson], d.cheatsheets); // study sections: manifest
       Course menu · {course.shortTitle}
     </button>
     <aside class="course-nav" id="course-nav" aria-label={`${course.title} lessons`} data-pagefind-ignore>
-      <a class="cn-title" href={courseUrl(course.id)}><span class="glyph" aria-hidden="true">{GLYPH[course.id]}</span>{course.title}</a>
+      <a class="cn-title" href={courseUrl(course.id)}><span class="glyph" aria-hidden="true">{glyphOf(course)}</span>{course.title}</a>
       <div class="cn-progress">
         <div class="bar-mini" id="course-progress"><span></span></div>
         <span id="course-progress-text">{all.length} lessons</span>

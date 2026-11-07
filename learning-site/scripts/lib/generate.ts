@@ -5,19 +5,19 @@ import { countMarkers } from '../../src/markdown/html-policy';
 import { buildRoadmap } from '../../src/viz/roadmap/extract';
 import { VERBATIM_CHECKS } from '../../src/viz/verbatim';
 import { processAssets, type AssetOut } from './assets';
+import { isIgnored, reconcileCurriculum } from './auto-curriculum';
 import { writeCoverage, type CoverageData, type LessonCoverage, type NoteCoverage } from './coverage';
 import { checkData, type LessonRecord } from './data-check';
 import { countMarkdown, readingMinutes, type MdCounts } from './mdcount';
 import {
+  cleanHeading,
   clearNoteCache,
-  contentLines,
   exactCaseExists,
-  findHeading,
-  findLine,
   inventory,
   loadNote,
   normText,
   parseHeadingLine,
+  resolveHeading,
   sectionEnd,
   type Note,
 } from './notes';
@@ -36,7 +36,13 @@ import {
   type Slice,
 } from './schema';
 
-export const COURSE_FILES = ['phase-1', 'desktop', 'phase-2', 'sql-server', 'dsa', 'math', 'backend-roadmap', 'git-github'] as const;
+/** One course per curriculum/<id>.yaml, so a new course needs no code. Files starting with "_" are site-level. */
+export const courseFiles = (): string[] =>
+  fs
+    .readdirSync(CURRICULUM_DIR)
+    .filter((f) => /^[a-z0-9-]+\.yaml$/.test(f))
+    .map((f) => f.replace(/\.yaml$/, ''))
+    .sort();
 
 export interface BuildOptions {
   mode: 'build' | 'dev' | 'check';
@@ -81,18 +87,6 @@ export function githubBlobUrl(repo: string, relPath: string, start?: number, end
 }
 export const githubTreeUrl = (repo: string, relPath: string) => `${repo}/tree/main/${encodePath(relPath)}`;
 
-/** Cleans a heading into a short phrase for "What this lesson covers". */
-const cleanHeading = (t: string) =>
-  t
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/[*`_]/g, '')
-    .replace(/\p{Extended_Pictographic}|️|⃣/gu, '')
-    .replace(/^\s*(\d+[.)]|[A-Z]\)|[➤▶•-])\s*/u, '')
-    .replace(/\s*[:–—-]\s*$/, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
 function writeIfChanged(file: string, content: string): void {
   if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === content) return;
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -135,21 +129,27 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   const cheatsheets = parse('_cheatsheets.yaml', CheatsheetsSchema);
   const interviewManifest = parse('_interview.yaml', InterviewSchema);
   const courses: Course[] = [];
-  for (const c of COURSE_FILES) {
+  const files = courseFiles();
+  for (const c of files) {
     const course = parse(`${c}.yaml`, CourseSchema);
     if (course) {
       if (course.id !== c) errors.push(`curriculum/${c}.yaml: id is "${course.id}" but the file is ${c}.yaml`);
       courses.push(course);
     }
   }
-  if (!site || !assetsManifest || !cheatsheets || !interviewManifest || courses.length !== COURSE_FILES.length) {
+  if (!site || !assetsManifest || !cheatsheets || !interviewManifest || courses.length !== files.length) {
     return { ok: false, errors, warnings, lessons: 0 };
   }
   const repo = site.site.repo;
   const sheetIds = new Map(cheatsheets.sheets.map((s) => [s.id, s.title]));
 
   // ── 2. Notes and slice resolution ──────────────────────────────────────────────────────
-  const notes = inventory();
+  // Hand-written entries are brought in line with the notes and new notes get a home, so from here on the
+  // manifests are complete: every slice has a line range and every note has an owner.
+  const notes = inventory().filter((n) => !isIgnored(site.ignore, n));
+  const { placed, renames, followPath } = reconcileCurriculum({ courses, site, notes, warnings });
+  for (const a of assetsManifest.assets) a.file = followPath(a.file);
+  for (const p of placed) log(`new note: ${p.file} → ${p.where} (${p.lessons.length} lesson${p.lessons.length === 1 ? '' : 's'})`);
   const coverage = new Map<string, { start: number; end: number; owner: string }[]>();
   const cover = (r: Range, owner: string) => {
     const list = coverage.get(r.rel) ?? [];
@@ -158,27 +158,17 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   };
   const noteOrNull = (rel: string, ctx: string): Note | null => {
     if (!exactCaseExists(rel)) {
-      errors.push(`${ctx}: file not found with this exact case: ${rel}`);
+      warnings.push(`${ctx}: note not found: ${rel}`);
       return null;
     }
     return loadNote(rel);
   };
   const resolveSlice = (s: Slice, ctx: string): Range | null => {
-    const note = noteOrNull(s.file, ctx);
-    if (!note) return null;
-    try {
-      let start = 0;
-      let end = note.lines.length;
-      if (s.from) start = findHeading(note, s.from, s.fromOccurrence).line;
-      if (s.fromLine) start = findLine(note, s.fromLine);
-      if (s.until) end = findHeading(note, s.until, s.untilOccurrence).line;
-      if (s.untilLine) end = findLine(note, s.untilLine);
-      if (end <= start) throw new Error(`empty slice (${start + 1}..${end}) in ${s.file}`);
-      return { rel: s.file, start, end };
-    } catch (e) {
-      errors.push(`${ctx}: ${(e as Error).message}`);
+    if (!s.range) {
+      errors.push(`${ctx}: no line range for ${s.file} (the curriculum step should have set one)`);
       return null;
     }
+    return { rel: s.file, start: s.range[0], end: s.range[1] };
   };
 
   const lessonIds = new Set<string>();
@@ -201,14 +191,8 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
       if (mod.status !== 'planned' && !mod.lessons.length) errors.push(`${mid}: module has no lessons and is not "status: planned"`);
       for (const cov of mod.covers ?? []) {
         const [rel, heading] = cov.split(' › ');
-        const note = rel ? noteOrNull(rel, `${mid} covers`) : null;
-        if (note && heading) {
-          try {
-            findHeading(note, heading);
-          } catch (e) {
-            errors.push(`${mid} covers: ${(e as Error).message}`);
-          }
-        }
+        const note = rel ? noteOrNull(followPath(rel), `${mid} covers`) : null;
+        if (note && heading && !resolveHeading(note, heading)) warnings.push(`${mid} covers: heading not found in ${note.rel}: "${heading}"`);
       }
       for (const lesson of mod.lessons) {
         const id = `${mid}/${lesson.id}`;
@@ -228,24 +212,19 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
         }
         const inserts = new Map<string, Insertion[]>();
         lesson.place.forEach((p, pi) => {
-          let placed = false;
+          let placedHere = false;
           for (const r of slices) {
             const note = loadNote(r.rel);
-            let h;
-            try {
-              h = findHeading(note, p.at.section, p.at.atOccurrence);
-            } catch {
-              continue;
-            }
-            if (h.line < r.start || h.line >= r.end) continue;
+            const h = resolveHeading(note, p.at.section, p.at.atOccurrence)?.heading;
+            if (!h || h.line < r.start || h.line >= r.end) continue;
             const secEnd = sectionEnd(note, h, r.end);
             let line = secEnd;
             let wraps = false;
             if (p.at.codeBlock) {
               const f = note.fences.filter((x) => x.start > h.line && x.start < secEnd)[p.at.codeBlock - 1];
               if (!f) {
-                errors.push(`${id}: placement ${pi + 1} wants code block ${p.at.codeBlock} under "${p.at.section}", but that section has fewer fenced blocks`);
-                placed = true;
+                warnings.push(`${id}: the ${p.viz ?? p.diagram} visualizer is hidden: it replaces code block ${p.at.codeBlock} under "${p.at.section}", and that section now has fewer code blocks`);
+                placedHere = true;
                 break;
               }
               line = f.start;
@@ -259,10 +238,10 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
             const list = inserts.get(r.rel) ?? [];
             list.push({ line, text: vizFence(p, `${id}#${pi + 1}`, wraps) });
             inserts.set(r.rel, list);
-            placed = true;
+            placedHere = true;
             break;
           }
-          if (!placed) errors.push(`${id}: placement ${pi + 1} (${p.viz ?? p.diagram}) anchors to "${p.at.section}", which is not inside this lesson's sources`);
+          if (!placedHere) warnings.push(`${id}: the ${p.viz ?? p.diagram} visualizer is hidden: its section "${p.at.section}" is no longer in this lesson`);
         });
         plans.push({ course, module: mod, lesson, id, slices, inserts, order: order++ });
       }
@@ -293,29 +272,15 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     if (note) cover({ rel, start: 0, end: note.lines.length }, owner);
     return note;
   };
-  for (const d of site.duplicates) {
-    const dup = wholeFile(d.file, `duplicate of ${d.duplicateOf}`, 'duplicates');
-    const orig = noteOrNull(d.duplicateOf, 'duplicates');
-    if (dup && orig) {
-      const have = contentLines(orig);
-      const missing = [...contentLines(dup)].filter((l) => !have.has(l));
-      if (missing.length) {
-        errors.push(
-          `${d.file} is no longer a duplicate of ${d.duplicateOf}. Lines only in the first file:\n` +
-            missing.slice(0, 8).map((l) => `    ${l}`).join('\n') +
-            '\n  Merge the new content into the other copy, or map this file to a lesson.',
-        );
-      }
-    }
-  }
+  for (const d of site.duplicates) wholeFile(d.file, `duplicate of ${d.duplicateOf}`, 'duplicates');
   const linkOnly = new Map<string, { url: string; title: string }>();
   for (const l of site.linkOnly) {
     const note = wholeFile(l.file, `link on ${l.usedBy}`, 'linkOnly');
     if (!note) continue;
-    if (!lessonIds.has(l.usedBy)) errors.push(`linkOnly ${l.file}: usedBy lesson ${l.usedBy} does not exist`);
+    if (!lessonIds.has(l.usedBy)) warnings.push(`linkOnly ${l.file}: the lesson that shows this link (${l.usedBy}) is gone`);
     const url = note.lines.join('\n').match(/https?:\/\/[^\s<>)]+/)?.[0];
     const title = note.headings[0]?.text ?? path.basename(l.file);
-    if (!url) errors.push(`linkOnly ${l.file}: no URL found in the file`);
+    if (!url) warnings.push(`linkOnly ${l.file}: no URL found in the file`);
     else linkOnly.set(l.file, { url, title });
   }
   for (const x of site.excluded) wholeFile(x.file, `excluded: ${x.reason}`, 'excluded');
@@ -325,7 +290,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   for (const rel of notes) {
     const list = coverage.get(rel);
     if (!list) {
-      errors.push(`Unmapped note: ${rel}\n  Add it to a lesson's sources in a course manifest, or list it under excluded/linkOnly/duplicates in _site.yaml.` + suggestLesson(rel, courses));
+      errors.push(`Unmapped note: ${rel}\n  The curriculum step should have placed it (scripts/lib/auto-curriculum.ts).`);
       noteCoverage.push({ file: rel, targets: [], status: 'unmapped' });
       continue;
     }
@@ -355,19 +320,19 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     const set = omitted.get(o.file) ?? new Set<number>();
     if ('startsWith' in o) {
       const hits = note.lines.map((l, i) => (!note.inFence[i] && l.trim().startsWith(o.startsWith) ? i : -1)).filter((i) => i >= 0);
-      if (hits.length !== 1) errors.push(`omitLines: "${o.startsWith}" matched ${hits.length} lines in ${o.file} (it must match exactly one)`);
-      for (const i of hits.slice(0, 1)) {
+      if (hits.length !== 1) warnings.push(`omitLines: "${o.startsWith}" matched ${hits.length} lines in ${o.file}; check that nothing is showing that shouldn't be`);
+      for (const i of hits) {
         set.add(i);
         omittedReport.push({ file: o.file, lines: `${i + 1}`, text: note.lines[i]!.trim() });
       }
     } else {
-      try {
-        const h = findHeading(note, o.section);
+      const h = resolveHeading(note, o.section)?.heading;
+      if (h) {
         const end = sectionEnd(note, h);
         for (let i = h.line; i < end; i++) set.add(i);
         omittedReport.push({ file: o.file, lines: `${h.line + 1}-${end}`, text: `${o.section} (whole section)` });
-      } catch (e) {
-        errors.push(`omitLines: ${(e as Error).message}`);
+      } else {
+        warnings.push(`omitLines: section "${o.section}" not found in ${o.file}; check that nothing is showing that shouldn't be`);
       }
     }
     omitted.set(o.file, set);
@@ -385,28 +350,27 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
   }
 
   // ── 5. Visualizer code must still match the notes verbatim ─────────────────────────────
+  // A panel out of step with its note keeps showing the code it has; the warning says which one to refresh.
   for (const check of VERBATIM_CHECKS) {
-    if (!exactCaseExists(check.file)) {
-      errors.push(`The ${check.label} copies code from ${check.file}, which no longer exists. Update ${check.fix}.`);
+    const checkFile = followPath(check.file);
+    if (!exactCaseExists(checkFile)) {
+      warnings.push(`The ${check.label} copies code from ${check.file}, which no longer exists. To refresh it, update ${check.fix}.`);
       continue;
     }
-    const note = loadNote(check.file);
+    const note = loadNote(checkFile);
     // a note must contain the code inside a fenced block; a source file (e.g. the capstone's .cs) anywhere in its text
     // (loadNote strips the BOM and splits on CRLF or LF, so line endings never cause a mismatch)
-    const isNote = /\.(md|txt)$/i.test(check.file);
+    const isNote = /\.(md|txt)$/i.test(checkFile);
     const blocks = isNote ? note.fences.map((f) => note.lines.slice(f.start + 1, f.end).join('\n')) : [note.lines.join('\n')];
     if (!blocks.some((b) => b.includes(check.code))) {
-      errors.push(
-        `The code in the ${check.label} no longer matches ${check.file} (section "${check.heading}").\n` +
-          `  Update ${check.fix} so the code panel stays truthful.`,
-      );
+      warnings.push(`The code in the ${check.label} no longer matches ${checkFile} (section "${check.heading}"). To refresh it, update ${check.fix}.`);
     }
   }
 
   // ── 6. Assets ──────────────────────────────────────────────────────────────────────────
   for (const a of assetsManifest.assets) {
-    if (!exactCaseExists(a.file)) errors.push(`_assets.yaml: file not found with this exact case: ${a.file}`);
-    if (a.usedBy && !a.usedBy.startsWith('interview-prep/') && !lessonIds.has(a.usedBy)) errors.push(`_assets.yaml: ${a.file} usedBy ${a.usedBy}, which is not a lesson id`);
+    if (!exactCaseExists(a.file)) warnings.push(`_assets.yaml: file not found: ${a.file}`);
+    if (a.usedBy && !a.usedBy.startsWith('interview-prep/') && !lessonIds.has(a.usedBy)) warnings.push(`_assets.yaml: ${a.file} is shown on ${a.usedBy}, which is not a lesson any more`);
   }
   let assetsOut: AssetOut[] = [];
   try {
@@ -496,10 +460,10 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
         const src = countMarkdown(source, absorbed);
         const gen = countMarkdown(body);
         if (gen.code !== src.code + recoveredCount) {
-          errors.push(`${plan.id}: generated ${gen.code} code blocks but expected ${src.code} from the notes + ${recoveredCount} recovered`);
+          warnings.push(`${plan.id}: generated ${gen.code} code blocks but expected ${src.code} from the notes + ${recoveredCount} recovered`);
         }
-        if (gen.tables !== src.tables) errors.push(`${plan.id}: generated ${gen.tables} tables but the notes have ${src.tables}`);
-        if (gen.headings !== src.headings) errors.push(`${plan.id}: generated ${gen.headings} headings but the notes have ${src.headings}`);
+        if (gen.tables !== src.tables) warnings.push(`${plan.id}: generated ${gen.tables} tables but the notes have ${src.tables}`);
+        if (gen.headings !== src.headings) warnings.push(`${plan.id}: generated ${gen.headings} headings but the notes have ${src.headings}`);
         const minutes = readingMinutes(gen);
         const vizCount = lesson.place.length + (hasGraph ? 1 : 0);
         courseMinutes += minutes;
@@ -507,14 +471,14 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
 
         const resolveRef = (ref: string) => {
           if (lessonIds.has(ref)) return { id: ref, title: titleOf.get(ref)!, course: ref.split('/')[0]!, courseTitle: courseTitle.get(ref.split('/')[0]!)! };
-          errors.push(`${plan.id}: related lesson ${ref} does not exist`);
+          warnings.push(`${plan.id}: related lesson ${ref} does not exist any more`);
           return null;
         };
         const related = lesson.related.map(resolveRef).filter((x) => x !== null);
         for (const [key, refs] of Object.entries(lesson.nodeLinks ?? {})) {
           const found = plan.slices.some((r) => loadNote(r.rel).headings.some((h) => h.line >= r.start && h.line < r.end && `${h.depth} ${normText(h.text)}` === `${parseHeadingLine(key)?.depth} ${normText(parseHeadingLine(key)?.text ?? '')}`));
-          if (!found) errors.push(`${plan.id}: nodeLinks heading not found in this lesson: ${key}`);
-          for (const ref of refs) if (!lessonIds.has(ref) && !moduleIds.has(ref)) errors.push(`${plan.id}: nodeLinks target does not exist: ${ref}`);
+          if (!found) warnings.push(`${plan.id}: nodeLinks heading not found in this lesson: ${key}`);
+          for (const ref of refs) if (!lessonIds.has(ref) && !moduleIds.has(ref)) warnings.push(`${plan.id}: nodeLinks target does not exist any more: ${ref}`);
         }
         const sheets = lesson.cheatsheets.map((id) => {
           if (!sheetIds.has(id)) errors.push(`${plan.id}: unknown cheat sheet ${id}`);
@@ -527,15 +491,18 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
         const resources = lesson.resources.flatMap((res): ResolvedResource[] => {
           if ('asset' in res) {
             const a = assetByFile.get(res.asset);
-            if (!assetsManifest.assets.some((x) => x.file === res.asset)) errors.push(`${plan.id}: asset not listed in _assets.yaml: ${res.asset}`);
+            if (!assetsManifest.assets.some((x) => x.file === res.asset)) warnings.push(`${plan.id}: asset not listed in _assets.yaml: ${res.asset}`);
             return a ? [{ type: 'asset' as const, ...a }] : [];
           }
           if ('linkFrom' in res) {
             const l = linkOnly.get(res.linkFrom);
-            if (!l) errors.push(`${plan.id}: linkFrom ${res.linkFrom} is not listed under linkOnly in _site.yaml`);
+            if (!l) warnings.push(`${plan.id}: linkFrom ${res.linkFrom} is not listed under linkOnly in _site.yaml`);
             return l ? [{ type: 'link' as const, url: l.url, title: l.title, from: res.linkFrom }] : [];
           }
-          if (!exactCaseExists(res.tryLocally)) errors.push(`${plan.id}: tryLocally path not found: ${res.tryLocally}`);
+          if (!exactCaseExists(res.tryLocally)) {
+            warnings.push(`${plan.id}: tryLocally path not found: ${res.tryLocally}`);
+            return [];
+          }
           return [{ type: 'tryLocally' as const, path: res.tryLocally, url: githubTreeUrl(repo, res.tryLocally) }];
         });
         const objectives = lesson.objectives ?? deriveObjectives(headingsForObjectives);
@@ -585,7 +552,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
       emit(file, `---\n${YAML.stringify({ course: course.id, sources: landing.map((r) => ({ file: r.rel, url: githubBlobUrl(repo, r.rel, r.start, r.end) })) })}---\n\n${body}\n`);
       written.add(file);
     }
-    for (const p of course.prerequisites) if (!COURSE_FILES.includes(p as (typeof COURSE_FILES)[number])) errors.push(`${course.id}: unknown prerequisite course ${p}`);
+    for (const p of course.prerequisites) if (!courses.some((c) => c.id === p)) warnings.push(`${course.id}: prerequisite course ${p} does not exist any more`);
     const all = modules.flatMap((m) => m.lessons);
     siteCourses.push({
       id: course.id,
@@ -594,7 +561,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
       kind: course.kind,
       accent: course.accent,
       icon: course.icon,
-      prerequisites: course.prerequisites,
+      prerequisites: course.prerequisites.filter((p) => courses.some((c) => c.id === p)),
       summary: course.summary,
       hasLanding: Boolean(landing),
       lessonCount: all.length,
@@ -605,8 +572,6 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
       modules,
     });
   }
-
-  for (const c of site.catalogue.order) if (!courses.some((x) => x.id === c)) errors.push(`_site.yaml catalogue: unknown course ${c}`);
 
   const siteData = {
     name: site.site.name,
@@ -643,6 +608,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     omitted,
     recovered,
     falsePositives,
+    renames: Object.fromEntries(renames),
   };
   const data = checkData({ ...dataInput, errors, warnings });
   // lets `npm run data:check` re-validate src/data/* in seconds without re-running the pipeline
@@ -663,9 +629,12 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
     written.add(f);
   }
 
+  warnings.splice(0, warnings.length, ...new Set(warnings));
+
   // ── 9. Coverage report (output counts are added by verify-output after the build) ──────
   const coverageData: CoverageData = {
     notes: noteCoverage,
+    autoPlaced: placed,
     lessons: lessonCoverage,
     excluded: site.excluded,
     duplicates: site.duplicates.map((d) => ({ file: d.file, duplicateOf: d.duplicateOf, reason: d.reason })),
@@ -711,23 +680,6 @@ function deriveObjectives(headings: { depth: number; text: string }[]): string[]
     if (at.length >= 2) return [...new Set(at)].slice(0, 5);
   }
   return headings.map((h) => cleanHeading(h.text)).filter(Boolean).slice(0, 5);
-}
-
-/** Proposes a ready-to-paste lesson entry for an unmapped note in a planned module's folder. */
-function suggestLesson(rel: string, courses: Course[]): string {
-  for (const c of courses) {
-    for (const m of c.modules) {
-      if (m.noteFolder && rel.startsWith(m.noteFolder + '/')) {
-        const base = path.basename(rel).replace(/\.(md|txt)$/i, '');
-        const slug = base.replace(/^\d+[.\s_-]*/, '').replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'lesson';
-        return (
-          `\n  This note is in the folder of planned module ${c.id}/${m.id}. Add to curriculum/${c.id}.yaml under that module` +
-          ` (and remove "status: planned"):\n      - id: ${slug}\n        title: "${base.replace(/^\d+[.\s_-]*/, '')}"\n        sources:\n          - file: "${rel}"`
-        );
-      }
-    }
-  }
-  return '';
 }
 
 /**
@@ -784,6 +736,7 @@ function renderSlice(
           const to = linkTo(target);
           return to ? `](${to}${hash ?? ''})` : m;
         });
+        line = rewriteRelativeLinks(line, linkTo);
       }
     }
     out.push(line);
@@ -795,6 +748,19 @@ function renderSlice(
   if (inRecovered) out.push('```');
   insertAt(r.end);
   return { body: out.join('\n'), source: source.join('\n'), recovered: recoveredCount, absorbed };
+}
+
+/**
+ * A note can link to any file beside it (a picture, a .cs file), but the site only publishes approved binaries and has
+ * no page for those. So such a link opens the file on GitHub, and one to a file that doesn't exist stays as plain text.
+ */
+function rewriteRelativeLinks(line: string, linkTo: (target: string) => string | null): string {
+  return line.replace(/!?\[([^\]]*)\]\(([^)\s]+)(\s+"[^"]*")?\)/g, (m, label: string, target: string) => {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('#') || target.startsWith('/')) return m;
+    const url = linkTo(target.split('#')[0]!);
+    const text = label || target.split('/').pop()!;
+    return url ? `[${text}](${url})` : text;
+  });
 }
 
 /**
