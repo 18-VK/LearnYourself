@@ -404,6 +404,240 @@ Host.CreateDefaultBuilder()
 | Graceful shutdown    | ❌                    | ✅                         |
 | Production-ready     | ⚠                    | ✅                         |
 
+# The Options Pattern
+
+The options pattern binds a **configuration section** (`appsettings.json`, environment variables, and so on) to a
+strongly typed class and injects it through DI. This keeps services from repeatedly reading raw strings such as
+`configuration["Email:Port"]`.
+
+```json
+{
+  "Email": {
+    "SmtpServer": "smtp.example.com",
+    "Port": 587,
+    "UseSsl": true
+  }
+}
+```
+
+```csharp
+public class EmailOptions
+{
+    public const string SectionName = "Email";
+
+    public string SmtpServer { get; set; } = string.Empty;
+    public int Port { get; set; }
+    public bool UseSsl { get; set; }
+}
+```
+
+Register the binding with the host's service collection:
+
+```csharp
+builder.Services.Configure<EmailOptions>(
+    builder.Configuration.GetSection(EmailOptions.SectionName));
+```
+
+## Why use it?
+
+- **Type safety.** `options.Port` is an `int`; you do not parse a string yourself.
+- **Separation of concerns.** A service receives only the settings it needs, not the entire `IConfiguration`.
+- **Validation.** Validate settings at startup so invalid configuration fails fast.
+- **Reloading.** React to configuration changes with the appropriate options interface and reloadable source.
+- **Testability.** Create options directly in tests with `Options.Create(new EmailOptions { ... })`.
+
+## The three interfaces
+
+### `IOptions<T>`
+
+```csharp
+public class EmailService
+{
+    private readonly EmailOptions _options;
+
+    public EmailService(IOptions<EmailOptions> options)
+        => _options = options.Value;
+}
+```
+
+- Registered as a **singleton**.
+- The value is created on first access and cached; it does not observe later configuration changes.
+- Does not support named options.
+- Can be injected into Singleton, Scoped, or Transient services.
+
+### `IOptionsSnapshot<T>`
+
+```csharp
+public class OrderController : ControllerBase
+{
+    private readonly EmailOptions _options;
+
+    public OrderController(IOptionsSnapshot<EmailOptions> options)
+        => _options = options.Value;
+}
+```
+
+- Registered as **Scoped**.
+- The value is created once per scope. In a web app, each request gets a fresh value, which remains consistent
+  for that request.
+- Supports named options with `options.Get("Backup")`.
+- **Cannot be injected into a Singleton**; scope validation reports a captive dependency.
+- In a console app, it is only available after creating a DI scope.
+
+### `IOptionsMonitor<T>`
+
+```csharp
+public class MailWorker : BackgroundService
+{
+    private readonly IOptionsMonitor<EmailOptions> _monitor;
+    private readonly ILogger<MailWorker> _logger;
+
+    public MailWorker(
+        IOptionsMonitor<EmailOptions> monitor,
+        ILogger<MailWorker> logger)
+    {
+        _monitor = monitor;
+        _logger = logger;
+
+        _monitor.OnChange(updated =>
+            _logger.LogInformation("Email settings changed for {Server}", updated.SmtpServer));
+    }
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var currentOptions = _monitor.CurrentValue;
+        // Use currentOptions for this operation.
+        return Task.CompletedTask;
+    }
+}
+```
+
+- Registered as a **Singleton**.
+- `CurrentValue` returns the latest options value when the configuration source supports reload.
+- `OnChange(listener)` notifies the consumer when the options value changes.
+- Supports named options with `monitor.Get("Backup")`.
+- Can be injected into any service, including Singletons and background services.
+- The value can change during a request or operation; read `CurrentValue` when needed if it must be current.
+
+## Comparison
+
+| | `IOptions<T>` | `IOptionsSnapshot<T>` | `IOptionsMonitor<T>` |
+|---|---|---|---|
+| Lifetime | Singleton | Scoped | Singleton |
+| Sees configuration changes? | No; reads once | Yes, per scope/request | Yes, when the source reloads |
+| Change notification | No | No | Yes, with `OnChange` |
+| Named options | No | Yes, with `Get(name)` | Yes, with `Get(name)` |
+| Can be injected into a Singleton? | Yes | **No** | Yes |
+| Value stable during a request? | Yes | Yes | Not guaranteed |
+| Access the value | `.Value` | `.Value` | `.CurrentValue` |
+| Typical use | Settings fixed for the app's life | Request-level settings | Singletons, workers, live reload |
+
+### Decision guide
+
+```text
+Does the value need to change while the app is running?
+├─ No  → IOptions<T> (simplest)
+└─ Yes
+    ├─ Consumer is scoped/transient and needs one consistent value per request
+    │     → IOptionsSnapshot<T>
+    └─ Consumer is a singleton/background service, or needs change callbacks
+          → IOptionsMonitor<T>
+```
+
+## Named options
+
+Use named options when you have multiple configurations of the same type, such as primary and backup SMTP servers:
+
+```csharp
+builder.Services.Configure<EmailOptions>("Primary",
+    builder.Configuration.GetSection("Email:Primary"));
+builder.Services.Configure<EmailOptions>("Backup",
+    builder.Configuration.GetSection("Email:Backup"));
+
+public class EmailSender
+{
+    private readonly EmailOptions _primary;
+    private readonly EmailOptions _backup;
+
+    public EmailSender(IOptionsSnapshot<EmailOptions> options)
+    {
+        _primary = options.Get("Primary");
+        _backup = options.Get("Backup");
+    }
+}
+```
+
+## Validation
+
+Catch invalid configuration early instead of failing later during an operation:
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+public class EmailOptions
+{
+    public const string SectionName = "Email";
+
+    [Required, MinLength(3)]
+    public string SmtpServer { get; set; } = string.Empty;
+
+    [Range(1, 65535)]
+    public int Port { get; set; }
+
+    public bool UseSsl { get; set; }
+}
+
+builder.Services
+    .AddOptions<EmailOptions>()
+    .Bind(builder.Configuration.GetSection(EmailOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+```
+
+Without `ValidateOnStart()`, validation runs when the options are first accessed, so a bad value may surface late.
+For rules that attributes cannot express, use a validation delegate or implement `IValidateOptions<T>`:
+
+```csharp
+.Validate(options => options.UseSsl || options.Port != 465, "Port 465 requires SSL")
+```
+
+## Other useful features
+
+| Feature | Purpose |
+| ------- | ------- |
+| `PostConfigure<T>` | Run code after all `Configure` calls, for example to apply or override a default. |
+| `Configure<T>(options => ...)` | Set option values in code instead of binding a configuration section. |
+| `AddOptions<T>().BindConfiguration("Email")` | Shorter binding syntax available in .NET 8 and later. |
+| `Options.Create(value)` | Create an `IOptions<T>` manually, useful in unit tests. |
+| `IOptionsFactory<T>` / `IOptionsMonitorCache<T>` | Advanced customization of how options instances are created and cached. |
+
+## Common mistakes
+
+- **Expecting `IOptions<T>` to reload.** It does not; use `IOptionsSnapshot<T>` or `IOptionsMonitor<T>` when reload is needed.
+- **Injecting `IOptionsSnapshot<T>` into a Singleton.** It is Scoped; use `IOptionsMonitor<T>` instead.
+- **Keeping a stale copy of `monitor.CurrentValue`.** Options are replaced on change. Keep the monitor and read
+  `CurrentValue` when needed, or update your copy in `OnChange`.
+- **Assuming `OnChange` fires exactly once per file save.** File watchers may report duplicate events; make the
+  handler idempotent or debounce it if necessary.
+- **Assuming every configuration source reloads.** JSON files configured with `reloadOnChange: true` can reload.
+  Environment variables and command-line arguments do not change automatically while the app is running.
+- **Mutating the options object.** Treat bound options as read-only; mutations are not persisted and may affect other
+  consumers sharing the instance.
+- **Skipping validation.** Missing values can silently remain `null` or the type's default, moving the failure far
+  from the configuration mistake.
+- **Misspelling the section name.** A missing section usually binds default values rather than throwing an error.
+
+## Interview-style summary
+
+> **Options pattern:** bind configuration sections to strongly typed classes and inject them through DI, with built-in
+> support for validation, named options, and reloading.
+>
+> - **`IOptions<T>`**: Singleton, read once, no reload. Use for static settings.
+> - **`IOptionsSnapshot<T>`**: Scoped, recomputed per scope/request, consistent within that scope. Use for request-level
+>   settings; it cannot be injected into Singletons.
+> - **`IOptionsMonitor<T>`**: Singleton, current value with `OnChange` notifications. Use in Singletons and background
+>   services.
+
 # Background service
 
 A `BackgroundService` is a host-managed, cancellable, long-running task used for background work.
@@ -487,3 +721,207 @@ Host manages all.
 | UI access            | Cross-thread crashes |
 | Doing business logic | Hard to test         |
 | Using static state   | Memory leaks         |
+
+# Console app vs Web API: how configuration differs
+
+The concepts are the same in both app types: DI, configuration, logging, and options. What differs is how the host starts, what it does while running, and what you must set up yourself.
+
+## The core difference
+
+|                         | Console app | Web API |
+| ----------------------- | ----------- | ------- |
+| Project SDK             | `Microsoft.NET.Sdk` | `Microsoft.NET.Sdk.Web` |
+| Host built by default?  | No. A plain console app starts with `Main` and no host, DI, configuration, or logging setup. | Yes. `WebApplication.CreateBuilder(args)` sets up the web host. |
+| What runs               | Your code runs, then the process exits unless you keep it alive. | Kestrel listens for HTTP requests until the app is stopped. |
+| Request pipeline        | None | Middleware and endpoint routing (`app.Use...`, `app.Map...`) |
+| Per-request scope       | None | One DI scope per HTTP request |
+| `appsettings.json`      | Configure it to copy to the output directory. | Included and copied by the Web SDK. |
+| Typical lifetime        | Short-lived, or long-lived when used as a worker service. | Long-lived server process. |
+
+## 1. Console app: opt in to the host
+
+A plain console project does not include the Generic Host. Add it when you need the same application infrastructure used by web apps:
+
+```shell
+dotnet add package Microsoft.Extensions.Hosting
+```
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args); // .NET 7+
+
+builder.Services.AddTransient<IEmailService, EmailService>();
+builder.Services.AddTransient<CustomerService>();
+
+using var host = builder.Build();
+
+// There is no HTTP request scope in a console app, so create one for scoped services.
+using var scope = host.Services.CreateScope();
+var customerService = scope.ServiceProvider.GetRequiredService<CustomerService>();
+customerService.RegisterCustomer("Aman");
+```
+
+The Generic Host provides configuration providers, logging, DI, and application lifetime management. Its default configuration includes `appsettings.json`, environment-specific settings, environment variables, and command-line arguments. User Secrets are added in Development when configured for the project. For older .NET versions, use `Host.CreateDefaultBuilder(args).ConfigureServices(...)`.
+
+### Copy `appsettings.json` to the output directory
+
+The Web SDK handles this for web projects. In a console project, add this to the `.csproj` so the file is available beside the built application:
+
+```xml
+<ItemGroup>
+  <None Update="appsettings.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
+```
+
+### Content root gotcha
+
+The host uses a content root to locate `appsettings.json`. A console app launched with a different current working directory may not find the file where expected. If the file is deployed beside the application, set the content root explicitly:
+
+```csharp
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory
+});
+```
+
+### Long-running console app (Worker Service)
+
+For a background job, queue consumer, or scheduled loop, register a hosted service and run the host:
+
+```csharp
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddHostedService<Worker>();
+
+builder.Build().Run(); // Blocks until shutdown.
+```
+
+```csharp
+public class Worker : BackgroundService
+{
+    private readonly ILogger<Worker> _logger;
+    public Worker(ILogger<Worker> logger) => _logger = logger;
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Working at {time}", DateTimeOffset.Now);
+            await Task.Delay(1000, ct);
+        }
+    }
+}
+```
+
+The `Microsoft.NET.Sdk.Worker` template (`dotnet new worker`) creates a project with the worker-service setup.
+
+## 2. Web API: the host is already built
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<CustomerService>();
+
+var app = builder.Build();
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.MapPost("/customers/{name}", (string name, CustomerService service) =>
+{
+    service.RegisterCustomer(name);
+    return Results.Ok();
+});
+
+app.Run(); // Starts Kestrel and blocks.
+```
+
+In addition to DI and configuration, the Web API host provides:
+
+- Kestrel and URL binding (including `ASPNETCORE_URLS` and development launch settings).
+- The HTTP middleware and routing pipeline for authentication, CORS, exception handling, and endpoints.
+- An automatic DI scope per request; Scoped services such as `DbContext` are created and disposed for each request.
+- Model binding and validation, controllers or minimal APIs, and optional Swagger/OpenAPI setup.
+- Web-host environment configuration, including `ASPNETCORE_ENVIRONMENT`.
+
+## 3. Side by side
+
+| Task | Console (Generic Host) | Web API |
+| ---- | ---------------------- | ------- |
+| Create builder | `Host.CreateApplicationBuilder(args)` | `WebApplication.CreateBuilder(args)` |
+| Register services | `builder.Services.Add...` | `builder.Services.Add...` |
+| Read configuration | `builder.Configuration["Key"]` | `builder.Configuration["Key"]` |
+| Configure logging | `builder.Logging.Add...` | `builder.Logging.Add...` |
+| Build | `builder.Build()` returns an `IHost` | `builder.Build()` returns a `WebApplication` |
+| Configure pipeline | Not applicable | `app.Use...`, `app.Map...` |
+| Start | Run your code, or `host.Run()` for hosted work | `app.Run()` |
+| Environment variable | `DOTNET_ENVIRONMENT` | `ASPNETCORE_ENVIRONMENT`; `DOTNET_ENVIRONMENT` is also recognized by modern `WebApplication` hosting |
+| Resolve a Scoped service | Create a scope with `CreateScope()` | Automatically scoped to each request |
+
+If both `DOTNET_ENVIRONMENT` and `ASPNETCORE_ENVIRONMENT` are set for a modern `WebApplication`, `DOTNET_ENVIRONMENT` takes precedence. For a console Generic Host, use `DOTNET_ENVIRONMENT`.
+
+## 4. Configuration and options work the same in both
+
+Given this `appsettings.json`:
+
+```json
+{
+  "Email": {
+    "SmtpServer": "smtp.example.com",
+    "Port": 587
+  }
+}
+```
+
+Bind the section and inject the options into a service:
+
+```csharp
+public class EmailSettings
+{
+    public string SmtpServer { get; set; } = string.Empty;
+    public int Port { get; set; }
+}
+
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("Email"));
+
+public class EmailService : IEmailService
+{
+    private readonly EmailSettings _settings;
+
+    public EmailService(IOptions<EmailSettings> options)
+        => _settings = options.Value;
+
+    public void SendEmail(string message)
+        => Console.WriteLine($"[{_settings.SmtpServer}:{_settings.Port}] {message}");
+}
+```
+
+This service and options-binding code works in either app type. That is a benefit of the Generic Host: application services can be shared between a console worker and a Web API without knowing which host provides them.
+
+## 5. Common mistakes when moving between them
+
+- **Resolving a Scoped service from the root in a console app.** With scope validation enabled, resolving `AppDbContext` directly from `host.Services` throws. Create a scope first.
+- **`appsettings.json` is not found.** Check that the file is copied to the output directory and that the content root points to the expected location.
+- **Using the wrong environment variable.** A console Generic Host uses `DOTNET_ENVIRONMENT`. A modern web host recognizes both `ASPNETCORE_ENVIRONMENT` and `DOTNET_ENVIRONMENT`; when both are set, `DOTNET_ENVIRONMENT` takes precedence.
+- **Using middleware or `Startup` concepts in a plain console app.** Without an HTTP pipeline, middleware and routing do not apply.
+- **Expecting a console app to stay alive.** A plain app exits when `Main` completes. Use `Run()` with a hosted service for long-running work.
+- **Doing heavy work in a hosted service constructor.** Keep initialization and recurring work in `ExecuteAsync`, and create scopes with `IServiceScopeFactory` when the work needs Scoped dependencies.
+
+## Which approach to pick
+
+| Situation | Use |
+| --------- | --- |
+| Tiny one-off tool with no configuration needs | Plain console app; manual `ServiceCollection` only if DI is useful |
+| Console job needing configuration, logging, or DI | Console app with `Host.CreateApplicationBuilder` |
+| Background processing, queue consumer, or scheduled loop | Worker Service with `BackgroundService` |
+| HTTP endpoints | Web API with `WebApplication.CreateBuilder` |
+
+> **In short:** A Web API comes with the host, Kestrel, the middleware pipeline, and per-request scopes. A plain console app starts without those pieces, so add the Generic Host when needed, configure its content root and settings files, and create DI scopes yourself. Service registration, configuration, and logging patterns are otherwise largely the same.

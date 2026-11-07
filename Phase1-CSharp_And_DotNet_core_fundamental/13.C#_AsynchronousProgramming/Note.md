@@ -139,6 +139,157 @@ catch (Exception ex)
     Console.WriteLine("Other error: " + ex.Message);
 }
 ```
+## What happens when you call an async method or do async I/O
+
+### The short version
+
+1. The method **starts on the caller's thread** and runs like normal code.
+2. At the first `await` on something **not yet finished**, the method **pauses** and returns an incomplete `Task` to its caller. The thread is released.
+3. The **OS, hardware, or a timer** does the waiting. No thread is involved.
+4. When it finishes, the **rest of the method (the continuation)** is scheduled.
+5. Where it runs depends on the **context captured at the `await`**, not on which thread started the method.
+
+### Step by step
+
+```csharp
+static async Task<string> GetAsync()
+{
+    Console.WriteLine("A");                         // (1) caller's thread
+    string s = await http.GetStringAsync(url);      // (2) pause here
+    Console.WriteLine("B");                         // (4) continuation
+    return s;
+}
+```
+
+```
+Calling thread        OS / hardware / timer           Who runs the continuation
+──────────────        ────────────────────            ─────────────────────────
+(1) runs "A"
+(2) sends request ──► I/O in progress
+    returns Task          (no .NET thread waiting)
+    thread is FREE             │
+        │                      ▼
+   other work             I/O done: OS signals
+                               │
+                               ▼
+                          (3) completion is queued ──► (4) runs "B" on a thread
+                                                           chosen by the rules below
+```
+
+### Who does what
+
+| Part | Who does it |
+|---|---|
+| Code before the first incomplete `await` | **The caller's thread**, synchronously |
+| The actual I/O (network, disk) | **OS and hardware** (DMA, interrupts). No .NET thread |
+| `Task.Delay` waiting | **A timer**. No thread waits |
+| Noticing the completion | A tiny runtime mechanism (IOCP on Windows, epoll on Linux, a timer thread) that only **queues** the continuation |
+| Code after the `await` | **A thread chosen by the scheduling rules**, see below |
+
+### Where does the continuation resume?
+
+At the `await`, the runtime looks at the **context of the code that awaited**:
+
+```
+Is there a SynchronizationContext (UI app, old ASP.NET)?
+├─ Yes → post the continuation back to it
+│        (WinForms/WPF: back on the UI thread)
+└─ No
+    Is there a custom TaskScheduler?
+    ├─ Yes → queue to that scheduler
+    └─ No (the normal console / ASP.NET Core case)
+         → the continuation runs on the thread pool
+           (either inline on the thread that completed the awaited task,
+            or queued to a free pool thread)
+```
+
+| App type | After `await` you usually resume on |
+|---|---|
+| **WinForms / WPF** | The **UI thread** (context captured) |
+| **ASP.NET Core** | **Any thread pool thread** (no context). Not the original request thread |
+| **Console app** | **A thread pool thread**, usually |
+| **Any app with `ConfigureAwait(false)`** | A thread pool thread, ignoring the context |
+
+Two things are **not guaranteed** and shouldn't be relied on:
+
+- That the continuation runs on a thread **different** from the starting one.
+- That it runs on the **same** thread. Pool threads are interchangeable, and a thread may be reused or not.
+
+### Special case: the awaited task is already finished
+
+```csharp
+await Task.CompletedTask;          // already complete
+await Task.Delay(0);               // already complete
+await cachedTask;                  // finished earlier
+```
+
+If the task is already complete at the `await`, the method **doesn't pause at all**. It continues **synchronously on the same thread**, with no thread switch.
+
+### Nested async calls (what your program does)
+
+```
+Main awaits func(), func awaits DemoAsync(), DemoAsync awaits Task.Delay
+```
+
+Each `await` registers its **own** continuation. When the inner task completes, its continuation runs, then that completes the next task up, whose continuation runs, and so on. The chain unwinds from the inside out.
+
+Each continuation uses the same rules from the diagram above, based on the context at **its own** `await`. By default, the awaiter of a task tries to run its continuation **inline on the thread that completed it**. Both "same thread" and "different thread" results are normal and valid.
+
+### Who triggers completion
+
+| Awaiting | Completion signaled by | Continuation runs on |
+|---|---|---|
+| `GetStringAsync`, `ToListAsync`, `ReadAsync` (real I/O) | OS I/O completion | Per the rules (pool thread, or UI thread in a UI app) |
+| `Task.Delay(500)` | A timer | Per the rules |
+| `Task.Run(() => Work())` | A **pool thread finishing your delegate** | Per the rules |
+| `await someTcs.Task` | Whoever calls `SetResult` | Per the rules (it can run inline on the thread calling `SetResult`, which is why `RunContinuationsAsynchronously` exists) |
+
+Only `Task.Run` (and similar) uses a pool thread for the **work itself**. For I/O and timers, a thread only appears at the **end**, to run the continuation.
+
+### `ConfigureAwait(false)`
+
+```csharp
+string s = await http.GetStringAsync(url).ConfigureAwait(false);
+// resume on a pool thread, don't go back to the captured context
+```
+
+- Use it in **library code** so a UI thread isn't required for the continuation.
+- In ASP.NET Core application code it makes no practical difference, since there is no context.
+- Don't use it in UI event handlers if the next line touches controls.
+
+### Concrete examples
+
+**WinForms button click**
+
+```csharp
+private async void Button_Click(object sender, EventArgs e)
+{
+    // runs on UI thread
+    var data = await http.GetStringAsync(url);   // UI thread released, window stays responsive
+    // resumes on the UI thread (context captured)
+    label.Text = data;                           // safe
+}
+```
+
+**ASP.NET Core endpoint**
+
+```csharp
+app.MapGet("/users", async (AppDbContext db) =>
+{
+    // starts on pool thread X
+    var users = await db.Users.ToListAsync();    // thread X released to serve other requests
+    // resumes on pool thread Y (maybe X, maybe not)
+    return users;
+});
+```
+
+### About your output
+
+Your output showed `After Task.Delay` on Thread 11 but `func completed` and `Main end` back on Thread 1. That mix isn't the typical pattern for a plain console app, so I don't want to explain it with certainty. The rules above say a continuation can run inline or be queued, and which thread it ends up on is an implementation detail. If you run the diagnostic lines I suggested earlier (`SynchronizationContext.Current`, `TaskScheduler.Current`, runtime version) and tell me how you launched the program, I can say what your environment is doing.
+
+### One-line summary
+
+> The caller's thread runs the method **until the first incomplete `await`**, then is released. The **OS, hardware, or a timer** does the waiting with no thread. When done, the continuation resumes on **whatever the captured context says**: the UI thread in a UI app, otherwise a **thread pool thread**, which may or may not be the original one.
 
 ## Dispose in C#
 
