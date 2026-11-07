@@ -137,3 +137,26 @@ foreach (var group in lookup)
 ```
 
 Similar to `GroupBy()`, but the result is already evaluated and can be reused multiple times efficiently.
+
+**Example — Group numbers by even/odd:**
+
+```csharp
+var numbers = new[] { 1, 2, 3, 4, 5, 6 };
+var groups = numbers.GroupBy(n => n % 2 == 0 ? "Even" : "Odd");
+
+foreach (var group in groups.Where(group => group.Key == "Even"))
+{
+    foreach (var num in group)
+        Console.WriteLine(num);
+}
+```
+
+**Output:**
+
+```text
+2
+4
+6
+```
+
+**Note:** Unlike `ToLookup()`, `GroupBy()` uses deferred execution and returns groups as a sequence rather than an indexable lookup.

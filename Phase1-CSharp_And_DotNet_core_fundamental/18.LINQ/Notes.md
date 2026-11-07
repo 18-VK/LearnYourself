@@ -151,6 +151,25 @@ var q = from s in sentences
         select new { s, WordCount = words.Length };
 ```
 
+The **let** keyword in C# is used within **LINQ query expressions** to introduce a new range variable initialized with the result of an expression, allowing that variable to be **reused** in subsequent clauses like `where`, `orderby`, or `select`. This improves code readability and performance by avoiding repeated calculations or method calls.
+
+For example, in a query, `let` can store the length of a string or the result of a complex computation, which is then referenced multiple times without re-evaluating the source expression.
+
+```csharp
+var query = from word in words
+            let length = word.Length
+            where length > 5
+            select new { Word = word, Length = length };
+```
+
+While `let` is specific to **query syntax**, its functionality in **method syntax** (chained extension methods) is typically achieved by using a **lambda expression** that creates an anonymous type or by using a complex lambda in a `Select` or `Where` clause. There is no direct `Let` method in standard LINQ, though libraries like **System.Interactive** provide a `.Let` extension method for fluent expressions.
+
+Key distinctions include:
+*   **let** is a contextual keyword used only in **query expressions**.
+*   It is similar to `var` in that it uses **implicit typing**, but it specifically introduces a variable for use within the query's scope.
+*   The compiler translates `let` into a `Select` projection that creates an anonymous type holding the iteration variable and the new variable.
+
+
 **Note:** Helps avoid recomputing expressions and improves readability.
 
 ### 8) `from ... in ...` (multiple `from`) — query form of `SelectMany`
@@ -783,59 +802,6 @@ var rep = Enumerable.Repeat("x", 3); // {"x","x","x"}
 
 The LINQ `Zip` operator is super useful when you want to pair elements from two sequences together —
 like zipping two lists side by side.
-
-🧠 **Basic Syntax**
-
-```csharp
-var result = firstSequence.Zip(secondSequence, (first, second) => new { first, second });
-```
-
-👉 It goes through both sequences at the same time.
-👉 It stops when the shorter sequence ends.
-
-📌 **Example 1 — Zipping two lists**
-
-```csharp
-var numbers = new[] { 1, 2, 3 };
-var letters = new[] { "A", "B", "C", "D" };
-
-var zipped = numbers.Zip(letters, (n, l) => $"{n}-{l}");
-
-foreach (var item in zipped)
-    Console.WriteLine(item);
-```
-
-✅ **Output:**
-
-```text
-1-A
-2-B
-3-C
-```
-
-Notice it stopped at 3 elements because `numbers` was shorter.
-
-📆 **Example 2 — Consecutive element comparison in one sequence**
-
-👉 Commonly used pattern: pair each element with its next element.
-We use `.Skip(1)` for the second sequence.
-
-```csharp
-var dates = new[]
-{
-    new DateTime(2023,1,10),
-    new DateTime(2023,3,15),
-    new DateTime(2023,4,10)
-};
-
-var differences = dates
-    .Zip(dates.Skip(1), (prev, next) => (next - prev).Days)
-    .ToList();
-
-differences.ForEach(d => Console.WriteLine(d));
-```
-
-The LINQ `Zip` operator is super useful when you want to pair elements from two sequences together — like zipping two lists side by side.
 
 🧠 **Basic Syntax**
 
