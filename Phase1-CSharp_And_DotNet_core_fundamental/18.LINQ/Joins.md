@@ -332,37 +332,60 @@ LINQ does not support a direct `Right Join`, but you can simulate it by swapping
 **Example:**
 
 ```csharp
-var rightJoin = from student in students
-                join department in departments on student.DepartmentId equals department.Id into studentDeptGroup
-                from dept in studentDeptGroup.DefaultIfEmpty()
+var rightJoin = from department in departments
+                join student in students on department.Id equals student.DepartmentId into departmentStudents
+                from student in departmentStudents.DefaultIfEmpty()
                 select new
                 {
-                    Student = student.Name,
-                    Department = dept != null ? dept.Name : "No Department"
+                    Student = student != null ? student.Name : "No Student",
+                    Department = department.Name
                 };
 
 foreach (var item in rightJoin)
 {
-    Console.WriteLine($"{item.Student} -> {item.Department}");
+    Console.WriteLine($"{item.Department} -> {item.Student}");
+}
+```
+
+**Method Syntax:**
+
+```csharp
+var rightJoinMethod = departments
+    .GroupJoin(
+        students,
+        department => department.Id,
+        student => student.DepartmentId,
+        (department, matchingStudents) => new { department, matchingStudents })
+    .SelectMany(
+        x => x.matchingStudents.DefaultIfEmpty(),
+        (x, student) => new
+        {
+            Student = student?.Name ?? "No Student",
+            Department = x.department.Name
+        });
+
+foreach (var item in rightJoinMethod)
+{
+    Console.WriteLine($"{item.Department} -> {item.Student}");
 }
 ```
 
 **Output:**
 
 ```text
-Aisha -> Engineering
-Ben -> Marketing
-Chloe -> No Department
-Daniel -> Finance
+Engineering -> Aisha
+HR -> No Student
+Finance -> Daniel
+Marketing -> Ben
 ```
 
-Here, `Chloe` is included even though there is no matching department.
+This keeps every department (the right-side collection in the original `students` to `departments` join). `Chloe` is excluded because no department matches her.
 
 ---
 
 ### 5) Full Outer Join (Simulated)
 
-A full outer join combines all rows from both sides. LINQ does not provide a direct full outer join, so we simulate it with a left join + right join + `Union`.
+A full outer join combines all matching rows and all unmatched rows from both sides. LINQ does not provide a direct full outer join, so we simulate it with a left join plus the unmatched rows from the right collection.
 
 **Example:**
 
@@ -376,18 +399,50 @@ var left = from department in departments
                Student = student != null ? student.Name : "No student"
            };
 
-var right = from student in students
-            join department in departments on student.DepartmentId equals department.Id into departmentGroup
-            from department in departmentGroup.DefaultIfEmpty()
-            select new
-            {
-                Department = department != null ? department.Name : "No department",
-                Student = student.Name
-            };
+var unmatchedStudents = from student in students
+                        where !departments.Any(department => department.Id == student.DepartmentId)
+                        select new
+                        {
+                            Department = "No department",
+                            Student = student.Name
+                        };
 
-var fullOuter = left.Union(right);
+var fullOuter = left.Concat(unmatchedStudents);
 
 foreach (var item in fullOuter)
+{
+    Console.WriteLine($"{item.Department} -> {item.Student}");
+}
+```
+
+**Method Syntax:**
+
+```csharp
+var leftMethod = departments
+    .GroupJoin(
+        students,
+        department => department.Id,
+        student => student.DepartmentId,
+        (department, matchingStudents) => new { department, matchingStudents })
+    .SelectMany(
+        x => x.matchingStudents.DefaultIfEmpty(),
+        (x, student) => new
+        {
+            Department = x.department.Name,
+            Student = student?.Name ?? "No student"
+        });
+
+var unmatchedStudentsMethod = students
+    .Where(student => !departments.Any(department => department.Id == student.DepartmentId))
+    .Select(student => new
+    {
+        Department = "No department",
+        Student = student.Name
+    });
+
+var fullOuterMethod = leftMethod.Concat(unmatchedStudentsMethod);
+
+foreach (var item in fullOuterMethod)
 {
     Console.WriteLine($"{item.Department} -> {item.Student}");
 }
@@ -400,14 +455,10 @@ Engineering -> Aisha
 HR -> No student
 Finance -> Daniel
 Marketing -> Ben
-Engineering -> No student
-HR -> Aisha
-Finance -> Daniel
-Marketing -> Ben
 No department -> Chloe
 ```
 
-The `Union` removes duplicates, so if the same row appears in both left and right results, it appears only once.
+The matching rows and unmatched departments come from the left join. `Chloe` is appended because she has no matching department. `Concat` preserves duplicate rows if distinct source records have the same projected values; using `Union` could incorrectly remove those duplicates.
 
 ---
 
