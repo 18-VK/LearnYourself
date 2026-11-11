@@ -317,9 +317,9 @@ function resolveRanges(owned: Owned[], source: NoteSource, warn: (m: string) => 
     }
     const note = source.load(rel);
     const total = note.lines.length;
-    const locate = (anchor: string | undefined, line: string | undefined, occurrence: number | undefined, owner: string): number | null | undefined => {
+    const locate = (anchor: string | undefined, line: string | undefined, occurrence: number | undefined, owner: string, after?: number): number | null | undefined => {
       if (anchor) {
-        const found = resolveHeading(note, anchor, occurrence);
+        const found = resolveHeading(note, anchor, occurrence, after);
         if (!found) return null;
         if (found.fuzzy) warn(`${owner}: heading "${anchor}" is now "${'#'.repeat(found.heading.depth)} ${found.heading.text}" in ${rel}; followed it (no action needed).`);
         return found.heading.line;
@@ -334,15 +334,18 @@ function resolveRanges(owned: Owned[], source: NoteSource, warn: (m: string) => 
       return undefined; // this entry has no such anchor
     };
     const spans: { o: Owned; start: number; end: number | null; exact: boolean }[] = [];
+    // lessons from one note normally follow its order, and a lesson ends after it starts: both settle a tie
+    let previousStart: number | undefined;
     for (const o of list) {
       const s = o.slice;
-      const start = locate(s.from, s.fromLine, s.fromOccurrence, o.owner);
+      const start = locate(s.from, s.fromLine, s.fromOccurrence, o.owner, previousStart);
       if (start === null) {
         dropped.add(s);
         warn(`${o.owner}: heading "${s.from ?? s.fromLine}" is gone from ${rel}; its text joined the lesson before it.`);
         continue;
       }
-      const end = locate(s.until, s.untilLine, s.untilOccurrence, o.owner);
+      if (start !== undefined) previousStart = start;
+      const end = locate(s.until, s.untilLine, s.untilOccurrence, o.owner, start ?? 0);
       spans.push({ o, start: start ?? 0, end: end === undefined ? total : end, exact: !s.from || note.headings.some((h) => h.norm === normHeading(s.from!)) });
     }
     spans.sort((a, b) => a.start - b.start || Number(b.exact) - Number(a.exact));

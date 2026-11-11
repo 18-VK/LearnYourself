@@ -73,6 +73,8 @@ interface LessonPlan {
   id: string;
   slices: Range[];
   inserts: Map<string, Insertion[]>;
+  /** Visualizers actually placed in the lesson (a placement whose section is gone is hidden, not counted). */
+  vizShown: number;
   order: number;
 }
 
@@ -211,6 +213,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
           }
         }
         const inserts = new Map<string, Insertion[]>();
+        let shown = 0; // placements that found their place; a hidden one must not be counted (the pages and tests use the count)
         lesson.place.forEach((p, pi) => {
           let placedHere = false;
           for (const r of slices) {
@@ -239,11 +242,12 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
             list.push({ line, text: vizFence(p, `${id}#${pi + 1}`, wraps) });
             inserts.set(r.rel, list);
             placedHere = true;
+            shown++;
             break;
           }
           if (!placedHere) warnings.push(`${id}: the ${p.viz ?? p.diagram} visualizer is hidden: its section "${p.at.section}" is no longer in this lesson`);
         });
-        plans.push({ course, module: mod, lesson, id, slices, inserts, order: order++ });
+        plans.push({ course, module: mod, lesson, id, slices, inserts, vizShown: shown, order: order++ });
       }
     }
   }
@@ -465,7 +469,7 @@ export async function buildContent(opts: BuildOptions): Promise<BuildResult> {
         if (gen.tables !== src.tables) warnings.push(`${plan.id}: generated ${gen.tables} tables but the notes have ${src.tables}`);
         if (gen.headings !== src.headings) warnings.push(`${plan.id}: generated ${gen.headings} headings but the notes have ${src.headings}`);
         const minutes = readingMinutes(gen);
-        const vizCount = lesson.place.length + (hasGraph ? 1 : 0);
+        const vizCount = plan.vizShown + (hasGraph ? 1 : 0);
         courseMinutes += minutes;
         courseViz += vizCount;
 

@@ -123,10 +123,17 @@ export function parseNote(relPath: string, raw: string): Note {
   return { rel: relPath, isTxt: /\.txt$/i.test(relPath), lines, inFence, headings, fences };
 }
 
-/** A heading's words, without bare numbers: renumbering a section doesn't rename it. */
+/** Little words that don't make two headings the same section. */
+const FILLER = new Set(['a', 'an', 'and', 'or', 'the', 'of', 'in', 'on', 'for', 'to', 'with', 'vs', 'via', 'by', 'at', 'is', 'are']);
+/** A rough stem, so "query" and "queries", or "configure" and "configuring", count as one word. Only for comparing. */
+const stem = (w: string): string => {
+  const s = w.replace(/ies$/, 'y').replace(/(?<!s)s$/, '').replace(/(?:ing|ed)$/, '').replace(/e$/, '');
+  return s.length >= 3 ? s : w;
+};
+/** A heading's words, without bare numbers or filler: renumbering or rephrasing a section doesn't rename it. */
 const anchorWords = (norm: string): string[] => {
   const words = norm.split(' ').filter(Boolean);
-  const named = words.filter((w) => !/^\d+$/.test(w));
+  const named = words.filter((w) => !/^\d+$/.test(w) && !FILLER.has(w)).map(stem);
   return named.length ? named : words;
 };
 
@@ -134,9 +141,10 @@ const anchorWords = (norm: string): string[] => {
  * Finds a heading the way findHeading does, but also survives a renamed one: when no heading has this exact
  * text, the closest heading stands in if it clearly is the same section (most words shared, and no other
  * heading as close), and a numbered section keeps its number even when it was reworded completely.
+ * `after` (a 0-based line) settles a tie: the section must come after it, as a lesson's end comes after its start.
  * Returns null when nothing qualifies or the anchor is not a heading at all.
  */
-export function resolveHeading(note: Note, anchor: string, occurrence = 1): { heading: NoteHeading; fuzzy: boolean } | null {
+export function resolveHeading(note: Note, anchor: string, occurrence = 1, after?: number): { heading: NoteHeading; fuzzy: boolean } | null {
   let key: string;
   try {
     key = normHeading(anchor);
@@ -149,8 +157,10 @@ export function resolveHeading(note: Note, anchor: string, occurrence = 1): { he
   const want = key.slice(key.indexOf(' ') + 1);
   const sameLevel = note.headings.filter((h) => key.startsWith(`${h.depth} `));
   for (const pool of [sameLevel, note.headings]) {
-    const at = closestText(want, pool.map(textOf));
-    if (at >= 0) return { heading: pool[at]!, fuzzy: true };
+    const tied = closestTexts(want, pool.map(textOf)).map((i) => pool[i]!);
+    const pick = tied.length === 1 ? tied : tied.filter((h) => after !== undefined && h.line > after);
+    if (pick.length === 1) return { heading: pick[0]!, fuzzy: true };
+    if (tied.length) return null; // close matches, but no way to tell which one is meant
   }
   const [number, ...rest] = want.split(' ');
   if (rest.length && /^\d+$/.test(number!)) {
@@ -166,19 +176,26 @@ export function resolveHeading(note: Note, anchor: string, occurrence = 1): { he
  * but "merge sort" doesn't find "heap sort". A tie means it isn't clear, so nothing is chosen.
  */
 export function closestText(want: string, candidates: string[]): number {
+  const best = closestTexts(want, candidates);
+  return best.length === 1 ? best[0]! : -1;
+}
+
+/** Every candidate sharing the best score that qualifies (none, one, or a tie), in their original order. */
+export function closestTexts(want: string, candidates: string[]): number[] {
   const mine = new Set(anchorWords(want));
   const scored = candidates
     .map((text, i) => {
       const theirs = new Set(anchorWords(text));
       const shared = [...mine].filter((w) => theirs.has(w)).length;
+      // one shared word is a coincidence ("dotnet script versions" vs "For version 7"), unless the anchor is one word
+      if (shared < Math.min(2, mine.size)) return { i, score: 0 };
       const overlap = shared / (mine.size + theirs.size - shared || 1);
       const contained = shared / (Math.min(mine.size, theirs.size) || 1);
       return { i, score: (overlap + contained) / 2 };
     })
-    .filter((x) => x.score >= 0.6)
-    .sort((a, b) => b.score - a.score);
-  if (!scored[0] || scored[1]?.score === scored[0].score) return -1;
-  return scored[0].i;
+    .filter((x) => x.score >= 0.6);
+  const top = Math.max(...scored.map((x) => x.score));
+  return scored.filter((x) => x.score === top).map((x) => x.i);
 }
 
 /** Cleans a heading into a short phrase for titles and "What this lesson covers". */

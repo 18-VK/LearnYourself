@@ -502,7 +502,7 @@ modules:
           - viz: EfCoreVisualizer
             props: { scenario: n-plus-one }
             tier: 2
-            at: { section: "## Types" }
+            at: { section: "# 2. Navigation data loading" }   # was "## Types", which the 2026-11-08 rewrite folded into this section
         resources:
           - asset: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Validation And Data Modeling Attributes.pdf"
           - asset: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Efcore Fluent Api And Attributes.docx"

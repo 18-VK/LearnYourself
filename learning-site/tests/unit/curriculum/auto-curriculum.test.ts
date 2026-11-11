@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compareNumbers, humanize, matchesGlob, MAX_LESSON_WORDS, numberOf, partTitle, reconcileCurriculum, slugify, splitNote, type NoteSource } from '../../../scripts/lib/auto-curriculum';
-import { parseNote, type Note } from '../../../scripts/lib/notes';
+import { closestText, normText, parseNote, resolveHeading, type Note } from '../../../scripts/lib/notes';
 import type { Course, ManifestLesson, ManifestModule, SiteManifest } from '../../../scripts/lib/schema';
 
 // ── a small repo in memory ────────────────────────────────────────────────────────────────
@@ -536,5 +536,68 @@ describe('a note the manifests map by hand', () => {
     const r = run({ 'P/A.md': textOf('A'), 'P/Other/B.md': textOf('Heading in the note') }, c);
     expect(r.placed).toEqual([]);
     expect(r.courses[0]!.modules[0]!.lessons[0]).toMatchObject({ id: 'pinned', title: 'My own title' });
+  });
+});
+
+// Headings from a real rewrite of the EF Core note (2026-11-08): the lessons and quizzes must follow the reworded ones,
+// and must not latch on to a different section that only shares a word.
+describe('following a reworded heading', () => {
+  const rewritten = parseNote(
+    'n.md',
+    ['# 1. Configure the model', '# 2. Navigation data loading', '## 1. Eager loading', '## 2. Lazy loading', '# 3. Change tracking', '# 4. Cascade delete', '# 7. Raw SQL and parameterized queries', '# 8. IQueryable vs IEnumerable'].join('\n\n'),
+  );
+  const found = (anchor: string) => resolveHeading(rewritten, anchor)?.heading.text ?? null;
+
+  it.each([
+    ['# SQL Raw Query', '7. Raw SQL and parameterized queries'],
+    ['# Configuring the Model', '1. Configure the model'],
+    ['# Change tracking in EF Core', '3. Change tracking'],
+    ['# Navigation Data loading in EF Core', '2. Navigation data loading'],
+    ['# The difference between IQueryable and IEnumerable in C#', '8. IQueryable vs IEnumerable'],
+  ])('%s → %s', (anchor, heading) => {
+    expect(found(anchor)).toBe(heading);
+  });
+
+  it.each(['## Delete behaviors', '## Types', '# EF Core Migrations'])('%s is not mistaken for another section', (anchor) => {
+    expect(found(anchor)).toBeNull();
+  });
+
+  it('works the same for a quiz or cheat sheet citing a section by name', () => {
+    const lessonHeadings = ['1. Configure the model', '4. Cascade delete'].map(normText);
+    expect(closestText(normText('Configuring the Model'), lessonHeadings)).toBe(0);
+    expect(closestText(normText('Delete behaviors'), lessonHeadings)).toBe(-1);
+  });
+
+  it('needs more than one shared word, unless the anchor is a single word', () => {
+    // from the .NET CLI note: a cheat-sheet row must not move to an unrelated one-word match
+    expect(closestText(normText('Earlier .NET versions (6 to 9): dotnet script'), ['Publish to NuGet.org', 'For version 7'].map(normText))).toBe(-1);
+    expect(closestText(normText('Setup'), ['5.1 Setup (once)', '5.2 Add a migration'].map(normText))).toBe(0);
+  });
+});
+
+describe('a reworded heading that matches two sections equally', () => {
+  // the rewrite also gave the note a title sharing the words of the migrations section
+  const text = ['# EF Core Notes and Migration Reference', 'Intro.', '# 3. Change tracking', 'One.', '# 5. EF Core migrations and database commands', 'Two.'].join('\n\n');
+  const lessons = () => [
+    course('alpha', [
+      mod('m', [
+        lesson('tracking', 'P/n.md', { from: '# Change tracking in EF Core', until: '# EF Core Migrations' }),
+        lesson('migrations', 'P/n.md', { from: '# EF Core Migrations' }),
+      ]),
+    ]),
+  ];
+
+  it('is settled by order: the section after the lesson before it', () => {
+    const r = run({ 'P/n.md': text }, lessons());
+    expect(r.courses[0]!.modules[0]!.lessons.map((l) => [l.id, l.sources[0]!.range])).toEqual([
+      ['tracking', [0, 8]],
+      ['migrations', [8, 11]],
+    ]);
+  });
+
+  it('is left alone when nothing says which one is meant', () => {
+    const note = parseNote('n.md', text);
+    expect(resolveHeading(note, '# EF Core Migrations')).toBeNull();
+    expect(resolveHeading(note, '# EF Core Migrations', 1, 4)?.heading.text).toBe('5. EF Core migrations and database commands');
   });
 });
