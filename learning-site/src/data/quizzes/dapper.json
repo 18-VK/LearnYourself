@@ -43,7 +43,7 @@
       ],
       "answer": 0,
       "explanation": "Use `DynamicParameters` when you need output parameters or return values: add the parameter with `ParameterDirection.Output`, execute with `CommandType.StoredProcedure`, then call `p.Get<int>(...)`.",
-      "source": { "section": "## Parameters & DynamicParameters" },
+      "source": { "section": "## 8. Stored procedures" },
       "reviewed": false
     },
     {
@@ -58,7 +58,7 @@
       ],
       "answer": 3,
       "explanation": "Share the same `IDbTransaction` with the Dapper calls so everything is atomic: pass `tx` to each call, commit at the end, and roll back in `catch`.",
-      "source": { "section": "## Transactions" },
+      "source": { "section": "## 7. Transactions" },
       "reviewed": false
     },
     {

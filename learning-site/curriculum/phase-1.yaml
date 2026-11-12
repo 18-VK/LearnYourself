@@ -546,9 +546,18 @@ modules:
     title: "Dapper, repository pattern & logging"
     lessons:
       - id: dapper
-        title: "Dapper"
+        title: "Dapper: queries, mapping & transactions"
+        reason: 'Dapper.md (merged with "Dapper in Production" on 2026-11-12) is split in two: sections 1-8 here.'
         sources:
           - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Dapper.md"
+            until: "## 9. Production structure in ASP.NET Core"
+
+      - id: dapper-in-production
+        title: "Dapper in production"
+        reason: "Dapper.md, sections 9-14: structure, unit of work, hardening, testing, migrations, go-live checklist."
+        sources:
+          - file: "Phase1-CSharp_And_DotNet_core_fundamental/18.LINQ/EFCore/Dapper.md"
+            from: "## 9. Production structure in ASP.NET Core"
 
       - id: calling-stored-procedures
         title: "Calling stored procedures from .NET"
