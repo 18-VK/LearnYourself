@@ -92,11 +92,45 @@ if (_logger.IsEnabled(LogLevel.Debug))
 
 ## Logger scopes and structured state example
 
+A logger scope attaches shared context to every log line written while the scope is open, so you don't repeat it in each message.
+
+**In your example:**
+
 ```csharp
 using var scope = _logger.BeginScope("Order {OrderId}", orderId);
 _logger.LogInformation("Step 1: validation");
 _logger.LogInformation("Step 2: saving to DB");
 ```
+
+`BeginScope` opens a scope carrying `OrderId = 123`. Both log lines inside it automatically get that `OrderId`. When `scope` is disposed (the end of the method, because of `using var`), the scope ends and later logs no longer carry it.
+
+Without a scope, you'd have to write `"Step 1: validation for order {OrderId}"` in every line. And if some other method called by this one logs something, it wouldn't know the order id at all. With a scope, those logs get it too.
+
+**Where you see it.** The scope data is not part of the message text. Whether it shows up depends on the logging provider:
+
+- **Console logger:** off by default. Turn it on with `"Logging": { "Console": { "IncludeScopes": true } }` in appsettings.json.
+- **Serilog, Application Insights, Seq, Elastic:** the scope values become searchable structured properties, so you can filter `OrderId = 123` and see every log line for that order across services and layers.
+
+**Common uses in a production app:**
+- Correlation id or trace id for each request. ASP.NET Core already adds `TraceId` and `SpanId` scopes for you.
+- Tenant, user id or order id, so you can find every log for one entity.
+- Wrapping a background job or message handler with its job id.
+
+**Passing several values.** Use a dictionary so each key becomes its own property:
+
+```csharp
+using var scope = _logger.BeginScope(new Dictionary<string, object>
+{
+    ["OrderId"] = orderId,
+    ["UserId"] = userId
+});
+```
+**Note : Need FromLogContext added for this**
+
+**Tips:**
+- Always use `using` so the scope is closed.
+- Scopes flow across `await` calls in the same logical flow, so they work in async code.
+- Don't put sensitive data (passwords, card numbers, personal data) in a scope, because it ends up on every line.
 
 ## Configuring logging (Generic Host / Console app)
 
