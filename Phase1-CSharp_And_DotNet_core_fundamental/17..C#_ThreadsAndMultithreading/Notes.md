@@ -27,23 +27,6 @@ In modern .NET it's often better to use the Task Parallel Library (TPL) and the 
 The `System.Threading.Thread` class represents a managed thread. It lets you create a new OS thread, set its priority,
 check its state, etc. To start a thread, supply a delegate (the method to run) to the `Thread` constructor and then call `Start()`.
 
-## Thread lifecycle methods
-
-- **`Thread.Join()`** – blocks the calling thread until the target thread finishes. This is a synchronization method: the main
-  thread (for example) waits inside `Join()` until the worker thread has terminated.
-
-- **`Thread.Sleep(milliseconds)`** – suspends the current thread for the given time. It pauses execution (changing the thread
-  state to `WaitSleepJoin`) for that interval.
-  **Note:** using `Thread.Sleep` for coordination is generally discouraged; prefer synchronization primitives. For instance,
-  instead of sleeping to wait forever, use wait handles (`Mutex`, `Monitor`, `EventWaitHandle`, `Semaphore`, etc.)
-
-- **`Thread.Abort()`** – obsolete. In .NET Core / .NET 5+ calling `Abort()` is not supported (it will throw a
-  `PlatformNotSupportedException`). `Thread.Abort` was intended to forcefully terminate another thread by throwing a
-  `ThreadAbortException`, but it is unsafe and unreliable. As best practice, use cooperative cancellation or other
-  coordination instead of aborting threads.
-
-> **Note:** For above methods and given suggestion, we will go through them further.
-
 ## Passing methods (delegate) to thread
 
 In C#, you can create threads that execute methods with parameters or without parameters.
@@ -284,6 +267,291 @@ Console.WriteLine("Main continues");
 | **`Priority`**               | ThreadPriority | Scheduling hint (Lowest, BelowNormal, Normal, AboveNormal, Highest).                | `t.Priority = ThreadPriority.AboveNormal;` |
 | **`CurrentThread`** (static) | Thread         | Gets the currently executing thread.                                                | `Thread cur = Thread.CurrentThread;`       |
 
+## Thread lifecycle methods
+
+- **`Thread.Join()`** – blocks the calling thread until the target thread finishes. This is a synchronization method: the main
+  thread (for example) waits inside `Join()` until the worker thread has terminated.
+
+- **`Thread.Sleep(milliseconds)`** – suspends the current thread for the given time. It pauses execution (changing the thread
+  state to `WaitSleepJoin`) for that interval.
+  **Note:** using `Thread.Sleep` for coordination is generally discouraged; prefer synchronization primitives. For instance,
+  instead of sleeping to wait forever, use wait handles (`Mutex`, `Monitor`, `EventWaitHandle`, `Semaphore`, etc.)
+
+- **`Thread.Abort()`** – obsolete. In .NET Core / .NET 5+ calling `Abort()` is not supported (it will throw a
+  `PlatformNotSupportedException`). `Thread.Abort` was intended to forcefully terminate another thread by throwing a
+  `ThreadAbortException`, but it is unsafe and unreliable. As best practice, use cooperative cancellation or other
+  coordination instead of aborting threads.
+
+Each one in detail, with examples:
+
+### `Thread.Join()`
+
+Blocks the **calling** thread until the **target** thread finishes.
+
+```csharp
+using System;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        Thread worker = new Thread(() =>
+        {
+            Console.WriteLine("Worker: started");
+            Thread.Sleep(2000);               // simulate work
+            Console.WriteLine("Worker: finished");
+        });
+
+        worker.Start();
+        Console.WriteLine("Main: waiting for worker...");
+
+        worker.Join();                        // Main blocks here
+
+        Console.WriteLine("Main: worker is done, continuing.");
+    }
+}
+```
+
+**Output:**
+
+```text
+Main: waiting for worker...
+Worker: started
+Worker: finished
+Main: worker is done, continuing.
+```
+
+Without `Join()`, "Main: worker is done" would print immediately, while the worker is still running. `Join()` guarantees the worker's work is complete before Main moves on, for example when Main needs the worker's result.
+
+There is also an overload, `Join(int milliseconds)`, which waits at most that long and returns `false` if the thread didn't finish in time.
+
+### `Thread.Sleep(milliseconds)`
+
+Suspends the **current** thread for a given time. It's a static method, so it always affects the thread that calls it.
+
+```csharp
+using System;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        for (int i = 1; i <= 3; i++)
+        {
+            Console.WriteLine($"Tick {i} at {DateTime.Now:HH:mm:ss}");
+            Thread.Sleep(1000);               // pause 1 second
+        }
+    }
+}
+```
+
+**Output:**
+
+```text
+Tick 1 at 13:32:00
+Tick 2 at 13:32:01
+Tick 3 at 13:32:02
+```
+
+While sleeping, the thread's state is `WaitSleepJoin`, and it doesn't use CPU time.
+
+### `Thread.Abort()` (obsolete)
+
+```csharp
+// .NET Framework only. Do NOT use this in new code.
+Thread t = new Thread(() =>
+{
+    try
+    {
+        while (true) { /* work */ }
+    }
+    catch (ThreadAbortException)
+    {
+        Console.WriteLine("Thread was aborted");
+    }
+});
+
+t.Start();
+Thread.Sleep(500);
+t.Abort();    // .NET Core / .NET 5+: throws PlatformNotSupportedException
+```
+
+On .NET Core and .NET 5+, the `t.Abort()` line throws `PlatformNotSupportedException`. The call fails outright.
+
+**The right alternative: cooperative cancellation**
+
+```csharp
+using System;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        using var cts = new CancellationTokenSource();
+
+        Thread worker = new Thread(() =>
+        {
+            while (!cts.Token.IsCancellationRequested)
+            {
+                Console.WriteLine("Worker: working...");
+                Thread.Sleep(300);
+            }
+            Console.WriteLine("Worker: cancellation requested, cleaning up and exiting.");
+        });
+
+        worker.Start();
+
+        Thread.Sleep(1000);
+        cts.Cancel();          // *ask* the thread to stop
+        worker.Join();         // wait for it to exit gracefully
+
+        Console.WriteLine("Main: done.");
+    }
+}
+```
+
+Instead of killing the thread, you **ask** it to stop. The thread checks the token at safe points and exits cleanly. This lets it release locks, close files, and leave data consistent.
+
+**Why `Abort` was unsafe:** it injected an exception at an arbitrary point in the target thread. That could be in the middle of updating shared data, while holding a lock, or inside a `finally` block, leaving the program in a corrupted, half-finished state.
+
+### Interrupt Method
+
+`Interrupt()` does not kill a thread; it just throws an exception inside it if/when the thread is in a wait/sleep/join
+state.
+
+**If the Thread Isn't Sleeping**
+
+If the thread is running normally (not blocked), the interrupt request is "remembered."
+The exception is thrown the next time the thread enters a blocking call such as `Sleep`, `Join`, or a wait handle.
+
+**When to Use:**
+
+To cancel or signal a thread that might be waiting for I/O, sleeping, or joined, and you want a graceful stop.
+For example:
+
+- Stopping a polling thread that sleeps between checks.
+- Cancelling a thread that waits on `Thread.Join` or `Monitor.Wait`.
+
+### Pause the thread
+
+Because `Suspend` is unsafe, .NET provides cooperative suspension techniques — meaning the thread decides when to pause,
+rather than being forced externally.
+
+**Option 1: Using a flag and `ManualResetEventSlim`**
+
+```csharp
+ManualResetEventSlim pauseEvent = new ManualResetEventSlim(true);
+bool running = true;
+
+Thread t = new Thread(() =>
+{
+    while (running)
+    {
+        pauseEvent.Wait(); // wait here if paused
+        Console.WriteLine("Working...");
+        Thread.Sleep(500);
+    }
+    Console.WriteLine("Thread stopped.");
+});
+
+t.Start();
+
+Thread.Sleep(2000);
+Console.WriteLine("Pausing...");
+pauseEvent.Reset();  // pauses the thread
+
+Thread.Sleep(2000);
+Console.WriteLine("Resuming...");
+pauseEvent.Set();    // resumes the thread
+
+Thread.Sleep(2000);
+running = false;     // signal exit
+t.Join();
+```
+
+## Why not `Thread.Sleep` for coordination
+
+> *Using `Thread.Sleep` for coordination is generally discouraged; prefer synchronization primitives.*
+
+**"Coordination"** means making one thread wait for something that another thread does. `Sleep` is tempting for this, but it's a guess, not a real signal.
+
+### The problem: sleeping and hoping
+
+```csharp
+bool dataReady = false;
+
+Thread producer = new Thread(() =>
+{
+    Thread.Sleep(2000);       // loading data (takes ~2s, but varies)
+    dataReady = true;
+});
+producer.Start();
+
+Thread.Sleep(2500);           // BAD: "surely 2.5s is enough"
+Console.WriteLine(dataReady ? "Got data" : "Not ready!");
+```
+
+This is broken in two ways:
+
+- **Too short:** if the producer takes 3 seconds on a slow day, the consumer reads before data is ready. This is a race condition and a bug that appears only occasionally.
+- **Too long:** if the producer finishes in 100ms, the consumer still wastes 2.4 seconds doing nothing.
+
+`Sleep` has no knowledge of what the other thread is doing. It just waits for a fixed time, so you must pick a delay that's long enough for the worst case, which makes everything slower in the normal case.
+
+### The fix: wait for a signal, not a duration
+
+Use a synchronization primitive so the waiting thread wakes up *exactly when* the event happens:
+
+```csharp
+using System;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        var dataReady = new ManualResetEventSlim(false);
+        string data = null;
+
+        Thread producer = new Thread(() =>
+        {
+            Thread.Sleep(2000);          // simulating work is fine here
+            data = "Hello";
+            dataReady.Set();             // signal: "I'm done"
+        });
+        producer.Start();
+
+        dataReady.Wait();                // wakes up exactly when Set() is called
+        Console.WriteLine($"Got: {data}");
+    }
+}
+```
+
+Now it's correct no matter how long the producer takes: no guessing, no wasted time, no race.
+
+### Which primitive for which situation
+
+| Primitive | Use when |
+|---|---|
+| `Join()` | Wait for a specific thread to **finish** |
+| `EventWaitHandle` / `ManualResetEventSlim` / `AutoResetEvent` | Wait for a **signal** ("something happened") |
+| `Monitor` / `lock` | Protect shared data so only one thread uses it at a time |
+| `Mutex` | Same as lock, but can work **across processes** |
+| `Semaphore` / `SemaphoreSlim` | Limit how many threads can use a resource at once |
+
+### When `Thread.Sleep` is fine
+
+- Demos and tutorials (like the examples above) simulating work
+- Simple polling with an intentional interval ("check every 5 seconds")
+- Throttling or deliberate delays that are the actual requirement
+
+The rule: **don't use `Sleep` to wait for another thread or for a condition.** Use it only when a time delay is itself what you want.
+
+Also, `Thread.Sleep` blocks the thread completely. In async code you'd use `await Task.Delay(...)` instead, so the thread is released while waiting, which ties back to the thread vs task distinction (see [ThreadpoolAndTask.md](ThreadpoolAndTask.md)).
+
 ## Foreground vs background thread
 
 The `IsBackground` property of a `Thread` determines whether that thread is a foreground or background thread.
@@ -380,58 +648,3 @@ The process stays alive until the worker completes.
 
 > **Note:** Thread Pool threads (Tasks, `ThreadPool.QueueUserWorkItem`, async/await) are always background threads, which is
 > why the process can exit when all foreground work is done.
-
-## Interrupt Method
-
-`Interrupt()` does not kill a thread; it just throws an exception inside it if/when the thread is in a wait/sleep/join
-state.
-
-**If the Thread Isn't Sleeping**
-
-If the thread is running normally (not blocked), the interrupt request is "remembered."
-The exception is thrown the next time the thread enters a blocking call such as `Sleep`, `Join`, or a wait handle.
-
-**When to Use:**
-
-To cancel or signal a thread that might be waiting for I/O, sleeping, or joined, and you want a graceful stop.
-For example:
-
-- Stopping a polling thread that sleeps between checks.
-- Cancelling a thread that waits on `Thread.Join` or `Monitor.Wait`.
-
-## Pause the thread
-
-Because `Suspend` is unsafe, .NET provides cooperative suspension techniques — meaning the thread decides when to pause,
-rather than being forced externally.
-
-**Option 1: Using a flag and `ManualResetEventSlim`**
-
-```csharp
-ManualResetEventSlim pauseEvent = new ManualResetEventSlim(true);
-bool running = true;
-
-Thread t = new Thread(() =>
-{
-    while (running)
-    {
-        pauseEvent.Wait(); // wait here if paused
-        Console.WriteLine("Working...");
-        Thread.Sleep(500);
-    }
-    Console.WriteLine("Thread stopped.");
-});
-
-t.Start();
-
-Thread.Sleep(2000);
-Console.WriteLine("Pausing...");
-pauseEvent.Reset();  // pauses the thread
-
-Thread.Sleep(2000);
-Console.WriteLine("Resuming...");
-pauseEvent.Set();    // resumes the thread
-
-Thread.Sleep(2000);
-running = false;     // signal exit
-t.Join();
-```
