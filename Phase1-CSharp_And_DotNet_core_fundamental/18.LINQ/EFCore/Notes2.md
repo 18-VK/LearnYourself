@@ -1,4 +1,4 @@
-# EF Core Notes and Migration Reference
+﻿# EF Core Notes and Migration Reference
 
 This note combines the conceptual EF Core notes with the practical migration and database command reference, arranged into a single learning guide.
 
@@ -16,6 +16,7 @@ This note combines the conceptual EF Core notes with the practical migration and
 - [8. IQueryable vs IEnumerable](#8-iqueryable-vs-ienumerable)
 - [9. Concurrency and update patterns](#9-concurrency-and-update-patterns)
 - [10. Quick cheat sheet](#10-quick-cheat-sheet)
+- [11. Deploying migrations manually to production](#11-deploying-migrations-manually-to-production-no-cicd)
 
 ---
 
@@ -807,6 +808,101 @@ dotnet ef migrations script --project src/Infrastructure --startup-project src/A
 - Use eager loading when related data is required immediately
 - Avoid lazy loading on large datasets without careful review
 - Use bulk methods for bulk changes, but not when concurrency is critical
+
+---
+
+# 11. Deploying migrations manually to production (no CI/CD)
+
+The safest manual approach is to generate an SQL script, review it, and run it against production yourself. A migration bundle is the second-best option. Avoid running `dotnet ef database update` from your laptop or calling `Database.Migrate()` at startup.
+
+### Option A: Idempotent SQL script (recommended)
+
+**1. Find what production already has**
+
+```sql
+SELECT TOP 5 MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC;
+```
+
+**2. Generate the script from the exact commit you are deploying**
+
+```bash
+EF="--project src/Infrastructure --startup-project src/Api"
+
+# Safest: idempotent, skips anything already applied
+dotnet ef migrations script --idempotent $EF -o migrate.sql
+
+# Smaller: only what's new, from the last migration prod has
+dotnet ef migrations script <LastAppliedMigration> $EF -o upgrade.sql
+```
+
+An idempotent script wraps each migration in an `IF NOT EXISTS (SELECT ... FROM __EFMigrationsHistory ...)` check, so running it twice does no harm.
+
+**3. Review it.** Read the SQL, and look hard for `DROP COLUMN`, `DROP TABLE`, `ALTER COLUMN` (type or length changes), and new `NOT NULL` columns without defaults on large tables. These can lose data, fail on existing rows, or lock a big table.
+
+**4. Run it against production**
+
+- SSMS or Azure Data Studio: open `migrate.sql`, connect to the prod database, run it.
+- Command line: `sqlcmd -S <server> -d <db> -U <migration-user> -i migrate.sql -b` (`-b` stops on the first error).
+
+### Option B: Migration bundle
+
+Use it if you want one executable instead of a script:
+
+```bash
+# On your build machine; use win-x64 for a Windows server, linux-x64 for Linux
+dotnet ef migrations bundle $EF --self-contained -r linux-x64 -o efbundle --force
+
+# Copy efbundle to the server (or a machine that can reach the prod DB), then:
+./efbundle --connection "Server=...;Database=App;User Id=migrator;Password=...;Encrypt=True"
+```
+
+It needs no SDK or source on the target. The downside versus a script is that you can't read what it will run, so generate and review the script anyway.
+
+### Why not the alternatives
+
+| Approach | Problem |
+|---|---|
+| `dotnet ef database update --connection "<prod>"` from your laptop | Needs the SDK and exact source version, exposes prod to your machine, and a wrong branch or config silently applies the wrong migrations |
+| `Database.Migrate()` at app startup | Races if more than one instance starts, and the app login needs schema-change rights |
+
+### Step-by-step deployment procedure
+
+1. **Back up** the production database (full backup or snapshot) and confirm you can restore it.
+2. **Rehearse on a copy**: restore that backup to a test server, run the script, and start the new app against it.
+3. **Pick the order** based on the migration type:
+   - *Backward-compatible* (adds a nullable column, new table, new index): run the script first, then deploy the new app. The old app keeps working in between.
+   - *Breaking* (rename, drop, new required column): take a short maintenance window, stop the app, run the script, deploy the new version, start it.
+4. **Run the script** with a dedicated migration login that has DDL rights. The app's own login should have only read/write.
+5. **Verify**: re-run the history query to see the new `MigrationId`, hit your health endpoint, and do a quick smoke test.
+6. Keep the script in source control or a release folder together with the version it belongs to.
+
+### Rollback plan
+
+- **Real rollback is the backup.** Restore it if data was changed or lost.
+- **Revert script**, for structure-only changes: generate it with the range reversed (from the newer migration to the older one), review it, and run it:
+
+```bash
+dotnet ef migrations script <NewMigration> <PreviousMigration> $EF -o rollback.sql
+```
+
+Generate and review this before the deployment, so you aren't writing it under pressure. Note that reverting `Down` methods that drop columns can't bring back the data in them.
+
+### Tips for safer manual deployments
+
+- Make migrations backward compatible (expand, deploy, contract) so the old app version keeps working if you must roll back the app.
+- For big tables, schedule heavy operations (index builds, column type changes) off-peak, and consider `migrationBuilder.Sql(...)` with online options where your SQL Server edition supports them.
+- Don't hand-edit a script that's already been applied somewhere; if it's wrong, add a new corrective migration.
+
+### Pre-deployment checklist
+
+- [ ] Backup taken and restore verified
+- [ ] Script generated from the exact commit being deployed
+- [ ] `__EFMigrationsHistory` on prod checked, so you know the starting point
+- [ ] Script reviewed for drops, type changes and `NOT NULL` additions
+- [ ] Script rehearsed on a restored copy
+- [ ] Rollback script generated and reviewed
+- [ ] Maintenance window agreed (only if the change is breaking)
+- [ ] Dedicated migration login used, not the app's login
 
 ---
 

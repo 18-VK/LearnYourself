@@ -254,8 +254,71 @@ Now it is 1 + 50 + 20 = **71 rows per order** instead of 1,000. Growth is additi
 | Latency sensitivity | Better when the DB is far away (cloud, cross-region) | Each extra round trip adds latency |
 | Pagination | Straightforward | Works, but you need a deterministic `OrderBy` |
 
-- **Consistency:** if another transaction inserts an item between query 1 and query 2, you may get a parent without that item, or children that don't match the parent. If this matters, wrap the query in a transaction with `Snapshot` or `Serializable` isolation. Most read-only API screens don't care.
+- **Consistency:** if another transaction inserts an item between query 1 and query 2, you may get a parent without that item, or children that don't match the parent. If this matters, wrap the query in a transaction with `Snapshot` or `Serializable` isolation. Most read-only API screens don't care. Full explanation with a timeline and fix: [Consistency in split queries, explained](#consistency-in-split-queries-explained).
 - **Ordering:** always use a deterministic `OrderBy` (ideally by a unique key) with `Skip`/`Take` in split queries. Without it, the separate queries can disagree on which parents they are returning. EF logs a warning when it detects this.
+
+#### Consistency in split queries, explained
+
+**Why it happens.** A split query sends several separate SQL statements one after another. Each statement sees the database **as it is at the moment that statement runs**. With the default isolation level (`READ COMMITTED`), changes committed by other users between your statements are visible to the later ones. A single query is one statement, so everything it returns comes from one moment.
+
+**Timeline example.** You load order 1 with its items using `AsSplitQuery()`:
+
+| Time | You (split query) | Another user |
+|---|---|---|
+| t1 | **Query 1** reads order 1: `Total = 7500` | |
+| t2 | | Adds a new item (Monitor, 8000) and updates `Total` to 15500, then commits |
+| t3 | **Query 2** reads items of order 1: Keyboard, Mouse, Cable, **Monitor** | |
+
+Result in memory: an order with `Total = 7500` but items that add up to 15500. The two parts come from different moments, so they don't agree. Nothing throws, and nothing in the object looks wrong.
+
+**Other ways it can go wrong**
+
+| What happens between Query 1 and Query 2 | What you get |
+|---|---|
+| Another user **adds** an item | Order shows the new item, but values read in Query 1 (totals, status, counts) don't include it |
+| Another user **deletes** an item | Order's totals still count the item, but it's missing from `Items` |
+| Another user **deletes the order** | Query 1 returned the order, Query 2 finds no children, so you get an order with an empty `Items` list that looks like it never had any |
+| Another user **updates** a child row | Items show the new values, parent fields show the old state |
+
+**Why SingleQuery doesn't have this problem.** One `SELECT ... JOIN ...` statement returns the parent and all children together, so the result comes from one statement rather than several separate points in time.
+
+**How to fix it if it matters.** Run the split query inside a transaction with an isolation level that gives the whole transaction one view of the data:
+
+```csharp
+var strategy = db.Database.CreateExecutionStrategy();   // needed because EnableRetryOnFailure is on
+
+var order = await strategy.ExecuteAsync(async () =>
+{
+    await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Snapshot, ct);
+
+    var result = await db.Orders
+        .Include(o => o.Items)
+        .Include(o => o.Payments)
+        .AsSplitQuery()
+        .SingleAsync(o => o.Id == id, ct);
+
+    await tx.CommitAsync(ct);
+    return result;
+});
+```
+
+Now all three statements read from the same snapshot, so the other user's change at t2 is invisible to Query 2.
+
+| Isolation level | Effect | Cost |
+|---|---|---|
+| `Snapshot` | Whole transaction sees the data as of when it started. Readers don't block writers | Requires `ALTER DATABASE <db> SET ALLOW_SNAPSHOT_ISOLATION ON;`, otherwise SQL Server throws an error. Uses tempdb row versions |
+| `Serializable` | Locks the ranges you read, so others can't insert or change them until you commit | Blocks writers, can deadlock, hurts concurrency. Avoid for reads |
+| `RepeatableRead` | Locks rows already read, but doesn't stop new rows appearing | Blocking, and doesn't fully solve this |
+
+Prefer `Snapshot`. Note that turning on `READ_COMMITTED_SNAPSHOT` (RCSI) alone is **not** enough: it makes each *statement* consistent, but not the whole transaction.
+
+**Other ways to avoid the issue**
+
+- **`AsSingleQuery()`** for that query, if the collections are small, so you get one statement and one consistent result.
+- **A projection** (`Select` into a DTO) with one collection, which also produces a single statement for most shapes.
+- **Make the data self-consistent**, for example compute totals from the loaded items instead of reading a stored `Total` column.
+
+**Do you need to worry?** Usually not. For a list page or a detail screen where the data is refreshed often, a tiny mismatch is invisible and self-corrects on the next load. It matters when you make a decision from the loaded graph: a payment or refund calculation, an invoice that must match its line items, an export or report that must add up, or a write path that loads an aggregate, changes it and saves. For write paths, concurrency tokens (`RowVersion`) catch conflicts at save time anyway.
 
 #### What the setting does in the registration
 
@@ -1056,7 +1119,7 @@ SingleQuery grows as **items × payments**; SplitQuery grows as **items + paymen
 | Rows at scale | N × M × P (multiplicative) | N + M + P (additive) |
 | Duplicate parent/child data over the wire | Yes | No |
 | Memory and CPU to materialize | Higher at scale (de-duplication) | Lower at scale |
-| Consistent snapshot | Yes, one statement | Not by default; use a transaction (Snapshot isolation) if needed |
+| Consistent snapshot | Yes, one statement | Not by default; use a transaction (Snapshot isolation) if needed, see [Consistency in split queries](#consistency-in-split-queries-explained) |
 | Sensitive to DB latency | Low (one round trip) | Higher (extra round trips) |
 | Needs deterministic `OrderBy` with paging | Recommended | Required for correct results |
 | Cartesian explosion risk | **Yes** with 2+ collections | No |

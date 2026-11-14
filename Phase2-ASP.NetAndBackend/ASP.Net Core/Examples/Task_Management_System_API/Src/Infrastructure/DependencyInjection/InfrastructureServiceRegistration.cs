@@ -27,9 +27,14 @@ namespace Task_Management_System_API.Src.Infrastructure.DependencyInjection
                             errorNumbersToAdd: null
                         );
                         sqlOptions.CommandTimeout(30);
-                    })
-                    .EnableDetailedErrors(false)
-                    .EnableSensitiveDataLogging(false);
+                    });
+
+                    // should not be used in production, only for development and testing purposes
+                    if(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+                    {
+                        options.EnableDetailedErrors(false);
+                        options.EnableSensitiveDataLogging(false);
+                    }
                 }
             ); 
 

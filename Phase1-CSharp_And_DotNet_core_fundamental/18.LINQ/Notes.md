@@ -67,6 +67,12 @@ var q = from n in nums
         select n * 2; // {2,4,6}
 ```
 
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var q = nums.Select(n => n * 2);
+```
+
 **Note:** Every query-expression starts with one or more `from`.
 
 ### 2) `where`
@@ -81,6 +87,14 @@ var adults = from p in people
              select p.Name;
 ```
 
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var adults = people
+    .Where(p => p.Age >= 21)
+    .Select(p => p.Name);
+```
+
 **Note:** Translates to `.Where(...)` in method syntax.
 
 ### 3) `select`
@@ -92,6 +106,12 @@ var adults = from p in people
 ```csharp
 var names = from p in people
             select p.Name;
+```
+
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var names = people.Select(p => p.Name);
 ```
 
 **Note:** Query-expression `select` corresponds to `.Select(...)`.
@@ -108,6 +128,14 @@ var q = from p in people
         select p;
 ```
 
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var q = people
+    .OrderByDescending(p => p.LastName)
+    .ThenBy(p => p.FirstName);
+```
+
 **Note:** Multiple keys supported; maps to `.OrderBy(...)`, `.OrderByDescending(...)`, `.ThenBy(...)`.
 
 ### 5) `join`
@@ -122,7 +150,20 @@ var q = from c in customers
         select new { c.Name, o.Id };
 ```
 
-**Note:** Use `into` after `join` for group joins / outer joins.
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var q = customers.Join(
+    orders,
+    c => c.Id,
+    o => o.CustomerId,
+    (c, o) => new { c.Name, o.Id });
+```
+
+**Using `into` with `join`:** Writing `join ... into matchingOrders` creates a *group join*: instead of producing one
+row per match, it gives each customer a sequence of all matching orders. That sequence can be empty, but the customer
+is still present. To flatten the matches into rows and keep customers with no orders, continue with
+`from o in matchingOrders.DefaultIfEmpty()`. The complete left-outer-join example is in the [`into` section](#9-into).
 
 ### 6) `group` / `by`
 
@@ -136,7 +177,16 @@ var q = from p in products
         select new { Category = g.Key, Count = g.Count() };
 ```
 
-**Note:** `into` names the group to continue query operations on it.
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var q = products
+    .GroupBy(p => p.Category)
+    .Select(g => new { Category = g.Key, Count = g.Count() });
+```
+
+**Note:** `into g` starts a query continuation and makes each group available as `g`; after it, the original range
+variable `p` is out of scope.
 
 ### 7) `let`
 
@@ -151,24 +201,14 @@ var q = from s in sentences
         select new { s, WordCount = words.Length };
 ```
 
-The **let** keyword in C# is used within **LINQ query expressions** to introduce a new range variable initialized with the result of an expression, allowing that variable to be **reused** in subsequent clauses like `where`, `orderby`, or `select`. This improves code readability and performance by avoiding repeated calculations or method calls.
-
-For example, in a query, `let` can store the length of a string or the result of a complex computation, which is then referenced multiple times without re-evaluating the source expression.
+**Fluent equivalent (.NET 8):**
 
 ```csharp
-var query = from word in words
-            let length = word.Length
-            where length > 5
-            select new { Word = word, Length = length };
+var q = sentences
+    .Select(s => new { Sentence = s, Words = s.Split(' ') })
+    .Where(x => x.Words.Length > 3)
+    .Select(x => new { x.Sentence, WordCount = x.Words.Length });
 ```
-
-While `let` is specific to **query syntax**, its functionality in **method syntax** (chained extension methods) is typically achieved by using a **lambda expression** that creates an anonymous type or by using a complex lambda in a `Select` or `Where` clause. There is no direct `Let` method in standard LINQ, though libraries like **System.Interactive** provide a `.Let` extension method for fluent expressions.
-
-Key distinctions include:
-*   **let** is a contextual keyword used only in **query expressions**.
-*   It is similar to `var` in that it uses **implicit typing**, but it specifically introduces a variable for use within the query's scope.
-*   The compiler translates `let` into a `Select` projection that creates an anonymous type holding the iteration variable and the new variable.
-
 
 **Note:** Helps avoid recomputing expressions and improves readability.
 
@@ -184,11 +224,21 @@ var q = from c in customers
         select new { c.Name, o.Id };
 ```
 
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var q = customers.SelectMany(
+    c => c.Orders,
+    (c, o) => new { c.Name, o.Id });
+```
+
 **Note:** Equivalent to `.SelectMany(...)` in method syntax.
 
 ### 9) `into`
 
-**Definition:** Gives a name to an intermediate query result for further chaining (commonly used after `group` or `join`).
+**Definition:** Starts a continuation of a query by giving its intermediate result a new range-variable name. In the
+example below, `into g` means that the next clauses work with each product group, rather than with each individual
+product. The original range variable (`p`) is no longer in scope after `into`.
 
 **Example:**
 
@@ -196,10 +246,116 @@ var q = from c in customers
 var q = from p in products
         group p by p.Category into g
         where g.Count() > 1
-        select g;
+        select new { Category = g.Key, ProductCount = g.Count() };
 ```
 
-**Note:** Without `into` you cannot continue the query on the grouped results.
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var q = products
+    .GroupBy(p => p.Category)
+    .Where(g => g.Count() > 1)
+    .Select(g => new { Category = g.Key, ProductCount = g.Count() });
+```
+
+Here, `g` is one category's group of products. `g.Key` is that category, and `g.Count()` is the number of products in
+it. The `where` keeps only groups with more than one product, and `select` shapes each remaining group into a result.
+Without `into g`, the query cannot continue with clauses that operate on the grouped results.
+
+After `join`, `into` has a related use: it names the matching sequence for each outer element (a *group join*), which
+can be used to keep outer elements even when they have no matches.
+
+**Example — group join and left outer join:**
+
+```csharp
+var customerOrders =
+    from c in customers
+    join o in orders on c.Id equals o.CustomerId into matchingOrders
+    from o in matchingOrders.DefaultIfEmpty()
+    select new
+    {
+        CustomerName = c.Name,
+        OrderId = o == null ? (int?)null : o.Id
+    };
+```
+
+`into matchingOrders` collects each customer's matching orders. `DefaultIfEmpty()` then produces one `null` order when
+there are no matches, so that customer still appears in the results. Here `OrderId` is nullable because a customer may
+not have an order.
+
+**Fluent equivalent (.NET 8):**
+
+```csharp
+var customerOrders = customers
+    .GroupJoin(
+        orders,
+        c => c.Id,
+        o => o.CustomerId,
+        (c, matchingOrders) => new { Customer = c, MatchingOrders = matchingOrders })
+    .SelectMany(
+        x => x.MatchingOrders.DefaultIfEmpty(),
+        (x, o) => new
+        {
+            CustomerName = x.Customer.Name,
+            OrderId = o == null ? (int?)null : o.Id
+        });
+```
+
+**Complete runnable example (.NET 8):**
+
+```csharp
+using System;
+using System.Linq;
+
+var customers = new[]
+{
+    new Customer(1, "Ada"),
+    new Customer(2, "Grace"),
+    new Customer(3, "Linus")
+};
+
+var orders = new[]
+{
+    new Order(101, CustomerId: 1),
+    new Order(102, CustomerId: 1),
+    new Order(103, CustomerId: 3)
+};
+
+var customerOrders = customers
+    .GroupJoin(
+        orders,
+        c => c.Id,
+        o => o.CustomerId,
+        (c, matchingOrders) => new { Customer = c, MatchingOrders = matchingOrders })
+    .SelectMany(
+        x => x.MatchingOrders.DefaultIfEmpty(),
+        (x, o) => new
+        {
+            CustomerName = x.Customer.Name,
+            OrderId = o == null ? (int?)null : o.Id
+        });
+
+foreach (var row in customerOrders)
+{
+    var orderText = row.OrderId?.ToString() ?? "(no order)";
+    Console.WriteLine($"{row.CustomerName}: {orderText}");
+}
+
+record Customer(int Id, string Name);
+record Order(int Id, int CustomerId);
+```
+
+**Output:**
+
+```text
+Ada: 101
+Ada: 102
+Grace: (no order)
+Linus: 103
+```
+
+Ada appears twice because she has two matching orders. Grace still appears with `(no order)` because
+`DefaultIfEmpty()` supplies a null order when there is no match.
 
 ## Standard query operators (method/fluent syntax)
 
