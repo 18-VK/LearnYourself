@@ -450,9 +450,61 @@ Run two copies: the second prints the message and exits, because the first proce
 - **Need N concurrent holders, not just 1** → `Semaphore`/`SemaphoreSlim`.
 - **Async code** → `Mutex` and `lock` don't work across `await` (thread-affine). Use `SemaphoreSlim(1,1)` with `WaitAsync()`.
 
+### Mutex lifetime: handles and destruction
+
+**Yes, that's right.** A named mutex is a kernel object that is **reference-counted by handles**. It lives as long as at least one handle to it is open, anywhere on the machine.
+
+| Situation when you call `Dispose()` | Result |
+|---|---|
+| **Your handle is the last one** | The mutex is **destroyed** and its name disappears. |
+| **Someone else also has a handle** (another thread or process opened it) | Only your handle closes. The mutex **keeps existing**, with the same name, state and owner. |
+
+#### Timeline example
+
+```csharp
+Process A: new Mutex(false, @"Global\Demo")        → handles: 1 (A)   mutex created
+Process B: Mutex.OpenExisting(@"Global\Demo")      → handles: 2 (A,B) same mutex
+Process A: Dispose()                               → handles: 1 (B)   mutex STILL exists
+Process B: WaitOne() / ReleaseMutex()              → works normally
+Process B: Dispose()                               → handles: 0       mutex DESTROYED
+```
+
+If A had disposed while no one else had it open, the mutex would be gone. A later `new Mutex(false, @"Global\Demo", out createdNew)` would create a **brand new** one, and `createdNew` would be `true`. `Mutex.OpenExisting` would throw `WaitHandleCannotBeOpenedException`.
+
+#### What "a handle" means in code
+
+Each of these creates its **own handle**:
+
+```csharp
+var a = new Mutex(false, "Demo");           // handle 1
+var b = new Mutex(false, "Demo");           // handle 2, same kernel mutex (createdNew = false)
+var c = Mutex.OpenExisting("Demo");         // handle 3, same kernel mutex
+```
+
+So disposing `a` does not affect `b` or `c`. But if several threads share the **same C# object** (`a`), that's **one handle**, and disposing it closes it for all of them. That's why the "dispose while others use the same object" case breaks things (`ObjectDisposedException`).
+
+#### This is why the single-instance pattern works
+
+```csharp
+using var mutex = new Mutex(true, @"Global\MyApp.SingleInstance", out bool createdNew);
+```
+
+- First instance creates it and holds the handle until the process exits.
+- A second instance sees `createdNew == false`, because the mutex still exists.
+- When the first exits, its handle closes, the mutex is destroyed, and the next launch is "first" again.
+
+This is also why you must keep the `Mutex` object **alive for the app's lifetime**. If it gets garbage collected or disposed early, the handle closes, the mutex disappears, and a second instance can start.
+
+#### Caveats
+
+- **Ownership vs handles:** closing a handle does not release ownership by itself. Ownership is tied to the *thread*. Always call `ReleaseMutex()` before `Dispose()` rather than relying on destruction behavior.
+- **Linux/macOS:** .NET emulates named mutexes (backed by files/shared memory), so edge-case behavior on destruction and abandonment can differ from Windows. The "last handle closed → gone" rule still holds as the general model.
+
 ### One-line summary
 
 A `Mutex` is an OS-level, thread-owned lock. Unnamed it works within one process; **named**, it works across processes. Always acquire with `WaitOne`, release in a `finally`, and handle `AbandonedMutexException` when a previous owner died.
+
+**And:** the mutex object stays alive while **any** handle is open and is destroyed when the **last** one is closed. `Dispose` only removes your handle, so whether the mutex survives depends on whether anyone else still holds one.
 
 ### Example
 
