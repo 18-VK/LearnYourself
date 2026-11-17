@@ -45,6 +45,42 @@ The browser tries hard to avoid the network because the network is the slowest p
 
 **Parsing.** Decide whether the input is a URL or a search, then split it into parts. Each part feeds a later step (host to DNS, scheme and port to the connection, path and query to the HTTP request).
 
+#### DNS Caching & Expiry
+
+Core idea: Every DNS cache expires entries based on the record’s TTL (seconds), set by the domain owner in the DNS response.
+
+DNS caching has expiry at every layer, and it is mostly driven by the TTL (Time To Live) value in the DNS response.
+
+Each DNS record (A, AAAA, CNAME, etc.) carries a TTL in seconds, set by the domain owner. For example, example.com A 93.184.216.34 TTL=300 means “cache this for 300 seconds.” Every cache along the path is supposed to honor it, counting down from the moment it stored the record.
+
+Cache layers (client → server)
+
+1. Browser: own cache, often capped around ~60s (Chrome), Firefox default ~60s (network.dnsCacheExpiration).
+
+2. OS:
+Windows: ipconfig /displaydns, ipconfig /flushdns
+macOS: sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+Linux: often none by default; systemd-resolved caches (resolvectl flush-caches)
+Router / ISP / recursive resolver (8.8.8.8, 1.1.1.1): caches by TTL, may clamp min/max values.
+
+3. Negative caching
+
+NXDOMAIN / “no record” answers are cached too.
+Duration comes from the SOA record’s minimum TTL (RFC 2308), not the record TTL.
+Windows default is about 15 min (MaxNegativeCacheTtl).
+
+**Key points**
+
+Record changes are not visible until the old TTL expires in every cache that held it.
+Before a migration, lower the TTL (60-300s) ahead of time, then change the record.
+Some clients ignore TTL: Java (networkaddress.cache.ttl), long-lived connections.
+
+**.NET relevance**
+
+HttpClient won’t re-resolve DNS while a pooled connection stays open.
+Fix: set SocketsHttpHandler.PooledConnectionLifetime (e.g., 2-5 min) or use IHttpClientFactory, so DNS changes get picked up
+
+
 **Browser cache: "Do I already have this?"**
 - Servers can send `Cache-Control: max-age=3600` meaning "reuse this for 1 hour."
 - Fresh copy: used directly, with no DNS, TCP, TLS or request at all.
