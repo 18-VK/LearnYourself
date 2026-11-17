@@ -322,6 +322,24 @@ Only the way messages are **carried** changes between versions. Methods, status 
 | Head-of-line blocking | Yes | Yes, per connection | Solved in HTTP, **still present in TCP** | Gone (independent streams) |
 | Setup cost (new HTTPS connection) | TCP + TLS each request | TCP (1 RTT) + TLS (1 to 2 RTT) | Same as 1.1 | 1 RTT (0-RTT on resumption) |
 
+
+# HTTP/1.1 vs HTTP/2 vs HTTP/3
+
+**Core idea:** Same HTTP semantics (methods, status codes, headers). What changes is *how* requests are transported on the wire.
+
+| | HTTP/1.1 | HTTP/2 | HTTP/3 |
+|---|---|---|---|
+| **Year** | 1997 | 2015 | 2022 |
+| **Transport** | TCP | TCP (+TLS, practically) | **QUIC over UDP** (TLS 1.3 built in) |
+| **Format** | Text | Binary frames | Binary frames |
+| **Multiplexing** | No (one request per connection at a time) | Yes (many streams on one connection) | Yes (independent streams) |
+| **Head-of-line blocking** | At HTTP level | Solved at HTTP level, **still exists at TCP level** | Solved (a lost packet only stalls its own stream) |
+| **Header compression** | None | HPACK | QPACK |
+| **Handshake** | TCP + TLS (2-3 RTT) | TCP + TLS (2-3 RTT) | 1 RTT, **0-RTT** on resume |
+| **Connection migration** | No | No | Yes (survives Wi-Fi ↔ mobile switch via Connection ID) |
+
+---
+
 #### HTTP/1.0
 Every request opened a new TCP connection and closed it afterwards, so each one paid the TCP (and TLS) handshake.
 
@@ -331,11 +349,21 @@ Every request opened a new TCP connection and closed it afterwards, so each one 
 - Chunked transfer encoding, caching headers (`Cache-Control`, `ETag`), range requests.
 - **Weakness, head-of-line blocking**: responses must come back in request order. One slow response delays the ones behind it. Browsers opened about 6 connections per host, and developers used workarounds: bundling files, image sprites, domain sharding.
 
+```
+Conn 1: GET /a.js ──► response ──► GET /b.js ──► response
+Conn 2: GET /style.css ──► response ...
+```
+
 #### HTTP/2
 - **Multiplexing**: many requests and responses interleave as frames on one connection.
 - **HPACK header compression**: repeated headers (`Cookie`, `User-Agent`) are sent as small references. This reduces the per-request cookie cost.
 - Binary framing and stream prioritization. Server push exists but is deprecated and effectively unused in browsers.
 - **Weakness**: everything rides on one TCP connection. One lost packet makes TCP hold back **all** streams until it is retransmitted, which hurts on lossy mobile networks.
+
+```
+One connection:
+[stream1: /a.js][stream3: /style.css][stream1: /a.js][stream5: /logo.png] ...
+```
 
 #### HTTP/3
 - Runs on **QUIC**: reliability, congestion control and TLS 1.3 encryption built on UDP, in user space.
@@ -356,21 +384,52 @@ curl -I --http3   https://example.com    # needs a curl build with HTTP/3 suppor
 
 In browser DevTools, Network tab, enable the **Protocol** column (`http/1.1`, `h2`, `h3`).
 
+#### Example: page loading 20 resources
+
+- **HTTP/1.1:** ~6 connections, requests queue up, so ~4 rounds of waiting.
+- **HTTP/2:** 1 connection, all 20 in flight together, but one lost packet stalls everything.
+- **HTTP/3:** all 20 in flight, and a lost packet only delays the stream it belongs to.
+
+#### When to use what
+- **HTTP/1.1:** legacy systems, simple internal services, universal fallback.
+- **HTTP/2:** default for most web APIs and sites; required for gRPC.
+- **HTTP/3:** public-facing sites, mobile users, high-latency or lossy networks.
+
+**One-liner:** *HTTP/1.1 = one request at a time per connection; HTTP/2 = multiplexed over one TCP connection (but TCP-level blocking remains); HTTP/3 = multiplexed over QUIC/UDP with no cross-stream blocking and faster handshakes.*
+
+
 #### In practice
 - A CDN or reverse proxy usually speaks HTTP/2 or HTTP/3 to browsers and HTTP/1.1 (or h2c) to your app behind it. That is normal.
 - **gRPC requires HTTP/2.**
 - With HTTP/2 and 3, bundling everything into one file and domain sharding stop helping, and can hurt caching.
 - Kestrel supports all three. HTTP/3 needs TLS 1.3 and OS QUIC support:
 
+#### .NET example (ASP.NET Core / HttpClient)
+
+**Server (Kestrel)**
 ```csharp
 builder.WebHost.ConfigureKestrel(o =>
 {
-    o.ConfigureEndpointDefaults(l =>
-        l.Protocols = HttpProtocols.Http1AndHttp2AndHttp3);
+    o.ListenAnyIP(5001, lo =>
+    {
+        lo.UseHttps();
+        lo.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+    });
 });
 ```
 
+**Client**
+```csharp
+var client = new HttpClient
+{
+    DefaultRequestVersion = HttpVersion.Version20,
+    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
+};
+// Use Version30 to prefer HTTP/3 (requires QUIC support: msquic on Windows, libmsquic on Linux)
+```
+
 - `HttpClient` can request a version: `new HttpRequestMessage(HttpMethod.Get, url) { Version = HttpVersion.Version20, VersionPolicy = HttpVersionPolicy.RequestVersionOrLower }`.
+
 
 ### Why this matters
 - Choosing the right method and status code is the core of good REST API design.
