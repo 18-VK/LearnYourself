@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autocomplete (ARIA combobox) - machine coding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+    .hint { color: #4b5563; font-size: 0.95rem; }
+    label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+
+    .combo { position: relative; }
+    .combo input { width: 100%; padding: 0.6rem 0.75rem; font: inherit; font-size: 1rem; border: 1px solid #6b7280; border-radius: 6px; }
+    .combo input:focus-visible { outline: 3px solid #2563eb; outline-offset: 1px; }
+    .combo[data-status="loading"]::after { content: "Loading…"; position: absolute; right: 0.75rem; top: 0.65rem; color: #6b7280; font-size: 0.9rem; }
+
+    .listbox { position: absolute; inset-inline: 0; top: calc(100% + 4px); z-index: 1; margin: 0; padding: 0.25rem 0; list-style: none;
+               background: #fff; border: 1px solid #6b7280; border-radius: 6px; box-shadow: 0 6px 16px rgb(0 0 0 / 0.15); max-height: 16rem; overflow-y: auto; }
+    .listbox li { padding: 0.4rem 0.75rem; cursor: pointer; }
+    .listbox li:hover { background: #eef2ff; }
+    .listbox li[aria-selected="true"] { background: #2563eb; color: #fff; }
+    mark { background: none; color: inherit; font-weight: 700; }
+
+    .status { min-height: 1.5em; color: #4b5563; font-size: 0.9rem; margin: 0.25rem 0 1rem; }
+    .log { font: 0.85rem/1.4 ui-monospace, Consolas, monospace; background: #f8fafc; border: 1px solid #d1d5db; padding: 0.5rem 1rem 0.5rem 2.5rem; max-height: 14rem; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Autocomplete</h1>
+  <p class="hint">
+    Type a city. <kbd>↓</kbd>/<kbd>↑</kbd> move, <kbd>Enter</kbd> picks, <kbd>Esc</kbd> closes (press it again to clear).
+    Type <code>fail</code> to simulate a server error. The fake API answers after a random 100–700 ms,
+    so responses can arrive out of order: the request log shows which ones were aborted or dropped as stale.
+  </p>
+
+  <label for="city-input">City</label>
+  <div class="combo" id="city-combo">
+    <input id="city-input" type="text" role="combobox" autocomplete="off"
+           aria-autocomplete="list" aria-expanded="false" aria-controls="city-listbox">
+    <ul id="city-listbox" class="listbox" role="listbox" aria-label="Cities" hidden></ul>
+  </div>
+  <p id="city-status" class="status" role="status"></p>
+
+  <p>Selected: <output id="city-selected">nothing yet</output></p>
+
+  <h2>Request log (newest first)</h2>
+  <ol id="log" class="log" reversed></ol>
+
+  <script>
+    // ---------- Fake API: a local array + Promise + setTimeout (no network) ----------
+    const CITIES = ["Amsterdam", "Athens", "Auckland", "Bangkok", "Barcelona", "Beijing", "Berlin", "Bogotá",
+      "Boston", "Brussels", "Budapest", "Buenos Aires", "Cairo", "Cape Town", "Chennai", "Chicago", "Copenhagen",
+      "Delhi", "Dubai", "Dublin", "Edinburgh", "Helsinki", "Hong Kong", "Istanbul", "Jakarta", "Kolkata", "Lagos",
+      "Lisbon", "London", "Los Angeles", "Madrid", "Manchester", "Melbourne", "Mexico City", "Milan", "Montreal",
+      "Mumbai", "Munich", "Nairobi", "New York", "Osaka", "Oslo", "Paris", "Prague", "Pune", "Rome",
+      "San Francisco", "Santiago", "São Paulo", "Seoul", "Shanghai", "Singapore", "Stockholm", "Sydney", "Tokyo",
+      "Toronto", "Vancouver", "Vienna", "Warsaw", "Zurich"];
+
+    function fakeSearch(query, signal) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          if (query === "fail") return reject(new Error("500 Internal Server Error"));
+          const q = query.toLowerCase();
+          resolve(CITIES.filter((city) => city.toLowerCase().includes(q)).slice(0, 8));
+        }, 100 + Math.random() * 600); // random latency, so responses can arrive out of order
+        signal.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(signal.reason); // a DOMException named "AbortError"
+        }, { once: true });
+      });
+    }
+
+    // ---------- Helpers ----------
+    function debounce(fn, ms) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    // "par" in "Paris" → ["", <mark>Par</mark>, "is"]: DOM nodes, never innerHTML, so no XSS
+    function highlight(text, query) {
+      const start = text.toLowerCase().indexOf(query.toLowerCase());
+      if (!query || start === -1) return [text];
+      const mark = document.createElement("mark");
+      mark.textContent = text.slice(start, start + query.length);
+      return [text.slice(0, start), mark, text.slice(start + query.length)];
+    }
+
+    // Demo only: the request log
+    const logEl = document.getElementById("log");
+    function log(text) {
+      const li = document.createElement("li");
+      li.textContent = text;
+      logEl.prepend(li);
+    }
+
+    // ---------- State + render ----------
+    const combo = document.getElementById("city-combo");
+    const input = document.getElementById("city-input");
+    const listbox = document.getElementById("city-listbox");
+    const statusEl = document.getElementById("city-status");
+    const selectedEl = document.getElementById("city-selected");
+
+    const state = { query: "", results: [], activeIndex: -1, open: false, status: "idle" }; // idle | loading | done | error
+    const cache = new Map(); // query → results
+    let controller = null;   // AbortController of the request in flight
+
+    function setState(patch) {
+      Object.assign(state, patch);
+      render();
+    }
+
+    function render() {
+      const { query, results, activeIndex, open, status } = state;
+
+      listbox.replaceChildren(...results.map((city, i) => {
+        const li = document.createElement("li");
+        li.id = `city-option-${i}`;
+        li.setAttribute("role", "option");
+        li.setAttribute("aria-selected", String(i === activeIndex));
+        li.dataset.index = String(i);
+        li.append(...highlight(city, query));
+        return li;
+      }));
+
+      const expanded = open && results.length > 0;
+      listbox.hidden = !expanded;
+      input.setAttribute("aria-expanded", String(expanded));
+      combo.dataset.status = status;
+
+      if (expanded && activeIndex >= 0) {
+        input.setAttribute("aria-activedescendant", `city-option-${activeIndex}`);
+        listbox.children[activeIndex].scrollIntoView({ block: "nearest" });
+      } else {
+        input.removeAttribute("aria-activedescendant");
+      }
+
+      let message = "";
+      if (status === "error") message = "Couldn't load suggestions. Keep typing to try again.";
+      else if (status === "done" && open) {
+        message = results.length
+          ? `${results.length} suggestion${results.length === 1 ? "" : "s"}. Use up and down arrows to choose.`
+          : `No cities match “${query}”.`;
+      }
+      if (statusEl.textContent !== message) statusEl.textContent = message; // don't re-announce identical text
+    }
+
+    // ---------- Data ----------
+    async function search(query) {
+      if (query !== state.query) return; // a debounced call for text that is no longer in the box
+
+      if (cache.has(query)) {
+        log(`cache hit "${query}"`);
+        setState({ results: cache.get(query), activeIndex: -1, open: true, status: "done" });
+        return;
+      }
+
+      controller?.abort(); // cancel the previous request: it can no longer resolve late
+      controller = new AbortController();
+      setState({ status: "loading" });
+      log(`→ request "${query}"`);
+
+      try {
+        const results = await fakeSearch(query, controller.signal);
+        cache.set(query, results);
+        if (query !== state.query) { // stale: the user typed again before the debounce fired
+          log(`↷ dropped stale response for "${query}"`);
+          return;
+        }
+        log(`← "${query}": ${results.length} result(s)`);
+        setState({ results, activeIndex: -1, open: true, status: "done" });
+      } catch (err) {
+        if (err.name === "AbortError") { log(`× aborted "${query}"`); return; }
+        log(`! "${query}" failed: ${err.message}`);
+        setState({ results: [], activeIndex: -1, open: false, status: "error" });
+      }
+    }
+    const debouncedSearch = debounce(search, 250);
+
+    function reset() {
+      controller?.abort();
+      setState({ query: "", results: [], activeIndex: -1, open: false, status: "idle" });
+    }
+
+    function choose(index) {
+      const city = state.results[index];
+      if (!city) return;
+      input.value = city;
+      selectedEl.textContent = city;
+      setState({ query: city, activeIndex: -1, open: false });
+    }
+
+    // ---------- Events ----------
+    input.addEventListener("input", () => {
+      const query = input.value.trim();
+      if (!query) return reset();
+      setState({ query });
+      debouncedSearch(query);
+    });
+
+    input.addEventListener("keydown", (e) => {
+      const { results, activeIndex, open } = state;
+      const last = results.length - 1;
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault(); // keep the caret where it is
+          if (results.length) setState({ open: true, activeIndex: !open || activeIndex >= last ? 0 : activeIndex + 1 });
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          if (results.length) setState({ open: true, activeIndex: !open || activeIndex <= 0 ? last : activeIndex - 1 });
+          break;
+        case "Enter":
+          if (open && activeIndex >= 0) {
+            e.preventDefault(); // don't submit a surrounding form
+            choose(activeIndex);
+          }
+          break;
+        case "Escape":
+          if (open) {
+            setState({ open: false, activeIndex: -1 });
+          } else {
+            input.value = "";
+            reset();
+          }
+          break;
+      }
+    });
+
+    listbox.addEventListener("mousedown", (e) => e.preventDefault()); // keep focus in the input
+    listbox.addEventListener("click", (e) => {
+      const option = e.target.closest('[role="option"]');
+      if (option) choose(Number(option.dataset.index));
+    });
+    input.addEventListener("blur", () => setState({ open: false, activeIndex: -1 }));
+  </script>
+</body>
+</html>

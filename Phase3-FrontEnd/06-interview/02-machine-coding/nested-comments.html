@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nested comments - machine coding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+    .hint { color: #4b5563; font-size: 0.95rem; }
+    button { font: inherit; font-size: 0.85rem; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid #9ca3af; background: #fff; cursor: pointer; }
+    button:focus-visible, textarea:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    textarea { display: block; width: 100%; font: inherit; padding: 0.4rem; margin: 0.25rem 0; }
+    label { font-size: 0.9rem; font-weight: 600; }
+
+    .thread { list-style: none; margin: 0; padding: 0; }
+    .thread .thread { margin-left: 1rem; padding-left: 0.75rem; border-left: 2px solid #e5e7eb; } /* one indent per level */
+    .thread article { padding: 0.5rem 0; }
+    .thread article p { margin: 0 0 0.25rem; }
+    .meta { font-size: 0.9rem; }
+    .deleted { color: #6b7280; font-style: italic; }
+    .actions { display: flex; gap: 0.4rem; }
+    .reply-form, .comment-form { margin: 0.25rem 0 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>Nested comments</h1>
+  <p class="hint">
+    Reply at any depth, cancel, or delete. A comment with replies is soft-deleted (shown as "deleted", replies kept);
+    a comment without replies is removed. Everything is rendered from one flat array with <code>parentId</code>.
+  </p>
+
+  <section id="comments" aria-labelledby="comments-title">
+    <h2 id="comments-title">Comments</h2>
+
+    <form class="comment-form" data-parent-id="">
+      <label for="new-comment">Add a comment</label>
+      <textarea id="new-comment" name="text" rows="2" required></textarea>
+      <button type="submit">Post</button>
+    </form>
+
+    <div id="thread-root"></div>
+  </section>
+
+  <script>
+    function h(tag, attrs = {}, ...children) {
+      const el = document.createElement(tag);
+      for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
+      el.append(...children); // strings become text nodes: user text can never inject HTML
+      return el;
+    }
+
+    // ---------- State: a flat list, the shape a database or API usually returns ----------
+    const state = {
+      comments: [
+        { id: 1, parentId: null, author: "Asha", text: "Great write-up! The debounce part finally clicked." },
+        { id: 2, parentId: 1, author: "Ben", text: "Same here. The stale-response check was new to me." },
+        { id: 3, parentId: 2, author: "Asha", text: "AbortController plus a query check covers both cases." },
+        { id: 4, parentId: 1, author: "Chen", text: "Would love a follow-up on virtualised lists." },
+        { id: 5, parentId: null, author: "Dana", text: "Is the combobox pattern the same in React?" },
+      ],
+      replyingTo: null, // id of the comment whose reply form is open
+    };
+    let nextId = 6;
+
+    const section = document.getElementById("comments");
+    const root = document.getElementById("thread-root");
+
+    // ---------- Render ----------
+    function render() {
+      const byParent = Map.groupBy(state.comments, (c) => c.parentId); // parentId → [children], built once: O(n)
+      root.replaceChildren(renderThread(byParent, null) ?? h("p", {}, "No comments yet."));
+    }
+
+    function renderThread(byParent, parentId) {
+      const children = byParent.get(parentId);
+      if (!children) return null;
+      return h("ul", { class: "thread" }, ...children.map((c) => renderComment(byParent, c)));
+    }
+
+    function renderComment(byParent, c) {
+      const article = c.deleted
+        ? h("article", {}, h("p", { class: "deleted" }, "This comment was deleted."))
+        : h("article", {},
+            h("p", { class: "meta" }, h("strong", {}, c.author)),
+            h("p", {}, c.text),
+            h("div", { class: "actions" },
+              h("button", { type: "button", "data-action": "reply", "aria-expanded": String(state.replyingTo === c.id) }, "Reply"),
+              h("button", { type: "button", "data-action": "delete" }, "Delete")));
+
+      const li = h("li", { "data-id": c.id }, article);
+      if (state.replyingTo === c.id) li.append(replyForm(c));
+      const replies = renderThread(byParent, c.id); // recursion: depth is unlimited
+      if (replies) li.append(replies);
+      return li;
+    }
+
+    function replyForm(parent) {
+      return h("form", { class: "reply-form", "data-parent-id": parent.id },
+        h("label", { for: `reply-${parent.id}` }, `Reply to ${parent.author}`),
+        h("textarea", { id: `reply-${parent.id}`, name: "text", rows: 2, required: "" }),
+        h("div", { class: "actions" },
+          h("button", { type: "submit" }, "Post reply"),
+          h("button", { type: "button", "data-action": "cancel" }, "Cancel")));
+    }
+
+    // Re-rendering replaces the DOM, so put focus back somewhere sensible
+    function focusInComment(id, selector) {
+      root.querySelector(`li[data-id="${id}"] ${selector}`)?.focus();
+    }
+
+    // ---------- Actions ----------
+    function deleteComment(id) {
+      if (state.replyingTo === id) state.replyingTo = null;
+      const hasReplies = state.comments.some((c) => c.parentId === id);
+      state.comments = hasReplies
+        ? state.comments.map((c) => (c.id === id ? { ...c, text: "", deleted: true } : c)) // keep the thread intact
+        : state.comments.filter((c) => c.id !== id);
+    }
+
+    // ---------- Events: two delegated listeners for the whole widget ----------
+    section.addEventListener("click", (e) => {
+      const button = e.target.closest("button[data-action]");
+      if (!button) return;
+      const id = Number(button.closest("li[data-id]").dataset.id);
+
+      switch (button.dataset.action) {
+        case "reply":
+          state.replyingTo = state.replyingTo === id ? null : id;
+          render();
+          if (state.replyingTo) document.getElementById(`reply-${id}`).focus();
+          else focusInComment(id, '[data-action="reply"]');
+          break;
+        case "cancel":
+          state.replyingTo = null;
+          render();
+          focusInComment(id, '[data-action="reply"]');
+          break;
+        case "delete":
+          deleteComment(id);
+          render();
+          section.querySelector("#new-comment").focus(); // the button no longer exists
+          break;
+      }
+    });
+
+    section.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const text = form.elements.text.value.trim();
+      if (!text) return;
+      const parentId = form.dataset.parentId ? Number(form.dataset.parentId) : null;
+      const id = nextId++;
+      state.comments.push({ id, parentId, author: "You", text });
+      state.replyingTo = null;
+      render();
+      if (parentId === null) form.reset();               // the top-level form is not re-rendered
+      else focusInComment(id, '[data-action="reply"]');  // land on the new reply
+    });
+
+    render();
+  </script>
+</body>
+</html>

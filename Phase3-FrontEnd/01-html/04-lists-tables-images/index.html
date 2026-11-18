@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image,List and table</title>
+</head>
+
+<body>
+    <h2>Learn about List,Image and table</h2>
+    <h4>Image is below</h4>
+    <!-- The "src" and "alt" attributes are essential for the proper functioning of the <img> tag.
+        src attribute: Specifies the path to the image file.
+        alt attribute: Provides a text description for the image.-->
+    <img height="450" width="300" src="doremon_img.jpg" alt="Doremon">
+    <!-- HTML tables allow you to arrange data like text, images, and links in rows and columns.
+         You use the <table> tag to start and end a table.
+        <table>: Defines the table itself.
+        <tr>: Used for table rows.
+        <th>: Used for table headings.
+        <td>: Used for table cells (data).
+    -->
+    <h5>Table structure:</h5>
+    <table>
+        <!-- Rowspan: If you want a table cell to span multiple rows, you can use the rowspan attribute
+             Colspan: If you want a table cell to span multiple columns, you can use the colspan attribute.
+        -->
+        <tr>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Fav food</th>
+        </tr>
+        <tr>
+            <td>Aman</td>
+            <td>20</td>
+        </tr>
+        <tr>
+            <td colspan="2">Sarthak</td>
+            <td rowspan="2">25</td> <!--you will see the diff when the border of table will be added-->
+            <td>sandwich</td>
+        </tr>
+        <tr>
+            <td>Chaman</td>
+        </tr>
+    </table>
+    <!--List
+        HTML provides different types of lists to display data in various forms. Each list contains one or more list items.
+            Unordered List: Displays items using bullets.
+            Ordered List: Displays items in a numerical sequence, and supports various numbering styles like Arabic numerals, Roman numerals, and so on.
+            Definition List: Organizes items in a format similar to a dictionary, with terms and their corresponding definitions.
+    -->
+    <h5>Types of list</h5>
+    <ul type="square"> <!-- dice by default-->
+        <li>apple</li>
+        <li>orange</li>
+        <li>Banana</li>
+    </ul>
+    <ol type="a">
+        <li>apple</li>
+        <li>orange</li>
+        <li>Banana</li>
+    </ol>
+    <h5>Diff type</h5>
+    <ol type="i">
+        <li>apple</li>
+        <li>orange</li>
+        <li>Banana</li>
+    </ol>
+    <h1>HTML Definition List</h1>
+    <dl>
+        <dt>HTML</dt>
+        <dd>HyperText Markup Language: The standard language for creating web pages.</dd>
+
+        <dt>CSS</dt>
+        <dd>Cascading Style Sheets: A stylesheet language used for describing the look and formatting of a document
+            written in HTML.</dd>
+
+        <dt>JavaScript</dt>
+        <dd>A programming language commonly used in web development to add interactive features.</dd>
+    </dl>
+</body>
+
+</html>

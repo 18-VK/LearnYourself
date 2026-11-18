@@ -1,0 +1,57 @@
+:root {
+    --PrimaryColor: rgb(190 9 166 / 78%);
+    --Text-color: white;
+}
+*
+{
+    margin: 0;
+    padding: 0;
+}
+nav,footer {
+    background-color: var(--PrimaryColor);
+    border: 4px solid var(--Text-color);
+    color: var(--Text-color);
+    padding: 3vh;
+}
+.Products
+{
+    text-align: center;
+}
+ul {
+    display: flex;
+}
+
+nav ul li {
+    margin: 0vw 0vw 0vw 10vw;
+}
+
+nav {
+    position: sticky;
+    top: 0;
+}
+
+ul li {
+    list-style: none;
+}
+span img {
+    border-radius: 1em;
+    width: 40vw;
+    height: 90vh;
+}
+
+#About-king {
+    border: 3px solid rgb(213, 158, 199);
+    background-color: var(--PrimaryColor);
+    color: var(--Text-color);
+    border-radius: 1em;
+    padding: 2px;
+    margin: 1vh 8vw 0vw 5vw;
+}
+a img
+{
+    width: 50px;
+    position: fixed;
+    right: 10px;
+    bottom: 30px;
+    border-radius: 60px;
+}

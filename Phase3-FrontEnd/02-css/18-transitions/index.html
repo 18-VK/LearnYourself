@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Transitions</title>
+    <style>
+        .container
+        {
+            background-color: burlywood;
+            border: 2px solid black;
+            width: 60vw;
+            height: 60vh;
+        }
+        .box
+        {
+            background-color: blueviolet;
+            border: 2px solid black;
+            width: 50%;
+            height: 50%;
+            transform: translateX(50%) translateY(50%);
+            /* transition-property: transform;
+            transition-delay: 1s;
+            transition-duration: 3s;
+            transition-timing-function: ease-in-out; */
+            transition: transform 3s 1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="box">
+            
+        </div>
+    </div>
+</body>
+</html>

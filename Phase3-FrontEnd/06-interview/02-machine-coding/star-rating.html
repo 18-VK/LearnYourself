@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Star rating - machine coding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+    .hint { color: #4b5563; font-size: 0.95rem; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+                       clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+    .rating { border: 0; padding: 0; margin: 1rem 0; }
+    .rating legend { font-weight: 600; margin-bottom: 0.25rem; }
+    .rating label { font-size: 2.25rem; line-height: 1; color: #d1d5db; cursor: pointer; padding: 0 0.1rem; border-radius: 4px; }
+    .rating label.filled { color: #f59e0b; }
+    .rating input:focus-visible + label { outline: 3px solid #2563eb; outline-offset: 2px; }
+
+    /* Read-only display: a gradient clipped to the star characters gives partial stars */
+    .stars-display::before {
+      content: "★★★★★";
+      font-size: 1.75rem;
+      background: linear-gradient(90deg, #f59e0b calc(var(--rating) / 5 * 100%), #d1d5db 0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+  </style>
+</head>
+<body>
+  <h1>Star rating</h1>
+  <p class="hint">
+    Click a star, or <kbd>Tab</kbd> to the group and use the arrow keys. The stars are real radio buttons,
+    so keyboard support and the screen-reader announcement ("3 stars, radio button, 3 of 5") come from the browser.
+  </p>
+
+  <fieldset class="rating" id="product-rating">
+    <legend>Rate this product</legend>
+  </fieldset>
+  <p>Your rating: <output id="rating-value">none</output> <button type="button" id="clear-rating">Clear rating</button></p>
+
+  <h2>Read-only display</h2>
+  <p>Average from 1,284 reviews:</p>
+  <div class="stars-display" role="img" aria-label="Rated 3.5 out of 5" style="--rating: 3.5"></div>
+
+  <script>
+    // Tiny element builder: attributes via setAttribute, children appended (strings become text nodes)
+    function h(tag, attrs = {}, ...children) {
+      const el = document.createElement(tag);
+      for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
+      el.append(...children);
+      return el;
+    }
+
+    function createStarRating(fieldset, { max = 5, value = 0, onChange = () => {} } = {}) {
+      const name = `${fieldset.id}-value`;
+      const state = { value, hover: 0 };
+      const stars = [];
+
+      for (let i = 1; i <= max; i++) {
+        const id = `${name}-${i}`;
+        const input = h("input", { type: "radio", class: "visually-hidden", name, id, value: i });
+        const label = h("label", { for: id, "data-value": i },
+          h("span", { "aria-hidden": "true" }, "★"),
+          h("span", { class: "visually-hidden" }, `${i} star${i === 1 ? "" : "s"}`));
+        fieldset.append(input, label);
+        stars.push({ input, label });
+      }
+
+      function render() {
+        const shown = state.hover || state.value; // hover previews, otherwise show the saved value
+        stars.forEach(({ input, label }, i) => {
+          input.checked = i + 1 === state.value;
+          label.classList.toggle("filled", i < shown);
+        });
+      }
+
+      function set(newValue) {
+        state.value = newValue;
+        render();
+        onChange(newValue);
+      }
+
+      // Radios fire "change" for clicks on the label AND for arrow keys: one handler covers both
+      fieldset.addEventListener("change", (e) => set(Number(e.target.value)));
+
+      fieldset.addEventListener("pointerover", (e) => {
+        const label = e.target.closest("label[data-value]");
+        if (!label) return;
+        state.hover = Number(label.dataset.value);
+        render();
+      });
+      fieldset.addEventListener("pointerleave", () => {
+        state.hover = 0;
+        render();
+      });
+
+      render();
+      return { get value() { return state.value; }, set };
+    }
+
+    const output = document.getElementById("rating-value");
+    const rating = createStarRating(document.getElementById("product-rating"), {
+      onChange: (value) => { output.textContent = value ? `${value} of 5` : "none"; },
+    });
+    document.getElementById("clear-rating").addEventListener("click", () => rating.set(0));
+  </script>
+</body>
+</html>

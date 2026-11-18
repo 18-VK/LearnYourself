@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Filter</title>
+    <style>
+        .Img1 {
+            width: 30vw;
+            height: 40vh;
+            /* filter: blur(3px); */
+            /* filter: brightness(150%); */
+            /* filter: contrast(2); */
+            filter: drop-shadow(10%);
+            /* Multiple filters */
+            filter: contrast(175%) brightness(3%);
+            filter: drop-shadow(3px 3px red) drop-shadow(-3px -3px blue);
+
+        }
+
+        .Img2 {
+            width: 30vw;
+            height: 40vh;
+            filter: grayscale(80%);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img class="Img1"
+            src="https://images.news9live.com/wp-content/uploads/2023/08/cropped-image-2082.png?w=900&enlarge=true"
+            alt="">
+        <img class="Img2" src="https://qph.cf2.quoracdn.net/main-qimg-62c0428963c84bf07deb32a25699c7e1-lq" alt="">
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selectors Masterclass</title>
+    <style>
+        /* Elememt selector*/
+        div {
+            color: darkgreen;
+        }
+
+        /* Class Selector*/
+        .Sel {
+            color: blue;
+        }
+
+        /* ID Selector*/
+        #ID_sel {
+            color: brown;
+        }
+
+        /* Child Selector*/
+        span>p {
+            color: blueviolet;
+        }
+
+        /* Decendent Selector*/
+        main p {
+            color: chocolate;
+        }
+
+        /* Pseudo Selector*/
+        a:visited {
+            color: darkmagenta;
+        }
+
+        a:link {
+            color: green;
+        }
+
+        a:hover {
+            color: crimson;
+        }
+
+        /* Adjacent sibling  */
+        div+p {
+            background-color: yellow;
+        }
+        ::selection
+        {
+            background-color: blue;
+        }
+    </style>
+
+</head>
+
+<body>
+    <h2>In this tutorial, we'll learn about some of most used selectors.</h2>
+    <div>1.Elememt selector.</div>
+    <div class="Sel">2.Class Selector</div>
+    <div id="ID_sel">3.ID Selector</div>
+    <span>4.Child selector
+        <p style="margin:auto;padding: 15px;">Lorem, ipsum dolor sit amet consectetur adipisicing elit. Modi dignissimos
+            illum quia.</p>
+    </span>
+    <main>
+        <div>5.Decendent
+            <p style="padding: 15px;">Lorem ipsum dolor sit amet consectetur adipisicing elit. Veritatis eligendi quam
+                nostrum vitae, nemo
+                quasi necessitatibus rem, nam architecto, culpa voluptas omnis repellat iusto quisquam non facilis in
+                fugit? Repellendus.</p>
+        </div>
+    </main>
+    <div>6.Universal Seclector</div>
+    <span>
+        7.Pseudo selector
+        <a href="http://WWW.instagram.com">Go to instagram</a>
+        <a href="http://WWW.Twitter.com">Go to Twitter</a>
+    </span>
+    <h2>Adjacent Sibling Selector</h2>
+
+    <p>The + selector is used to select an element that is directly after another specific element.</p>
+    <p>The following example selects the first p element that are placed immediately after div elements:</p>
+
+    <div>
+        <p>Paragraph 1 in the div.</p>
+        <p>Paragraph 2 in the div.</p>
+    </div>
+
+    <p>Paragraph 3. After a div.</p>
+    <p>Paragraph 4. After a div.</p>
+
+    <div>
+        <p>Paragraph 5 in the div.</p>
+        <p>Paragraph 6 in the div.</p>
+    </div>
+
+    <p>Paragraph 7. After a div.</p>
+    <p>Paragraph 8. After a div.</p>
+</body>
+
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interactive elements and web components demo</title>
+  <style>
+    :root {
+      font-family: system-ui, sans-serif;
+      line-height: 1.5;
+      color: #1a1a1a;
+      background: #fff;
+    }
+    body { max-width: 42rem; margin: 0 auto; padding: 1rem; }
+    section { border-top: 1px solid #ccc; padding-block: 1rem; }
+    button { font: inherit; padding: 0.4rem 0.9rem; cursor: pointer; }
+    :focus-visible { outline: 3px solid #0b57d0; outline-offset: 2px; }
+    .result { font-weight: 600; }
+
+    /* 1. details: custom marker, open state styled from the [open] attribute */
+    details { border: 1px solid #ccc; border-radius: 6px; margin-block: 0.5rem; padding: 0.5rem 1rem; }
+    summary { cursor: pointer; font-weight: 600; }
+    details[open] summary { margin-bottom: 0.5rem; }
+
+    /* 2. dialog: style only the open state, never `dialog { display: ... }` */
+    dialog { border: 0; border-radius: 8px; padding: 0; max-width: 24rem; }
+    dialog[open] { display: block; }
+    dialog .inner { padding: 1.25rem; }          /* padding lives here, so backdrop clicks are easy to detect */
+    dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+    html:has(dialog:modal) { overflow: hidden; } /* scroll lock only while a modal is open */
+    .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+    /* 3. popover: anchored to its button where CSS anchor positioning is supported */
+    #help-btn { anchor-name: --help; }
+    #help-pop { max-width: 18rem; border: 1px solid #888; border-radius: 6px; padding: 0.75rem; }
+    @supports (anchor-name: --a) {
+      #help-pop {
+        position-anchor: --help;
+        inset: auto;                       /* undo the default viewport centring */
+        margin: 0.25rem 0 0;
+        top: anchor(bottom);
+        left: anchor(left);
+        position-try-fallbacks: flip-block;
+      }
+    }
+
+    /* 4. inert gets no default styling, so give users a visual cue */
+    fieldset[inert] { opacity: 0.5; }
+
+    /* 5. custom element: reserve space before the definition loads, theme it from outside */
+    like-counter:not(:defined) { display: inline-block; min-width: 8rem; min-height: 2.5rem; }
+    like-counter { --like-colour: #b3261e; }
+    like-counter.blue { --like-colour: #0b57d0; }
+    like-counter::part(button) { border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Interactive elements and web components</h1>
+
+  <!-- 1. details / summary: an exclusive accordion via the shared name attribute -->
+  <section>
+    <h2>1. <code>&lt;details&gt;</code> accordion</h2>
+    <details name="faq" open>
+      <summary>What is a disclosure widget?</summary>
+      <p>A control that shows and hides content. This one needs no JavaScript.</p>
+    </details>
+    <details name="faq">
+      <summary>Why does the other item close?</summary>
+      <p>Both items share <code>name="faq"</code>, so only one can be open at a time.</p>
+    </details>
+    <p class="result" id="details-log" role="status"></p>
+  </section>
+
+  <!-- 2. dialog: showModal(), form method="dialog", returnValue, closedby -->
+  <section>
+    <h2>2. Modal <code>&lt;dialog&gt;</code></h2>
+    <button type="button" id="delete-btn">Delete file… (script)</button>
+    <!-- Invoker commands: no script needed in browsers from late 2025 on -->
+    <button type="button" commandfor="confirm" command="show-modal">Delete file… (commandfor)</button>
+    <p class="result" id="dialog-result" role="status"></p>
+
+    <dialog id="confirm" aria-labelledby="confirm-title" closedby="any">
+      <div class="inner">
+        <form method="dialog">
+          <h2 id="confirm-title">Delete "report.pdf"?</h2>
+          <p>This cannot be undone. Press Esc or click outside to cancel.</p>
+          <div class="actions">
+            <button value="cancel" autofocus>Cancel</button>
+            <button value="delete">Delete</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+  </section>
+
+  <!-- 3. popover: popovertarget, light dismiss, top layer -->
+  <section>
+    <h2>3. Popover</h2>
+    <button type="button" id="help-btn" popovertarget="help-pop">What is the top layer?</button>
+    <div id="help-pop" popover>
+      <p>The top layer is drawn above the whole page, so no <code>z-index</code> or <code>overflow: hidden</code> can hide this box.</p>
+      <button type="button" popovertarget="help-pop" popovertargetaction="hide">Close</button>
+    </div>
+    <p class="result" id="popover-log" role="status"></p>
+  </section>
+
+  <!-- 4. inert: visible but unusable -->
+  <section>
+    <h2>4. <code>inert</code></h2>
+    <button type="button" id="lock-btn" aria-pressed="false">Lock the settings</button>
+    <fieldset id="settings">
+      <legend>Settings</legend>
+      <label><input type="checkbox"> Email me updates</label><br>
+      <label>Nickname <input type="text"></label>
+    </fieldset>
+  </section>
+
+  <!-- 5. custom element: shadow DOM, slot, part, custom property, attribute, composed event -->
+  <section>
+    <h2>5. Custom element</h2>
+    <like-counter count="3">Like this note</like-counter>
+    <like-counter class="blue">Bookmark</like-counter>
+    <p class="result" id="like-log" role="status"></p>
+  </section>
+
+  <script>
+    // 1. details: the toggle event fires after the state changes
+    document.querySelectorAll('details[name="faq"]').forEach((item) => {
+      item.addEventListener("toggle", () => {
+        if (item.open) {
+          document.getElementById("details-log").textContent =
+            `Opened: "${item.querySelector("summary").textContent}"`;
+        }
+      });
+    });
+
+    // 2. dialog
+    const dialog = document.getElementById("confirm");
+    const dialogResult = document.getElementById("dialog-result");
+
+    document.getElementById("delete-btn").addEventListener("click", () => {
+      dialog.showModal();
+    });
+
+    dialog.addEventListener("close", () => {
+      dialogResult.textContent = `returnValue: "${dialog.returnValue}" ${
+        dialog.returnValue === "delete" ? "(file deleted)" : "(nothing deleted)"
+      }`;
+      // Reset after reading: Esc and light dismiss don't set a new value,
+      // so the next close would otherwise report this answer again
+      dialog.returnValue = "";
+    });
+
+    // Light dismiss fallback where closedby is not supported (Safari at the time of writing)
+    if (!("closedBy" in HTMLDialogElement.prototype)) {
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();   // the click hit the backdrop
+      });
+    }
+
+    // 3. popover events
+    const pop = document.getElementById("help-pop");
+    pop.addEventListener("toggle", (event) => {
+      document.getElementById("popover-log").textContent =
+        `Popover ${event.oldState} → ${event.newState}`;
+    });
+
+    // 4. inert
+    const lockBtn = document.getElementById("lock-btn");
+    const settings = document.getElementById("settings");
+    lockBtn.addEventListener("click", () => {
+      settings.inert = !settings.inert;
+      lockBtn.setAttribute("aria-pressed", String(settings.inert));
+    });
+
+    // 5. custom element
+    class LikeCounter extends HTMLElement {
+      static observedAttributes = ["count"];
+      #button;
+      #count;
+
+      constructor() {
+        super();
+        const root = this.attachShadow({ mode: "open" });
+        root.innerHTML = `
+          <style>
+            :host { display: inline-block; margin: 0.25rem; }
+            button {
+              font: inherit;
+              padding: 0.4rem 0.9rem;
+              border: 2px solid var(--like-colour, crimson);
+              border-radius: 999px;
+              background: #fff;
+              color: var(--like-colour, crimson);
+              cursor: pointer;
+            }
+            button[aria-pressed="true"] { background: var(--like-colour, crimson); color: #fff; }
+          </style>
+          <button type="button" part="button" aria-pressed="false">
+            <span aria-hidden="true">♥</span> <slot>Like</slot> (<span class="count">0</span>)
+          </button>`;
+        this.#button = root.querySelector("button");
+        this.#count = root.querySelector(".count");
+        // A listener on our own shadow content needs no cleanup: it goes away with the element
+        this.#button.addEventListener("click", () => this.#toggle());
+      }
+
+      attributeChangedCallback(name, oldValue, newValue) {
+        if (name === "count") this.#count.textContent = String(Number(newValue) || 0);
+      }
+
+      get count() { return Number(this.getAttribute("count")) || 0; }
+      set count(value) { this.setAttribute("count", String(value)); }   // reflect property → attribute
+
+      #toggle() {
+        const liked = this.#button.getAttribute("aria-pressed") !== "true";
+        this.#button.setAttribute("aria-pressed", String(liked));
+        this.count += liked ? 1 : -1;
+        // bubbles + composed: the event leaves the shadow root and reaches document
+        this.#button.dispatchEvent(new CustomEvent("like-change", {
+          bubbles: true,
+          composed: true,
+          detail: { liked, count: this.count },
+        }));
+      }
+    }
+    customElements.define("like-counter", LikeCounter);
+
+    document.addEventListener("like-change", (event) => {
+      // event.target is retargeted to the <like-counter> host, not the inner <button>
+      document.getElementById("like-log").textContent =
+        `${event.target.textContent.trim()}: ${event.detail.liked ? "on" : "off"}, count ${event.detail.count}`;
+    });
+  </script>
+</body>
+</html>

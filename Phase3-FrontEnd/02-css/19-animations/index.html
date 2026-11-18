@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Animation</title>
+    <Style>
+        .container {
+            background-color: burlywood;
+            border: 2px solid black;
+            width: 60vw;
+            height: 60vh;
+        }
+
+        .box {
+            background-color: navy;
+            border: 2px solid grey;
+            width: 10%;
+            height: 10%;
+            /* animation-name: Demo;
+            animation-duration: 4s;
+            animation-delay: 1s;
+            animation-timing-function: ease-in-out;
+            animation-direction: reverse;
+            animation-iteration-count: infinite; */
+            /* animation: name duration timing-function delay iteration-count direction fill-mode; */
+            animation: Demo 5s ease-in-out 3s 1,
+                harry2 3s ease-in-out 3s 1;
+        }
+
+        @keyframes Demo {
+            from {
+                background-color: chocolate;
+            }
+
+            to {
+                transform: translateX(500px);
+                background-color: green;
+            }
+        }
+
+        @keyframes harry2 {
+            0% {
+                transform: rotate(100deg);
+            }
+
+            20% {
+                transform: rotate(200deg);
+            }
+
+            50% {
+                transform: rotate(220deg);
+            }
+
+            80% {
+                transform: rotate(300deg);
+            }
+
+            100% {
+                transform: rotate(310deg);
+            }
+        }
+    </Style>
+</head>
+
+<body>
+    <Div class="container">
+        <div class="box">
+            A box
+        </div>
+    </Div>
+</body>
+
+</html>

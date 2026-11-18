@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layout thrashing demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    #output { font-family: monospace; white-space: pre-line; min-height: 3em; }
+    #ruler { width: 50%; height: 4px; background: #999; margin-bottom: 1rem; }
+    .grid { display: flex; flex-wrap: wrap; gap: 2px; }
+    .box { width: 40px; height: 8px; background: steelblue; }
+  </style>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <h1>Layout thrashing demo</h1>
+  <p>
+    Open DevTools, go to the Performance panel, start recording, click a button and stop.
+    The interleaved run shows hundreds of purple Layout slices marked "Forced reflow";
+    the batched run shows one layout, at the next frame.
+  </p>
+  <div class="controls">
+    <button id="thrash" type="button">Interleaved read/write</button>
+    <button id="batched" type="button">Batched: read, then write</button>
+    <button id="reset" type="button">Reset widths</button>
+  </div>
+  <p id="output"></p>
+  <div id="ruler"></div>
+  <div class="grid" id="grid"></div>
+</body>
+</html>

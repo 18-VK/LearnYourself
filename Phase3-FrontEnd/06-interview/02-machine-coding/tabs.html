@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tabs (ARIA tabs pattern) - machine coding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+    .hint { color: #4b5563; font-size: 0.95rem; }
+
+    [role="tablist"] { display: flex; gap: 0.25rem; border-bottom: 2px solid #d1d5db; }
+    [role="tab"] { font: inherit; padding: 0.5rem 1rem; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px;
+                   background: none; color: #4b5563; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: #1d4ed8; border-bottom-color: #1d4ed8; font-weight: 600; }
+    [role="tab"]:focus-visible, [role="tabpanel"]:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    [role="tabpanel"] { padding: 1rem 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Tabs</h1>
+  <p class="hint">
+    <kbd>Tab</kbd> reaches only the selected tab. Inside the tab list use <kbd>←</kbd>/<kbd>→</kbd>
+    (wrapping), <kbd>Home</kbd> and <kbd>End</kbd>; the next <kbd>Tab</kbd> moves into the panel.
+    Without JavaScript all three panels are simply shown one after another.
+  </p>
+
+  <div class="tabs" id="settings-tabs">
+    <div role="tablist" aria-label="Account settings">
+      <button type="button" role="tab" id="tab-profile" aria-controls="panel-profile" aria-selected="true">Profile</button>
+      <button type="button" role="tab" id="tab-security" aria-controls="panel-security" aria-selected="false">Security</button>
+      <button type="button" role="tab" id="tab-billing" aria-controls="panel-billing" aria-selected="false">Billing</button>
+    </div>
+
+    <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" tabindex="0">
+      <p>Your name, photo and bio. <a href="#settings-tabs">A link inside the panel</a>.</p>
+    </div>
+    <div role="tabpanel" id="panel-security" aria-labelledby="tab-security" tabindex="0">
+      <p>Password, two-factor authentication and active sessions.</p>
+    </div>
+    <div role="tabpanel" id="panel-billing" aria-labelledby="tab-billing" tabindex="0">
+      <p>Plan, invoices and payment methods.</p>
+    </div>
+  </div>
+
+  <script>
+    function initTabs(root) {
+      const tablist = root.querySelector('[role="tablist"]');
+      const tabs = [...tablist.querySelectorAll('[role="tab"]')];
+
+      function select(tab, { focus = true } = {}) {
+        for (const t of tabs) {
+          const selected = t === tab;
+          t.setAttribute("aria-selected", String(selected));
+          t.tabIndex = selected ? 0 : -1; // roving tabindex: only the selected tab is in the Tab order
+          document.getElementById(t.getAttribute("aria-controls")).hidden = !selected;
+        }
+        if (focus) tab.focus();
+      }
+
+      tablist.addEventListener("click", (e) => {
+        const tab = e.target.closest('[role="tab"]');
+        if (tab) select(tab);
+      });
+
+      tablist.addEventListener("keydown", (e) => {
+        const i = tabs.indexOf(e.target.closest('[role="tab"]'));
+        if (i === -1) return;
+        const next = {
+          ArrowRight: tabs[(i + 1) % tabs.length],
+          ArrowLeft: tabs[(i - 1 + tabs.length) % tabs.length],
+          Home: tabs[0],
+          End: tabs[tabs.length - 1],
+        }[e.key];
+        if (!next) return;
+        e.preventDefault(); // Home/End would otherwise scroll the page
+        select(next);       // automatic activation: moving focus also selects
+      });
+
+      // Progressive enhancement: the HTML shows every panel; JS hides all but the selected one
+      select(tabs.find((t) => t.getAttribute("aria-selected") === "true") ?? tabs[0], { focus: false });
+    }
+
+    initTabs(document.getElementById("settings-tabs"));
+  </script>
+</body>
+</html>

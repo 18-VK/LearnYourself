@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinite scroll with IntersectionObserver - machine coding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+    .hint { color: #4b5563; font-size: 0.95rem; }
+    .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+    .feed li { border: 1px solid #d1d5db; border-radius: 8px; padding: 0.75rem 1rem; min-height: 5rem; }
+    .feed h2 { font-size: 1.05rem; margin: 0 0 0.25rem; }
+    .feed p { margin: 0; color: #4b5563; }
+    .sentinel { height: 1px; }
+    .status { text-align: center; color: #4b5563; min-height: 1.5em; }
+    .controls { text-align: center; }
+    button { font: inherit; padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid #6b7280; background: #fff; cursor: pointer; }
+    button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    .toolbar { position: sticky; top: 0; background: #fff; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Infinite scroll</h1>
+  <p class="hint">
+    95 fake posts, 10 per page, 400 ms per request. Scroll down: the next page starts loading 300 px before the end.
+    Tick the box to make the next request fail and check the retry path.
+  </p>
+  <div class="toolbar">
+    <label><input type="checkbox" id="fail-next"> Fail the next request</label>
+  </div>
+
+  <ul id="feed" class="feed" aria-busy="false"></ul>
+  <div id="sentinel" class="sentinel"></div>
+  <p id="feed-status" class="status" role="status"></p>
+  <p class="controls"><button type="button" id="load-more" hidden>Load more</button></p>
+
+  <script>
+    // ---------- Fake API: cursor pagination over a local array ----------
+    const POSTS = Array.from({ length: 95 }, (_, i) => ({
+      id: i + 1,
+      title: `Post #${i + 1}`,
+      body: `Body text of post ${i + 1}. In a real feed this would be content from the server.`,
+    }));
+    const failNext = document.getElementById("fail-next");
+
+    function fetchPosts(cursor = 0, limit = 10) {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          if (failNext.checked) {
+            failNext.checked = false;
+            return reject(new Error("Network error"));
+          }
+          const items = POSTS.slice(cursor, cursor + limit);
+          const nextCursor = cursor + limit < POSTS.length ? cursor + limit : null; // null = no more pages
+          resolve({ items, nextCursor });
+        }, 400);
+      });
+    }
+
+    // ---------- State ----------
+    const feed = document.getElementById("feed");
+    const sentinel = document.getElementById("sentinel");
+    const statusEl = document.getElementById("feed-status");
+    const loadMoreBtn = document.getElementById("load-more");
+
+    const state = { count: 0, nextCursor: 0, loading: false, error: null };
+
+    function renderStatus() {
+      const done = state.nextCursor === null;
+      feed.setAttribute("aria-busy", String(state.loading));
+      statusEl.textContent =
+        state.loading ? "Loading more posts…" :
+        state.error ? state.error :
+        done ? `You're all caught up: ${state.count} posts.` : "";
+      loadMoreBtn.hidden = state.loading || done; // keyboard users and failed requests need a button
+      loadMoreBtn.textContent = state.error ? "Retry" : "Load more";
+    }
+
+    // Append only the new page: re-rendering the whole list would lose scroll position and focus
+    function appendPosts(items) {
+      const fragment = document.createDocumentFragment();
+      for (const post of items) {
+        const li = document.createElement("li");
+        const title = document.createElement("h2");
+        const body = document.createElement("p");
+        title.textContent = post.title;
+        body.textContent = post.body;
+        li.append(title, body);
+        fragment.append(li);
+      }
+      feed.append(fragment);
+    }
+
+    async function loadMore() {
+      if (state.loading || state.nextCursor === null) return; // guard: the observer can fire again mid-request
+      state.loading = true;
+      state.error = null;
+      renderStatus();
+      try {
+        const { items, nextCursor } = await fetchPosts(state.nextCursor);
+        appendPosts(items);
+        state.count += items.length;
+        state.nextCursor = nextCursor;
+      } catch (err) {
+        state.error = `Couldn't load more posts (${err.message}).`;
+      } finally {
+        state.loading = false;
+        renderStatus();
+      }
+
+      if (state.nextCursor === null) {
+        observer.disconnect(); // nothing left to load
+      } else if (!state.error) {
+        // If the sentinel is STILL visible (short page, tall screen), no new intersection change will
+        // ever fire. Re-observing queues a fresh initial callback with the current state.
+        observer.unobserve(sentinel);
+        observer.observe(sentinel);
+      }
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) loadMore();
+    }, { rootMargin: "0px 0px 300px 0px" }); // start loading 300 px before the sentinel is on screen
+
+    observer.observe(sentinel); // the initial callback loads the first page
+    loadMoreBtn.addEventListener("click", loadMore);
+  </script>
+</body>
+</html>

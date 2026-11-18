@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modal with dialog - machine coding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+    .hint { color: #4b5563; font-size: 0.95rem; }
+    button { font: inherit; padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid #6b7280; background: #fff; cursor: pointer; }
+    button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    .danger { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+
+    dialog { padding: 0; border: 0; border-radius: 10px; box-shadow: 0 20px 50px rgb(0 0 0 / 0.3); max-width: min(28rem, 100% - 2rem); }
+    dialog::backdrop { background: rgb(15 23 42 / 0.55); }
+    .dialog-body { padding: 1.25rem 1.5rem; }   /* padding lives here, so a click on the <dialog> itself is a backdrop click */
+    .dialog-body h2 { margin-top: 0; }
+    .actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+    html:has(dialog[open]) { overflow: hidden; } /* stop the page scrolling behind the modal */
+  </style>
+</head>
+<body>
+  <h1>Modal with <code>&lt;dialog&gt;</code></h1>
+  <p class="hint">
+    Open the dialog, then try <kbd>Tab</kbd> (focus stays inside), <kbd>Esc</kbd>, clicking the dark backdrop and both buttons.
+    Focus returns to the button that opened it.
+  </p>
+
+  <button type="button" id="delete-account">Delete account…</button>
+  <p>Result: <output id="result">nothing yet</output></p>
+
+  <!-- Long content so you can check that the page behind does not scroll -->
+  <p style="margin-top: 120vh">End of the page.</p>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+    <form method="dialog" class="dialog-body">
+      <h2 id="confirm-title">Delete your account?</h2>
+      <p id="confirm-desc">All your projects and settings will be removed. This cannot be undone.</p>
+      <div class="actions">
+        <button value="cancel" autofocus>Cancel</button>
+        <button value="confirm" class="danger">Delete account</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    // Opens a modal <dialog> and resolves with the value of the button that closed it ("" for Esc)
+    function showDialog(dialog) {
+      dialog.returnValue = ""; // returnValue survives from the previous close: reset it
+      dialog.showModal();
+      return new Promise((resolve) => {
+        dialog.addEventListener("close", () => resolve(dialog.returnValue), { once: true });
+      });
+    }
+
+    const dialog = document.getElementById("confirm-dialog");
+    const result = document.getElementById("result");
+
+    // A click whose target is the <dialog> element itself landed on the backdrop
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close("cancel");
+    });
+
+    document.getElementById("delete-account").addEventListener("click", async () => {
+      const answer = await showDialog(dialog);
+      result.textContent = answer === "confirm" ? "Account deleted (not really)." : `Cancelled (returnValue "${answer}").`;
+    });
+  </script>
+</body>
+</html>

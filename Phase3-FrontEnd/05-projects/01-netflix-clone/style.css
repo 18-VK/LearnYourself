@@ -1,0 +1,556 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    font-family: "Roboto", sans-serif;
+}
+
+body {
+    background-color: black;
+}
+
+.seperator {
+    background-color: rgb(58, 58, 58);
+    height: 8px;
+}
+
+.header-and-background {
+    background-image: url("./Resources/Images/BackGround.jpg");
+    height: 98vh;
+    position: relative;
+    top: 0;
+    /* Background will mainatin your center position even after resize*/
+    background-position: center center;
+    background-repeat: no-repeat;
+}
+
+/* 1 rem = 16 pixels. */
+.opacity {
+    height: 100%;
+    width: 100%;
+    opacity: 0.7;
+    background-color: black;
+    position: absolute;
+    top: 0;
+}
+
+Header {
+    height: 12vh;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 80vw;
+    margin: auto;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+.main-Logo svg {
+    width: 140px;
+    position: relative;
+    z-index: 10;
+}
+
+.buttons .content-center {
+    position: relative;
+    z-index: 10;
+}
+
+nav .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 2em;
+    position: relative;
+    z-index: 10;
+    font-family: "Roboto", sans-serif;
+    font-weight: 600;
+}
+
+.btn {
+    padding: 0.25em 1em;
+    font-weight: inherit;
+    color: white;
+    font-size: 1em;
+    /* 1 em = 16 px*/
+    line-height: 1.25em;
+    border: none;
+}
+
+.btn-lang {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    background-color: transparent;
+    border: 2px solid rgb(75, 74, 74);
+    border-radius: 3px;
+}
+
+nav .btn-signin {
+    background-color: red;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.content-center {
+    position: relative;
+    z-index: 10;
+    color: white;
+    height: calc(95vh - 30vh);
+    top: 90px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0em 1.50em 0em 1.50em;
+    gap: 1.25em;
+}
+
+.content-center h1 {
+    font-size: 3em;
+    font-weight: 900;
+    text-align: center;
+}
+
+.content-center .div-content {
+    font-size: 22px;
+    font-weight: 400;
+    text-align: center;
+}
+
+.Email-GetStart {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.input-email {
+
+    background: transparent;
+    border: 2px solid rgb(75, 74, 74);
+    box-sizing: border-box;
+    border-radius: 3px;
+    padding: 0px 15px;
+    color: white;
+    font-size: 16px;
+    width: 25vw;
+    height: 50px;
+
+}
+
+.input-email:focus {
+    /* outline-style: none; remove that yellow outline */
+    outline-color: white;
+}
+
+.input-Submit {
+    display: flex;
+    align-items: center;
+    font-size: 24px;
+    padding: 0px 26px;
+    text-align: center;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    background-color: red;
+    cursor: pointer;
+    height: 50px;
+}
+
+.input-Submit:hover {
+    filter: opacity(0.6);
+}
+
+.content-with-video-on-tv {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 85vh;
+}
+
+.content-on-left {
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.content-on-left h1 {
+    font-size: 48px;
+    font-weight: 900;
+    padding-bottom: 20px;
+}
+
+.content-on-left div {
+    font-size: 22px;
+    font-weight: 400;
+}
+
+.tv-image {
+    position: relative;
+}
+
+.tv-image img {
+    position: relative;
+    width: 555px;
+}
+
+.tv-image video {
+    position: absolute;
+    width: 404px;
+    z-index: -10;
+    top: 87px;
+    right: 76px;
+}
+
+.content-on-right {
+    width: 50%;
+    height: 100%;
+}
+
+.Download-mobile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 50%;
+    height: 100%;
+    background-image: url("./Resources/Images/Mobile_BackGround.jpg");
+    background-repeat: no-repeat;
+    margin: auto;
+    background-position: center;
+}
+
+.download-with-stranger {
+    position: relative;
+    background: black;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border: 2px solid rgb(75, 74, 74);
+    height: 90px;
+    width: 347px;
+    top: 155px;
+    margin: auto;
+    border-radius: 10px;
+}
+
+.stranger-text :nth-child(1) {
+    color: white;
+    font-size: 16px;
+}
+
+.stranger-text :nth-child(2) {
+    color: blue;
+    font-size: 14px;
+}
+
+.download-with-stranger :nth-child(1) {
+    position: relative;
+    height: 90%;
+    width: fit-content;
+}
+
+.download-with-stranger :nth-child(3) {
+    position: relative;
+    height: 90%;
+}
+
+.page-3_content {
+    justify-content: center;
+}
+
+.page-3-left-content {
+    width: 40%;
+}
+
+.Page-3_tv-image {
+    position: relative;
+    width: 45%;
+}
+
+.Page-3_tv-image img {
+    position: relative;
+    width: 80%;
+    height: auto;
+    z-index: 10;
+}
+
+.Page-3_tv-image video {
+    position: absolute;
+    /*Page-3_tv-image is parent of video that is relative */
+    top: 40px;
+    left: 89px;
+    width: 50%;
+}
+
+.fourth {
+    justify-content: center;
+    position: relative;
+}
+
+.fourth :nth-child(2)>div {
+    width: 70%;
+}
+
+.fourth :nth-child(2)>H1 {
+    width: 70%;
+}
+
+.page_4-image {
+    width: 50%;
+}
+
+.page_4-image img {
+    width: 100%;
+}
+
+.FAQ-Section h1 {
+    color: white;
+    text-align: center;
+    font-size: 48px;
+    font-weight: 900;
+}
+
+.FAQ {
+    display: flex;
+    flex-direction: column;
+    color: white;
+    /* justify-content: center; */
+    align-items: center;
+    gap: 10px;
+}
+
+.FAQ-Question {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 75vw;
+    height: 80px;
+    padding: 0px 20px;
+    font-size: 24px;
+    background-color: rgb(48, 47, 47);
+    border: none;
+    color: white;
+}
+
+.FAQ-Section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 70px 0px;
+}
+
+.FAQ-Email-form {
+    display: flex;
+    flex-direction: column;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    padding: 30px 0px;
+    gap: 10px;
+}
+
+.Question {
+    font-size: 16px;
+}
+
+.class-footer {
+    color: white;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.footer-Ul {
+    display: flex;
+    justify-content: center;
+}
+
+.footer-Ul ul {
+    list-style: none;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 0;
+    display: inline-flex;
+    flex-wrap: wrap;
+}
+
+.footer-Ul li {
+    padding: 14px 0px 0px 24px;
+    width: 23%;
+}
+
+.class-footer a {
+    color: white;
+}
+
+/* see here - https://www.geeksforgeeks.org/what-is-the-difference-between-displayinline-flex-and-displayflex-in-css/ */
+
+/* now make it responsive */
+@media screen and (max-width: 599px) {
+    Header {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .header-and-background {
+        height: 60vh;
+    }
+
+    .main-Logo svg {
+        width: 90px;
+    }
+
+    nav {
+        width: 90vw;
+    }
+
+    nav .buttons {
+        gap: 0.75em;
+    }
+
+    .content-center {
+        top: 45px;
+        height: auto;
+    }
+
+    .content-center h1 {
+        font-size: 2em;
+    }
+
+    .content-center .div-content {
+        font-size: 1em;
+    }
+
+    .Email-GetStart {
+        flex-direction: column;
+        height: 100px;
+        align-items: center;
+    }
+
+    .input-email {
+        width: 75vw;
+    }
+
+    .input-Submit {
+        padding: 0px 10px 0px 10px;
+    }
+
+    .content-with-video-on-tv {
+        flex-direction: column;
+        height: 60vh;
+    }
+
+    .content-on-left h1 {
+        font-size: 2em;
+        text-align: center;
+    }
+
+    .content-on-left div {
+        font-size: 1em;
+        text-align: center;
+        padding: 0px 20px;
+    }
+
+    .tv-image img {
+        width: 350px;
+    }
+
+    .tv-image video {
+        width: 250px;
+        top: 56px;
+        right: 51px;
+    }
+
+    .Download-mobile {
+        width: 100%;
+        height: 55%;
+        background-size: contain;
+    }
+
+    .content-on-right {
+        width: 100%;
+        height: 35%;
+    }
+
+    .download-with-stranger {
+        height: 50px;
+        top: 85px;
+        width: 60%;
+    }
+
+    .Second {
+        flex-direction: column-reverse;
+        justify-content: space-around;
+        align-items: start;
+        height: 60vh;
+        /* padding: 0px 20px; */
+    }
+
+    .page-3_content {
+        justify-content: center;
+        /* gap:15%; */
+    }
+
+    .page-3-left-content {
+        width: 90%;
+        height: 30%;
+    }
+
+    .Page-3_tv-image {
+        width: 100%;
+        height: 50%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .Page-3_tv-image video {
+        left: 98px;
+    }
+
+    .fourth {
+        flex-direction: column-reverse;
+    }
+
+    .page_4-image {
+        width: 100%;
+        height: 50%;
+    }
+
+    .fourth :nth-child(2)>div {
+        width: auto;
+    }
+
+    .fourth :nth-child(2)>H1 {
+        width: auto;
+    }
+    .FAQ-Section {
+        padding: 2em 1.25em;
+        
+    }
+    .FAQ-Section h1 {
+        font-size: 2em;
+    }
+    .FAQ-Question {
+        height: 64px;
+        font-size: 1em;
+        width: 100%;
+    }
+    .FAQ-Email-form {
+        text-align: center;
+    }
+    .footer-Ul li {
+        padding: 14px 0px 0px 24px;
+        width: 43%;
+    }
+}

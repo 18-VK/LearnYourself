@@ -111,7 +111,13 @@ autoExclude:
 # machine name, a password or key). The build names the line. If it is fine to publish, list the note here:
 #   - file: "Folder/Note.md"
 #     reason: "The address in the example is a sample."
-publishAnyway: []
+publishAnyway:
+  - file: "Phase3-FrontEnd/02-css/15-media-and-container-queries/notes.md"
+    reason: "\"desktop-first\" is the CSS design term, not a machine name."
+  - file: "Phase3-FrontEnd/05-projects/01-netflix-clone/notes.md"
+    reason: "\"desktop-first\" is the CSS design term, not a machine name."
+  - file: "Phase3-FrontEnd/05-projects/03-responsive-navbar/notes.md"
+    reason: "\"desktop-first\" and \"desktop-sized\" are CSS design terms, not machine names."
 
 # Notes whose C#, XAML, SQL or shell code is written as plain text instead of fenced code blocks.
 # The pipeline detects those runs and renders them as code (the notes are not changed). Every recovered

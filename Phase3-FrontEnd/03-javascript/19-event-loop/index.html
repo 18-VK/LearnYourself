@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS - Event loop and rendering</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 1.5rem; max-width: 42rem; line-height: 1.5; }
+        .track { position: relative; width: 340px; height: 2rem; background: #e8e8e8; border-radius: 1rem; margin: .25rem 0; }
+        .ball { position: absolute; top: .25rem; left: .25rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; }
+        /* Moved by requestAnimationFrame on the main thread: freezes during a long task */
+        #js-ball { background: #c0392b; }
+        /* A CSS transform animation: runs on the compositor and keeps moving during a long task */
+        #css-ball { background: #2471a3; animation: slide 2s linear infinite alternate; }
+        @keyframes slide { to { transform: translateX(300px); } }
+        button { margin: .25rem .25rem .25rem 0; padding: .4rem .7rem; }
+        #status { font-weight: bold; }
+        #log { background: #1e1e1e; color: #e8e8e8; padding: .75rem; min-height: 9rem; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Event loop and rendering</h1>
+
+    <h2>1. Long task vs chunked work</h2>
+    <p>Red ball: moved by <code>requestAnimationFrame</code>. Blue ball: CSS <code>transform</code> animation.</p>
+    <div class="track"><div id="js-ball" class="ball"></div></div>
+    <div class="track"><div id="css-ball" class="ball"></div></div>
+    <button id="block">Block the main thread for 2 s</button>
+    <button id="chunk">Same 2 s of work in 50 ms chunks, yielding in between</button>
+    <p>Status: <span id="status">idle</span></p>
+
+    <h2>2. Ordering</h2>
+    <button id="order">sync / microtask / requestAnimationFrame / setTimeout</button>
+    <button id="target">Two listeners: click me with the mouse</button>
+    <button id="programmatic">Call the other button's .click() from code</button>
+    <pre id="log"></pre>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const log = (message) => { logEl.textContent += message + '\n'; };
+
+        function busyWait(duration) {
+            const end = performance.now() + duration;
+            while (performance.now() < end) { /* block the main thread on purpose */ }
+        }
+
+        // Main-thread animation driven by requestAnimationFrame
+        const jsBall = document.getElementById('js-ball');
+        let x = 0;
+        let direction = 1;
+        function frame() {
+            x += direction * 3;
+            if (x >= 300 || x <= 0) direction = -direction;
+            jsBall.style.transform = `translateX(${x}px)`;
+            requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+
+        // 1a. One long task: "working..." is never painted, the red ball and the buttons freeze
+        document.getElementById('block').addEventListener('click', () => {
+            statusEl.textContent = 'working...';
+            busyWait(2000);
+            statusEl.textContent = 'done (one 2000 ms long task)';
+        });
+
+        // 1b. The same work split into chunks: the browser renders and handles input between chunks
+        function yieldToMain() {
+            if (globalThis.scheduler?.yield) return scheduler.yield();
+            return new Promise((resolve) => setTimeout(resolve, 0));
+        }
+
+        document.getElementById('chunk').addEventListener('click', async () => {
+            const how = globalThis.scheduler?.yield ? 'scheduler.yield()' : 'setTimeout(0)';
+            for (let chunk = 1; chunk <= 40; chunk++) {
+                busyWait(50);
+                statusEl.textContent = `working... chunk ${chunk} of 40`;
+                await yieldToMain();
+            }
+            statusEl.textContent = `done (40 chunks of 50 ms, yielding with ${how})`;
+        });
+
+        // 2a. The order of rAF and setTimeout depends on where in the frame the click landed
+        document.getElementById('order').addEventListener('click', () => {
+            logEl.textContent = '';
+            log('sync: handler starts');
+            setTimeout(() => log('setTimeout 0 (task)'), 0);
+            requestAnimationFrame(() => log('requestAnimationFrame (before the next paint)'));
+            Promise.resolve().then(() => log('promise.then (microtask)'));
+            queueMicrotask(() => log('queueMicrotask (microtask)'));
+            log('sync: handler ends');
+        });
+
+        // 2b. Real click: microtasks run between the listeners.
+        //     target.click() from code: both listeners run first, then the microtasks.
+        const target = document.getElementById('target');
+        target.addEventListener('click', () => { logEl.textContent = ''; });
+        target.addEventListener('click', () => {
+            log('listener 1');
+            queueMicrotask(() => log('microtask 1'));
+        });
+        target.addEventListener('click', () => {
+            log('listener 2');
+            queueMicrotask(() => log('microtask 2'));
+        });
+
+        document.getElementById('programmatic').addEventListener('click', () => {
+            target.click();
+            log('after target.click()');
+        });
+    </script>
+</body>
+</html>

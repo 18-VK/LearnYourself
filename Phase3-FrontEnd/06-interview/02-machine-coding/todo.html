@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo list with localStorage - machine coding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+    .hint { color: #4b5563; font-size: 0.95rem; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+                       clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    button, input { font: inherit; }
+    button { padding: 0.3rem 0.75rem; border-radius: 6px; border: 1px solid #9ca3af; background: #fff; cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+
+    #todo-form { display: flex; gap: 0.5rem; }
+    #todo-input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #6b7280; border-radius: 6px; }
+    .filters { display: flex; gap: 0.4rem; margin: 1rem 0 0.5rem; }
+    .filters [aria-pressed="true"] { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
+    .todo-list { list-style: none; margin: 0; padding: 0; }
+    .todo-list li { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; border-bottom: 1px solid #e5e7eb; }
+    .todo-list label { flex: 1; overflow-wrap: anywhere; }   /* very long titles wrap instead of overflowing */
+    .todo-list li.done label { text-decoration: line-through; color: #6b7280; }
+    .todo-list input[type="checkbox"] { width: 1.15rem; height: 1.15rem; }
+    .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <p class="hint">
+    Add, tick, delete and filter. Reload the page: the list survives (localStorage). Open this file in a second tab and
+    change something: the other tab updates through the <code>storage</code> event.
+  </p>
+
+  <section aria-labelledby="todo-title">
+    <h1 id="todo-title">Todos</h1>
+
+    <form id="todo-form">
+      <label for="todo-input" class="visually-hidden">New todo</label>
+      <input id="todo-input" name="title" placeholder="What needs doing?" autocomplete="off" required maxlength="200">
+      <button type="submit">Add</button>
+    </form>
+
+    <div class="filters" role="group" aria-label="Show">
+      <button type="button" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" data-filter="active" aria-pressed="false">Active</button>
+      <button type="button" data-filter="done" aria-pressed="false">Done</button>
+    </div>
+
+    <ul id="todo-list" class="todo-list"></ul>
+    <p id="todo-empty" hidden>Nothing here.</p>
+
+    <div class="footer">
+      <p id="todo-count" role="status"></p>
+      <button type="button" id="clear-done">Clear completed</button>
+    </div>
+  </section>
+
+  <script>
+    function h(tag, attrs = {}, ...children) {
+      const el = document.createElement(tag);
+      for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
+      el.append(...children);
+      return el;
+    }
+
+    // ---------- Persistence ----------
+    const STORAGE_KEY = "machine-coding:todos:v1"; // namespaced and versioned, so a new shape can migrate
+
+    function loadTodos() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((t) => typeof t?.id === "string" && typeof t.title === "string"); // never trust stored data
+      } catch {
+        return []; // corrupt JSON or storage blocked: start empty instead of crashing
+      }
+    }
+
+    function saveTodos() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.todos));
+      } catch (err) {
+        console.warn("Could not save todos:", err); // quota exceeded or storage disabled
+      }
+    }
+
+    // ---------- State ----------
+    const state = { todos: loadTodos(), filter: "all" };
+    const FILTERS = { all: () => true, active: (t) => !t.done, done: (t) => t.done };
+
+    function setState(patch) {
+      Object.assign(state, patch);
+      if ("todos" in patch) saveTodos();
+      render();
+    }
+
+    // ---------- Render ----------
+    const form = document.getElementById("todo-form");
+    const input = document.getElementById("todo-input");
+    const list = document.getElementById("todo-list");
+    const empty = document.getElementById("todo-empty");
+    const count = document.getElementById("todo-count");
+    const filters = document.querySelector(".filters");
+    const clearDone = document.getElementById("clear-done");
+
+    function renderTodo(todo) {
+      const checkboxId = `todo-${todo.id}`;
+      const checkbox = h("input", { type: "checkbox", id: checkboxId, "data-action": "toggle" });
+      checkbox.checked = todo.done;
+      return h("li", { "data-id": todo.id, class: todo.done ? "done" : "" },
+        checkbox,
+        h("label", { for: checkboxId }, todo.title),
+        h("button", { type: "button", "data-action": "delete", "aria-label": `Delete “${todo.title}”` }, "×"));
+    }
+
+    function render() {
+      // Re-rendering the list destroys the focused element: remember it and restore it afterwards
+      const active = document.activeElement;
+      const focusedId = list.contains(active) ? active.closest("li").dataset.id : null;
+      const focusedAction = focusedId ? active.dataset.action : null;
+
+      const visible = state.todos.filter(FILTERS[state.filter]);
+      list.replaceChildren(...visible.map(renderTodo));
+      empty.hidden = visible.length > 0;
+
+      const left = state.todos.filter((t) => !t.done).length;
+      count.textContent = `${left} item${left === 1 ? "" : "s"} left`;
+      clearDone.hidden = !state.todos.some((t) => t.done);
+      for (const b of filters.querySelectorAll("[data-filter]")) {
+        b.setAttribute("aria-pressed", String(b.dataset.filter === state.filter));
+      }
+
+      if (focusedId) {
+        const target = list.querySelector(`li[data-id="${focusedId}"] [data-action="${focusedAction}"]`);
+        (target ?? input).focus(); // the item may be gone (deleted or filtered out)
+      }
+    }
+
+    // ---------- Events ----------
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = input.value.trim();
+      if (!title) return;
+      setState({ todos: [...state.todos, { id: crypto.randomUUID(), title, done: false }] });
+      form.reset();
+    });
+
+    list.addEventListener("change", (e) => {
+      if (e.target.dataset.action !== "toggle") return;
+      const id = e.target.closest("li").dataset.id;
+      setState({ todos: state.todos.map((t) => (t.id === id ? { ...t, done: e.target.checked } : t)) });
+    });
+
+    list.addEventListener("click", (e) => {
+      const button = e.target.closest('[data-action="delete"]');
+      if (!button) return;
+      const id = button.closest("li").dataset.id;
+      setState({ todos: state.todos.filter((t) => t.id !== id) });
+    });
+
+    filters.addEventListener("click", (e) => {
+      const button = e.target.closest("[data-filter]");
+      if (button) setState({ filter: button.dataset.filter });
+    });
+
+    clearDone.addEventListener("click", () => {
+      setState({ todos: state.todos.filter((t) => !t.done) });
+      input.focus(); // the button just hid itself
+    });
+
+    // Another tab wrote the same key: reload (don't save, the other tab already did)
+    window.addEventListener("storage", (e) => {
+      if (e.key !== STORAGE_KEY) return;
+      state.todos = loadTodos();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Architecture: layers, tokens, BEM</title>
+    <style>
+        /* 1. Declare the layer order once. A later layer beats an earlier one, whatever the specificity. */
+        @layer reset, tokens, base, layouts, components, utilities;
+
+        @layer reset {
+            *, *::before, *::after { box-sizing: border-box; }
+            body, h1, h2, p { margin: 0; }
+        }
+
+        /* 2. Design tokens as custom properties: primitives first, then semantic names that components use. */
+        @layer tokens {
+            :root {
+                --blue-600: #2563eb;
+                --gray-50: #f9fafb;
+                --gray-300: #d1d5db;
+                --gray-700: #374151;
+                --gray-800: #1f2937;
+                --gray-900: #111827;
+                --space-2: 0.5rem;
+                --space-4: 1rem;
+                --radius-md: 0.5rem;
+
+                --color-page: var(--gray-50);
+                --color-surface: #ffffff;
+                --color-text: var(--gray-900);
+                --color-muted: var(--gray-700);
+                --color-accent: var(--blue-600);
+            }
+
+            /* A theme only swaps semantic tokens; no component CSS changes. */
+            [data-theme="dark"] {
+                --color-page: var(--gray-900);
+                --color-surface: var(--gray-800);
+                --color-text: var(--gray-50);
+                --color-muted: var(--gray-300);
+            }
+        }
+
+        @layer base {
+            body {
+                font-family: system-ui, sans-serif;
+                line-height: 1.5;
+                padding: var(--space-4);
+            }
+
+            section {
+                padding: var(--space-4);
+                background-color: var(--color-page);
+                color: var(--color-text);
+            }
+        }
+
+        /* 3. Layout primitives own the spacing between components; components never set their own outer margin. */
+        @layer layouts {
+            .stack > * + * { margin-top: var(--space-4); }
+        }
+
+        /* 4. BEM components: one class per selector, flat specificity (0,1,0). */
+        @layer components {
+            .card {
+                --card-accent: var(--color-accent);   /* component token: the public styling API */
+                max-width: 24rem;
+                padding: var(--space-4);
+                background-color: var(--color-surface);
+                border-top: 4px solid var(--card-accent);
+                border-radius: var(--radius-md);
+            }
+
+            .card__title { font-size: 1.25rem; }
+            .card__text { color: var(--color-muted); }
+            .card--featured { --card-accent: crimson; }
+
+            /* Specificity (1,1,0), but it lives in the components layer... */
+            #promo .card__title { color: var(--card-accent); }
+
+            /* @scope: style paragraphs in an article, but not inside cards embedded in it (ignored where unsupported) */
+            @scope (.prose) to (.card) {
+                p { font-size: 1.125rem; }
+            }
+        }
+
+        /* 5. Utilities come last, so a single class overrides any component rule. */
+        @layer utilities {
+            .u-text-center { text-align: center; }
+            .u-color-inherit { color: inherit; }   /* (0,1,0) beats #promo .card__title above */
+        }
+    </style>
+</head>
+
+<body>
+    <section class="stack" aria-label="Light theme">
+        <h1>Cascade layers, tokens and BEM</h1>
+
+        <article class="card">
+            <h2 class="card__title">Default card</h2>
+            <p class="card__text">Uses the semantic tokens and the default accent.</p>
+        </article>
+
+        <div id="promo" class="stack">
+            <article class="card card--featured">
+                <h2 class="card__title">Featured card</h2>
+                <p class="card__text">The modifier only changes the <code>--card-accent</code> token. The title is crimson because of the <code>#promo .card__title</code> rule.</p>
+            </article>
+
+            <article class="card card--featured">
+                <h2 class="card__title u-color-inherit u-text-center">Utility wins</h2>
+                <p class="card__text">The same ID rule matches this title, but a single utility class in a later layer beats it.</p>
+            </article>
+        </div>
+
+        <div class="prose stack">
+            <p>This paragraph is inside <code>.prose</code>, so the scoped rule makes it larger.</p>
+            <article class="card">
+                <p class="card__text">This one is inside a card, below the scope limit, so the scoped rule skips it.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="stack" data-theme="dark" aria-label="Dark theme">
+        <article class="card">
+            <h2 class="card__title">Same component, dark tokens</h2>
+            <p class="card__text">Only the semantic tokens changed for this section.</p>
+        </article>
+    </section>
+</body>
+
+</html>

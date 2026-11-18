@@ -1,0 +1,21 @@
+:root
+{
+    --NavbarColor:rgb(249, 116, 224);
+    --NavBackGround: rgb(168, 48, 198);
+}
+ul
+{
+    display: flex;
+    list-style: none;
+    border: 2px solid black;
+}
+li
+{
+    margin: 10px;
+    padding: 30px;
+}
+nav
+{
+    color: var(--NavbarColor);
+    background-color: var(--NavBackGround);
+}

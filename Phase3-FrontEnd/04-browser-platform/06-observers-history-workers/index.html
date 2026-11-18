@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observers and Workers demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 900px; padding: 16px; line-height: 1.5; }
+    section { border: 1px solid #ccc; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+    h2 { margin-top: 0; font-size: 1.2rem; }
+
+    /* 1. IntersectionObserver: the gallery scrolls inside its own box (the observer's root) */
+    .gallery { height: 260px; overflow-y: auto; border: 1px dashed #999; padding: 8px; }
+    .card { margin: 0 0 12px; }
+    .card img { display: block; width: 100%; max-width: 320px; height: auto; aspect-ratio: 16 / 9; background: #e5e5e5; }
+
+    /* 2. ResizeObserver: drag the bottom-right corner to resize */
+    .resizable { resize: both; overflow: auto; width: 360px; min-width: 150px; max-width: 100%; height: 120px;
+                 border: 2px solid #4a7; padding: 8px; display: flex; gap: 8px; }
+    .resizable.is-narrow { flex-direction: column; border-color: #c74; }
+    .resizable div { flex: 1; background: #eef; padding: 4px; }
+
+    /* 3. Worker */
+    .track { position: relative; height: 24px; background: #f2f2f2; border-radius: 12px; overflow: hidden; }
+    #dot { position: absolute; width: 24px; height: 24px; border-radius: 50%; background: #36c; }
+    button { margin: 4px 4px 4px 0; }
+
+    #log { height: 160px; overflow-y: auto; background: #111; color: #9f9; font-family: monospace; font-size: 0.85rem; margin: 0; padding: 8px 8px 8px 32px; }
+  </style>
+</head>
+<body>
+  <h1>Observers and Workers</h1>
+  <p>Open this page through a local server (for example VS Code Live Server). Chrome refuses to start workers from <code>file://</code> pages.</p>
+
+  <section>
+    <h2>1. IntersectionObserver: lazy loading and impressions</h2>
+    <p>Scroll the box. Images load just before they enter it; a card counts as "seen" after it is at least 50% visible for 1 second.</p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <section>
+    <h2>2. ResizeObserver: react to an element's own size</h2>
+    <p>Drag the corner of the green box. Below 260px wide it switches to a stacked layout. Current size: <strong id="size">?</strong></p>
+    <div class="resizable" id="resizable">
+      <div>Panel A</div>
+      <div>Panel B</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Web Worker: keep the main thread free</h2>
+    <p>The dot is moved by <code>requestAnimationFrame</code> on the main thread. Run the job on the main thread and the dot (and the text box) freeze; run it in the worker and they keep going.</p>
+    <div class="track"><div id="dot"></div></div>
+    <p>Frames drawn: <span id="frames">0</span></p>
+    <label>Count primes below <input id="limit" type="number" value="5000000" min="1000" step="1000000"></label><br>
+    <button id="run-main" type="button">Run on the main thread</button>
+    <button id="run-worker" type="button">Run in the worker</button>
+    <button id="transfer" type="button">Transfer a 32 MB ArrayBuffer</button><br>
+    <input type="text" placeholder="Type here while a job runs" size="30">
+    <p id="result" aria-live="polite"></p>
+  </section>
+
+  <section>
+    <h2>Log (counted by a MutationObserver: <span id="log-count">0</span> entries)</h2>
+    <ol id="log"></ol>
+  </section>
+
+  <script src="primes.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
