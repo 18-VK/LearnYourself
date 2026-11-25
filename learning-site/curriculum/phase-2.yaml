@@ -208,6 +208,12 @@ modules:
             tier: 1
             at: { section: "# Enforce it at the hosting level too (defense in depth)", codeBlock: 2 }
 
+      - id: cors
+        title: "CORS: preflight, credentials & ASP.NET Core setup"
+        reason: "Unnumbered; UseCors is pipeline middleware (see the middleware lesson), so placed with the pipeline lessons."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/cors-notes.md"
+
   - id: auth-fundamentals
     title: "Authentication, authorization & JWT"
     lessons:
@@ -259,6 +265,12 @@ modules:
           - diagram: jwt-runtime-flow
             tier: 1
             at: { section: "### Full Runtime Flow (IMPORTANT)", codeBlock: 1 }
+
+      - id: jwt-vs-cookie-auth
+        title: "JWT vs cookie auth & JWT in an HttpOnly cookie"
+        reason: "Unnumbered; compares cookie and JWT authentication, so placed right after JWT setup."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/JWT vs Cookie Auth in ASP.NET Core Notes.md"
 
       - id: authorization-policies
         title: "Authorization: roles, claims, policies & resources"
@@ -321,6 +333,12 @@ modules:
             at: { section: "# End-to-end flow", codeBlock: 1 }
         cheatsheets: [auth-jwt]
 
+      - id: google-id-token-validation
+        title: "Google Sign-In: validating the ID token"
+        reason: "Unnumbered; validates a Google ID token and then issues the API's own JWT, so placed after creating JWTs."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Google Sign-In ID Token Validation Notes.md"
+
   - id: auth-server
     title: "Building an auth server"
     lessons:
@@ -359,6 +377,14 @@ modules:
             tier: 1
             at: { section: "#### What does a refresh token contain?", codeBlock: 2 }
         cheatsheets: [auth-jwt]
+
+      # 12.1.ASP_CookieBasedAuthentication.md has no entry: its automatic lessons go right after refresh-tokens,
+      # which puts this CSRF lesson directly after cookie-based authentication.
+      - id: csrf-protection-cookie-spa
+        title: "CSRF protection for a cookie-based SPA"
+        reason: "Unnumbered; the CSRF defence for cookie auth, so placed after cookie-based authentication (12.1)."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/CSRF Protection for Cookie-Based SPA in ASP.NET Core.md"
 
       - id: identity-and-its-tables
         title: "ASP.NET Core Identity & its tables"
@@ -435,11 +461,11 @@ modules:
             at: { section: "### 3. Social Login (Google, Microsoft, GitHub, etc.)", codeBlock: 1 }
 
   - id: production-concerns
-    title: "Rate limiting & versioning"
+    title: "Rate limiting, caching & versioning"
     lessons:
       - id: rate-limiting
         title: "Rate limiting algorithms & implementation"
-        reason: "15.ASP_RateLimitingNmore.md (~18 min) is split into implementation and parameters/throttling."
+        reason: "15.ASP_RateLimitingNmore.md (~32 min) is split into implementation, parameters/throttling, and production/client side."
         sources:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/15.ASP_RateLimitingNmore.md"
             until: "# Rate Limiter Parameters Explained"
@@ -456,7 +482,20 @@ modules:
         sources:
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/15.ASP_RateLimitingNmore.md"
             from: "# Rate Limiter Parameters Explained"
+            until: "# Approach should follow"
           - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/Question.md"
+
+      - id: rate-limiting-in-production
+        title: "Rate limiting in production & handling 429 on the client"
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/15.ASP_RateLimitingNmore.md"
+            from: "# Approach should follow"
+
+      - id: http-caching
+        title: "HTTP caching: Cache-Control, ETag & revalidation"
+        reason: "Unnumbered; response caching is a production concern next to rate limiting."
+        sources:
+          - file: "Phase2-ASP.NetAndBackend/ASP.Net Core/http-caching-notes.md"
 
       - id: api-versioning
         title: "API versioning"
